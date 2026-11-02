@@ -1,0 +1,14 @@
+include "a.vns"
+include "b.vns"
+lock route b_path "The B Path" until a1, a2
+lock route a_path "The A Path"
+label start:
+    menu:
+        "A":
+            jump a_path
+        "A menu":
+            jump a_menu
+        "B":
+            jump b_path
+        "B menu":
+            jump b_menu

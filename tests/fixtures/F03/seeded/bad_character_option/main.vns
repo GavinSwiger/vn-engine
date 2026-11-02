@@ -1,0 +1,4 @@
+define hana = Character("Hana", colour="#e8a0b4")
+label start:
+    hana "Shall we go?"
+    return

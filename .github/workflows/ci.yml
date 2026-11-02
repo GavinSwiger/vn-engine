@@ -1,0 +1,40 @@
+# CI matrix for vn-engine (04-technical.md §14.5).
+# Unit and `display` tests run on all three runners (the SDL dummy video driver needs no
+# X server). `perf` and `manual` tests never run in CI.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }}, Python 3.12)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned, hashed dependencies
+        run: python -m pip install --require-hashes -r requirements-ci.txt
+
+      - name: Install the engine
+        run: python -m pip install --no-deps -e .
+
+      - name: Run tests
+        run: python -m pytest -m "not perf and not manual"
+
+      # AC-F02-55: 1,000 fuzz cases per CI run. The step above runs cases 0-99 (chunk 0);
+      # this runs chunks 1-9, which are `slow` so the local default run stays fast.
+      - name: Fuzz the script loader (cases 100-999)
+        run: python -m pytest -m slow tests/script/test_fuzz.py -k one_thousand_cases

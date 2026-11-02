@@ -1,0 +1,40 @@
+# F09 06 §5 all/: every built-in, slow_dissolve, lantern, lantern_out, a length and color
+# override, a grouped moment, timed and untimed pause, shake, and flash; 12 lines.
+# AC-F09-16 plays it windowed (step 4); step 1's headless golden is goldens/all_headless.json.
+define hana = Character("Hana")
+define d = Character("Daichi", image_tag="daichi")
+define slow_dissolve = Dissolve(1.5)
+define lantern = Mask("masks/iris.png", 1.2)
+define lantern_out = Mask("masks/iris.png", 1.2, reverse=True)
+default lit = 0
+label start:
+    scene bg ember with fade
+    "The lanterns were lit."
+    show hana happy at left with dissolve
+    hana "You came!"
+    show daichi grin at right with dissolve 0.3
+    d "Of course."
+    flash
+    hana sad "Did you see that?"
+    scene bg river with fade 2.0 white
+    "The river."
+    scene bg sea
+    show hana happy at left
+    show daichi grin at right with slow_dissolve
+    "The sea."
+    shake large
+    d "Whoa."
+    $ lit += 1
+    pause 1.0
+    "A moment later."
+    scene bg ember with lantern
+    "Ember again."
+    scene bg river with lantern_out 0.8
+    shake
+    flash red 0.6
+    pause
+    hana happy "Ready?"
+    show hana sad with cut
+    "Then."
+    hide hana with fade "#ffe08a" 0.4
+    "The end."

@@ -1,0 +1,4 @@
+label chapter1:
+    "Line two."
+    "Café."
+    return

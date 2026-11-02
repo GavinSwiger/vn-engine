@@ -1,0 +1,7 @@
+label start:
+    "Start."
+    call intro
+label intro:
+    call chat
+label chat:
+    call chat

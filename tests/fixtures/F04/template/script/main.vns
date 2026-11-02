@@ -1,0 +1,8 @@
+define hana = Character("Hana")
+define d = Character("Daichi", image_tag="daichi")
+label start:
+    scene bg river_night
+    show hana happy
+    <S>
+    "End."
+<T>

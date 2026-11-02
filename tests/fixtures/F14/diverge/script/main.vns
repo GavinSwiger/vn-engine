@@ -1,0 +1,39 @@
+# F14 06 §5 diverge/: data outside GameState that changes a re-run (AC-F14-12, AC-F14-25).
+# modules/tick.py of 06 §5 is two defines here: module() takes only modules that come with
+# Python or are installed, so a game folder can't hold one. tick_nxt() returns 1, 2, 3, ...
+# per call; tick_same() returns 1 on odd calls and 1.0 on even ones. Each part is its own
+# label, started with StartOptions(label=...).
+define cfg = []
+define ticks = []
+define tick_nxt = lambda: ticks.append(1) or len(ticks)
+define tick_same = lambda: ticks.append(1) or (1 if len(ticks) % 2 else 1.0)
+default persistent.visits = 0
+label start:
+    "P1."
+    $ persistent.visits += 1
+    $ cfg.append(1)
+    if persistent.visits > 1:
+        "Again."
+    else:
+        "First."
+    "P3."
+    return
+label nxt:
+    "N1."
+    $ y = tick_nxt()
+    "N2."
+    "N3."
+    return
+label loose:
+    "L1."
+    $ x = tick_same()
+    "L2."
+    "L3."
+    return
+label ends:
+    "E1."
+    if tick_nxt() > 1:
+        return
+    "E2."
+    "E3."
+    return

@@ -1,0 +1,76 @@
+# The three ways the night ends. The last menu on the bridge (routes/daichi.vns) jumps
+# here. main.vns includes this file too.
+
+# Hana's texts after the walk home, for the phone chat in river_end below. A plain text is
+# a message from Hana (the contact). {"time": "10:41 PM"} shows the time between messages
+# and sets the phone's clock. An "ask" is where the player picks a reply: each other key
+# names a reply, and a list is the reply's text, then Hana's answers to it. "ignore": True
+# adds a "Don't reply" button.
+define hana_texts = [
+    "are you still up?",
+    "i took the lantern frame out of the reeds. i'm keeping it",
+    {"ask": "frame",
+        "keep": ["Good. Keep it somewhere safe.", "on my windowsill. so it can see the river"],
+        "why": ["Why keep a burnt frame?", "so i remember this year happened", "even the sad parts"],
+        "ignore": True},
+    {"time": "10:41 PM"},
+    "my train is at 6:50. the early one",
+    {"ask": "train",
+        "station": ["I'll be at the station.", "you don't have to!!", "but ok"],
+        "sleep": ["I'll probably sleep through it.", "you WOULD"]},
+    "goodnight. thanks for coming back",
+    ]
+
+label river_end:
+    "We walked Hana home along the river. Nobody said much."
+    hana sad "I leave on the morning train. Maybe next year."
+    "By her gate, a lantern had caught in the reeds. Only its frame was left."
+    hide hana
+    hide daichi with dissolve
+    "Halfway back to Daichi's house, my phone buzzed."
+    # phone_chat is a minigame that comes with the engine: a phone over the dimmed stage,
+    # with Hana's messages arriving one at a time. Enter or a click hurries the next one.
+    # time="10:32 PM" is the clock when the chat opens. "into hana_replies" stores the
+    # reply the player picked at each ask, by its name: hana_replies["frame"] is "keep",
+    # "why", or "ignore", and an ask the chat never reached (after a "Don't reply") is
+    # None. In a test run, Shift+F8 ends the chat at once with the first reply of each ask,
+    # so the reply listed first is the one tests see.
+    minigame phone_chat chat=hana_texts contact="Hana" time="10:32 PM" into hana_replies
+    if hana_replies["frame"] == "ignore":
+        thought "I read it twice and put the phone away. The river was too loud to think."
+    elif hana_replies["train"] == "station":
+        thought "Six fifty. I set three alarms, and then a fourth."
+    else:
+        thought "I lay awake anyway, listening to the river."
+    # "ending" ends the story. The game remembers the ending across playthroughs, shows a
+    # card with "Sad End" small above the title "Paper Ashes" for 3 seconds, then fades
+    # to the title screen. sad is the ending's name: one per ending, used by "until" in
+    # main.vns and by "lock ending" below. Nothing after an ending runs, so its lines go
+    # above it.
+    ending sad "Sad End" "Paper Ashes"
+
+label festival_end:
+    hana happy "Then come on! They light the big lantern at ten."
+    "We ran down into the crowd. For one night, it felt like I had never left."
+    ending good "Good End" "The Lantern Festival"
+
+# The promise route: the bridge's third choice opens only after the sad and the good
+# ending (the "lock route" line in main.vns).
+label promise:
+    # "hidden" keeps this box off the Flowchart page until the player reaches it, so the
+    # secret stays secret even once the route opens. "no jump" never offers a jump here:
+    # the promise is played from the bridge.
+    flowchart scene "The Promise" hidden no jump
+    hide daichi with dissolve
+    "Daichi went to find his friends. Hana and I stayed at the rail until the crowd was gone."
+    hana "You came back. Every year, I asked the river to bring you."
+    hana happy "Promise me something. Next year, don't wait six years."
+    "I promised. Below us, one last lantern turned once and went on downstream."
+    # "lock ending" makes the game forget an ending, as if the river had carried it away.
+    # With the sad and the good ending forgotten, the promise route is locked again, so
+    # the next playthrough starts over.
+    lock ending sad
+    lock ending good
+    # "flowchart hidden" right above an ending hides its box the same way.
+    flowchart hidden
+    ending true "True End" "Hana's Promise"

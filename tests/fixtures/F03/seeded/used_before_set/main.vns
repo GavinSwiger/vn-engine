@@ -1,0 +1,4 @@
+include "ch3.vns"
+label start:
+    "The festival began."
+    jump ch3

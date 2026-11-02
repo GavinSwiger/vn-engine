@@ -1,0 +1,7 @@
+label start:
+    "Hana started talking."
+    call intro
+label intro:
+    call chat
+label chat:
+    call chat

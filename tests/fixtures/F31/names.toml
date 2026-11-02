@@ -1,0 +1,199 @@
+# F31 meta file names (06 §5; AC-F31-01, AC-F31-09; 05 abuse group A).
+# name:      the name (an integer row is a non-str value)
+# accepted:  whether is_meta_name / MetaFolder / the writer's meta client accept it
+# e310_form: the E310 form a `file` line with this name gives (step 2; "" when accepted or
+#            when no .vns string can hold it); name_problem's order is slash, capitals,
+#            ending, reserved, long, chars
+# in_vns:    whether a .vns string can hold it (F02 escapes: \n, \", \\ only; no raw controls)
+
+[[row]]
+name = "../x.chr"
+accepted = false
+e310_form = "slash"
+in_vns = true
+
+[[row]]
+name = "/x.chr"
+accepted = false
+e310_form = "slash"
+in_vns = true
+
+[[row]]
+name = "C:x.txt"
+accepted = false
+e310_form = "capitals"
+in_vns = true
+
+[[row]]
+name = '\\srv\s\x.txt'
+accepted = false
+e310_form = "slash"
+in_vns = true
+
+[[row]]
+name = "x/y.txt"
+accepted = false
+e310_form = "slash"
+in_vns = true
+
+[[row]]
+name = 'x\y.txt'
+accepted = false
+e310_form = "slash"
+in_vns = true
+
+[[row]]
+name = "hana.chr:s"
+accepted = false
+e310_form = "ending"
+in_vns = true
+
+[[row]]
+name = "hana.chr."
+accepted = false
+e310_form = "ending"
+in_vns = true
+
+[[row]]
+name = "hana.chr "
+accepted = false
+e310_form = "ending"
+in_vns = true
+
+[[row]]
+name = "HANA~1.CHR"
+accepted = false
+e310_form = "capitals"
+in_vns = true
+
+[[row]]
+name = "Hana.chr"
+accepted = false
+e310_form = "capitals"
+in_vns = true
+
+[[row]]
+name = "con.txt"
+accepted = false
+e310_form = "reserved"
+in_vns = true
+
+[[row]]
+name = "nul.chr"
+accepted = false
+e310_form = "reserved"
+in_vns = true
+
+[[row]]
+name = "com1.txt"
+accepted = false
+e310_form = "reserved"
+in_vns = true
+
+[[row]]
+name = "lpt9.txt"
+accepted = false
+e310_form = "reserved"
+in_vns = true
+
+[[row]]
+name = "ｈａｎａ.chr"
+accepted = false
+e310_form = "chars"
+in_vns = true
+
+[[row]]
+name = "hana.chr\u0000"
+accepted = false
+e310_form = ""
+in_vns = false
+
+[[row]]
+name = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt"     # a 33-character base
+accepted = false
+e310_form = "long"
+in_vns = true
+
+[[row]]
+name = ".chr"
+accepted = false
+e310_form = "chars"
+in_vns = true
+
+[[row]]
+name = "hana.exe"
+accepted = false
+e310_form = "ending"
+in_vns = true
+
+[[row]]
+name = "hana.chr.txt"
+accepted = false
+e310_form = "chars"
+in_vns = true
+
+[[row]]
+name = "a b.txt"
+accepted = false
+e310_form = "chars"
+in_vns = true
+
+[[row]]
+name = "-a.txt"
+accepted = false
+e310_form = "chars"
+in_vns = true
+
+[[row]]
+name = ""
+accepted = false
+e310_form = "ending"
+in_vns = true
+
+[[row]]
+name = 5                                              # an int, not a str
+accepted = false
+e310_form = ""
+in_vns = false
+
+[[row]]
+name = "hana.chr"
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "read_me.txt"
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "0.txt"
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "a-.chr"
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.chr"      # a 32-character base
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "com10.txt"
+accepted = true
+e310_form = ""
+in_vns = true
+
+[[row]]
+name = "con-1.txt"
+accepted = true
+e310_form = ""
+in_vns = true

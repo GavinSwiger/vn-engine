@@ -1,0 +1,7 @@
+[game]
+id = "f30-template"
+title = "Paper Test"
+version = "1.0"
+
+[meta]
+username = true

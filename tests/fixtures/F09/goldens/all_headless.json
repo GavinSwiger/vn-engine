@@ -1,0 +1,725 @@
+{
+ "commands": [
+  {
+   "reason": "new_game",
+   "state": {
+    "music": [],
+    "sounds": []
+   },
+   "type": "AudioRestore"
+  },
+  {
+   "stage": {
+    "background": "bg ember",
+    "sprites": []
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "fade",
+    "mask": null,
+    "name": "fade",
+    "reverse": false,
+    "seconds": null,
+    "sid": "start/e637c3e98b57",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/e637c3e98b57",
+   "type": "StoryWait",
+   "wait_id": 1
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "The lanterns were lit.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/4d1f391b511e",
+   "speaker": null,
+   "text": "The lanterns were lit.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg river",
+    "bg sea",
+    "bg ember"
+   ],
+   "sprites": [
+    "hana happy",
+    "daichi grin",
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg ember",
+    "sprites": [
+     {
+      "at": "left",
+      "flip": false,
+      "image": "hana happy",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "dissolve",
+    "mask": null,
+    "name": "dissolve",
+    "reverse": false,
+    "seconds": null,
+    "sid": "start/bfe08da44b34",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": false,
+   "seconds": null,
+   "sid": "start/bfe08da44b34",
+   "type": "StoryWait",
+   "wait_id": 2
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "You came!",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/b6312cdfa8c0",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "You came!",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg river",
+    "bg sea",
+    "bg ember"
+   ],
+   "sprites": [
+    "daichi grin",
+    "hana sad",
+    "hana happy"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg ember",
+    "sprites": [
+     {
+      "at": "left",
+      "flip": false,
+      "image": "hana happy",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     },
+     {
+      "at": "right",
+      "flip": false,
+      "image": "daichi grin",
+      "layer": 0,
+      "tag": "daichi",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "dissolve",
+    "mask": null,
+    "name": "dissolve",
+    "reverse": false,
+    "seconds": 0.3,
+    "sid": "start/5115259b7546",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": false,
+   "seconds": null,
+   "sid": "start/5115259b7546",
+   "type": "StoryWait",
+   "wait_id": 3
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Of course.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Daichi",
+   "name_color": null,
+   "sid": "start/60e94c5e6de4",
+   "speaker": "d",
+   "speaker_tag": "daichi",
+   "text": "Of course.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg river",
+    "bg sea",
+    "bg ember"
+   ],
+   "sprites": [
+    "hana sad",
+    "hana happy",
+    "daichi grin"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg ember",
+    "sprites": [
+     {
+      "at": "left",
+      "flip": false,
+      "image": "hana sad",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     },
+     {
+      "at": "right",
+      "flip": false,
+      "image": "daichi grin",
+      "layer": 0,
+      "tag": "daichi",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "type": "ShowStage"
+  },
+  {
+   "color": null,
+   "seconds": null,
+   "sid": "start/2a843de6e5a5",
+   "type": "Flash"
+  },
+  {
+   "attributes": [
+    "sad"
+   ],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Did you see that?",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/17733198b385",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "Did you see that?",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg river",
+    "bg sea",
+    "bg ember"
+   ],
+   "sprites": [
+    "hana happy",
+    "daichi grin",
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg river",
+    "sprites": []
+   },
+   "transition": {
+    "color": "#FFFFFF",
+    "direction": null,
+    "kind": "fade",
+    "mask": null,
+    "name": "fade",
+    "reverse": false,
+    "seconds": 2.0,
+    "sid": "start/df3bc6b07a30",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/df3bc6b07a30",
+   "type": "StoryWait",
+   "wait_id": 4
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "The river.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/dccd3220567b",
+   "speaker": null,
+   "text": "The river.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg sea",
+    "bg ember",
+    "bg river"
+   ],
+   "sprites": [
+    "hana happy",
+    "daichi grin",
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg sea",
+    "sprites": [
+     {
+      "at": "left",
+      "flip": false,
+      "image": "hana happy",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     },
+     {
+      "at": "right",
+      "flip": false,
+      "image": "daichi grin",
+      "layer": 0,
+      "tag": "daichi",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "dissolve",
+    "mask": null,
+    "name": "slow_dissolve",
+    "reverse": false,
+    "seconds": 1.5,
+    "sid": "start/5115259b7546~2",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/5115259b7546~2",
+   "type": "StoryWait",
+   "wait_id": 5
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "The sea.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/1de751fab570",
+   "speaker": null,
+   "text": "The sea.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg ember",
+    "bg river"
+   ],
+   "sprites": [
+    "hana happy",
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "direction": null,
+   "seconds": null,
+   "size": "large",
+   "type": "Shake"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Whoa.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Daichi",
+   "name_color": null,
+   "sid": "start/411fa1736001",
+   "speaker": "d",
+   "speaker_tag": "daichi",
+   "text": "Whoa.",
+   "type": "Say"
+  },
+  {
+   "for_stage": false,
+   "hide_box": false,
+   "seconds": 1.0,
+   "sid": "start/833a4a1fccfb",
+   "type": "StoryWait",
+   "wait_id": 6
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "A moment later.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/01054bbefba7",
+   "speaker": null,
+   "text": "A moment later.",
+   "type": "Say"
+  },
+  {
+   "stage": {
+    "background": "bg ember",
+    "sprites": []
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "mask",
+    "mask": "masks/iris.png",
+    "name": "lantern",
+    "reverse": false,
+    "seconds": 1.2,
+    "sid": "start/e637c3e98b57~2",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/e637c3e98b57~2",
+   "type": "StoryWait",
+   "wait_id": 7
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Ember again.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/00d03d3b5209",
+   "speaker": null,
+   "text": "Ember again.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg river"
+   ],
+   "sprites": [
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg river",
+    "sprites": []
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "mask",
+    "mask": "masks/iris.png",
+    "name": "lantern_out",
+    "reverse": true,
+    "seconds": 0.8,
+    "sid": "start/df3bc6b07a30~2",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/df3bc6b07a30~2",
+   "type": "StoryWait",
+   "wait_id": 8
+  },
+  {
+   "direction": null,
+   "seconds": null,
+   "size": null,
+   "type": "Shake"
+  },
+  {
+   "color": "#FF0000",
+   "seconds": 0.6,
+   "sid": "start/2a843de6e5a5~2",
+   "type": "Flash"
+  },
+  {
+   "for_stage": false,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/833a4a1fccfb~2",
+   "type": "StoryWait",
+   "wait_id": 9
+  },
+  {
+   "attributes": [
+    "happy"
+   ],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Ready?",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/2118f764cd24",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "Ready?",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [],
+   "sprites": [
+    "hana sad"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg river",
+    "sprites": [
+     {
+      "at": "center",
+      "flip": false,
+      "image": "hana sad",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": false,
+   "seconds": null,
+   "sid": "start/554efe47f2dc",
+   "type": "StoryWait",
+   "wait_id": 10
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Then.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/213c77919a07",
+   "speaker": null,
+   "text": "Then.",
+   "type": "Say"
+  },
+  {
+   "stage": {
+    "background": "bg river",
+    "sprites": []
+   },
+   "transition": {
+    "color": "#FFE08A",
+    "direction": null,
+    "kind": "fade",
+    "mask": null,
+    "name": "fade",
+    "reverse": false,
+    "seconds": 0.4,
+    "sid": "start/bd2e59790c84",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": false,
+   "seconds": null,
+   "sid": "start/bd2e59790c84",
+   "type": "StoryWait",
+   "wait_id": 11
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "The end.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/35652553be58",
+   "speaker": null,
+   "text": "The end.",
+   "type": "Say"
+  },
+  {
+   "type": "StoryEnded"
+  }
+ ],
+ "fixture": "all",
+ "image_files": [
+  "images/bg/ember.png",
+  "images/bg/sea.png",
+  "images/bg/river.png",
+  "images/hana/happy.png",
+  "images/hana/sad.png",
+  "images/daichi/grin.png"
+ ],
+ "seed": 42
+}

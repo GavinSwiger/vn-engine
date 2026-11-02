@@ -1,0 +1,66 @@
+define attic = {
+    "background": "bg attic",
+    "hotspots": {
+        "window": {"rect": [880, 90, 220, 260], "label": "Window", "look": "Snow, as far as you can see."},
+        "hook":   {"rect": [140, 300, 64, 96], "label": "Coat hook", "take": "rusty_key", "image": "attic key"},
+        "drawer": {"rect": [520, 420, 200, 90], "label": "Desk drawer", "use": "rusty_key", "look": "Locked.", "nope": "It doesn't fit."},
+        "magnet": {"rect": [590, 440, 60, 50], "label": "Magnet", "after": "drawer", "take": "magnet", "image": "attic magnet"},
+        "string": {"rect": [300, 520, 80, 60], "label": "Ball of string", "take": "string"},
+        "vent":   {"rect": [1000, 560, 160, 100], "label": "Vent", "use": "magnet_string", "look": "Something glints down there."},
+        "glint":  {"rect": [1040, 580, 80, 60], "label": "Key", "after": "vent", "take": "door_key"},
+        "door":   {"rect": [40, 120, 180, 420], "label": "Door", "use": "door_key", "look": "Locked tight."},
+        "out":    {"rect": [40, 120, 180, 420], "label": "Door", "after": "door", "exit": True},
+    },
+    "combine": {"magnet_string": ["magnet", "string"]},
+    }
+define bad_rect = {
+    "background": "bg attic",
+    "hotspots": {
+        "hook": {"rect": [140, 300], "label": "Coat hook", "take": "rusty_key"},
+        "out":  {"rect": [40, 120, 180, 420], "label": "Door", "exit": True},
+    },
+    }
+define bad_take = {
+    "background": "bg attic",
+    "hotspots": {
+        "hook": {"rect": [140, 300, 64, 96], "label": "Coat hook", "take": "rusty_kye"},
+        "out":  {"rect": [40, 120, 180, 420], "label": "Door", "exit": True},
+    },
+    }
+define room_w = {
+    "background": "bg attic",
+    "hotspots": {
+        "box":  {"rect": [400, 300, 200, 200], "label": "Box", "use": "string"},
+        "gate": {"rect": [800, 300, 200, 200], "label": "Gate", "exit": True},
+    },
+    "combine": {"magnet_string": ["magnet", "string"]},
+    }
+define room_w_only = {
+    "background": "bg attic",
+    "hotspots": {
+        "box":  {"rect": [400, 300, 200, 200], "label": "Box", "use": "string"},
+        "gate": {"rect": [800, 300, 200, 200], "label": "Gate", "exit": True},
+    },
+    }
+define room_u = {
+    "background": "bg attic",
+    "hotspots": {
+        "cover": {"rect": [400, 200, 400, 300], "label": "Sheet", "look": "A dusty sheet."},
+        "key":   {"rect": [560, 310, 80, 80], "label": "Key", "take": "string"},
+        "out":   {"rect": [1000, 500, 120, 120], "label": "Door", "exit": True},
+    },
+    }
+define room_s = {
+    "background": "bg attic",
+    "hotspots": {
+        "window": {"rect": [880, 90, 220, 260], "label": "Window", "look": "Snow, as far as you can see."},
+        "drawer": {"rect": [520, 420, 200, 90], "label": "Desk drawer", "use": "rusty_key", "look": "Locked.", "nope": "It doesn't fit."},
+        "magnet": {"rect": [590, 440, 60, 50], "label": "Magnet", "after": "drawer", "take": "magnet", "image": "attic magnet"},
+        "string": {"rect": [300, 520, 80, 60], "label": "Ball of string", "take": "string"},
+        "vent":   {"rect": [1000, 560, 160, 100], "label": "Vent", "use": "magnet_string", "look": "Something glints down there."},
+        "glint":  {"rect": [1040, 580, 80, 60], "label": "Key", "after": "vent", "take": "door_key"},
+        "door":   {"rect": [40, 120, 180, 420], "label": "Door", "use": "door_key", "look": "Locked tight."},
+        "out":    {"rect": [40, 120, 180, 420], "label": "Door", "after": "door", "exit": True},
+    },
+    "combine": {"magnet_string": ["magnet", "string"]},
+    }

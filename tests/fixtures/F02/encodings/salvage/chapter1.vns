@@ -1,0 +1,5 @@
+label chapter1:
+define kaito = Character("K")
+    "a"
+    "b"
+    "café"

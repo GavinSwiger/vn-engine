@@ -1,0 +1,16 @@
+label start:
+    "1"
+    call a
+    "4"
+    jump b
+label a:
+    "2"
+    jump a2
+label a2:
+    "3"
+label b:
+    "5"
+    call c
+    "7"
+label c:
+    "6"

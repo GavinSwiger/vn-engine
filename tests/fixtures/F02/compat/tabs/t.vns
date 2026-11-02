@@ -1,0 +1,12 @@
+# tabs/t.vns: indented with tabs.
+label tabbed:
+	daichi "Tabs work."
+	if trust:
+		"Inside a tab block."
+		$ trust -= 1
+	else:
+		if trust < 0:
+			"Two tabs deep."
+	"Back at one tab, and continued
+			three tabs deeper."
+	return

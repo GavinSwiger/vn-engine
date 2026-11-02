@@ -1,0 +1,26 @@
+# The river scene.
+label riverbank:
+	# Opening.
+	"Paper lanterns drifted past us
+		one by one, each carrying somebody's
+		wish   downstream."
+	hana "Did you write one? Everybody writes one."
+	call lantern_stall
+
+	if bought_lantern and trust >= 2:
+		hana sad "You actually bought one! Here, the pen's still wet."
+	elif bought_lantern:
+		hana "Oh. You bought one. That's... nice."
+	else:
+		hana sad "Not even a small one?"
+		daichi "She's been saying \"just one more\" since six o'clock."
+	$ trust += 1  # one more for buying it
+
+	# TODO: the bridge scene needs a second draft
+	jump bridge
+
+label lantern_stall:
+	"\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+	if trust > 0:
+		$ bought_lantern = True
+	return

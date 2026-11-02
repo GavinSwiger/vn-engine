@@ -1,0 +1,2 @@
+define bad1 = {"sunshine": {"sayori": 1.5}}
+define typo = {"sunshine": {"sayory": 3}, "x": "yuri"}

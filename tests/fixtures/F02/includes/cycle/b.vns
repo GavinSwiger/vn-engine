@@ -1,0 +1,4 @@
+include "a.vns"
+label b_scene:
+    "Round and round."
+    return

@@ -1,0 +1,9 @@
+define hana = Character("Hana")
+define d = Character("Daichi", color="#1e4a9c")
+define thought = Character("", text_color="#1e4a9c", text_italic=True)
+default player_name = "Ren"
+default wishes = 3
+label start:
+    "<S>"
+    "End."
+<T>

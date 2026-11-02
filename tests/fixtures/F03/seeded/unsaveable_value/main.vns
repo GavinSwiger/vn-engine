@@ -1,0 +1,5 @@
+label start:
+    "We walked past the stalls."
+    $ visited = set()
+    "The goldfish stall was busy."
+    return

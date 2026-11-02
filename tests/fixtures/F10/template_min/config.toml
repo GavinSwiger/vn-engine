@@ -1,0 +1,6 @@
+[game]
+title = "Example Visual Novel"
+version = "0.1.0"
+
+[saves]
+autosave_quit = false

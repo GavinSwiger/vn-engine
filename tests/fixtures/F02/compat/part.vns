@@ -1,0 +1,26 @@
+﻿# part.vns: saved with a BOM and CRLF line ends.
+define kaito = Character("Kaito")
+
+label riverbank:
+    kaito "The river is high tonight."
+    call aside
+    call narrow
+    if trust >= 3:
+        hana "Then let's go."
+    elif trust == 2:
+        "Maybe."
+    else:
+        "Not yet."
+    $ bought = (
+        True
+        )
+    jump 始まり
+
+label aside:
+    "An aside."
+    return
+
+label 始まり:
+    "The beginning, in a non-ASCII label."
+    call tabbed
+    return

@@ -1,0 +1,6 @@
+default trust = 0
+label start:
+    "The lanterns were lit along the river."
+    $ trsut += 1
+    "Hana smiled."
+    return

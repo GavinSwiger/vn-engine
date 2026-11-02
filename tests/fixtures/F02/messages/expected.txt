@@ -1,0 +1,3674 @@
+[03-E90]
+script/main.vns, line 5: include can't be inside a label or block, because a file belongs to the game from the start. Move it to the top level.
+
+[03-E91-case]
+script/main.vns, line 9: can't include "chapter2.vns" because script/chapter2.vns doesn't exist. Did you mean "Chapter2.vns"?
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+script/Chapter2.vns is not included, so it is not part of the game. Add include "Chapter2.vns" to a file that is.
+
+[03-E91-close]
+script/main.vns, line 9: can't include "chaptr2.vns" because script/chaptr2.vns doesn't exist. Did you mean "chapter2.vns"?
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+script/chapter2.vns is not included, so it is not part of the game. Add include "chapter2.vns" to a file that is.
+
+[03-E91-prefix]
+script/main.vns, line 9: can't include "script/chapter2.vns" because script/script/chapter2.vns doesn't exist. Paths start inside the script folder, so write include "chapter2.vns".
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+script/chapter2.vns is not included, so it is not part of the game. Add include "chapter2.vns" to a file that is.
+
+[03-E91-plain]
+script/main.vns, line 9: can't include "nothing.vns" because script/nothing.vns doesn't exist. Check the file name, or add the file.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E91-lookalike-path-1]
+script/main.vns, line 9: can't include "routes/．．/x.vns" because script/routes/．．/x.vns doesn't exist. Check the file name, or add the file.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E91-lookalike-path-2]
+script/main.vns, line 9: can't include "routes∕..∕x.vns" because script/routes∕..∕x.vns doesn't exist. Check the file name, or add the file.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-escape-1]
+script/main.vns, line 9: can't include "../secret.vns": paths must stay inside the script folder and use forward slashes, e.g. routes/hana.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-escape-2]
+script/main.vns, line 9: can't include "/etc/x.vns": paths must stay inside the script folder and use forward slashes, e.g. routes/hana.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-escape-3]
+script/main.vns, line 9: can't include "C:/x.vns": paths must stay inside the script folder and use forward slashes, e.g. routes/hana.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-escape-4]
+script/main.vns, line 9: can't include "//srv/s/x.vns": paths must stay inside the script folder and use forward slashes, e.g. routes/hana.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-escape-5]
+script/main.vns, line 9: can't include "routes\x.vns": paths must stay inside the script folder and use forward slashes, e.g. routes/hana.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-reason-1]
+script/main.vns, line 9: can't include "con.vns": "con" is a reserved file name on Windows
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-reason-2]
+script/main.vns, line 9: can't include "a.vns.": file and folder names can't end with a dot or a space
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E92-reason-3]
+script/main.vns, line 9: can't include "abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghij/abcdefghi…": paths can be at most 1,024 characters long
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E93]
+script/main.vns, line 9: can't include "notes.txt": only .vns files can be included.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E93-upper]
+script/main.vns, line 9: can't include "ch2.VNS": only .vns files can be included. Use lower case.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E94-1]
+script/main.vns, line 9: can't include "routes": that is a folder. Include each .vns file in it.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E94-2]
+script/main.vns, line 9: can't include "dir.vns": that is a folder. Include each .vns file in it.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E95]
+script/main.vns, line 9: the file name goes in quotes. Write include "chapter2.vns".
+
+[03-E96]
+script/main.vns, line 9, column 17: include takes one file name, but this line has more after it. Put each file on its own line.
+
+[03-E97]
+script/main.vns, line 9: can't include "chapter2.vns" because script/chapter2.vns couldn't be read. Check that another program isn't locking it and that you have permission to read it.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[03-E05]
+script/huge.vns is larger than 16 MB. Split it into several files and include them.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[06-W01-missing]
+No story found: script/main.vns doesn't exist.
+
+[06-W01-empty]
+No story found: script/main.vns doesn't exist.
+
+[06-W01-notes]
+No story found: script/main.vns doesn't exist.
+
+[06-E08-case]
+script/main.vns doesn't exist. Did you mean "Main.vns"? Rename it to main.vns; the story always begins there.
+
+[06-E08-close]
+script/main.vns doesn't exist. Did you mean "mian.vns"? Rename it to main.vns; the story always begins there.
+
+[06-E09]
+script/main.vns doesn't exist, but script/ has other .vns files: chapter1.vns, intro.vns, routes/a.vns, routes/b.vns, x.vns, and 2 more. Rename the file where your story begins to main.vns.
+
+[06-E08b]
+script/main.vns couldn't be read. Check that another program isn't locking it and that you have permission to read it.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[06-E08c]
+script/main.vns is a folder. The story must begin in a file named main.vns.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[06-E26-empty-main]
+The story has no label named "start". Add label start: to script/main.vns. The story begins there.
+
+[07-W02]
+script/bold.vns is not included, so it is not part of the game. Add include "bold.vns" to a file that is.
+script/copyright.vns is not included, so it is not part of the game. Add include "copyright.vns" to a file that is.
+script/drafts.vns is not included, so it is not part of the game. Add include "drafts.vns" to a file that is.
+script/golden.vns is not included, so it is not part of the game. Add include "golden.vns" to a file that is.
+script/routes/x.vns is not included, so it is not part of the game. Add include "routes/x.vns" to a file that is.
+script/scaffold.vns is not included, so it is not part of the game. Add include "scaffold.vns" to a file that is.
+
+[07-W02-summary]
+script/w01.vns is not included, so it is not part of the game. Add include "w01.vns" to a file that is.
+script/w02.vns is not included, so it is not part of the game. Add include "w02.vns" to a file that is.
+script/w03.vns is not included, so it is not part of the game. Add include "w03.vns" to a file that is.
+script/w04.vns is not included, so it is not part of the game. Add include "w04.vns" to a file that is.
+script/w05.vns is not included, so it is not part of the game. Add include "w05.vns" to a file that is.
+script/w06.vns is not included, so it is not part of the game. Add include "w06.vns" to a file that is.
+script/w07.vns is not included, so it is not part of the game. Add include "w07.vns" to a file that is.
+script/w08.vns is not included, so it is not part of the game. Add include "w08.vns" to a file that is.
+script/w09.vns is not included, so it is not part of the game. Add include "w09.vns" to a file that is.
+script/w10.vns is not included, so it is not part of the game. Add include "w10.vns" to a file that is.
+script/w11.vns is not included, so it is not part of the game. Add include "w11.vns" to a file that is.
+script/w12.vns is not included, so it is not part of the game. Add include "w12.vns" to a file that is.
+script/w13.vns is not included, so it is not part of the game. Add include "w13.vns" to a file that is.
+script/w14.vns is not included, so it is not part of the game. Add include "w14.vns" to a file that is.
+script/w15.vns is not included, so it is not part of the game. Add include "w15.vns" to a file that is.
+script/w16.vns is not included, so it is not part of the game. Add include "w16.vns" to a file that is.
+script/w17.vns is not included, so it is not part of the game. Add include "w17.vns" to a file that is.
+script/w18.vns is not included, so it is not part of the game. Add include "w18.vns" to a file that is.
+script/w19.vns is not included, so it is not part of the game. Add include "w19.vns" to a file that is.
+script/w20.vns is not included, so it is not part of the game. Add include "w20.vns" to a file that is.
+…and 5 more .vns files are not included.
+
+[08-bom]
+script/chapter1.vns, line 2, column 7: "\q" is not a special sequence. Write \\ for a backslash, \" for a quote, or \n for a new line.
+
+[08-E01b-16-1]
+script/chapter1.vns is saved as UTF-16. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E01b-16-2]
+script/chapter1.vns is saved as UTF-16. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E01b-32-1]
+script/chapter1.vns is saved as UTF-32. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E01b-32-2]
+script/chapter1.vns is saved as UTF-32. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E01a-1]
+script/chapter1.vns, line 3: this file isn't saved as UTF-8. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+
+[08-E01a-2]
+script/chapter1.vns, line 2: this file isn't saved as UTF-8. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+
+[08-E01a-3]
+script/chapter1.vns, line 4: this file isn't saved as UTF-8. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+
+[08-E01a-4]
+script/chapter1.vns, line 4: this file isn't saved as UTF-8. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+
+[08-E02-1]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-2]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-3]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-4]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-5]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-6]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-7]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-8]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E02-9]
+script/chapter1.vns doesn't look like a text file. Script files must be plain text.
+Some checks (labels, characters) were skipped because a file couldn't be read. Launch again after fixing it.
+
+[08-E01a-salvage]
+script/chapter1.vns, line 5: this file isn't saved as UTF-8. Save it as UTF-8 in your editor (in Notepad: File > Save as > Encoding: UTF-8) and launch again.
+
+[10-E03-say]
+script/main.vns, line 5, column 8: this line contains an invisible character (U+0007). Delete it; it probably came from copied text.
+
+[10-E03-comment-bom]
+script/main.vns, line 9, column 7: this line contains an invisible character (U+FEFF). Delete it; it probably came from copied text.
+
+[10-E03-comment-zwsp]
+script/main.vns, line 9, column 4: this line contains an invisible character (U+200B). Delete it; it probably came from copied text.
+
+[10-E03-second-bom]
+script/main.vns, line 1, column 1: this line contains an invisible character (U+FEFF). Delete it; it probably came from copied text.
+
+[10-E04-1]
+script/main.vns, line 5, column 9: this line contains a hidden line-separator character (U+2028). Delete it, and press Enter if you want a new line there.
+
+[10-E04-2]
+script/main.vns, line 5, column 9: this line contains a hidden line-separator character (U+2029). Delete it, and press Enter if you want a new line there.
+
+[10-E04-3]
+script/main.vns, line 5, column 9: this line contains a hidden line-separator character (U+0085). Delete it, and press Enter if you want a new line there.
+
+[10-loads-1]
+(loads)
+
+[10-loads-2]
+(loads)
+
+[11-E03b-comment]
+script/main.vns, line 9, column 8: this line contains a hidden text-direction character (U+202E), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration.
+
+[11-E03b-include]
+script/main.vns, line 9, column 11: this line contains a hidden text-direction character (U+202E), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration.
+
+[11-E03b-py-string]
+script/main.vns, line 5, column 13: this line contains a hidden text-direction character (U+202E), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration. In a Python string, write \u202e instead.
+
+[11-E03b-py-comment]
+script/main.vns, line 5, column 16: this line contains a hidden text-direction character (U+2066), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration.
+
+[11-E03b-condition]
+script/main.vns, line 5, column 17: this line contains a hidden text-direction character (U+202E), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration. In a Python string, write \u202e instead.
+
+[11-E03b-define]
+script/main.vns, line 9, column 17: this line contains a hidden text-direction character (U+2067), which can make code look different from what runs. Delete it; it is allowed only inside dialogue and narration. In a Python string, write \u2067 instead.
+
+[11-loads-1]
+(loads)
+
+[11-loads-2]
+(loads)
+
+[11-loads-3]
+(loads)
+
+[12-E64b-1]
+script/main.vns, line 9, column 12: the name "hana\u3164" contains an invisible character (U+3164), so it looks like a different name. Retype the name without it.
+
+[12-E64b-2]
+script/main.vns, line 9, column 8: the name "a\ufe0e" contains an invisible character (U+FE0E), so it looks like a different name. Retype the name without it.
+
+[12-E64b-3]
+script/main.vns, line 5, column 8: the name "x\u034f" contains an invisible character (U+034F), so it looks like a different name. Retype the name without it.
+
+[12-E64b-4]
+script/main.vns, line 5, column 9: the name "hana\u180b" contains an invisible character (U+180B), so it looks like a different name. Retype the name without it.
+
+[12-E64b-5]
+script/main.vns, line 5, column 13: the name "sad\ufe0f" contains an invisible character (U+FE0F), so it looks like a different name. Retype the name without it.
+
+[12-E64b-astral]
+script/main.vns, line 9, column 8: the name "b\U000e0100" contains an invisible character (U+E0100), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-1]
+script/main.vns, line 9, column 11: the name "kai\u115f" contains an invisible character (U+115F), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-2]
+script/main.vns, line 9, column 11: the name "kai\u1160" contains an invisible character (U+1160), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-3]
+script/main.vns, line 9, column 11: the name "kai\u17b4" contains an invisible character (U+17B4), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-4]
+script/main.vns, line 9, column 11: the name "kai\u17b5" contains an invisible character (U+17B5), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-5]
+script/main.vns, line 9, column 11: the name "kai\u180c" contains an invisible character (U+180C), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-6]
+script/main.vns, line 9, column 11: the name "kai\u180d" contains an invisible character (U+180D), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-7]
+script/main.vns, line 9, column 11: the name "kai\u180e" contains an invisible character (U+180E), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-8]
+script/main.vns, line 9, column 11: the name "kai\u180f" contains an invisible character (U+180F), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-9]
+script/main.vns, line 9, column 11: the name "kai\uffa0" contains an invisible character (U+FFA0), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-10]
+script/main.vns, line 9, column 11: the name "kai\ufe00" contains an invisible character (U+FE00), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-11]
+script/main.vns, line 9, column 11: the name "kai\ufe01" contains an invisible character (U+FE01), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-12]
+script/main.vns, line 9, column 11: the name "kai\ufe02" contains an invisible character (U+FE02), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-13]
+script/main.vns, line 9, column 11: the name "kai\ufe03" contains an invisible character (U+FE03), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-14]
+script/main.vns, line 9, column 11: the name "kai\ufe04" contains an invisible character (U+FE04), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-15]
+script/main.vns, line 9, column 11: the name "kai\ufe05" contains an invisible character (U+FE05), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-16]
+script/main.vns, line 9, column 11: the name "kai\ufe06" contains an invisible character (U+FE06), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-17]
+script/main.vns, line 9, column 11: the name "kai\ufe07" contains an invisible character (U+FE07), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-18]
+script/main.vns, line 9, column 11: the name "kai\ufe08" contains an invisible character (U+FE08), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-19]
+script/main.vns, line 9, column 11: the name "kai\ufe09" contains an invisible character (U+FE09), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-20]
+script/main.vns, line 9, column 11: the name "kai\ufe0a" contains an invisible character (U+FE0A), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-21]
+script/main.vns, line 9, column 11: the name "kai\ufe0b" contains an invisible character (U+FE0B), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-22]
+script/main.vns, line 9, column 11: the name "kai\ufe0c" contains an invisible character (U+FE0C), so it looks like a different name. Retype the name without it.
+
+[12-E64b-others-23]
+script/main.vns, line 9, column 11: the name "kai\ufe0d" contains an invisible character (U+FE0D), so it looks like a different name. Retype the name without it.
+
+[12-loads-1]
+(loads)
+
+[12-loads-2]
+(loads)
+
+[17-E10]
+script/main.vns, line 5: this line is indented with a tab, but earlier lines in this file use spaces. Use one or the other in each file.
+
+[17-E10-reverse]
+script/main.vns, line 5: this line is indented with spaces, but earlier lines in this file use tabs. Use one or the other in each file.
+
+[17-E10c]
+script/main.vns, line 5: this line is indented with both tabs and spaces. Use one or the other in each file.
+
+[17-E11-1]
+script/main.vns, line 5, column 5: this line is indented with a non-breaking space (U+00A0), which looks like a space but isn't one. Retype the indentation with spaces or a tab.
+
+[17-E11-2]
+script/main.vns, line 5, column 5: this line is indented with a full-width space (U+3000), which looks like a space but isn't one. Retype the indentation with spaces or a tab.
+
+[17-E12-if]
+script/main.vns, line 5: this if has no lines under it. Indent the lines that belong to it.
+
+[17-E12-label]
+script/main.vns, line 9: this label has no lines under it. Indent the scene, or write return for now.
+
+[17-E12-comments]
+script/main.vns, line 5: this if has no lines under it (comment lines don't count). Indent the lines that belong to it.
+
+[17-E13]
+script/main.vns, line 6: this line is indented more than the line above, but the line above doesn't start a block. Remove the extra indentation.
+
+[17-E14]
+script/main.vns, line 7: this line's indentation doesn't line up with any block above it. Indent it by 0, 4, or 8 spaces.
+
+[17-E15]
+script/main.vns, line 52: this line is inside more than 50 blocks, which is the limit. Move some inner lines into their own label and call it.
+
+[17-E16-say]
+script/main.vns, line 5: this line is longer than 10,000 characters, which is the limit. Split it over several lines.
+
+[17-E16-comment]
+script/main.vns, line 9: this line is longer than 10,000 characters, which is the limit. Split it over several lines.
+
+[17-loads-10000]
+(loads)
+
+[19-E52]
+script/main.vns, line 5, column 7: "\q" is not a special sequence. Write \\ for a backslash, \" for a quote, or \n for a new line.
+
+[19-E52-brace]
+script/main.vns, line 5, column 7: "\{" is not a special sequence. Write \\ for a backslash, \" for a quote, or \n for a new line. To show a {, write {{.
+
+[19-E53]
+script/main.vns, line 5, column 16: this line has more after the closing quote: hi" to me." Write a quote inside the text as \".
+
+[19-E54]
+script/main.vns, line 5, column 5: this quote is never closed. Add " at the end of the text.
+
+[19-E54-eof]
+script/main.vns, line 10, column 5: this quote is never closed. Add " at the end of the text.
+
+[19-E54b]
+script/main.vns, line 5, column 5: this quote is never closed: the text ends with a curly quote ”. End it with a straight quote " instead.
+
+[19-E74]
+script/main.vns, line 5: this line of text ends with :, which only menu choices do. Remove the :, or put the choice in a menu: block.
+
+[20-E50-speaker]
+script/main.vns, line 5, column 10: this line uses curly quotes “ ” around the text. Put the text between straight quotes "like this". Curly quotes inside the text are fine.
+
+[20-E50-curly-1]
+script/main.vns, line 5, column 5: this line uses curly quotes “ ” around the text. Put the text between straight quotes "like this". Curly quotes inside the text are fine.
+
+[20-E50-curly-2]
+script/main.vns, line 5, column 5: this line uses curly quotes „ “ around the text. Put the text between straight quotes "like this". Curly quotes inside the text are fine.
+
+[20-E50-curly-3]
+script/main.vns, line 5, column 5: this line uses curly quotes ‟ ” around the text. Put the text between straight quotes "like this". Curly quotes inside the text are fine.
+
+[20-E50-other-1]
+script/main.vns, line 5, column 5: this line uses quote marks ″ ″ around the text. Put the text between straight quotes "like this". Quote marks such as ″ ″ inside are fine.
+
+[20-E50-other-2]
+script/main.vns, line 5, column 5: this line uses quote marks ＂ ＂ around the text. Put the text between straight quotes "like this". Quote marks such as ＂ ＂ inside are fine.
+
+[20-E50-other-3]
+script/main.vns, line 5, column 5: this line uses quote marks « » around the text. Put the text between straight quotes "like this". Quote marks such as « » inside are fine.
+
+[20-E50-other-4]
+script/main.vns, line 5, column 5: this line uses quote marks 「 」 around the text. Put the text between straight quotes "like this". Quote marks such as 「 」 inside are fine.
+
+[20-E50-other-5]
+script/main.vns, line 5, column 5: this line uses quote marks 『 』 around the text. Put the text between straight quotes "like this". Quote marks such as 『 』 inside are fine.
+
+[20-E51-1]
+script/main.vns, line 5, column 10: text goes between double quotes, not single quotes. Write "like this"; apostrophes inside need no change.
+
+[20-E51-2]
+script/main.vns, line 5, column 5: text goes between double quotes, not single quotes. Write "like this"; apostrophes inside need no change.
+
+[20-E51-3]
+script/main.vns, line 5, column 5: text goes between double quotes, not single quotes. Write "like this"; apostrophes inside need no change.
+
+[20-loads]
+(loads)
+
+[22-read-1]
+(loads)
+
+[22-read-2]
+(loads)
+
+[22-read-3]
+script/main.vns, line 5: "Jump" is not a statement. Statement words are lower case: jump.
+
+[22-read-4]
+script/main.vns, line 5: "Jump" is not a statement. Statement words are lower case: jump.
+
+[22-read-5]
+script/main.vns, line 5, column 10: this line uses curly quotes “ ” around the text. Put the text between straight quotes "like this". Curly quotes inside the text are fine.
+
+[22-read-6]
+script/main.vns, line 5, column 10: text goes between double quotes, not single quotes. Write "like this"; apostrophes inside need no change.
+
+[22-read-7]
+script/main.vns, line 5, column 5: this line starts with "1.", which isn't a statement, a name, or a quote. Put narration or dialogue in straight quotes.
+
+[22-read-8]
+(loads)
+
+[22-read-9]
+script/main.vns, line 5: hana's line has no text in quotes. Put the text in straight quotes: hana "Hello there."
+
+[22-read-10]
+script/main.vns, line 5: "jmup" is not a statement. Did you mean "jump"?
+
+[22-read-11]
+script/main.vns, line 5: "The" is not a statement, and this line has no text in quotes. If it is narration or dialogue, put the text in straight quotes: "The lanterns were lit."
+
+[22-read-12]
+script/main.vns, line 5, column 10: "(sad)" can't come before the text. Words there use letters, digits, and _ only, e.g. hana sad "…".
+
+[22-read-13]
+script/main.vns, line 5: there are 5 words between hana and the text, but at most 4 are allowed. Check that the text starts with a straight quote ".
+
+[22-read-14]
+(loads)
+
+[22-read-E70]
+script/main.vns, line 5: no character named "kaito". Check the spelling, or define it.
+
+[23-E20]
+script/main.vns, line 9: this label has no name. Write a name before the colon, e.g. label rooftop:
+
+[23-E21]
+script/main.vns, line 3: label start needs : at the end of the line. Write label start:
+
+[23-E21-fullwidth]
+script/main.vns, line 3: label start needs : at the end of the line. Write label start: Use the ordinary colon :, not ：.
+
+[23-E22]
+script/main.vns, line 9: nothing can follow the : on the same line. Move the rest to the next line, indented.
+
+[23-E23]
+script/main.vns, line 9: labels can't take values in brackets. Remove "(route)" and set variables with $ lines.
+
+[23-E23b]
+script/main.vns, line 9: a label name is one word. Join the words with _, e.g. label chapter_one:
+
+[23-E24]
+script/main.vns, line 5: label "inner" is indented, but labels start at the beginning of the line. Remove its indentation.
+
+[23-E25]
+script/main.vns, line 9: there is already a label named "bridge" in script/main.vns, line 7. Rename one of them.
+
+[23-E25-three]
+script/b.vns, line 1: there are other labels named "bridge" in script/main.vns, line 7, and script/c.vns, line 1. Rename all but one.
+
+[23-E26]
+The story has no label named "start". Add label start: to script/main.vns. The story begins there.
+
+[23-E26-case]
+The story has no label named "start". Did you mean "Start" (script/main.vns, line 3)?
+
+[24-E31b]
+script/main.vns, line 5: if needs : at the end of the line. Write if trust >= 3:
+
+[24-E34]
+script/main.vns, line 5: this elif has no if directly above it at the same indentation. Line it up under its if, or change it to if.
+
+[24-E35]
+script/main.vns, line 5: this else has no if directly above it at the same indentation. Line it up under its if.
+
+[24-E36]
+script/main.vns, line 9: this if already has an else (line 7). Remove one, or change the first to elif with a condition.
+
+[24-E37]
+script/main.vns, line 9: elif can't come after else (line 7). Move it above the else.
+
+[24-E38]
+script/main.vns, line 7: else doesn't take a condition. Use elif trust < 2: instead.
+
+[24-E38b]
+script/main.vns, line 7: write elif instead of else if.
+
+[24-E39]
+script/main.vns, line 5: if needs a condition before the colon, e.g. if trust >= 3:
+
+[25-E30a]
+script/main.vns, line 5: "jmup" is not a statement. Did you mean "jump"?
+
+[25-E30b]
+script/main.vns, line 5: "The" is not a statement, and this line has no text in quotes. If it is narration or dialogue, put the text in straight quotes: "The lanterns were lit."
+
+[25-E30d]
+script/main.vns, line 5, column 5: this line starts with "1.", which isn't a statement, a name, or a quote. Put narration or dialogue in straight quotes.
+
+[25-E31]
+script/main.vns, line 5: "Jump" is not a statement. Statement words are lower case: jump.
+
+[25-E32-1]
+script/main.vns, line 5: "window" is not available yet in this engine version. Remove the line or comment it out with # for now.
+
+[25-E32-2]
+script/main.vns, line 5: "file" is not available yet in this engine version. Remove the line or comment it out with # for now.
+
+[25-E32-3]
+script/main.vns, line 5: "cg" is not available yet in this engine version. Remove the line or comment it out with # for now.
+
+[25-E32-4]
+script/main.vns, line 5: "ui" is not available yet in this engine version. Remove the line or comment it out with # for now.
+
+[25-E32-only-1]
+script/main.vns, line 9: "window" is not available yet in this engine version. Remove the line or comment it out with # for now.
+
+[25-E32b-1]
+script/main.vns, line 5: "at" can't start a line. It goes after a statement, e.g. show hana at left.
+
+[25-E32b-2]
+script/main.vns, line 5: "as" can't start a line. It goes after a statement, e.g. show hana as hana2.
+
+[25-E32b-3]
+script/main.vns, line 5: "behind" can't start a line. It goes after a statement, e.g. show hana behind daichi.
+
+[25-E32b-4]
+script/main.vns, line 5: "with" can't start a line. It goes after a statement, e.g. scene bg river with fade.
+
+[25-E33]
+script/main.vns, line 5: python: blocks aren't supported. Write each line of Python as its own $ line.
+
+[25-E40]
+script/main.vns, line 9: this line is outside any label, so the story can never reach it. Add label <name>: above it and indent it.
+
+[25-E41]
+script/main.vns, line 5: jump needs the name of a label, e.g. jump bridge.
+
+[25-E41-call]
+script/main.vns, line 5: call needs the name of a label, e.g. call bridge.
+
+[25-E41b]
+script/main.vns, line 5: label names aren't written in quotes. Write jump bridge.
+
+[25-E42]
+script/main.vns, line 5: jump takes one label name, but this line has more after it. Remove "and run", or join the words with _.
+
+[25-E42-colon]
+script/main.vns, line 5: jump doesn't start a block. Remove the :.
+
+[25-E44]
+script/main.vns, line 5: return doesn't take anything after it. Remove "home".
+
+[26-E43-close]
+script/main.vns, line 5: there is no label named "chapter_2". Did you mean "chapter2"?
+
+[26-E43-case]
+script/main.vns, line 5: there is no label named "Bridge". Did you mean "bridge"?
+
+[26-E43-not-included]
+script/main.vns, line 5: there is no label named "chapter3" in the game. It is defined in script/chapter3.vns, which is not included. Add include "chapter3.vns".
+script/chapter3.vns is not included, so it is not part of the game. Add include "chapter3.vns" to a file that is.
+
+[26-E43-plain]
+script/main.vns, line 5: there is no label named "epilouge". Check the spelling, or add that label.
+
+[26-E43-bonus]
+script/bonus.vns, line 18: there is no label named "epilouge". Did you mean "epilogue"?
+
+[26-E43-also]
+script/main.vns, line 5: there is no label named "nowhere". It is also used at script/a.vns, line 30, script/a.vns, line 41, script/a.vns, line 52, and 2 more places. Check the spelling, or add that label.
+
+[26-E22-only]
+script/main.vns, line 9: nothing can follow the : on the same line. Move the rest to the next line, indented.
+
+[27-E70-close]
+script/main.vns, line 5: no character named "hnaa". Did you mean "hana"?
+
+[27-E70-plain]
+script/main.vns, line 5: no character named "kaito". Check the spelling, or define it.
+
+[27-E70-also]
+script/main.vns, line 5: no character named "kaito". It is also used at line 6, line 7, line 8, and 2 more places. Check the spelling, or define it.
+
+[27-E71]
+script/main.vns, line 5: hana's line has no text in quotes. Put the text in straight quotes: hana "Hello there."
+
+[27-E72]
+script/main.vns, line 5, column 10: "(sad)" can't come before the text. Words there use letters, digits, and _ only, e.g. hana sad "…".
+
+[27-E73]
+script/main.vns, line 5: there are 5 words between hana and the text, but at most 4 are allowed. Check that the text starts with a straight quote ".
+
+[27-loads-1]
+(loads)
+
+[27-loads-2]
+(loads)
+
+[27-E82-only]
+script/main.vns, line 9, column 16: this value has a mistake: "(" was never closed.
+
+[28-E60-1]
+script/main.vns, line 9: "scene" is a statement word, so it can't be a character name. Pick another name, such as "my_scene".
+
+[28-E60-2]
+script/main.vns, line 9: "show" is a statement word, so it can't be a label name. Pick another name, such as "my_show".
+
+[28-E60-3]
+script/main.vns, line 9: "menu" is a statement word, so it can't be a name. Pick another name, such as "my_menu".
+
+[28-E60-case-1]
+script/main.vns, line 9: "JUMP" is a statement word, so it can't be a label name. Pick another name, such as "my_JUMP".
+
+[28-E60-case-2]
+script/main.vns, line 9: "Scene" is a statement word, so it can't be a name. Pick another name, such as "my_Scene".
+
+[28-E61]
+script/main.vns, line 9: "class" is a word Python uses, so it can't be a name. Pick another name, such as "my_class".
+
+[28-E62]
+script/main.vns, line 9: "narrator" is a name the engine uses. Pick another name, such as "my_narrator".
+
+[28-E62-more-1]
+script/main.vns, line 9: "Character" is a name the engine uses. Pick another name, such as "my_Character".
+
+[28-E62-more-2]
+script/main.vns, line 9: "persistent" is a name the engine uses. Pick another name, such as "my_persistent".
+
+[28-E62-more-3]
+script/main.vns, line 9: "engine" is a name the engine uses. Pick another name, such as "my_engine".
+
+[28-E63]
+script/main.vns, line 9: "_intro" starts with _, and those names are kept for the engine. Remove the _.
+
+[28-E64]
+script/main.vns, line 9: "chapter-2" can't be a name. Names use letters, digits, and _, and can't start with a digit, e.g. chapter_2.
+
+[28-E47-nfkc]
+script/main.vns, line 9: "hana" is already defined in script/main.vns, line 1. Remove or rename one.
+
+[28-loads]
+(loads)
+
+[29-E46]
+script/main.vns, line 5: define sets a name once, before the story begins, so it must be at the top level. To change a value during the story, use $ name = value.
+
+[29-E47]
+script/main.vns, line 9: "hana" is already defined in script/main.vns, line 1. Remove or rename one.
+
+[29-E48]
+script/main.vns, line 9: define a uses b, and b uses a (script/main.vns, line 10), so neither can be set first. Change one so it doesn't use the other.
+
+[29-E48-three]
+script/main.vns, line 9: define a uses b, b uses c, and c uses a (script/main.vns, line 10, and script/main.vns, line 11), so none of them can be set first. Change one so it doesn't use the others.
+
+[29-E48b]
+script/main.vns, line 9: define trust uses itself, so it can't be set. Write its value without using trust.
+
+[29-E49]
+script/main.vns, line 9: define needs a name, =, and a value, e.g. define hana = Character("Hana").
+
+[29-E49-dot]
+script/main.vns, line 9: define sets one plain name, and "config.speed" has a dot. Use a name without dots.
+
+[32-E80-1]
+script/main.vns, line 5, column 11: this Python has a mistake: "(" was never closed.
+
+[32-E80-2]
+script/main.vns, line 5, column 11: this Python has a mistake: "[" was never closed.
+
+[32-E80-3]
+script/main.vns, line 5, column 11: this Python has a mistake: it uses a curly quote “. Python needs straight quotes " or '.
+
+[32-E80-4]
+script/main.vns, line 5, column 11: this Python has a mistake: it uses a curly quote ‘. Python needs straight quotes " or '.
+
+[32-E80-5]
+script/main.vns, line 5, column 11: this Python has a mistake: a quote is never closed.
+
+[32-E80-6]
+script/main.vns, line 5, column 11: this Python has a mistake: a triple quote is never closed.
+
+[32-E80-7]
+script/main.vns, line 6, column 9: this Python has a mistake: a quote is never closed.
+
+[32-E80-8]
+script/main.vns, line 5, column 14: this Python has a mistake: the line ends before the Python is complete.
+
+[32-E80-9]
+script/main.vns, line 5, column 14: this Python has a mistake: something follows a \ that Python doesn't expect.
+
+[32-E80-10]
+script/main.vns, line 5, column 11: this Python has a mistake: this isn't valid Python.
+
+[32-E80-11]
+script/main.vns, line 5, column 15: this Python has a mistake: this isn't valid Python.
+
+[32-E80-12]
+script/main.vns, line 7, column 9: this Python has a mistake: this isn't valid Python.
+
+[32-E80-13]
+script/main.vns, line 5, column 7: this Python has a mistake: "break" outside loop.
+
+[32-E80-14]
+script/main.vns, line 5, column 12: this Python has a mistake: "yield" outside function.
+
+[32-E80-15]
+script/main.vns, line 5, column 7: this Python has a mistake: cannot assign to comparison.
+
+[32-E80-16]
+script/main.vns, line 5, column 13: this Python has a mistake: invalid digit "2" in binary literal.
+
+[32-E80-17]
+script/main.vns, line 5, column 7: this Python has a mistake: Missing parentheses in call to "print". Did you mean print(...)?
+
+[32-E80-18]
+script/main.vns, line 5, column 211: this Python has a mistake: too many nested parentheses.
+
+[32-E80-19]
+script/main.vns, line 5, column 459: this Python has a mistake: too many nested f-strings.
+
+[32-E80-digits]
+script/main.vns, line 5: this Python has a mistake: Exceeds the limit (4300 digits) for integer string conversion: value has 5000 digits; use sys.set_int_max_str_digits() …
+
+[32-E81-1]
+script/main.vns, line 5, column 14: this condition has a mistake: this isn't valid Python. Maybe you meant "==" or ":=" instead of "="?
+
+[32-E81-2]
+script/main.vns, line 5: this condition has a mistake: this isn't valid Python.
+
+[32-E81-3]
+script/main.vns, line 5, column 8: this condition has a mistake: expected "else" after "if" expression.
+
+[32-E81-4]
+script/main.vns, line 5, column 23: this condition has a mistake: this isn't valid Python.
+
+[32-E82-1]
+script/main.vns, line 9, column 12: this value has a mistake: it uses a curly quote “. Python needs straight quotes " or '.
+
+[32-E82-2]
+script/main.vns, line 9, column 12: this value has a mistake: "await" outside function.
+
+[34-W03-is]
+script/main.vns, line 5: Python warns: "is" with "int" literal. Did you mean "=="?
+
+[34-W03-escape]
+script/main.vns, line 5: Python warns: invalid escape sequence "\d".
+
+[34-W03b]
+script/main.vns, line 5: Python warns: invalid escape sequence "\d".
+script/main.vns, line 6: Python warns: invalid escape sequence "\d".
+script/main.vns, line 7: Python warns: invalid escape sequence "\d".
+script/main.vns, line 8: Python warns: invalid escape sequence "\d".
+script/main.vns, line 9: Python warns: invalid escape sequence "\d".
+script/main.vns, line 10: Python warns: invalid escape sequence "\d".
+script/main.vns, line 11: Python warns: invalid escape sequence "\d".
+script/main.vns, line 12: Python warns: invalid escape sequence "\d".
+script/main.vns, line 13: Python warns: invalid escape sequence "\d".
+script/main.vns, line 14: Python warns: invalid escape sequence "\d".
+script/main.vns, line 15: Python warns: invalid escape sequence "\d".
+script/main.vns, line 16: Python warns: invalid escape sequence "\d".
+script/main.vns, line 17: Python warns: invalid escape sequence "\d".
+script/main.vns, line 18: Python warns: invalid escape sequence "\d".
+script/main.vns, line 19: Python warns: invalid escape sequence "\d".
+script/main.vns, line 20: Python warns: invalid escape sequence "\d".
+script/main.vns, line 21: Python warns: invalid escape sequence "\d".
+script/main.vns, line 22: Python warns: invalid escape sequence "\d".
+script/main.vns, line 23: Python warns: invalid escape sequence "\d".
+script/main.vns, line 24: Python warns: invalid escape sequence "\d".
+script/main.vns, line 25: Python warns: invalid escape sequence "\d".
+script/main.vns, line 26: Python warns: invalid escape sequence "\d".
+script/main.vns, line 27: Python warns: invalid escape sequence "\d".
+script/main.vns, line 28: Python warns: invalid escape sequence "\d".
+script/main.vns, line 29: Python warns: invalid escape sequence "\d".
+script/main.vns, line 30: Python warns: invalid escape sequence "\d".
+script/main.vns, line 31: Python warns: invalid escape sequence "\d".
+script/main.vns, line 32: Python warns: invalid escape sequence "\d".
+script/main.vns, line 33: Python warns: invalid escape sequence "\d".
+script/main.vns, line 34: Python warns: invalid escape sequence "\d".
+script/main.vns, line 35: Python warns: invalid escape sequence "\d".
+script/main.vns, line 36: Python warns: invalid escape sequence "\d".
+script/main.vns, line 37: Python warns: invalid escape sequence "\d".
+script/main.vns, line 38: Python warns: invalid escape sequence "\d".
+script/main.vns, line 39: Python warns: invalid escape sequence "\d".
+script/main.vns, line 40: Python warns: invalid escape sequence "\d".
+script/main.vns, line 41: Python warns: invalid escape sequence "\d".
+script/main.vns, line 42: Python warns: invalid escape sequence "\d".
+script/main.vns, line 43: Python warns: invalid escape sequence "\d".
+script/main.vns, line 44: Python warns: invalid escape sequence "\d".
+script/main.vns, line 45: Python warns: invalid escape sequence "\d".
+script/main.vns, line 46: Python warns: invalid escape sequence "\d".
+script/main.vns, line 47: Python warns: invalid escape sequence "\d".
+script/main.vns, line 48: Python warns: invalid escape sequence "\d".
+script/main.vns, line 49: Python warns: invalid escape sequence "\d".
+script/main.vns, line 50: Python warns: invalid escape sequence "\d".
+script/main.vns, line 51: Python warns: invalid escape sequence "\d".
+script/main.vns, line 52: Python warns: invalid escape sequence "\d".
+script/main.vns, line 53: Python warns: invalid escape sequence "\d".
+script/main.vns, line 54: Python warns: invalid escape sequence "\d".
+…and 50 more Python warnings.
+
+[47-E26-lookalike]
+The story has no label named "start". Did you mean "st\u0430rt" (script/main.vns, line 3)? "st\u0430rt" has U+0430 CYRILLIC SMALL LETTER A where "start" has a.
+script/main.vns, line 3: the name "st\u0430rt" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+
+[47-W04-cyrillic]
+script/main.vns, line 9: the name "h\u0430na" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+
+[47-W04-greek]
+script/main.vns, line 9: the name "l\u03bfve" mixes Latin and Greek letters, so it can look like another name. Type every letter in one alphabet.
+
+[47-loads-1]
+(loads)
+
+[47-loads-2]
+(loads)
+
+[47-W04-cap]
+script/main.vns, line 9: the name "h\u0430na1" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 10: the name "h\u0430na2" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 11: the name "h\u0430na3" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 12: the name "h\u0430na4" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 13: the name "h\u0430na5" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 14: the name "h\u0430na6" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 15: the name "h\u0430na7" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 16: the name "h\u0430na8" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 17: the name "h\u0430na9" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 18: the name "h\u0430na10" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 19: the name "h\u0430na11" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 20: the name "h\u0430na12" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 21: the name "h\u0430na13" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 22: the name "h\u0430na14" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 23: the name "h\u0430na15" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 24: the name "h\u0430na16" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 25: the name "h\u0430na17" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 26: the name "h\u0430na18" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 27: the name "h\u0430na19" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+script/main.vns, line 28: the name "h\u0430na20" mixes Latin and Cyrillic letters, so it can look like another name. Type every letter in one alphabet.
+…and 1 more names mix alphabets.
+
+[F03-17-E46b]
+script/main.vns, line 8: default sets a variable's starting value before the story begins, so it must be at the top level. To change the value during the story, use $ trust = 0.
+
+[F03-17-E47b]
+script/main.vns, line 11: "trust" already has a default in script/main.vns, line 4. Remove one of them.
+
+[F03-17-E47c-define]
+script/main.vns, line 11: "trust" has a default in script/main.vns, line 4, and is set by define here. Use define for values that never change and default for values the story changes, and remove the other.
+
+[F03-17-E47c-default]
+script/main.vns, line 11: "fortunes" is set by define in script/main.vns, line 3, and by default here. Use define for values that never change and default for values the story changes, and remove the other.
+
+[F03-17-E48]
+script/main.vns, line 11: default a uses b, and b uses a (script/main.vns, line 12), so neither can be set first. Change one so it doesn't use the other.
+
+[F03-17-E48b]
+script/main.vns, line 11: default luck uses itself, so it can't be set. Write its value without using luck.
+
+[F03-17-E49]
+script/main.vns, line 11: default needs a name, =, and a value, e.g. default trust = 0.
+
+[F03-17-E49-dot]
+script/main.vns, line 11: default sets one plain name, and "seen.intro" has a dot. Use a name without dots.
+
+[F03-17-E60]
+script/main.vns, line 11: "menu" is a statement word, so it can't be a variable name. Pick another name, such as "my_menu".
+
+[F03-17-E62-1]
+script/main.vns, line 11: "dice" is a name the engine uses. Pick another name, such as "my_dice".
+
+[F03-17-E62-2]
+script/main.vns, line 11: "module" is a name the engine uses. Pick another name, such as "my_module".
+
+[F03-17-E62-3]
+script/main.vns, line 11: "dice" is a name the engine uses. Pick another name, such as "my_dice".
+
+[F03-17-E63]
+script/main.vns, line 11: "_seen" starts with _, and those names are kept for the engine. Remove the _.
+
+[F03-17-loads]
+(loads)
+
+[F03-23-E87-character]
+script/main.vns, line 8: "hana" is set by define in script/main.vns, line 1, so the story can't change it. To change the name the player sees, use Character(name_from="hana_name") and set hana_name.
+
+[F03-23-E87-1]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-2]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-3]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-4]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-5]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-6]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = ["great luck", "small luck", "bad luck"] instead of define.
+
+[F03-23-E87-long-value]
+script/main.vns, line 8: "fortunes" is set by define in script/main.vns, line 3, so the story can't change it. If the story changes it, write default fortunes = … instead of define.
+
+[F03-23-E88-1]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define math = module("math") at the top level instead.
+
+[F03-23-E88-2]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define p = module("os.path") at the top level instead.
+
+[F03-23-E88-3]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define os = module("os") at the top level instead. Then write os.path.
+
+[F03-23-E88-4]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define math = module("math") at the top level instead.
+
+[F03-23-E88-drafted-1]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define path = module("os.path") at the top level instead. Then write path instead of os.path.
+
+[F03-23-E88-drafted-2]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define path = module("os.path") at the top level instead. Then write path.join.
+
+[F03-23-E88-drafted-3]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define math = module("math") at the top level instead.
+
+[F03-23-E88-drafted-4]
+script/main.vns, line 8: a $ line can't import a module, because the module would become part of the saved game. Add define math = module("math") at the top level instead.
+
+[F03-23-E62-1]
+script/main.vns, line 8: "dice" is a name the engine uses. Pick another name, such as "my_dice".
+
+[F03-23-E62-2]
+script/main.vns, line 8: "Character" is a name the engine uses. Pick another name, such as "my_Character".
+
+[F03-23-E62-3]
+script/main.vns, line 8: "module" is a name the engine uses. Pick another name, such as "my_module".
+
+[F03-23-E62-4]
+script/main.vns, line 8: "persistent" is a name the engine uses. Pick another name, such as "my_persistent".
+
+[F03-23-E63-1]
+script/main.vns, line 8: "_seen" starts with _, and those names are kept for the engine. Remove the _.
+
+[F03-23-E63-2]
+script/main.vns, line 8: "_X" starts with _, and those names are kept for the engine. Remove the _.
+
+[F03-23-loads-1]
+(loads)
+
+[F03-23-loads-2]
+(loads)
+
+[F03-23-loads-3]
+(loads)
+
+[F03-23-loads-4]
+(loads)
+
+[F03-23-loads-5]
+(loads)
+
+[F03-23-loads-6]
+(loads)
+
+[F03-24-W05]
+script/main.vns, line 9: dice.shuffle gives back a shuffled copy and leaves deck unchanged. Write $ deck = dice.shuffle(deck).
+
+[F03-24-W05-not-a-name]
+script/main.vns, line 8: dice.shuffle gives back a shuffled copy and leaves the list unchanged. Store the result, e.g. $ deck = dice.shuffle(…).
+
+[F03-24-stored]
+(loads)
+
+[F05-01-only-line-text]
+(loads)
+
+[F05-02-E160-suggest]
+script/main.vns, line 7, column 6: there is no tag "colour". Did you mean "color"?
+
+[F05-02-E160-list]
+script/main.vns, line 7, column 11: there is no tag "blink". The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F05-02-E160-case]
+script/main.vns, line 7, column 6: tags are lower case: write {b}, not {B}.
+
+[F05-02-E160-bold]
+script/main.vns, line 7, column 6: there is no tag "bold". For bold, write {b}…{/b}.
+
+[F05-02-E160-italic-1]
+script/main.vns, line 7, column 6: there is no tag "italic". For italics, write {i}…{/i}.
+
+[F05-02-E160-italic-2]
+script/main.vns, line 7, column 6: there is no tag "em". For italics, write {i}…{/i}.
+
+[F05-02-E160-pause-1]
+script/main.vns, line 7, column 7: there is no tag "w". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.
+
+[F05-02-E160-pause-2]
+script/main.vns, line 7, column 7: there is no tag "wait". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.
+
+[F05-02-E160-pause-3]
+script/main.vns, line 7, column 7: there is no tag "click". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.
+
+[F05-02-E160-pause-4]
+script/main.vns, line 7, column 7: there is no tag "p". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.
+
+[F05-02-E160-speed-1]
+script/main.vns, line 7, column 6: there is no tag "cps". To change typing speed, write {speed=2}…{/speed} for twice as fast.
+
+[F05-02-E160-speed-2]
+script/main.vns, line 7, column 6: there is no tag "fast". To change typing speed, write {speed=2}…{/speed} for twice as fast.
+
+[F05-02-E160-speed-3]
+script/main.vns, line 7, column 6: there is no tag "instant". To change typing speed, write {speed=2}…{/speed} for twice as fast.
+
+[F05-02-E160-speed-4]
+script/main.vns, line 7, column 6: there is no tag "slow". To change typing speed, write {speed=2}…{/speed} for twice as fast.
+
+[F05-02-E160-next-1]
+script/main.vns, line 7, column 7: there is no tag "nw". To move on by itself, end the text with {next}.
+
+[F05-02-E160-next-2]
+script/main.vns, line 7, column 7: there is no tag "nowait". To move on by itself, end the text with {next}.
+
+[F05-02-E160-missing-1]
+script/main.vns, line 7, column 6: there is no tag "u" in this engine version. The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F05-02-E160-missing-2]
+script/main.vns, line 7, column 6: there is no tag "s" in this engine version. The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F05-02-E160-missing-3]
+script/main.vns, line 7, column 6: there is no tag "font" in this engine version. The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F05-02-E160-missing-4]
+script/main.vns, line 7, column 6: there is no tag "a" in this engine version. The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F05-02-E160-instant-case]
+script/main.vns, line 7, column 6: tags are lower case: write {speed=instant}, not {speed=INSTANT}.
+
+[F05-02-E161-open]
+script/main.vns, line 7, column 10: this { never closes. End the tag with }, or write {{ to show a {.
+
+[F05-02-E161-empty]
+script/main.vns, line 7, column 7: {} is an empty tag. To show {}, write {{}.
+
+[F05-02-E161-inside]
+script/main.vns, line 7, column 6: a { can't go inside a tag. To show a {, write {{.
+
+[F05-02-E161-deep]
+script/main.vns, line 7, column 156: this line has more than 50 style tags open at once. Close some with {/…}.
+
+[F05-02-E162-space]
+script/main.vns, line 7, column 6: tags have no spaces inside: write {color=#e05050}.
+
+[F05-02-E162-equals]
+script/main.vns, line 7, column 7: write {pause=0.6}, with = between the tag and its value.
+
+[F05-02-E162-quote]
+script/main.vns, line 7, column 6: tag values have no quotes: write {color=#e05050}.
+
+[F05-02-E162-colon]
+script/main.vns, line 7, column 6: write {color=#e05050}, with = instead of :.
+
+[F05-02-E163-color]
+script/main.vns, line 7, column 6: {color} needs a color, e.g. {color=#e05050}…{/color}.
+
+[F05-02-E163-size]
+script/main.vns, line 7, column 6: {size} needs a number, e.g. {size=1.5} for half again as big.
+
+[F05-02-E163-speed]
+script/main.vns, line 7, column 6: {speed} needs a number, e.g. {speed=0.5} for half speed, or {speed=instant}.
+
+[F05-02-E163-var]
+script/main.vns, line 7, column 6: {var} needs a variable's name, e.g. {var=player_name}.
+
+[F05-02-E163-none-1]
+script/main.vns, line 7, column 6: {b} takes no value. Write {b}…{/b}.
+
+[F05-02-E163-none-2]
+script/main.vns, line 7, column 6: {i} takes no value. Write {i}…{/i}.
+
+[F05-02-E163-next]
+script/main.vns, line 7, column 7: {next} takes no value. Write {next} at the very end of the text.
+
+[F05-02-E163-close]
+script/main.vns, line 7, column 22: a closing tag takes no value. Write {/color}.
+
+[F05-02-E164-color-1]
+script/main.vns, line 7, column 6: "#e0505" isn't a color. Write # and six digits or letters a to f, e.g. {color=#e05050}.
+
+[F05-02-E164-color-2]
+script/main.vns, line 7, column 6: "red" isn't a color. Write # and six digits or letters a to f, e.g. {color=#e05050}.
+
+[F05-02-E164-hash]
+script/main.vns, line 7, column 6: write the color with #: {color=#e05050}.
+
+[F05-02-E164-pause-range]
+script/main.vns, line 7, column 7: {pause=…} takes seconds from 0.1 to 30, but this has 45.
+
+[F05-02-E164-unit]
+script/main.vns, line 7, column 7: numbers in tags have no units: write {pause=0.5}, not {pause=0.5s}.
+
+[F05-02-E164-speed-range]
+script/main.vns, line 7, column 6: {speed=…} takes a number from 0.1 to 10, or instant, but this has 40. Speeds are relative: 2 is twice as fast, 0.5 half as fast.
+
+[F05-02-E164-size-range]
+script/main.vns, line 7, column 6: {size=…} takes a number from 0.5 to 2, but this has 28. Sizes are relative: 1.5 is half again as big.
+
+[F05-02-E164-dot]
+script/main.vns, line 7, column 7: write 0.5, not .5.
+
+[F05-02-E164-var]
+script/main.vns, line 7, column 6: {var=…} takes one variable's name, such as {var=player_name}, but this has "hana.name". To show something else, store it in a variable first.
+
+[F05-02-E164-code-1]
+script/main.vns, line 7, column 6: {var=…} takes one variable's name, such as {var=player_name}, but this has "wishes+1". To show something else, store it in a variable first.
+
+[F05-02-E164-code-2]
+script/main.vns, line 7, column 6: {pause=…} takes seconds from 0.1 to 30, but this has 0.09.
+
+[F05-02-E164-code-3]
+script/main.vns, line 7, column 6: {pause=…} takes seconds from 0.1 to 30, but this has 30.01.
+
+[F05-02-E164-code-4]
+script/main.vns, line 7, column 6: {pause=…} takes seconds from 0.1 to 30, but this has -1.
+
+[F05-02-E164-code-5]
+script/main.vns, line 7, column 6: {pause=…} takes seconds from 0.1 to 30, but this has +1.
+
+[F05-02-E164-code-6]
+script/main.vns, line 7, column 6: {speed=…} takes a number from 0.1 to 10, or instant, but this has 10.5. Speeds are relative: 2 is twice as fast, 0.5 half as fast.
+
+[F05-02-E164-code-7]
+script/main.vns, line 7, column 6: {speed=…} takes a number from 0.1 to 10, or instant, but this has 0. Speeds are relative: 2 is twice as fast, 0.5 half as fast.
+
+[F05-02-E164-code-8]
+script/main.vns, line 7, column 6: {size=…} takes a number from 0.5 to 2, but this has 0.49. Sizes are relative: 1.5 is half again as big.
+
+[F05-02-E164-code-9]
+script/main.vns, line 7, column 6: {size=…} takes a number from 0.5 to 2, but this has 2.01. Sizes are relative: 1.5 is half again as big.
+
+[F05-02-E164-code-10]
+script/main.vns, line 7, column 6: numbers in tags have no units: write {size=50}, not {size=50%}.
+
+[F05-02-E164-code-11]
+script/main.vns, line 7, column 6: numbers in tags have no units: write {speed=2}, not {speed=2x}.
+
+[F05-02-E164-code-12]
+script/main.vns, line 7, column 6: "#e050500" isn't a color. Write # and six digits or letters a to f, e.g. {color=#e05050}.
+
+[F05-02-E165-b]
+script/main.vns, line 7, column 7: {/b} closes bold, but no {b} is open here. Remove it, or add {b} where bold should start.
+
+[F05-02-E165-style-1]
+script/main.vns, line 7, column 7: {/i} closes italic, but no {i} is open here. Remove it, or add {i} where italic should start.
+
+[F05-02-E165-style-2]
+script/main.vns, line 7, column 7: {/color} closes color, but no {color} is open here. Remove it, or add {color} where color should start.
+
+[F05-02-E165-style-3]
+script/main.vns, line 7, column 7: {/size} closes size, but no {size} is open here. Remove it, or add {size} where size should start.
+
+[F05-02-E165-style-4]
+script/main.vns, line 7, column 7: {/speed} closes speed, but no {speed} is open here. Remove it, or add {speed} where speed should start.
+
+[F05-02-E165-pause]
+script/main.vns, line 7, column 14: {pause} doesn't open anything, so there is no {/pause}. Remove it.
+
+[F05-02-E165-var]
+script/main.vns, line 7, column 19: {var} doesn't open anything, so there is no {/var}. Remove it.
+
+[F05-02-E165-next]
+script/main.vns, line 7, column 13: {next} doesn't open anything, so there is no {/next}. Remove it.
+
+[F05-02-E166]
+script/main.vns, line 7, column 14: {/b} closes bold, but {i} was opened inside it and is still open. Close {/i} first: {b}…{i}…{/i}{/b}.
+
+[F05-02-E167-last]
+script/main.vns, line 7, column 11: {next} goes at the very end of the text, because the line moves on as soon as it is shown. Move it to the end, or use {pause} to wait here.
+
+[F05-02-E167-twice]
+script/main.vns, line 7, column 13: this line has {next} twice. Keep the last one.
+
+[F05-02-loads-1]
+(loads)
+
+[F05-02-loads-2]
+(loads)
+
+[F05-02-loads-3]
+(loads)
+
+[F05-02-loads-4]
+(loads)
+
+[F05-02-loads-5]
+(loads)
+
+[F05-02-loads-6]
+(loads)
+
+[F05-02-loads-7]
+(loads)
+
+[F05-02-loads-8]
+(loads)
+
+[F05-02-loads-9]
+(loads)
+
+[F05-05-W42-suggest]
+script/main.vns, line 7, column 6: {var=trsut} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Did you mean "trust"?
+
+[F05-05-W42-plain]
+script/main.vns, line 7, column 6: {var=met_daichi} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Add default met_daichi = "" at the top level.
+
+[F05-05-W42-dollar]
+script/main.vns, line 8, column 6: {var=late} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Add default late = "" at the top level.
+
+[F05-05-no-W42-1]
+(loads)
+
+[F05-05-no-W42-2]
+(loads)
+
+[F05-05-no-W42-3]
+(loads)
+
+[F05-05-no-W42-4]
+(loads)
+
+[F05-05-no-W42-5]
+(loads)
+
+[F04-38-E110-left]
+script/main.vns, line 6: this line has "right" left over after at left. at takes one position name, or one or two numbers.
+
+[F04-38-E110-colon]
+script/main.vns, line 6: show doesn't start a block. Remove the :.
+
+[F04-38-E111-at]
+script/main.vns, line 6: scene doesn't take at, because a background always fills the screen. To place a picture, use show.
+
+[F04-38-E111-layer]
+script/main.vns, line 6: scene doesn't take layer, because a background always fills the screen. To place a picture, use show.
+
+[F04-38-E112-show-1]
+script/main.vns, line 6: show needs an image name, e.g. show hana happy.
+
+[F04-38-E112-show-2]
+script/main.vns, line 6: show needs an image name, e.g. show hana happy.
+
+[F04-38-E112-hide]
+script/main.vns, line 6: hide needs the tag of a sprite, e.g. hide hana.
+
+[F04-38-E113-at]
+script/main.vns, line 6: at needs a position after it, e.g. at left.
+
+[F04-38-E113-1]
+script/main.vns, line 6: as needs a tag after it, e.g. show student as student_b.
+
+[F04-38-E113-2]
+script/main.vns, line 6: behind needs the tag of a sprite, e.g. behind stall.
+
+[F04-38-E113-3]
+script/main.vns, line 6: layer needs a number after it, e.g. layer 10.
+
+[F04-38-E113-4]
+script/main.vns, line 6: with needs a transition after it, e.g. with dissolve.
+
+[F04-38-E113-zoom]
+script/main.vns, line 6: zoom needs a number after it, e.g. zoom 1.5.
+
+[F04-38-E114]
+script/main.vns, line 6: this line has at twice. Keep one.
+
+[F04-38-E115]
+script/main.vns, line 6: with must come last on the line. Move "with dissolve" to the end.
+
+[F04-38-E116-words]
+script/main.vns, line 6: hide takes only the tag: write hide hana, not hide hana happy.
+
+[F04-38-E116-at]
+script/main.vns, line 6: hide doesn't take at. To move a sprite, use show.
+
+[F04-38-E117-file]
+script/main.vns, line 6: "hana/happy.png" is a file, not an image name. Write the name made from it: show hana happy.
+
+[F04-38-E117-quotes]
+script/main.vns, line 6: image names aren't written in quotes. Write show hana happy.
+
+[F04-38-E118]
+script/main.vns, line 6: behind and layer can't be used together, because behind puts the sprite on the other sprite's layer. Keep one of them.
+
+[F04-38-E119]
+script/main.vns, line 6: "at" can't go on a dialogue line; only expression words can. Put show hana at left on the line above.
+
+[F04-38-E119-first-1]
+script/main.vns, line 6: "at" can't go on a dialogue line; only expression words can. Put show hana at (sad) on the line above.
+
+[F04-38-E119-first-2]
+script/main.vns, line 6: "at" can't go on a dialogue line; only expression words can. Put show hana at d on the line above.
+
+[F04-38-E120-suggest-1]
+script/main.vns, line 6: there is no position named "rigth". Did you mean "right"?
+
+[F04-38-E120-suggest-2]
+script/main.vns, line 6: there is no position named "stall_sport". Did you mean "stall_spot"?
+
+[F04-38-E120-plain]
+script/main.vns, line 6: there is no position named "stall". Use left, center, right, or a number such as at 400, or add stall to [stage.positions] in config.toml.
+
+[F04-38-E121-1]
+script/main.vns, line 6: 2600 is too far right. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.
+
+[F04-38-E121-2]
+script/main.vns, line 6: -1300 is too far left. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.
+
+[F04-38-E121-3]
+script/main.vns, line 6: -1300 is too high. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.
+
+[F04-38-E121-4]
+script/main.vns, line 6: 2600 is too low. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.
+
+[F04-38-E121-5]
+script/main.vns, line 6: 2560.5 is too far right. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.
+
+[F04-38-E122-units]
+script/main.vns, line 6: at takes a position name or one or two numbers, e.g. at left or at 400 680, but this has "400px". Numbers have no units.
+
+[F04-38-E122-count]
+script/main.vns, line 6: at takes at most two numbers, x and y, but this has 3.
+
+[F04-38-E122-other-1]
+script/main.vns, line 6: at takes a position name or one or two numbers, e.g. at left or at 400 680, but this has "400,". Separate the two numbers with a space, not a comma.
+
+[F04-38-E122-other-2]
+script/main.vns, line 6: at takes a position name or one or two numbers, e.g. at left or at 400 680, but this has "2b". A position name starts with a letter.
+
+[F04-38-E123-1]
+script/main.vns, line 6: layer takes a whole number from -100 to 100, e.g. layer 10, but this has 150.
+
+[F04-38-E123-2]
+script/main.vns, line 6: layer takes a whole number from -100 to 100, e.g. layer 10, but this has 1.5.
+
+[F04-38-E124-1]
+script/main.vns, line 6: zoom takes a number from 0.25 to 4, e.g. zoom 1.5 (1 is normal size), but this has 10.
+
+[F04-38-E124-2]
+script/main.vns, line 6: zoom takes a number from 0.25 to 4, e.g. zoom 1.5 (1 is normal size), but this has 0.2.
+
+[F04-38-E125-1]
+script/main.vns, line 6: flip takes on or off: flip on mirrors the sprite, flip off undoes it.
+
+[F04-38-E125-2]
+script/main.vns, line 6: flip takes on or off: flip on mirrors the sprite, flip off undoes it.
+
+[F04-38-E126-show]
+script/main.vns, line 6: "hana school winter coat scarf happy" has 6 words, but an image name has at most 5. Use fewer folders inside images/.
+
+[F04-38-E126-image]
+script/main.vns, line 8: "a b c d e f" has 6 words, but an image name has at most 5. Use a shorter name.
+
+[F04-38-E127-stage]
+script/main.vns, line 8: "zoom" is a word show uses, so it can't be part of an image name. Rename the image.
+
+[F04-38-E127-statement]
+script/main.vns, line 6: "call" is a statement word, so it can't be part of an image name.
+
+[F04-38-E127-characters]
+script/main.vns, line 6: "hana-happy" can't be part of an image name. Names use letters, digits, and _, e.g. hana_happy.
+
+[F04-38-E130]
+script/main.vns, line 6: image declares a picture once for the whole game, so it must be at the top level. Move it out of the label.
+
+[F04-38-E131-shape]
+script/main.vns, line 8: image needs a name, =, and a file or color in quotes, e.g. image bg dusk = "#2b2140".
+
+[F04-38-E131-quotes]
+script/main.vns, line 8: the file or color goes in quotes, e.g. image bg festival = "art/festival.png".
+
+[F04-38-E132-outside]
+script/main.vns, line 8: can't use "../art/x.png": paths start in the game folder and must stay inside it, using forward slashes, e.g. "art/festival.png".
+
+[F04-38-E132-type]
+script/main.vns, line 8: "art/festival.gif" isn't a PNG, JPEG, or WebP file. Convert it to .png.
+
+[F04-38-E132-color]
+script/main.vns, line 8: "#fff" isn't a color. Write # and six digits or letters a to f, e.g. "#2b2140".
+
+[F04-38-E133]
+script/main.vns, line 9: there is already an image "bg dusk" declared in script/main.vns, line 8. Remove or rename one.
+
+[F04-38-loads-1]
+(loads)
+
+[F04-38-loads-2]
+(loads)
+
+[F04-38-loads-3]
+(loads)
+
+[F04-38-loads-4]
+(loads)
+
+[F04-38-loads-5]
+(loads)
+
+[F04-38-loads-6]
+(loads)
+
+[F04-38-loads-7]
+(loads)
+
+[F04-38-loads-8]
+(loads)
+
+[F04-38-loads-9]
+(loads)
+
+[F08-01-clean-1]
+(loads)
+
+[F08-01-clean-2]
+(loads)
+
+[F08-01-clean-3]
+(loads)
+
+[F08-01-clean-4]
+(loads)
+
+[F08-01-clean-5]
+(loads)
+
+[F08-01-clean-6]
+(loads)
+
+[F08-01-clean-7]
+(loads)
+
+[F08-01-clean-8]
+(loads)
+
+[F08-01-clean-9]
+(loads)
+
+[F08-01-clean-10]
+(loads)
+
+[F08-01-clean-11]
+(loads)
+
+[F08-01-clean-12]
+(loads)
+
+[F08-01-clean-13]
+(loads)
+
+[F08-01-music-speaker]
+(loads)
+
+[F08-02-E140-play]
+script/main.vns, line 4: play needs a channel before the file, e.g. play music "bgm/festival.ogg" or play sound "sfx/door.ogg".
+
+[F08-02-E140-stop]
+script/main.vns, line 4: stop needs a channel: stop music, stop sound, or stop voice.
+
+[F08-02-E140-queue]
+script/main.vns, line 4: queue needs music before the file, e.g. queue music "bgm/shrine_steps.ogg".
+
+[F08-02-E140-musc]
+script/main.vns, line 4: "musc" isn't a channel. Did you mean "music"? play takes music or sound.
+
+[F08-02-E141-play-voice]
+script/main.vns, line 4: voice lines aren't started with play. Put voice "voice/hana_014.ogg" on the line above the line it voices.
+
+[F08-02-E141-queue-sound]
+script/main.vns, line 4: only music can be queued. To start an effect, write play sound "sfx/door.ogg".
+
+[F08-02-E141-queue-voice]
+script/main.vns, line 4: a voice belongs to one line, so it can't be queued. Put voice "…" above each line.
+
+[F08-02-E142-no-file]
+script/main.vns, line 4: play music needs a file in quotes, e.g. play music "bgm/festival.ogg".
+
+[F08-02-E142-quotes]
+script/main.vns, line 4: the file goes in quotes: play music "festival.ogg".
+
+[F08-02-E142-voice]
+script/main.vns, line 4: voice needs a file in quotes, e.g. voice "voice/hana_014.ogg".
+
+[F08-02-E142-other-1]
+script/main.vns, line 4: the file goes in quotes: play sound "door.ogg".
+
+[F08-02-E142-other-2]
+script/main.vns, line 4: the file goes in quotes: queue music "omen.ogg".
+
+[F08-02-E142-other-3]
+script/main.vns, line 4: play sound needs a file in quotes, e.g. play sound "sfx/door.ogg".
+
+[F08-02-E142-other-4]
+script/main.vns, line 4: queue music needs a file in quotes, e.g. queue music "bgm/shrine_steps.ogg".
+
+[F08-02-E146-fadin]
+script/main.vns, line 4: play has no option "fadin". Did you mean "fadein"?
+
+[F08-02-E146-softly]
+script/main.vns, line 4: play has no option "softly". Its options are fadein, fadeout, volume, loop, once, restart, and from.
+
+[F08-02-E146-case]
+script/main.vns, line 4: play has no option "FadeIn". Options are lower case: fadein.
+
+[F08-02-E146-left]
+script/main.vns, line 4: this line has "2.0" left over after fadein 1.0. fadein takes one number.
+
+[F08-02-E146-colon]
+script/main.vns, line 4: play doesn't start a block. Remove the :.
+
+[F08-02-E146-with]
+script/main.vns, line 4: play doesn't take with; transitions are for pictures. To fade, use fadein 1.0.
+
+[F08-02-E146-other-1]
+script/main.vns, line 4: queue has no option "softly". Its options are fadein, volume, loop, and once.
+
+[F08-02-E146-other-2]
+script/main.vns, line 4: stop has no option "softly". Its only option is fadeout.
+
+[F08-02-E146-other-3]
+script/main.vns, line 4: stop has no option "fadot". Did you mean "fadeout"?
+
+[F08-02-E146-other-4]
+script/main.vns, line 4: this line has "2" left over after loop. loop takes nothing after it.
+
+[F08-02-E146-other-5]
+script/main.vns, line 4: this line has "2.0" left over after "bgm/omen.ogg". Only options can follow the file, e.g. fadein 2.0.
+
+[F08-02-E146-other-6]
+script/main.vns, line 4: this line has "5" left over after stop music. Only fadeout can follow it, e.g. stop music fadeout 1.0.
+
+[F08-02-E146-other-7]
+script/main.vns, line 4: this line has a second file, "sfx/b.ogg". stop takes one file; put each on its own line.
+
+[F08-02-E146-other-8]
+script/main.vns, line 4: stop doesn't start a block. Remove the :.
+
+[F08-02-E146-other-9]
+script/main.vns, line 4: queue doesn't take with; transitions are for pictures. To fade, use fadein 1.0.
+
+[F08-02-E147-twice]
+script/main.vns, line 4: this line has fadein twice. Keep one.
+
+[F08-02-E147-clash]
+script/main.vns, line 4: loop and once can't be used together. Keep one.
+
+[F08-02-E148-sound-fadeout]
+script/main.vns, line 4: fadeout can't go on play sound, because a new effect never stops the others. To fade effects out, use stop sound fadeout 1.0.
+
+[F08-02-E148-sound-restart]
+script/main.vns, line 4: restart only works with play music; each play sound already starts a new effect.
+
+[F08-02-E148-sound-from]
+script/main.vns, line 4: from only works with play music.
+
+[F08-02-E148-queue-fadeout]
+script/main.vns, line 4: queue music doesn't take fadeout; the track before it plays to its end.
+
+[F08-02-E148-queue-start-1]
+script/main.vns, line 4: queue music doesn't take restart; a queued track always starts from the beginning.
+
+[F08-02-E148-queue-start-2]
+script/main.vns, line 4: queue music doesn't take from; a queued track always starts from the beginning.
+
+[F08-02-E148-queue-start-3]
+script/main.vns, line 4: queue music doesn't take crossfade; a queued track always starts from the beginning.
+
+[F08-02-E148-stop]
+script/main.vns, line 4: stop takes only fadeout, e.g. stop music fadeout 2.0.
+
+[F08-02-E148-stop-music-file]
+script/main.vns, line 4: stop music stops whatever music is playing, so it doesn't take a file. Only stop sound can name one.
+
+[F08-02-E148-stop-voice-file]
+script/main.vns, line 4: stop voice stops whatever voice is playing, so it doesn't take a file. Only stop sound can name one.
+
+[F08-02-E148-voice]
+script/main.vns, line 4: voice takes only the file. Voice volume is voice_volume in config.toml.
+
+[F08-02-E148-crossfade]
+script/main.vns, line 4: crossfade is not available in this engine version. Use fadeout and fadein.
+
+[F08-02-E149-1]
+script/main.vns, line 4: fadein needs a number of seconds after it, e.g. fadein 2.0.
+
+[F08-02-E149-2]
+script/main.vns, line 4: volume needs a percentage after it, e.g. volume 50.
+
+[F08-02-E149-3]
+script/main.vns, line 4: from needs a time in seconds or current, e.g. from 12.5.
+
+[F08-02-E150-90]
+script/main.vns, line 4: fadein takes seconds from 0 to 60, e.g. fadein 2.0, but this has 90.
+
+[F08-02-E150-range-1]
+script/main.vns, line 4: fadein takes seconds from 0 to 60, e.g. fadein 2.0, but this has -1.
+
+[F08-02-E150-range-2]
+script/main.vns, line 4: fadein takes seconds from 0 to 60, e.g. fadein 2.0, but this has 60.5.
+
+[F08-02-E150-units]
+script/main.vns, line 4: fadein takes seconds from 0 to 60, e.g. fadein 2.0, but this has "2s". Numbers have no units.
+
+[F08-02-E150-from-colon]
+script/main.vns, line 4: from takes seconds, e.g. from 90, but this has "1:30".
+
+[F08-02-E150-from-range]
+script/main.vns, line 4: from takes seconds from 0 to 3600, or current.
+
+[F08-02-E151-decimal]
+script/main.vns, line 4: volume takes a whole number from 0 to 100 (a percentage), e.g. volume 50 for half, but this has 0.5.
+
+[F08-02-E151-101]
+script/main.vns, line 4: volume takes a whole number from 0 to 100 (a percentage), e.g. volume 50 for half, but this has 101.
+
+[F08-02-E151-percent]
+script/main.vns, line 4: write volume 50, without %.
+
+[F08-03-E145-1]
+script/main.vns, line 4: "bgm/festival" needs the file's extension, e.g. "bgm/festival.ogg".
+
+[F08-03-E145-2]
+script/main.vns, line 4: "audio/bgm" needs the file's extension, e.g. "audio/bgm.ogg".
+
+[F08-03-E144]
+script/main.vns, line 4: paths start inside the audio folder, so write "bgm/festival.ogg", not "audio/bgm/festival.ogg".
+
+[F08-03-E144-case]
+script/main.vns, line 4: paths start inside the audio folder, so write "bgm/festival.ogg", not "AUDIO/bgm/festival.ogg".
+
+[F08-03-E143-backslash]
+script/main.vns, line 4: can't use "..\bgm\theme.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-1]
+script/main.vns, line 4: can't use "../x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-2]
+script/main.vns, line 4: can't use "C:/x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-3]
+script/main.vns, line 4: can't use "/x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-4]
+script/main.vns, line 4: can't use "bgm/con.ogg": "con" is a reserved file name on Windows. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-5]
+script/main.vns, line 4: can't use "bgm/x.ogg.": file and folder names can't end with a dot or a space. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-6]
+script/main.vns, line 4: can't use "abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi/abcdefghi…": paths can be at most 1,024 characters long. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-statements-1]
+script/main.vns, line 4: can't use "../x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-statements-2]
+script/main.vns, line 4: can't use "../x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-03-E143-statements-3]
+script/main.vns, line 4: can't use "../x.ogg": paths must stay inside the game folder and use forward slashes, e.g. images/bg/club.png. Paths start in the audio folder and use /, e.g. "bgm/theme.ogg".
+
+[F08-04-attached-1]
+(loads)
+
+[F08-04-attached-2]
+(loads)
+
+[F08-04-attached-3]
+(loads)
+
+[F08-04-W20-voice]
+script/main.vns, line 4: this voice is followed by another voice before any line, so it never plays. Remove one of them.
+
+[F08-04-W20-if]
+script/main.vns, line 4: voice goes directly above a line, not above an if. Put a voice inside each branch.
+
+[F08-04-W20-jump-1]
+script/main.vns, line 4: this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.
+
+[F08-04-W20-jump-2]
+script/main.vns, line 4: this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.
+
+[F08-04-W20-jump-3]
+script/main.vns, line 4: this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.
+
+[F08-04-W20-block-end]
+script/main.vns, line 5: this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.
+
+[F08-05-W23-m4a]
+script/main.vns, line 4: "bgm/theme.m4a" is an M4A file, which the engine can't play, so it will be silent. Convert it to .ogg (Ogg Vorbis) in an audio editor.
+
+[F08-05-W23-aac-wma-1]
+script/main.vns, line 4: "bgm/theme.aac" is an AAC file, which the engine can't play, so it will be silent. Convert it to .ogg (Ogg Vorbis) in an audio editor.
+
+[F08-05-W23-aac-wma-2]
+script/main.vns, line 4: "bgm/theme.wma" is a WMA file, which the engine can't play, so it will be silent. Convert it to .ogg (Ogg Vorbis) in an audio editor.
+
+[F08-05-W23-mid]
+script/main.vns, line 4: "bgm/theme.mid" is a MIDI file, which holds notes rather than sound, so it will be silent. Export the track as .ogg from your music program.
+
+[F08-05-W23-other]
+script/main.vns, line 4: "sfx/door.aiff" isn't a format the engine plays (.ogg, .opus, .flac, .mp3, .wav), so it will be silent. Convert it to .ogg (Ogg Vorbis) in an audio editor.
+
+[F08-05-W24]
+3 music files loop but are MP3: bgm/festival.mp3, bgm/omen.mp3, and 1 more. MP3 adds a short silence each time a track loops; convert them to .ogg for seamless loops.
+
+[F08-05-no-W24]
+(loads)
+
+[F07-01-W20-menu]
+script/main.vns, line 6: voice goes directly above a line, not above a menu. Put a voice inside each branch.
+
+[F07-02-E12-menu]
+script/main.vns, line 6: this menu has no lines under it. Indent its question and choices under it.
+
+[F07-02-E12-choice]
+script/main.vns, line 7: this choice has no lines under it. Indent what happens when it's picked; to just go on, write $ pass.
+
+[F07-02-E172]
+script/main.vns, line 6: this menu has no choices. Under the question, add choices like "Go left": with that choice's lines indented under it.
+
+[F07-02-E173-1]
+script/main.vns, line 6: this menu has 7 choices, but a menu shows at most 6. Move the rarer ones into a second menu behind a choice such as "Something else...":.
+
+[F07-02-E173-2]
+script/main.vns, line 6: this menu has 8 choices, but a menu shows at most 6. Move the rarer ones into a second menu behind a choice such as "Something else...":.
+
+[F07-02-E174-question-after]
+script/main.vns, line 9: the question goes on the first line of the menu, before the choices. Move this line up, or indent it inside a choice.
+
+[F07-02-E174-no-colon-1]
+script/main.vns, line 7: this looks like a choice but has no : at the end. Write "Go left":.
+
+[F07-02-E174-no-colon-2]
+script/main.vns, line 7: this looks like a choice but has no : at the end. Write "Go left":.
+
+[F07-02-E174-other-1]
+script/main.vns, line 7: only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.
+
+[F07-02-E174-other-2]
+script/main.vns, line 8: only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.
+
+[F07-02-E174-other-3]
+script/main.vns, line 7: only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.
+
+[F07-02-E176-1]
+script/main.vns, line 7: this choice has no text, so the player couldn't see it. Write its words between the quotes.
+
+[F07-02-E176-2]
+script/main.vns, line 7: this choice has no text, so the player couldn't see it. Write its words between the quotes.
+
+[F07-02-E177]
+script/main.vns, line 6: menu takes nothing else on its line. Put the question on the first line inside the menu, e.g. hana "Where to?"
+
+[F07-02-E177-E12]
+script/main.vns, line 6: menu takes nothing else on its line. Put the question on the first line inside the menu, e.g. hana "Where to?"
+script/main.vns, line 7: this choice has no lines under it. Indent what happens when it's picked; to just go on, write $ pass.
+
+[F07-02-E31b]
+script/main.vns, line 6: menu needs : at the end of the line. Write menu:
+
+[F07-03-E175-1]
+script/main.vns, line 7, column 13: {pause} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.
+
+[F07-03-E175-2]
+script/main.vns, line 7, column 13: {pause} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.
+
+[F07-03-E175-3]
+script/main.vns, line 7, column 13: {speed} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.
+
+[F07-03-E175-4]
+script/main.vns, line 7, column 13: {size} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.
+
+[F07-03-E175-5]
+script/main.vns, line 7, column 13: {next} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.
+
+[F07-03-E160]
+script/main.vns, line 7, column 10: there is no tag "colour". Did you mean "color"?
+
+[F07-03-W42]
+script/main.vns, line 7, column 14: {var=met_daichi} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Add default met_daichi = "" at the top level.
+
+[F07-04-E53-iffy]
+script/main.vns, line 7, column 13: this line has more after the closing quote: iffy: Write a quote inside the text as \".
+
+[F07-04-E74-outside-1]
+script/main.vns, line 5: this line of text ends with :, which only menu choices do. Remove the :, or put the choice in a menu: block.
+
+[F07-04-E74-outside-2]
+script/main.vns, line 5: this line of text ends with :, which only menu choices do. Remove the :, or put the choice in a menu: block.
+
+[F07-04-E53-outside]
+script/main.vns, line 5, column 15: this line has more after the closing quote: if coins > 1 Write a quote inside the text as \".
+
+[F12-05-E184-dotted]
+script/main.vns, line 10: default persistent.a.b sets one name after "persistent.", e.g. default persistent.seen_intro = False.
+
+[F12-05-E184-engine]
+script/main.vns, line 10: default persistent._x: names starting with _ belong to the engine. Use a name such as "x".
+
+[F12-05-E184-duplicate]
+script/main.vns, line 10: persistent.festivals already has a default at script/main.vns, line 2. Keep one.
+
+[F09-01-clean-1]
+(loads)
+
+[F09-01-clean-2]
+(loads)
+
+[F09-01-clean-3]
+(loads)
+
+[F09-01-clean-4]
+(loads)
+
+[F09-01-clean-5]
+(loads)
+
+[F09-01-clean-6]
+(loads)
+
+[F09-01-clean-7]
+(loads)
+
+[F09-01-clean-8]
+(loads)
+
+[F09-01-clean-9]
+(loads)
+
+[F09-01-clean-10]
+(loads)
+
+[F09-01-clean-11]
+(loads)
+
+[F09-01-clean-12]
+(loads)
+
+[F09-01-clean-13]
+(loads)
+
+[F09-01-clean-14]
+(loads)
+
+[F09-01-clean-15]
+(loads)
+
+[F09-01-clean-16]
+(loads)
+
+[F09-01-clean-17]
+(loads)
+
+[F09-01-clean-18]
+(loads)
+
+[F09-01-clean-19]
+(loads)
+
+[F09-01-clean-20]
+(loads)
+
+[F09-01-clean-21]
+(loads)
+
+[F09-01-clean-22]
+(loads)
+
+[F09-01-clean-23]
+(loads)
+
+[F09-01-clean-24]
+(loads)
+
+[F09-01-clean-25]
+(loads)
+
+[F09-01-clean-26]
+(loads)
+
+[F09-01-clean-27]
+(loads)
+
+[F09-01-clean-28]
+(loads)
+
+[F09-01-clean-29]
+(loads)
+
+[F09-03-E192-range]
+script/main.vns, line 6: with dissolve takes a length from 0 to 30 seconds, but this has 90.
+
+[F09-03-E192-units]
+script/main.vns, line 6: lengths have no units: write 0.5, not 0.5s.
+
+[F09-03-E192-dot]
+script/main.vns, line 6: write 0.5, not .5.
+
+[F09-03-E193-hex]
+script/main.vns, line 6: "#e0505" isn't a color. Write "#" and six digits or letters a to f in quotes, e.g. "#ffe08a", or use white, black, or red.
+
+[F09-03-E193-name]
+script/main.vns, line 6: "pink" isn't a color here. Use white, black, red, or a color in quotes such as "#ffc0cb".
+
+[F09-03-E194-cut]
+script/main.vns, line 6: cut takes no length or color.
+
+[F09-03-E194-color]
+script/main.vns, line 6: dissolve takes a length but no color; only fade goes through a color.
+
+[F09-03-E194-twice]
+script/main.vns, line 6: with fade has two lengths; give one.
+
+[F09-03-E194-left]
+script/main.vns, line 6: this line has "slowly" left over after with dissolve. with takes a transition name, then a length and, for fade, a color.
+
+[F09-03-E194-pink]
+script/main.vns, line 6: this line has "pink" left over after with fade. with takes a transition name, then a length and, for fade, a color.
+
+[F09-03-E194-two-colors]
+script/main.vns, line 6: with fade has two colors; give one.
+
+[F09-03-E195-word]
+script/main.vns, line 6: shake takes small, medium, or large, horizontal or vertical, and a length from 0.1 to 10 seconds, but this has "huge".
+
+[F09-03-E195-length]
+script/main.vns, line 6: shake takes a length from 0.1 to 10 seconds, but this has 30.
+
+[F09-03-E195-twice]
+script/main.vns, line 6: shake has two sizes; give one.
+
+[F09-03-E196-length]
+script/main.vns, line 6: flash takes a color and a length from 0.1 to 2 seconds, but this has 5.
+
+[F09-03-E196-twice]
+script/main.vns, line 6: flash has two colors; give one.
+
+[F09-03-E196-pink]
+script/main.vns, line 6: flash takes a color and a length from 0.1 to 2 seconds, but this has "pink".
+
+[F09-03-E193-flash]
+script/main.vns, line 6: "#e0505" isn't a color. Write "#" and six digits or letters a to f in quotes, e.g. "#ffe08a", or use white, black, or red.
+
+[F09-03-E197]
+script/main.vns, line 6: pause takes a length from 0.1 to 30 seconds, or nothing to wait for a click, but this has 45.
+
+[F09-03-E198]
+script/main.vns, line 8: dissolve is a built-in transition, so define can't use that name. Pick another, e.g. dissolve_slow.
+
+[F09-03-E198-fade]
+script/main.vns, line 8: fade is a built-in transition, so define can't use that name. Pick another, e.g. fade_slow.
+
+[F09-03-boundary-1]
+script/main.vns, line 6: shake takes a length from 0.1 to 10 seconds, but this has 0.05.
+
+[F09-03-boundary-2]
+script/main.vns, line 6: flash takes a color and a length from 0.1 to 2 seconds, but this has 2.5.
+
+[F09-03-boundary-3]
+script/main.vns, line 6: pause takes a length from 0.1 to 30 seconds, or nothing to wait for a click, but this has 0.05.
+
+[F09-03-boundary-4]
+script/main.vns, line 6: with dissolve takes a length from 0 to 30 seconds, but this has 30.5.
+
+[F09-07-arguments-are-names]
+(loads)
+
+[F09-07-E62-1]
+script/main.vns, line 8: "Mask" is a name the engine uses. Pick another name, such as "my_Mask".
+
+[F09-07-E62-2]
+script/main.vns, line 8: "Dissolve" is a name the engine uses. Pick another name, such as "my_Dissolve".
+
+[F09-07-E62-3]
+script/main.vns, line 8: "Fade" is a name the engine uses. Pick another name, such as "my_Fade".
+
+[F09-07-E62-4]
+script/main.vns, line 8: "Transition" is a name the engine uses. Pick another name, such as "my_Transition".
+
+[F09-07-E60-1]
+script/main.vns, line 8: "with" is a statement word, so it can't be a variable name. Pick another name, such as "my_with".
+
+[F09-07-E60-2]
+script/main.vns, line 8: "pause" is a statement word, so it can't be a variable name. Pick another name, such as "my_pause".
+
+[F18-01-clean-1]
+(loads)
+
+[F18-01-clean-2]
+(loads)
+
+[F18-01-clean-3]
+(loads)
+
+[F18-01-clean-4]
+(loads)
+
+[F18-01-clean-5]
+(loads)
+
+[F18-01-clean-6]
+(loads)
+
+[F18-01-clean-7]
+(loads)
+
+[F18-01-clean-8]
+(loads)
+
+[F18-01-label-and-chapter]
+(loads)
+
+[F18-01-E220]
+script/main.vns, line 10: there are two chapters named "festival": here and at script/main.vns, line 5. Give each chapter its own name.
+
+[F18-01-E221-1]
+script/main.vns, line 5: chapter needs a name and a title in quotes, e.g. chapter festival "The Lantern Festival".
+
+[F18-01-E221-2]
+script/main.vns, line 5: chapter needs a name and a title in quotes, e.g. chapter festival "The Lantern Festival".
+
+[F18-01-E221-3]
+script/main.vns, line 5: chapter has three texts; give at most a heading and a title.
+
+[F18-01-E221-4]
+script/main.vns, line 5: this line has "slowly" left over after the chapter title. chapter takes a name, an optional heading, a title, a card length, and with, in that order.
+
+[F18-01-E222-1]
+script/main.vns, line 5: the chapter title is empty.
+
+[F18-01-E222-2]
+script/main.vns, line 5: the chapter title has 140 characters; keep it to 120.
+
+[F18-01-E222-3]
+script/main.vns, line 5: the chapter heading has 61 characters; keep it to 60.
+
+[F18-01-E222-4]
+script/main.vns, line 5: chapter text is shown as written, so it can't use text tags such as {b}. Write {{ for a "{".
+
+[F18-01-E222-5]
+script/main.vns, line 5: the chapter name has 70 characters; keep it to 64.
+
+[F18-01-E223]
+script/main.vns, line 5: chapter takes a card length from 0 to 30 seconds (0 shows no card), but this has 45.
+
+[F18-01-with-1]
+script/main.vns, line 5: lengths have no units: write 5, not 5s.
+
+[F18-01-with-2]
+script/main.vns, line 5: with dissolve takes a length from 0 to 30 seconds, but this has 90.
+
+[F18-01-with-E194]
+script/main.vns, line 5: dissolve takes a length but no color; only fade goes through a color.
+
+[F22-01-clean-1]
+(loads)
+
+[F22-01-clean-2]
+(loads)
+
+[F22-01-clean-3]
+(loads)
+
+[F22-01-clean-4]
+(loads)
+
+[F22-01-clean-5]
+(loads)
+
+[F22-01-clean-6]
+(loads)
+
+[F22-02-names-of-their-own]
+(loads)
+
+[F22-01-E230-1]
+script/main.vns, line 5: points needs a meter name, e.g. points sayori 0 to 10 at the top level, or points sayori += 2 in a label.
+
+[F22-01-E230-2]
+script/main.vns, line 5: points needs a meter name, e.g. points sayori 0 to 10 at the top level, or points sayori += 2 in a label.
+
+[F22-01-E230-3]
+script/main.vns, line 5: points in a label changes a meter: write points sayori += 2, -= 1, or = 5.
+
+[F22-01-E230-4]
+script/main.vns, line 5: points in a label changes a meter: write points sayori += 2, -= 1, or = 5.
+
+[F22-01-E230-5]
+script/main.vns, line 5: points takes +=, -=, or =, but this has *=.
+
+[F22-01-E230-top-1]
+script/main.vns, line 9: points at the top level declares meters, e.g. points sayori 0 to 10. To change a meter, put this line inside a label.
+
+[F22-01-E230-top-2]
+script/main.vns, line 9: "start" is a word of the points statement, so it can't be a meter name.
+
+[F22-01-E230-top-3]
+script/main.vns, line 9: "highest" is a word of the points statement, so it can't be a meter name.
+
+[F22-01-E230-top-4]
+script/main.vns, line 9: "to" is a word of the points statement, so it can't be a meter name.
+
+[F22-01-E230-top-5]
+script/main.vns, line 9: the meter name has 70 characters; keep it to 64.
+
+[F22-01-E230-top-6]
+script/main.vns, line 9: this line has "0 10" left over. points takes meter names, then a range such as 0 to 10, then start and a number, in that order.
+
+[F22-01-E232-1]
+script/main.vns, line 9: the range 10 to 0 is backwards; write the low number first.
+
+[F22-01-E232-2]
+script/main.vns, line 9: the range 5 to 5 holds only one number; make the high number bigger.
+
+[F22-01-E232-3]
+script/main.vns, line 9: points go from -1,000,000,000 to 1,000,000,000, but this has 5,000,000,000.
+
+[F22-01-E232-4]
+script/main.vns, line 9: points go from -1,000,000,000 to 1,000,000,000, but this has -1,000,000,001.
+
+[F22-01-E232-5]
+script/main.vns, line 9: start 12 is outside the range 0 to 10.
+
+[F22-01-E232-6]
+script/main.vns, line 9: points are whole numbers, but this has 2.5.
+
+[F22-02-E231]
+script/main.vns, line 10: there are two meters named "sayori": here and at script/main.vns, line 9. Declare each meter once.
+
+[F22-02-E233-1]
+script/main.vns, line 5: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E233-2]
+script/main.vns, line 5: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E233-3]
+script/main.vns, line 5: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E233-4]
+script/main.vns, line 5: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E234-1]
+script/main.vns, line 5: Python can't change points.sayori. Use the points statement, e.g. points sayori = 3.
+
+[F22-02-E234-2]
+script/main.vns, line 5: Python can't change points.sayori. Use the points statement, e.g. points sayori = 3.
+
+[F22-02-E234-3]
+script/main.vns, line 5: Python can't change points.sayori. Use the points statement, e.g. points sayori = 3.
+
+[F22-02-E234-4]
+script/main.vns, line 5: Python can't change points.sayori. Use the points statement, e.g. points sayori = 3.
+
+[F22-02-E62]
+script/main.vns, line 5: "points" is a name the engine uses. Pick another name, such as "my_points".
+
+[F22-02-E233-values-1]
+script/main.vns, line 10: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E233-values-2]
+script/main.vns, line 10: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F22-02-E233-values-3]
+script/main.vns, line 10: there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.
+
+[F14-16-clean-1]
+(loads)
+
+[F14-16-clean-2]
+(loads)
+
+[F14-16-clean-3]
+(loads)
+
+[F14-16-clean-4]
+(loads)
+
+[F14-16-clean-5]
+(loads)
+
+[F14-16-clean-6]
+(loads)
+
+[F14-16-clean-7]
+(loads)
+
+[F14-16-clean-8]
+(loads)
+
+[F14-16-E200-1]
+script/main.vns, line 5: rollback needs one word after it: block, off, on, or fixed. Write "rollback block" to stop rollback here.
+
+[F14-16-E200-2]
+script/main.vns, line 5: rollback needs one word after it: block, off, on, or fixed. Write "rollback block" to stop rollback here.
+
+[F14-16-E201-1]
+script/main.vns, line 5: "of" isn't a rollback word. Did you mean "off"? rollback takes block, off, on, or fixed.
+
+[F14-16-E201-2]
+script/main.vns, line 5: "Block" isn't a rollback word. Did you mean "block"? rollback takes block, off, on, or fixed.
+
+[F14-16-E201-3]
+script/main.vns, line 5: "sideways" isn't a rollback word. rollback takes block, off, on, or fixed.
+
+[F14-16-E201-4]
+script/main.vns, line 5: "5" isn't a rollback word. rollback takes block, off, on, or fixed.
+
+[F14-16-E202-1]
+script/main.vns, line 5: rollback off takes nothing after "off", but this line goes on with "now". Put anything else on its own line.
+
+[F14-16-E202-2]
+script/main.vns, line 5: rollback block takes nothing after "block", but this line goes on with "here please". Put anything else on its own line.
+
+[F14-16-E203-1]
+script/main.vns, line 5: rollback doesn't take a block. Remove the ":" and un-indent the lines under it.
+
+[F14-16-E203-2]
+script/main.vns, line 5: rollback doesn't take a block. Remove the ":" and un-indent the lines under it.
+
+[F14-16-E204-1]
+script/main.vns, line 5: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a line of dialogue (line 6). Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E204-2]
+script/main.vns, line 5: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a $ line (line 6). Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E204-3]
+script/main.vns, line 5: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a rollback line (line 6). Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E204-4]
+script/main.vns, line 5: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is an if line (line 6). Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E204-5]
+script/main.vns, line 5: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a jump line (line 6). Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E204-nothing]
+script/main.vns, line 7: rollback fixed must be the line right above a menu: or a minigame line, but nothing comes after it here. Move it above the menu or minigame, or use "rollback block".
+
+[F14-16-E60-1]
+script/main.vns, line 9: "rollback" is a statement word, so it can't be a label name. Pick another name, such as "my_rollback".
+
+[F14-16-E60-2]
+script/main.vns, line 9: "rollback" is a statement word, so it can't be a variable name. Pick another name, such as "my_rollback".
+
+[F14-16-E60-3]
+script/main.vns, line 9: "Rollback" is a statement word, so it can't be a name. Pick another name, such as "my_Rollback".
+
+[F14-16-E31-1]
+script/main.vns, line 5: "Rollback" is not a statement. Statement words are lower case: rollback.
+
+[F14-16-E31-2]
+script/main.vns, line 5: "ROLLBACK" is not a statement. Statement words are lower case: rollback.
+
+[F17-02-clean-1]
+(loads)
+
+[F17-02-clean-2]
+(loads)
+
+[F17-02-clean-3]
+(loads)
+
+[F17-02-E210-needs-1]
+script/main.vns, line 7: nvl needs on, off, or clear after it, e.g. nvl on.
+
+[F17-02-E210-needs-2]
+script/main.vns, line 7: nvl needs on, off, or clear after it, e.g. nvl on.
+
+[F17-02-E210-unknown-1]
+script/main.vns, line 7: nvl takes on, off, or clear, but this has "of". Did you mean "off"?
+
+[F17-02-E210-unknown-2]
+script/main.vns, line 7: nvl takes on, off, or clear, but this has "of". Did you mean "off"?
+
+[F17-02-E210-unknown-3]
+script/main.vns, line 7: nvl takes on, off, or clear, but this has "start".
+
+[F17-02-E210-case-1]
+script/main.vns, line 7: write nvl on in lower case.
+
+[F17-02-E210-case-2]
+script/main.vns, line 7: write nvl off in lower case.
+
+[F17-02-E210-case-3]
+script/main.vns, line 7: write nvl clear in lower case.
+
+[F17-02-E211-extra-1]
+script/main.vns, line 7: nvl on takes nothing else on its line, but this has "now".
+
+[F17-02-E211-extra-2]
+script/main.vns, line 7: nvl off takes nothing else on its line, but this has "later".
+
+[F17-02-E211-with-1]
+script/main.vns, line 7: full-screen text appears instantly, so nvl on can't take "with dissolve". Put the transition on the scene line before it.
+
+[F17-02-E211-with-2]
+script/main.vns, line 7: full-screen text appears instantly, so nvl clear can't take "with fade". Put the transition on the scene line before it.
+
+[F17-02-E211-with-3]
+script/main.vns, line 7: full-screen text appears instantly, so nvl on can't take "with". Put the transition on the scene line before it.
+
+[F17-02-E211-colon]
+script/main.vns, line 7: nvl doesn't start a block, so it takes no ":". Write nvl on, then the lines under it at the same indentation.
+
+[F19-03-E240-1]
+script/main.vns, line 7: ending needs a name and a title in quotes, e.g. ending good "The Lantern Festival".
+
+[F19-03-E240-2]
+script/main.vns, line 7: ending needs a name and a title in quotes, e.g. ending good "The Lantern Festival".
+
+[F19-03-E240-3]
+script/main.vns, line 7: ending has three texts; give at most a heading and a title.
+
+[F19-03-E240-4]
+script/main.vns, line 7: this line has "slowly" left over after the ending title. ending takes a name, an optional heading, a title, a card length, and with, in that order.
+
+[F19-03-E240-top]
+script/main.vns, line 16: ending goes inside a label, because it runs when the story reaches it.
+
+[F19-03-E242-1]
+script/main.vns, line 7: the ending name has 65 characters; keep it to 64.
+
+[F19-03-E242-2]
+script/main.vns, line 7: the ending title is empty.
+
+[F19-03-E242-3]
+script/main.vns, line 7: the ending title has 121 characters; keep it to 120.
+
+[F19-03-E242-4]
+script/main.vns, line 7: the ending heading has 61 characters; keep it to 60.
+
+[F19-03-E242-5]
+script/main.vns, line 7: ending text is shown as written, so it can't use text tags such as {b}. Write {{ for a "{".
+
+[F19-03-E242-6]
+script/main.vns, line 7: ending takes a card length from 0 to 30 seconds (0 shows no card), but this has 31.
+
+[F19-03-E242-route-1]
+script/main.vns, line 16: the route title has 121 characters; keep it to 120.
+
+[F19-03-E242-route-2]
+script/main.vns, line 16: the route title is empty.
+
+[F19-03-E242-route-3]
+script/main.vns, line 16: route text is shown as written, so it can't use text tags such as {b}. Write {{ for a "{".
+
+[F19-03-E192]
+script/main.vns, line 7: with dissolve takes a length from 0 to 30 seconds, but this has 90.
+
+[F19-04-E243-1]
+script/main.vns, line 16: lock route needs a label name and a title in quotes, e.g. lock route promise "Hana's Promise".
+
+[F19-04-E243-2]
+script/main.vns, line 16: lock route needs a label name and a title in quotes, e.g. lock route promise "Hana's Promise".
+
+[F19-04-E243-3]
+script/main.vns, line 16: lock route promis names the label the route starts at, but there is no label "promis". Did you mean "promise"?
+
+[F19-04-E243-4]
+script/main.vns, line 16: lock route qqqq names the label the route starts at, but there is no label "qqqq". Add that label, or use the name of the label where the route starts.
+
+[F19-04-E243-5]
+script/main.vns, line 16: until names endings, but there is no ending "god". Did you mean "good"?
+
+[F19-04-E243-6]
+script/main.vns, line 16: until lists "good" twice.
+
+[F19-04-E243-7]
+script/main.vns, line 16: until lists 33 endings; the most is 32.
+
+[F19-04-E243-8]
+script/main.vns, line 16: until needs at least one ending name, e.g. until sad, good.
+
+[F19-04-E244-1]
+script/main.vns, line 7: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+
+[F19-04-E244-2]
+script/main.vns, line 7: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+
+[F19-04-E244-3]
+script/main.vns, line 7: there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".
+
+[F19-04-E244-4]
+script/main.vns, line 7: there is no ending "god". Did you mean "good"?
+
+[F19-04-E244-5]
+script/main.vns, line 7: unlock ending can't be used: an ending is recorded when the story reaches its ending line.
+
+[F19-04-E244-6]
+script/main.vns, line 7: lock route promise declares a route, so it goes at the top level. To lock it again during the story, write lock route promise with no title.
+
+[F19-04-E244-top-1]
+script/main.vns, line 16: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+
+[F19-04-E244-top-2]
+script/main.vns, line 16: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+
+[F19-05-E241-ending]
+script/main.vns, line 9: there are two endings named "sad": here and at script/main.vns, line 7. Give each ending its own name.
+script/main.vns, line 7: the lines after this ending never run, because ending ends the story. Move them above the ending or into another label.
+
+[F19-05-E241-route]
+script/main.vns, line 16: route "promise" is declared twice: here and at script/main.vns, line 2. Keep one lock route line.
+
+[F19-06-E245-default-1]
+script/main.vns, line 16: persistent.endings is kept by the engine (the endings reached so far), so it can't have a default. Remove this line.
+
+[F19-06-E245-default-2]
+script/main.vns, line 16: persistent.routes is kept by the engine (the routes open so far), so it can't have a default. Remove this line.
+
+[F19-06-E245-endings-1]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-2]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-3]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-4]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-5]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-6]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-7]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-8]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-9]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-10]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-11]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-12]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-13]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-14]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-15]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-16]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-17]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-18]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-19]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-20]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-endings-21]
+script/main.vns, line 7: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-choice]
+script/main.vns, line 8: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-define]
+script/main.vns, line 16: persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.
+
+[F19-06-E245-routes-1]
+script/main.vns, line 7: persistent.routes is kept by the engine, so this line can't change it. Open a route with unlock route and close it with lock route.
+
+[F19-06-E245-routes-2]
+script/main.vns, line 7: persistent.routes is kept by the engine, so this line can't change it. Open a route with unlock route and close it with lock route.
+
+[F19-06-E245-routes-3]
+script/main.vns, line 7: persistent.routes is kept by the engine, so this line can't change it. Open a route with unlock route and close it with lock route.
+
+[F19-06-E234-first]
+script/main.vns, line 7: Python can't change points.hana. Use the points statement, e.g. points hana = 3.
+
+[F19-06-clean-1]
+(loads)
+
+[F19-06-clean-2]
+(loads)
+
+[F19-06-clean-3]
+(loads)
+
+[F19-06-clean-4]
+(loads)
+
+[F19-06-clean-5]
+(loads)
+
+[F19-06-clean-6]
+(loads)
+
+[F19-06-clean-flowers]
+(loads)
+
+[F19-07-W130-1]
+script/main.vns, line 7: the lines after this ending never run, because ending ends the story. Move them above the ending or into another label.
+
+[F19-07-W130-2]
+script/main.vns, line 8: the lines after this ending never run, because ending ends the story. Move them above the ending or into another label.
+
+[F19-07-no-W130-1]
+(loads)
+
+[F19-07-no-W130-2]
+(loads)
+
+[F21-02-E250-need-1]
+script/main.vns, line 12: lock tip needs a name and a title in quotes, e.g. lock tip lanterns "Paper Lanterns".
+
+[F21-02-E250-need-2]
+script/main.vns, line 12: lock item needs a name and a title in quotes, e.g. lock item brass_key "Brass Key".
+
+[F21-02-E250-left]
+script/main.vns, line 12: this line has "slowly" left over after the title. lock tip takes a name, a title, in "Category", and image, in that order.
+
+[F21-02-E250-order]
+script/main.vns, line 12: this line has "in "C"" left over after the title. lock tip takes a name, a title, in "Category", and image, in that order.
+
+[F21-02-E250-in-1]
+script/main.vns, line 12: in needs a category in quotes, e.g. in "Festival".
+
+[F21-02-E250-in-2]
+script/main.vns, line 12: in needs a category in quotes, e.g. in "Festival".
+
+[F21-02-E250-declare]
+script/main.vns, line 10: lock tip lanterns "Paper Lanterns" declares a tip, so it goes at the top level. To make the game forget it during the story, write lock tip lanterns with no title.
+
+[F21-02-E250-body-1]
+script/main.vns, line 13: only quoted text can go under a tip, one paragraph per line, e.g. "Lanterns are made of paper."
+
+[F21-02-E250-body-2]
+script/main.vns, line 13: only quoted text can go under a tip, one paragraph per line, e.g. "Lanterns are made of paper."
+
+[F21-02-E250-body-3]
+script/main.vns, line 14: only quoted text can go under a tip, one paragraph per line, e.g. "Lanterns are made of paper."
+
+[F21-02-E250-top-1]
+script/main.vns, line 12: unlock goes inside a label, because it runs when the story reaches it.
+
+[F21-02-E250-top-2]
+script/main.vns, line 12: unlock goes inside a label, because it runs when the story reaches it.
+
+[F21-02-E244-1]
+script/main.vns, line 10: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+
+[F21-02-E244-2]
+script/main.vns, line 10: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+
+[F21-02-E244-top]
+script/main.vns, line 12: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+
+[F21-03-E252-1]
+script/main.vns, line 12: the tip name has 65 characters; keep it to 64.
+
+[F21-03-E252-2]
+script/main.vns, line 12: the tip title is empty.
+
+[F21-03-E252-3]
+script/main.vns, line 12: the item title is empty.
+
+[F21-03-E252-4]
+script/main.vns, line 12: the tip title has 61 characters; keep it to 60.
+
+[F21-03-E252-5]
+script/main.vns, line 12: the category has 25 characters; keep it to 24.
+
+[F21-03-E252-6]
+script/main.vns, line 12: the category is empty.
+
+[F21-03-E252-7]
+script/main.vns, line 45: this tip has 33 paragraphs; keep it to 32.
+
+[F21-03-E252-8]
+script/main.vns, line 13: this paragraph has 2,001 characters; keep it to 2,000.
+
+[F21-03-E252-9]
+script/main.vns, line 12: tip titles and categories are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F21-03-E252-10]
+script/main.vns, line 12: tip titles and categories are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F21-03-E252-11]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {var}.
+
+[F21-03-E252-12]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {pause}.
+
+[F21-03-E252-13]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {pause}.
+
+[F21-03-E252-14]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {size}.
+
+[F21-03-E252-15]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {speed}.
+
+[F21-03-E252-16]
+script/main.vns, line 13: a tip paragraph can use {b}, {i}, and {color}, but not {next}.
+
+[F21-03-E252-17]
+script/main.vns, line 13: an item paragraph can use {b}, {i}, and {color}, but not {var}.
+
+[F21-03-E161]
+script/main.vns, line 13, column 8: {} is an empty tag. To show {}, write {{}.
+
+[F21-05-E253-1]
+script/main.vns, line 10: there is no tip "lantern". Did you mean "lanterns"? Declare tips at the top level, e.g. lock tip lantern "Title".
+
+[F21-05-E253-2]
+script/main.vns, line 10: there is no item "red_lanten". Did you mean "red_lantern"? Declare items at the top level, e.g. lock item red_lanten "Title".
+
+[F21-05-E253-3]
+script/main.vns, line 10: there is no tip "qqqq". Declare tips at the top level, e.g. lock tip qqqq "Title".
+
+[F21-05-E253-4]
+script/main.vns, line 10: there is no item "lantern". Declare items at the top level, e.g. lock item lantern "Title".
+
+[F21-05-E253-5]
+script/main.vns, line 10: brass_key is an item, not a tip. Write unlock item brass_key.
+
+[F21-05-E253-6]
+script/main.vns, line 10: lanterns is a tip, not an item. Write unlock tip lanterns.
+
+[F21-05-E253-7]
+script/main.vns, line 10: brass_key is an item, not a tip. Write lock item brass_key.
+
+[F21-07-E255-unknown-1]
+script/main.vns, line 10: there is no codex.itmes. Did you mean "items"? codex has tips and items.
+
+[F21-07-E255-unknown-2]
+script/main.vns, line 10: there is no codex.tps. Did you mean "tips"? codex has tips and items.
+
+[F21-07-E255-unknown-3]
+script/main.vns, line 10: there is no codex.qqqq. codex has tips and items.
+
+[F21-07-E255-items-1]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-2]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-3]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-4]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-5]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-6]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-7]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-8]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-items-9]
+script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-tips-1]
+script/main.vns, line 10: Python can't change codex.tips. Use unlock tip.
+
+[F21-07-E255-tips-2]
+script/main.vns, line 10: Python can't change codex.tips. Use unlock tip.
+
+[F21-07-E255-pieces-1]
+script/main.vns, line 11: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-pieces-2]
+script/main.vns, line 12: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E255-pieces-3]
+script/main.vns, line 12: Python can't change codex.items. Use unlock item and lock item.
+
+[F21-07-E234-first]
+script/main.vns, line 10: Python can't change points.hana. Use the points statement, e.g. points hana = 3.
+
+[F21-07-E62-1]
+script/main.vns, line 10: "codex" is a name the engine uses. Pick another name, such as "my_codex".
+
+[F21-07-E62-2]
+script/main.vns, line 12: "codex" is a name the engine uses. Pick another name, such as "my_codex".
+
+[F21-07-E62-3]
+script/main.vns, line 12: "codex" is a name the engine uses. Pick another name, such as "my_codex".
+
+[F21-07-E62-4]
+script/main.vns, line 12: "codex" is a name the engine uses. Pick another name, such as "my_codex".
+
+[F21-07-clean-1]
+(loads)
+
+[F21-07-clean-2]
+(loads)
+
+[F21-07-clean-3]
+(loads)
+
+[F21-07-clean-4]
+(loads)
+
+[F21-07-clean-5]
+(loads)
+
+[F21-07-clean-6]
+(loads)
+
+[F23-02-E270-no-name]
+script/main.vns, line 9: minigame needs the name of a minigame, e.g. minigame lantern_memory pairs=6 into turns.
+
+[F23-02-E270-top]
+script/main.vns, line 14: minigame goes inside a label, because it runs when the story reaches it.
+
+[F23-02-E270-name-left]
+script/main.vns, line 9: this line has "3 pairs=6" left over after minigame. minigame takes a name, skippable, arguments, and into, in that order.
+
+[F23-02-E270-into-alone]
+script/main.vns, line 9: into needs the name of a story variable, e.g. into turns.
+
+[F23-02-E270-not-plain-1]
+script/main.vns, line 9: into takes one story variable's name, such as into turns, but this has "points.hana". To add the result to a meter, write points hana += turns on the next line.
+
+[F23-02-E270-not-plain-2]
+script/main.vns, line 9: into takes one story variable's name, such as into turns, but this has "persistent.best". To keep it across playthroughs, write $ persistent.best = turns on the next line.
+
+[F23-02-E270-not-plain-3]
+script/main.vns, line 9: into takes one story variable's name, such as into turns, but this has "scores[0]". Keep the result in a variable, then copy it with a $ line.
+
+[F23-02-E270-as]
+script/main.vns, line 9: to keep the result, write into turns, not as turns.
+
+[F23-02-E270-left-1]
+script/main.vns, line 9: this line has "found" left over after into turns. minigame takes a name, skippable, arguments, and into, in that order.
+
+[F23-02-E270-left-2]
+script/main.vns, line 9: this line has "with dissolve" left over after pairs=6. minigame takes a name, skippable, arguments, and into, in that order.
+
+[F23-02-E270-left-3]
+script/main.vns, line 9: this line has ":" left over after pairs=6. minigame takes a name, skippable, arguments, and into, in that order.
+
+[F23-02-E270-dollar-1]
+script/main.vns, line 9: minigame is a statement, not Python, so it can't go in a $ line. Write minigame stargazing stars=5 into found.
+
+[F23-02-E270-dollar-2]
+script/main.vns, line 9: minigame is a statement, not Python, so it can't go in a $ line. Write minigame stargazing stars=5.
+
+[F23-02-E271-twice]
+script/main.vns, line 9: this line gives pairs twice. Keep one.
+
+[F23-02-E271-no-equals-1]
+script/main.vns, line 9: write pairs=6, with = between the argument and its value.
+
+[F23-02-E271-no-equals-2]
+script/main.vns, line 9: arguments are written name=value, e.g. pairs=6, but this has "6".
+
+[F23-02-E271-no-equals-3]
+script/main.vns, line 9: write pairs=6, with one =.
+
+[F23-02-E271-no-equals-4]
+script/main.vns, line 9: pairs= needs a value, e.g. pairs=6.
+
+[F23-02-E271-skippable-place]
+script/main.vns, line 9: skippable goes right after the minigame's name: minigame probe skippable pairs=6.
+
+[F23-02-E81-argument]
+script/main.vns, line 9, column 26: the argument pairs has a mistake: "(" was never closed.
+
+[F23-02-E174-menu]
+script/main.vns, line 10: only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.
+
+[F23-02-W20]
+script/main.vns, line 9: this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.
+script/main.vns, line 6: tip lanterns is declared, but no unlock tip lanterns line names it, so players get it only if code unlocks it.
+
+[F23-03-E270-unknown-1]
+script/main.vns, line 9: there is no minigame named "lantern_memroy". Did you mean "lantern_memory"?
+
+[F23-03-E270-unknown-2]
+script/main.vns, line 9: there is no minigame named "Probe". Did you mean "probe"?
+
+[F23-03-E270-list]
+script/main.vns, line 9: there is no minigame named "zzz". The minigames in this game are lantern_memory and stargazing. To add one, put its plugin in game/minigames/.
+
+[F23-03-E270-list-more]
+script/main.vns, line 9: there is no minigame named "zzz". The minigames in this game are archery, bonsai, calligraphy, dumplings, embers, fishing, goldfish, haiku, and 3 more. To add one, put its plugin in game/minigames/.
+
+[F23-03-E271-1]
+script/main.vns, line 9: probe has no argument "pair". Did you mean "pairs"?
+
+[F23-03-E271-2]
+script/main.vns, line 9: probe has no argument "colour". It takes pairs, hints, and label.
+
+[F23-03-E271-3]
+script/main.vns, line 9: bare takes no arguments, so remove "x=1".
+
+[F23-03-E271-4]
+script/main.vns, line 9: minigame probe needs a value for pairs. Add pairs=… to this line.
+
+[F23-03-E271-5]
+script/main.vns, line 9: minigame two needs values for pairs and theme. Add pairs=… and theme=… to this line.
+
+[F23-03-E271-6]
+script/main.vns, line 9: bare has no skipped outcome, so it can't be skippable. Remove skippable, or give the plugin a skipped outcome.
+
+[F23-03-E270-target-1]
+script/main.vns, line 9: there is no default named "turn" for the result. Did you mean "turns"?
+
+[F23-03-E270-target-2]
+script/main.vns, line 9: the result goes into a story variable with a default. Add default zz = 0 at the top level of a file.
+
+[F23-03-E270-target-3]
+script/main.vns, line 9: "hana" is set by define, so the story can't change it. Keep the result in a variable that has a default.
+
+[F23-03-E270-target-4]
+script/main.vns, line 9: "dice" is a name the engine uses. Keep the result in a variable that has a default.
+
+[F23-03-E233]
+script/main.vns, line 9: there is no meter named "hanna". Did you mean "hana"? Declare meters at the top level, e.g. points hanna 0 to 10.
+
+[F23-03-clean-1]
+(loads)
+
+[F23-03-clean-2]
+(loads)
+
+[F23-03-clean-3]
+(loads)
+
+[F23-03-clean-4]
+(loads)
+
+[F23-03-clean-5]
+(loads)
+
+[F23-03-none-clean-1]
+(loads)
+
+[F23-03-none-clean-2]
+(loads)
+
+[F23-03-none-clean-3]
+(loads)
+
+[F23-03-none-clean-4]
+(loads)
+
+[F23-03-none-reports-1]
+script/main.vns, line 9: there is no default named "turn" for the result. Did you mean "turns"?
+
+[F23-03-none-reports-2]
+script/main.vns, line 9: this line gives pairs twice. Keep one.
+
+[F23-03-none-reports-3]
+script/main.vns, line 9: into takes one story variable's name, such as into turns, but this has "points.hana". To add the result to a meter, write points hana += turns on the next line.
+
+[F20-02-E260-unknown-1]
+script/main.vns, line 12: "hiden" isn't a flowchart word. Did you mean "hidden"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-unknown-2]
+script/main.vns, line 12: "nojump" isn't a flowchart word. Did you mean "no jump"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-unknown-3]
+script/main.vns, line 12: "no_jump" isn't a flowchart word. Did you mean "no jump"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-unknown-4]
+script/main.vns, line 12: "zzz" isn't a flowchart word. A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-unknown-5]
+script/main.vns, line 12: "no" isn't a flowchart word. Did you mean "no jump"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-unknown-6]
+script/main.vns, line 12: "no" isn't a flowchart word. Did you mean "no jump"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.
+
+[F20-02-E260-scene-title-1]
+script/main.vns, line 12: flowchart scene needs the scene's title in quotes, e.g. flowchart scene "Daichi's Stall".
+
+[F20-02-E260-scene-title-2]
+script/main.vns, line 12: flowchart scene needs the scene's title in quotes, e.g. flowchart scene "Daichi's Stall".
+
+[F20-02-E260-order-1]
+script/main.vns, line 12: the title goes right after flowchart, before hidden and no jump, e.g. flowchart "Where should we go?" hidden.
+
+[F20-02-E260-order-2]
+script/main.vns, line 12: the title goes right after flowchart scene, before hidden and no jump, e.g. flowchart scene "Daichi's Stall" hidden.
+
+[F20-02-E260-forms-1]
+script/main.vns, line 12: this flowchart line has two titles; give one.
+
+[F20-02-E260-forms-2]
+script/main.vns, line 12: this line says hidden twice. Keep one.
+
+[F20-02-E260-forms-3]
+script/main.vns, line 12: this line says no jump twice. Keep one.
+
+[F20-02-E260-forms-4]
+script/main.vns, line 12: flowchart omit takes nothing else. To put this menu on the flowchart with a title, write flowchart "Title" instead.
+
+[F20-02-E260-forms-5]
+script/main.vns, line 12: flowchart forget takes one label name or nothing, but this line goes on with "now". Put anything else on its own line.
+
+[F20-02-E260-forms-6]
+script/main.vns, line 12: flowchart doesn't take a block. Remove the ":" and un-indent the lines under it.
+
+[F20-02-E260-forms-7]
+script/main.vns, line 12: omit goes right after the word flowchart, e.g. flowchart omit.
+
+[F20-02-E263-1]
+script/main.vns, line 12: the flowchart title is empty.
+
+[F20-02-E263-2]
+script/main.vns, line 12: the flowchart title has 121 characters; keep it to 120.
+
+[F20-02-E263-3]
+script/main.vns, line 12: the flowchart title has 140 characters; keep it to 120.
+
+[F20-02-E263-4]
+script/main.vns, line 12: flowchart titles are shown as written, so they can't use text tags such as {b} or {var}. Write {{ for a "{".
+
+[F20-02-E263-5]
+script/main.vns, line 12: flowchart titles are shown as written, so they can't use text tags such as {b} or {var}. Write {{ for a "{".
+
+[F20-02-E263-6]
+script/main.vns, line 12: flowchart titles are shown as written, so they can't use text tags such as {b} or {var}. Write {{ for a "{".
+
+[F20-02-clean-1]
+(loads)
+
+[F20-02-clean-2]
+(loads)
+
+[F20-02-clean-3]
+(loads)
+
+[F20-02-clean-4]
+(loads)
+
+[F20-02-clean-5]
+(loads)
+
+[F20-02-clean-6]
+(loads)
+
+[F20-02-clean-7]
+(loads)
+
+[F20-02-clean-8]
+(loads)
+
+[F20-03-E261-top-1]
+script/main.vns, line 41: flowchart lines go inside a label, next to the scene, menu, chapter, or ending they mark.
+
+[F20-03-E261-top-2]
+script/main.vns, line 41: flowchart forget goes inside a label, because it runs when the story reaches it.
+
+[F20-03-E261-first-1]
+script/main.vns, line 12: flowchart scene must be the first line of label stall, so the flowchart knows where the scene starts. Move it above line 11.
+
+[F20-03-E261-first-2]
+script/main.vns, line 13: flowchart scene must be the first line of label stall, so the flowchart knows where the scene starts. Move it above line 11.
+
+[F20-03-E261-first-3]
+script/main.vns, line 14: flowchart scene must be the first line of label stall, so the flowchart knows where the scene starts. Move it above line 11.
+
+[F20-03-E261-first-4]
+script/main.vns, line 43: flowchart scene must be the first line of label extra, so the flowchart knows where the scene starts. Move it above line 42.
+
+[F20-03-E262-next-1]
+script/main.vns, line 12: a flowchart line marks the menu, chapter, or ending right below it, but the next line here is a line of dialogue (line 13). Move it right above the menu:.
+
+[F20-03-E262-next-2]
+script/main.vns, line 12: a flowchart line marks the menu, chapter, or ending right below it, but the next line here is a $ line (line 13). Move it right above the menu:.
+
+[F20-03-E262-next-3]
+script/main.vns, line 12: a flowchart line marks the menu, chapter, or ending right below it, but the next line here is a jump line (line 13). Move it right above the menu:.
+
+[F20-03-E262-next-4]
+script/main.vns, line 43: a flowchart line marks the menu, chapter, or ending right below it, but nothing comes after it here. Move it right above the menu:.
+
+[F20-03-E262-chapter-ending-1]
+script/main.vns, line 6: a flowchart line above a chapter takes only hidden and no jump, because the chapter line gives the title. Remove "Festival Night".
+
+[F20-03-E262-chapter-ending-2]
+script/main.vns, line 6: flowchart omit leaves a menu off the flowchart, so it goes right above a menu:, not above a chapter.
+
+[F20-03-E262-chapter-ending-3]
+script/main.vns, line 30: flowchart omit leaves a menu off the flowchart, so it goes right above a menu:, not above an ending.
+
+[F20-03-E262-chapter-ending-4]
+script/main.vns, line 6: chapters are always on the flowchart, so flowchart alone does nothing here. Add hidden or no jump, or remove the line.
+
+[F20-03-E262-chapter-ending-5]
+script/main.vns, line 30: endings are always on the flowchart, so flowchart alone does nothing here. Add hidden, or remove the line.
+
+[F20-03-E262-chapter-ending-6]
+script/main.vns, line 30: a flowchart line above an ending takes only hidden: the ending line gives the title, and endings are never jump targets.
+
+[F20-03-E262-chapter-ending-7]
+script/main.vns, line 30: a flowchart line above an ending takes only hidden: the ending line gives the title, and endings are never jump targets.
+
+[F20-03-E262-two]
+script/main.vns, line 12: this menu has two flowchart lines (lines 12 and 13). Put them on one line, e.g. flowchart "Where to?" hidden.
+
+[F20-03-E204]
+script/main.vns, line 12: rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a flowchart line (line 13). Move it above the menu or minigame, or use "rollback block".
+
+[F20-03-E264-1]
+script/main.vns, line 12: there is no label named "rivr". Did you mean "river"? flowchart forget takes a label name, or nothing to forget the whole flowchart.
+
+[F20-03-E264-2]
+script/main.vns, line 12: there is no label named "qqqq". flowchart forget takes a label name, or nothing to forget the whole flowchart.
+
+[F20-03-E174]
+script/main.vns, line 17: only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.
+
+[F20-03-clean-r-1]
+(loads)
+
+[F20-03-clean-r-2]
+(loads)
+
+[F20-03-clean-1]
+(loads)
+
+[F20-03-clean-2]
+(loads)
+
+[F20-03-clean-3]
+(loads)
+
+[F20-03-clean-4]
+(loads)
+
+[F20-03-clean-5]
+(loads)
+
+[F20-06-W150-scene]
+script/main.vns, line 42: scene "Old Ending" (label old_ending) can't be reached from the start of the story, so it stays ??? on the flowchart for every player. Add a jump or call that leads to it, or remove its flowchart line.
+
+[F20-06-W150-kinds-1]
+script/main.vns, line 42: chapter old can't be reached from the start of the story, so it stays ??? on the flowchart for every player. Add a jump or call that leads to it, or remove its chapter line.
+
+[F20-06-W150-kinds-2]
+script/main.vns, line 42: ending old can't be reached from the start of the story, so it stays ??? on the flowchart for every player. Add a jump or call that leads to it, or remove its ending line.
+
+[F20-06-W150-kinds-3]
+script/main.vns, line 42: the menu in label old can't be reached from the start of the story, so it stays ??? on the flowchart for every player. Add a jump or call that leads to it, or remove its flowchart line.
+
+[F20-06-W152]
+script/main.vns, line 14: this choice's text is only {var=lantern}, so its path on the flowchart reads "…". Add a word or two, e.g. "Buy the {var=lantern} one".
+
+[F20-06-no-W152]
+(loads)
+
+[F20-06-W153]
+script/main.vns, line 42: flowchart forget tidy does nothing, because label tidy has no flowchart boxes in it. Add flowchart scene "Title" as its first line, or name another label.
+
+[F29-02-E160-hint-1]
+script/main.vns, line 7, column 6: there is no tag "jitter". To shake text, write {shake}…{/shake}.
+
+[F29-02-E160-hint-2]
+script/main.vns, line 7, column 6: there is no tag "tremble". To shake text, write {shake}…{/shake}.
+
+[F29-02-E160-hint-3]
+script/main.vns, line 7, column 6: there is no tag "shaky". To shake text, write {shake}…{/shake}.
+
+[F29-02-E160-hint-4]
+script/main.vns, line 7, column 6: there is no tag "quake". To shake text, write {shake}…{/shake}.
+
+[F29-02-E160-hint-5]
+script/main.vns, line 7, column 6: there is no tag "wavy". To make text ripple, write {wave}…{/wave}.
+
+[F29-02-E160-hint-6]
+script/main.vns, line 7, column 6: there is no tag "sine". To make text ripple, write {wave}…{/wave}.
+
+[F29-02-E160-hint-7]
+script/main.vns, line 7, column 6: there is no tag "ripple". To make text ripple, write {wave}…{/wave}.
+
+[F29-02-E160-hint-8]
+script/main.vns, line 7, column 6: there is no tag "zalgo". To make text glitch, write {glitch}…{/glitch}.
+
+[F29-02-E160-hint-9]
+script/main.vns, line 7, column 6: there is no tag "corrupt". To make text glitch, write {glitch}…{/glitch}.
+
+[F29-02-E160-hint-10]
+script/main.vns, line 7, column 6: there is no tag "glitched". To make text glitch, write {glitch}…{/glitch}.
+
+[F29-02-E160-hint-11]
+script/main.vns, line 7, column 6: there is no tag "noise". To make text glitch, write {glitch}…{/glitch}.
+
+[F29-02-E160-suggest]
+script/main.vns, line 7, column 6: there is no tag "glich". Did you mean "glitch"?
+
+[F29-02-E160-case]
+script/main.vns, line 7, column 6: tags are lower case: write {shake}, not {Shake}.
+
+[F29-02-E161-deep]
+script/main.vns, line 7, column 356: this line has more than 50 style tags open at once. Close some with {/…}.
+
+[F29-02-E162-1]
+script/main.vns, line 7, column 6: write {shake=large}, with = between the tag and its value.
+
+[F29-02-E162-2]
+script/main.vns, line 7, column 6: tags have no spaces inside: write {shake=small}.
+
+[F29-02-E163]
+script/main.vns, line 7, column 14: a closing tag takes no value. Write {/shake}.
+
+[F29-02-E164-1]
+script/main.vns, line 7, column 6: {shake=…} takes small, medium, or large, or no value, but this has "2". Write {shake=large} for a bigger shake.
+
+[F29-02-E164-2]
+script/main.vns, line 7, column 6: {wave=…} takes small, medium, or large, or no value, but this has "huge". Write {wave=large} for a bigger wave.
+
+[F29-02-E164-3]
+script/main.vns, line 7, column 6: {glitch=…} takes small, medium, or large, or no value, but this has "huge". Write {glitch=large} for more glitching.
+
+[F29-02-E164-4]
+script/main.vns, line 7, column 6: {shake=…} takes small, medium, or large, or no value, but this has "Large". Write {shake=large} for a bigger shake.
+
+[F29-02-E164-5]
+script/main.vns, line 7, column 6: {shake=} takes small, medium, or large: write {shake} for medium, or {shake=large}.
+
+[F29-02-E164-6]
+script/main.vns, line 7, column 6: {wave=…} takes small, medium, or large, or no value, but this has "0". Write {wave=large} for a bigger wave.
+
+[F29-02-E164-7]
+script/main.vns, line 7, column 6: {glitch=…} takes small, medium, or large, or no value, but this has "small,". Write {glitch=large} for more glitching.
+
+[F29-02-E165]
+script/main.vns, line 7, column 7: {/wave} closes waving, but no {wave} is open here. Remove it, or add {wave} where waving should start.
+
+[F29-02-E166]
+script/main.vns, line 7, column 18: {/shake} closes shaking, but {b} was opened inside it and is still open. Close {/b} first: {shake}…{b}…{/b}{/shake}.
+
+[F29-02-E297-1]
+script/main.vns, line 7, column 13: {wave} can't go inside {shake}: a character has one effect at a time. Close {/shake} first, or pick one: {shake}…{/shake}{wave}…{/wave}.
+
+[F29-02-E297-2]
+script/main.vns, line 7, column 19: {shake} can't go inside {glitch}: a character has one effect at a time. Close {/glitch} first, or pick one: {glitch}…{/glitch}{shake}…{/shake}.
+
+[F29-02-E297-3]
+script/main.vns, line 7, column 39: {glitch} can't go inside {wave}: a character has one effect at a time. Close {/wave} first, or pick one: {wave}…{/wave}{glitch}…{/glitch}.
+
+[F29-02-clean-1]
+(loads)
+
+[F29-02-clean-2]
+(loads)
+
+[F29-02-clean-3]
+(loads)
+
+[F29-02-clean-4]
+(loads)
+
+[F29-02-clean-5]
+(loads)
+
+[F29-02-clean-6]
+(loads)
+
+[F29-02-clean-7]
+(loads)
+
+[F29-02-clean-8]
+(loads)
+
+[F29-02-clean-9]
+(loads)
+
+[F29-02-clean-10]
+(loads)
+
+[F29-02-clean-11]
+(loads)
+
+[F29-02-clean-12]
+(loads)
+
+[F29-02-clean-13]
+(loads)
+
+[F29-02-clean-14]
+(loads)
+
+[F29-02-clean-15]
+(loads)
+
+[F29-02-clean-16]
+(loads)
+
+[F29-03-E175-1]
+script/main.vns, line 8, column 10: {shake} can't be used in a choice, because choices are shown without text effects. Choices can use {b}, {i}, {color}, and {var}.
+
+[F29-03-E175-2]
+script/main.vns, line 8, column 10: {wave} can't be used in a choice, because choices are shown without text effects. Choices can use {b}, {i}, {color}, and {var}.
+
+[F29-03-E175-3]
+script/main.vns, line 8, column 14: {glitch} can't be used in a choice, because choices are shown without text effects. Choices can use {b}, {i}, {color}, and {var}.
+
+[F29-03-E252-1]
+script/main.vns, line 10: a tip paragraph can use {b}, {i}, and {color}, but not {shake}.
+
+[F29-03-E252-2]
+script/main.vns, line 10: a tip paragraph can use {b}, {i}, and {color}, but not {wave}.
+
+[F29-03-E252-3]
+script/main.vns, line 10: a tip paragraph can use {b}, {i}, and {color}, but not {glitch}.
+
+[F29-03-clean]
+(loads)
+
+[F29-04-W185-1]
+script/main.vns, line 7, column 6: this {glitch} has 41 characters glitching at medium or large, so about a quarter of them show as symbols at any moment and the line is hard to read. Use a shorter span or {glitch=small}; History always shows the real text.
+
+[F29-04-W185-2]
+script/main.vns, line 7, column 6: this {glitch} has 64 characters glitching at medium or large, so about half of them show as symbols at any moment and the line is hard to read. Use a shorter span or {glitch=small}; History always shows the real text.
+
+[F28-06-clean-1]
+(loads)
+
+[F28-06-clean-2]
+(loads)
+
+[F28-06-clean-3]
+(loads)
+
+[F28-06-clean-4]
+(loads)
+
+[F28-06-clean-5]
+(loads)
+
+[F28-06-clean-6]
+(loads)
+
+[F28-06-clean-7]
+(loads)
+
+[F28-06-clean-8]
+(loads)
+
+[F28-06-clean-9]
+(loads)
+
+[F28-06-clean-10]
+(loads)
+
+[F28-06-clean-11]
+(loads)
+
+[F28-06-clean-12]
+(loads)
+
+[F28-06-clean-13]
+(loads)
+
+[F28-06-clean-14]
+(loads)
+
+[F28-06-clean-15]
+(loads)
+
+[F28-06-clean-16]
+(loads)
+
+[F28-06-E294-1]
+script/main.vns, line 5: there is no glitch effect "tare". Did you mean "tear"?
+
+[F28-06-E294-2]
+script/main.vns, line 5: there is no glitch effect "wobble". The effects are tear, colorshift, static, jitter, window_title, and crash.
+
+[F28-06-E294-3]
+script/main.vns, line 5: effect needs a glitch: tear, colorshift, static, jitter, window_title, or crash, or off to stop them all.
+
+[F28-06-E294-4]
+script/main.vns, line 5: effect static doesn't take a sprite; only jitter does, but this has "hana".
+
+[F28-06-E294-5]
+script/main.vns, line 5: effect tear takes a length from 0.1 to 30 seconds, but this has 45.
+
+[F28-06-E294-6]
+script/main.vns, line 5: effect tear takes a length from 0.1 to 30 seconds, but this has 0.05.
+
+[F28-06-E294-7]
+script/main.vns, line 5: lengths have no units: write 0.5, not 0.5s.
+
+[F28-06-E294-8]
+script/main.vns, line 5: write 0.5, not .5.
+
+[F28-06-E294-9]
+script/main.vns, line 5: effect tear has two sizes; give one.
+
+[F28-06-E294-10]
+script/main.vns, line 5: effect static has both on and a length. on lasts until effect static off, so give one.
+
+[F28-06-E294-11]
+script/main.vns, line 5: effect tear off takes no size or length.
+
+[F28-06-E294-12]
+script/main.vns, line 5: this line has "slowly" left over after effect tear. effect takes a glitch, then a size and a length, on, or off.
+
+[F28-06-E294-tag-1]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-tag-2]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-tag-3]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-tag-4]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-tag-5]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-tag-6]
+script/main.vns, line 5: effect jitter needs the sprite to jitter, e.g. effect jitter hana.
+
+[F28-06-E294-drafted-1]
+script/main.vns, line 5: this line has "now" left over after effect off. effect off takes nothing after it.
+
+[F28-06-E294-drafted-2]
+script/main.vns, line 5: effect tear off takes no size or length.
+
+[F28-06-E294-drafted-3]
+script/main.vns, line 5: this line has "on" left over after effect tear. effect takes a glitch, then a size and a length, on, or off.
+
+[F28-06-E294-drafted-4]
+script/main.vns, line 5: effect tear has both on and off; give one.
+
+[F28-06-E294-drafted-5]
+script/main.vns, line 5: effect tear has two lengths; give one.
+
+[F28-06-E294-drafted-6]
+script/main.vns, line 5: effect jitter hana takes a length from 0.1 to 30 seconds, but this has 45.
+
+[F28-06-E110]
+script/main.vns, line 5: effect doesn't start a block. Remove the :.
+
+[F28-06-E40]
+script/main.vns, line 9: this line is outside any label, so the story can never reach it. Add label <name>: above it and indent it.
+
+[F28-07-E294-hint-1]
+script/main.vns, line 5: there is no glitch effect "corrupt". To corrupt a line's text, write {glitch}…{/glitch} inside it.
+
+[F28-07-E294-hint-2]
+script/main.vns, line 5: there is no glitch effect "glitchtext". To corrupt a line's text, write {glitch}…{/glitch} inside it.
+
+[F28-07-E294-hint-3]
+script/main.vns, line 5: there is no glitch effect "garble". To corrupt a line's text, write {glitch}…{/glitch} inside it.
+
+[F28-08-clean-1]
+(loads)
+
+[F28-08-clean-2]
+(loads)
+
+[F28-08-clean-3]
+(loads)
+
+[F28-08-clean-4]
+(loads)
+
+[F28-08-E192]
+script/main.vns, line 5: with glitch takes a length from 0 to 30 seconds, but this has 31.
+
+[F28-08-E194]
+script/main.vns, line 5: glitch takes a length but no color; only fade goes through a color.
+
+[F28-08-E198-1]
+script/main.vns, line 9: glitch is a built-in transition, so define can't use that name. Pick another, e.g. glitch_slow.
+
+[F28-08-E198-2]
+script/main.vns, line 9: glitch is a built-in transition, so define can't use that name. Pick another, e.g. glitch_slow.
+
+[F30-08-clean-1]
+(loads)
+
+[F30-08-clean-2]
+(loads)
+
+[F30-08-clean-3]
+(loads)
+
+[F30-08-clean-4]
+(loads)
+
+[F30-08-clean-5]
+(loads)
+
+[F30-08-clean-6]
+(loads)
+
+[F30-08-clean-7]
+(loads)
+
+[F30-08-clean-8]
+(loads)
+
+[F30-08-clean-9]
+(loads)
+
+[F30-08-clean-10]
+(loads)
+
+[F30-08-clean-11]
+(loads)
+
+[F30-08-clean-12]
+(loads)
+
+[F30-08-E294-1]
+script/main.vns, line 6: there is no glitch effect "crsh". Did you mean "crash"?
+
+[F30-08-E294-2]
+script/main.vns, line 6: there is no glitch effect "window_titel". Did you mean "window_title"?
+
+[F30-09-E300-1]
+script/main.vns, line 6: effect window_title needs the title in quotes, e.g. effect window_title "Hello?", or off to bring back the game's own title.
+
+[F30-09-E300-2]
+script/main.vns, line 6: effect window_title needs the title in quotes, e.g. effect window_title "Hello?", or off to bring back the game's own title.
+
+[F30-09-E300-3]
+script/main.vns, line 6: the window title can be at most 100 characters, but this one has 140.
+
+[F30-09-E300-4]
+script/main.vns, line 6: the window title is plain text, so it can't hold {username} or other tags. To show a {, write {{.
+
+[F30-09-E300-5]
+script/main.vns, line 6: the window title is plain text, so it can't hold {username} or other tags. To show a {, write {{.
+
+[F30-09-E300-6]
+script/main.vns, line 6: effect window_title takes a title or off, but this line has "slowly" left over.
+
+[F30-09-E300-7]
+script/main.vns, line 6: effect window_title takes a title or off, but this line has "now" left over.
+
+[F30-09-E301-1]
+script/main.vns, line 6: effect crash takes one message in quotes, but this line has "again" left over.
+
+[F30-09-E301-2]
+script/main.vns, line 6: effect crash takes one message in quotes, but this line has "again" left over.
+
+[F30-09-E301-3]
+script/main.vns, line 6: the fake crash message can be at most 2,000 characters, but this one has 2,400.
+
+[F30-09-E301-tag]
+script/main.vns, line 6, column 19: a fake crash message can hold only {username} and {var=…}, but this one has {b}.
+
+[F30-09-E110]
+script/main.vns, line 6: effect doesn't start a block. Remove the :.
+
+[F30-09-E160]
+script/main.vns, line 6, column 19: there is no tag "nope". The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.
+
+[F30-10-clean-1]
+(loads)
+
+[F30-10-clean-2]
+(loads)
+
+[F30-10-clean-3]
+(loads)
+
+[F30-10-E175]
+script/main.vns, line 7, column 14: {username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a choice.
+
+[F30-10-E252]
+script/main.vns, line 11: {username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a codex entry.
+
+[F30-10-E302-1]
+script/main.vns, line 6: {username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a title card.
+
+[F30-10-E302-2]
+script/main.vns, line 6: {username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a title card.
+
+[F30-10-E302-3]
+script/main.vns, line 6: {username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a title card.
+
+[F30-10-tags]
+script/main.vns, line 6, column 17: {username} doesn't open anything, so there is no {/username}. Remove it.
+
+[F30-10-E163]
+script/main.vns, line 6, column 6: {username=} needs a variable's name, e.g. {username=player_name}, or write {username} alone.
+
+[F30-10-E164]
+script/main.vns, line 6, column 6: {username=…} takes one variable's name, such as {username=player_name}, but this has "1x". To show something else, store it in a variable first.
+
+[F32-06-E319-1]
+script/main.vns, line 5: ui needs what to change, e.g. ui style ashes, ui saving off, ui loading on, or ui delete saves.
+
+[F32-06-E319-2]
+script/main.vns, line 5: ui can change style, saving, loading, or delete saves, but not "stlye". Did you mean "style"?
+
+[F32-06-E319-3]
+script/main.vns, line 5: ui style needs a style name from config.toml, or off, e.g. ui style ashes.
+
+[F32-06-E319-4]
+script/main.vns, line 5: ui saving needs off or on, e.g. ui saving off "Not here." or ui saving on.
+
+[F32-06-E319-5]
+script/main.vns, line 5: ui saving needs off or on, e.g. ui saving off "Not here." or ui saving on.
+
+[F32-06-E319-6]
+script/main.vns, line 5: ui loading needs off or on, e.g. ui loading off "Not here." or ui loading on.
+
+[F32-06-E319-7]
+script/main.vns, line 5: ui delete needs the word saves: ui delete saves.
+
+[F32-06-E319-8]
+script/main.vns, line 5: ui delete needs the word saves: ui delete saves.
+
+[F32-06-E319-9]
+script/main.vns, line 5: ui saving on takes nothing more, but this line has "now" left over.
+
+[F32-06-E319-10]
+script/main.vns, line 5: ui loading on takes nothing more, but this line has "now" left over.
+
+[F32-06-E319-11]
+script/main.vns, line 5: ui style takes one style name or off, but this line has "now" left over.
+
+[F32-06-E319-12]
+script/main.vns, line 5: ui style takes one style name or off, but this line has "now" left over.
+
+[F32-06-E319-13]
+script/main.vns, line 5: ui delete saves takes nothing more, but this line has "now" left over.
+
+[F32-06-E319-14]
+script/main.vns, line 5: ui saving off takes at most one reason in quotes, but this line has "b" left over.
+
+[F32-06-E319-15]
+script/main.vns, line 5: ui saving off takes at most one reason in quotes, but this line has "now" left over.
+
+[F32-06-E319-16]
+script/main.vns, line 5: ui loading off takes at most one reason in quotes, but this line has "now" left over.
+
+[F32-06-E319-top]
+script/main.vns, line 8: ui goes inside a label, because it runs when the story reaches it.
+
+[F32-06-E110]
+script/main.vns, line 5: ui doesn't start a block. Remove the :.
+
+[F32-06-E320]
+script/main.vns, line 5: there is no UI style "ashs" in config.toml. Did you mean "ashes"? Add a [style.ashs] table, or use ui style off.
+
+[F32-06-E320-none]
+script/main.vns, line 5: there is no UI style "ashes" in config.toml. Add a [style.ashes] table, or use ui style off.
+
+[F32-06-E321-1]
+script/main.vns, line 5: the reason needs at least one character, or leave it out to use the game's own words.
+
+[F32-06-E321-2]
+script/main.vns, line 5: the reason can be at most 200 characters, but this one has 240.
+
+[F32-06-E321-3]
+script/main.vns, line 5: the reason is plain text, so it can't hold {b} or other tags. To show a {, write {{.

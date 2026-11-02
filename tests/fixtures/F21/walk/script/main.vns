@@ -1,0 +1,22 @@
+define hana = Character("Hana")
+define daichi = Character("Daichi")
+lock tip lanterns "Paper Lanterns" in "Festival":
+    "Lanterns are folded from washi paper and set on the river on the last night."
+    "Each carries one wish. Hana never says what hers is."
+lock tip river_god "The River God" in "Legends"
+lock item red_lantern "Red Lantern" in "Things" image items red_lantern:
+    "Bought at Daichi's stall. The paper is {i}still warm{/i}."
+label start:
+    daichi "One lantern, please."
+    unlock item red_lantern
+    hana "Let's go to the river."
+    unlock tip lanterns
+    hana "The bridge."
+    menu:
+        "Ask about the river god" if "river_god" in codex.tips:
+            hana "He grants one wish a year."
+        "Say nothing":
+            $ pass
+    hana "The festival is over."
+    unlock tip river_god
+    "End."

@@ -1,0 +1,132 @@
+# Settings for this game. Every key is optional: a commented-out line shows the default.
+# Remove the "#" at the start of a line to change that setting.
+
+[game]
+title = "Example Visual Novel"
+version = "0.1.0"
+# A release saves the players' games and persistent data in their own folder, named
+# after this id: without it a release runs but can't save. Lowercase letters, digits,
+# and "-", up to 40. Choose it once and never change it after you release. Test with
+# "python main.py --release".
+# id = "example-vn"   # set a unique id before you release
+
+[window]
+# width = 1280
+# height = 720
+# fullscreen = false
+# resizable = true
+# icon = "gui/icon.png"   # a PNG in the game folder; unset = the engine icon
+# letterbox_color = "#000000"
+# scale_filter = "smooth"
+# integer_scale = false
+
+# Saving. Players save with F5 (quick save), F9 (quick load), and the Save and Load pages
+# of the game menu; the engine also auto-saves. While you test, saves go to the saves
+# folder here (leave it out when you share the game). Every key is in
+# docs/script-language.md, "Saves".
+[saves]
+# pages = 10                # numbered Save and Load pages, 6 slots each (1-100)
+# autosave_interval = 300   # 5 minutes of play between auto-saves; 0 turns them off
+# autosave_choices = true   # auto-save when a menu of choices appears
+# autosave_quit = true      # auto-save when the player leaves by Main Menu or Quit
+# confirm_quick_load = true # false: F9 loads the newest quick save without asking
+
+[engine]
+# fps = 60
+# cache_mb = 512
+# log_level = "info"
+
+[stage]
+# art_height = 720   # the screen height your art is drawn for: 1080 for 1920x1080 art
+
+# Your own places for characters to stand, used like left, center, and right:
+# "show hana at by_the_rail". A number is x across the 1280x720 screen, with the feet on
+# the bottom edge; [x, y] sets both.
+[stage.positions]
+by_the_rail = 560
+
+# Sound. Volumes go from 0 to 100; they are only where the players' own settings start.
+# Fades are in seconds. Every key is in docs/script-language.md, "Music and sound".
+[audio]
+# master_volume = 100
+# music_volume = 70
+# sound_volume = 80
+# voice_volume = 100
+# music_fadein = 0.0
+# music_fadeout = 0.5    # when another song starts, or "stop music" has no fadeout
+# sound_fadein = 0.0
+# sound_fadeout = 0.0
+# restore_fadeout = 0.5  # loading a save: what plays fades out over this,
+# restore_fadein = 1.0   # and the saved music and loops fade in over this
+# play_unfocused = true  # false: audio pauses while another window is in front
+# play_minimized = true  # false: audio pauses while the game is minimized
+
+# Loop points: a looping song repeats from here (seconds), so its intro plays only once.
+# They work only in .ogg and .opus files, so this game's .wav songs loop from the start.
+# [audio.loop_start]
+# "bgm/festival.ogg" = 8.0
+
+# Menus of choices. A choice whose "if" condition is false is hidden; with show_locked =
+# true it shows dimmed, with a lock, and can't be picked. Here the bridge's "Wait at the
+# bridge" shows locked until the promise route opens (script/routes/daichi.vns).
+[choice]
+show_locked = true
+
+# The codex: the tips and items declared in script/main.vns, on the Codex page of the game
+# menu. Every key is in docs/script-language.md, "lock tip, lock item, unlock (codex)".
+# The title screen lists Codex only when [title] entries names it, e.g.
+# entries = ["new_game", "load", "codex", "settings", "quit"].
+[codex]
+# notify = true        # a notice for each new tip or item
+# show_locked = false  # true: tips not found yet are listed as "???"
+
+# The Flowchart page: a map of the story in the game menu, and on the title once there is
+# a point to jump back to. The script's "flowchart" lines shape it. Every key is in
+# docs/script-language.md, "flowchart (the story map)".
+[flowchart]
+# enabled = true          # false: no Flowchart page
+# menus = "branching"     # menus on the chart: "branching", "all", or "marked"
+# unvisited = "mystery"   # "hidden": boxes not reached yet aren't drawn at all
+# jump = true             # false: a map only, with no Jump button
+
+# A content warning: a full screen with your text, "I understand", and "Quit", shown after
+# the game loads and before the title. It is off here; remove the "#" from the lines
+# below to turn it on. Keep the text short (about 220 characters) so players with large
+# text don't have to scroll. Every key is in docs/script-language.md, "Content warning".
+# [content_warning]
+# show = "once"          # "never" (off), "once" (until the player continues), or "always"
+# version = 1            # raise it after changing the text to show it once more
+# min_seconds = 2        # "I understand" can be pressed after this many seconds; 0 = at once
+# text = """
+# This story is not suitable for children or those who are easily disturbed.
+#
+# It contains scenes of loss and grief."""
+
+# The look of the menus. Every setting is listed in docs/script-language.md, "Menus and
+# theme". Pictures go in the gui folder; without them the engine draws its own.
+[theme.title]
+# The title screen's music: a file in the audio folder.
+music = "bgm/lantern_walk.wav"
+# The title screen's picture (shown at 1280x720) and the logo drawn over its top left.
+# Without a logo, the game's title from [game] is shown as text.
+background_image = "gui/title_bg.png"
+logo_image = "gui/logo.png"
+
+# Every button (title, game menu, dialogs) is drawn from this picture: its corners stay
+# the same size and its edges and middle stretch to fit the button.
+[theme.button]
+frame_image = "gui/button.png"
+# frame_slice_width = 24   # the size of the picture's corners
+
+# The words on the buttons and in the dialogs. Remove the "#" to change one.
+[words]
+# new_game = "New Game"
+# quit = "Quit"
+# confirm_quit = "Quit the game? Unsaved progress will be lost."
+# warning_heading = "Content warning"   # the content warning's heading
+# warning_continue = "I understand"     # and its button that goes on to the title
+# The save words are listed in docs/script-language.md, "Saves". For example:
+# notice_quick_saved = "Quick saved."
+# confirm_quit_autosave = "Quit the game?"   # asked instead when quitting auto-saves
+# The Settings page's words are listed in docs/script-language.md, "The Settings page":
+# reduce_motion = "Reduce motion and flashing"

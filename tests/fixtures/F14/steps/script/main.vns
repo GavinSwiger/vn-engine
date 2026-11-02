@@ -1,0 +1,36 @@
+# F14 06 §5 steps/ (Run K): A B C M D1 D2 S F on the "Wade in" path (choose 1),
+# A B C M E1 S F on "Call for help". Headless runs pass the image refs (IMG14).
+define hana = Character("Hana")
+default n = 0
+default path = ""
+label start:
+    scene river
+    play music "river.ogg"
+    "One."
+    $ n += 1
+    show hana happy
+    voice "voice/hana_002.ogg"
+    hana "Two."
+    $ r = dice.roll(1, 1000)
+    "Three {var=r}."
+    menu:
+        "Which way?"
+        "Wade in":
+            $ path = "wade"
+            show hana worried
+            "Wade one."
+            "Wade two."
+        "Call for help":
+            $ path = "call"
+            "Call one."
+        "Wait":
+            $ path = "wait"
+            "Wait one."
+    call side
+    "Last {var=path} {var=n}."
+    return
+label side:
+    play music "storm.ogg"
+    play sound "splash.ogg"
+    "Side."
+    return

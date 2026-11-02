@@ -1,0 +1,168 @@
+# AC-F08-13 (F08 06-acceptance.md §1.2, §5.4): saved `audio` values that GameState.from_json
+# refuses (StateInvalid, nothing else, within 1 s, no text holding ZZMARK) or loads.
+# Each `json` is the `audio` value of F03's state B (tests/runtime/conftest.state_b_json).
+# Generated parts, expanded by tests/runtime/test_state_audio.py after json.loads:
+#   "@music:N"  N valid music entries     "@sounds:N"  N valid sound loops, distinct files
+#   "@zz:N"     a string of exactly N characters starting "ZZMARK"
+# `missing = true` drops the `audio` key instead (a save from before F08).
+
+# --- Rejected -------------------------------------------------------------------------------
+
+[[rejected]]
+id = "audio-list"
+json = '[]'
+
+[[rejected]]
+id = "audio-text"
+json = '"x"'
+
+[[rejected]]
+id = "audio-null"
+json = 'null'
+
+[[rejected]]
+id = "audio-empty"
+json = '{}'
+
+[[rejected]]
+id = "audio-music-only"
+json = '{"music": []}'
+
+[[rejected]]
+id = "audio-extra-key"
+json = '{"music": [], "sounds": [], "ZZMARK": 1}'
+
+[[rejected]]
+id = "audio-loops-not-sounds"
+json = '{"music": [], "loops": []}'
+
+[[rejected]]
+id = "music-not-a-list"
+json = '{"music": {"file": "ZZMARK.ogg"}, "sounds": []}'
+
+[[rejected]]
+id = "music-65"
+json = '{"music": "@music:65", "sounds": []}'
+
+[[rejected]]
+id = "sounds-17"
+json = '{"music": [], "sounds": "@sounds:17"}'
+
+[[rejected]]
+id = "entry-is-a-list"
+json = '{"music": [["ZZMARK.ogg", true, 100]], "sounds": []}'
+
+[[rejected]]
+id = "entry-extra-key"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": 100, "ZZMARK": 1}], "sounds": []}'
+
+[[rejected]]
+id = "entry-missing-volume"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true}], "sounds": []}'
+
+[[rejected]]
+id = "sound-with-loop"
+json = '{"music": [], "sounds": [{"file": "sfx/a.ogg", "loop": true, "volume": 100}]}'
+
+[[rejected]]
+id = "file-empty"
+json = '{"music": [{"file": "", "loop": true, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "file-1025"
+json = '{"music": [{"file": "@zz:1025", "loop": true, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "file-number"
+json = '{"music": [{"file": 5, "loop": true, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "file-null"
+json = '{"music": [], "sounds": [{"file": null, "volume": 100}]}'
+
+[[rejected]]
+id = "file-10mb"
+json = '{"music": [{"file": "@zz:10000000", "loop": true, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "loop-1"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": 1, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "loop-text"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": "true", "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "loop-null"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": null, "volume": 100}], "sounds": []}'
+
+[[rejected]]
+id = "volume-true"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": true}], "sounds": []}'
+
+[[rejected]]
+id = "volume-float"
+json = '{"music": [], "sounds": [{"file": "sfx/a.ogg", "volume": 50.0}]}'
+
+[[rejected]]
+id = "volume-negative"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": -1}], "sounds": []}'
+
+[[rejected]]
+id = "volume-101"
+json = '{"music": [], "sounds": [{"file": "sfx/a.ogg", "volume": 101}]}'
+
+[[rejected]]
+id = "volume-text"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": "50"}], "sounds": []}'
+
+[[rejected]]
+id = "sounds-same-file"
+json = '{"music": [], "sounds": [{"file": "sfx/ZZMARK.ogg", "volume": 10}, {"file": "sfx/ZZMARK.ogg", "volume": 20}]}'
+
+# --- Accepted -------------------------------------------------------------------------------
+
+[[accepted]]
+id = "missing"
+missing = true
+json = 'null'
+
+[[accepted]]
+id = "music-64"
+json = '{"music": "@music:64", "sounds": []}'
+
+[[accepted]]
+id = "sounds-16"
+json = '{"music": [], "sounds": "@sounds:16"}'
+
+[[accepted]]
+id = "file-1"
+json = '{"music": [{"file": "a", "loop": true, "volume": 100}], "sounds": []}'
+
+[[accepted]]
+id = "file-1024"
+json = '{"music": [], "sounds": [{"file": "@zz:1024", "volume": 100}]}'
+
+[[accepted]]
+id = "file-dotdot"
+json = '{"music": [{"file": "../../ZZMARK.ogg", "loop": true, "volume": 100}], "sounds": []}'
+
+[[accepted]]
+id = "file-none-such"
+json = '{"music": [{"file": "bgm/none.ogg", "loop": true, "volume": 100}], "sounds": []}'
+
+[[accepted]]
+id = "loop-true-false"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": false, "volume": 100}, {"file": "bgm/b.ogg", "loop": true, "volume": 100}], "sounds": []}'
+
+[[accepted]]
+id = "loop-two-true"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": 100}, {"file": "bgm/b.ogg", "loop": true, "volume": 100}], "sounds": []}'
+
+[[accepted]]
+id = "volume-0-100"
+json = '{"music": [{"file": "bgm/a.ogg", "loop": true, "volume": 0}], "sounds": [{"file": "sfx/a.ogg", "volume": 100}]}'
+
+[[accepted]]
+id = "sounds-case"
+json = '{"music": [], "sounds": [{"file": "sfx/Rain.ogg", "volume": 10}, {"file": "sfx/rain.ogg", "volume": 20}]}'

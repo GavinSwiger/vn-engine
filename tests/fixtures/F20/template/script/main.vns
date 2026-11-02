@@ -1,0 +1,40 @@
+define hana = Character("Hana")
+default coins = 2
+default lantern = "none"
+lock route promise "Hana's Promise" until sad, good
+label start:
+    hana "Welcome to the festival."
+    chapter festival "Chapter 2" "The Lantern Festival"
+    hana "You made it!"
+    jump stall
+label stall:
+    flowchart scene "Daichi's Stall"
+    "Daichi waves from the stall."
+    menu:
+        "Buy the red one" if coins >= 2:
+            $ coins -= 2
+            $ lantern = "red"
+        "Just look":
+            $ pass
+    hana "Come on, the good spots are filling up."
+    flowchart "Where should we watch the lanterns?"
+    menu:
+        "By the river":
+            jump river
+        "From the shrine steps":
+            jump shrine
+        "Wait at the bridge" if "promise" in persistent.routes:
+            jump promise
+label river:
+    chapter river "Chapter 3" "By the River"
+    "The water is dark."
+    ending sad "Sad End" "Paper Ashes"
+label shrine:
+    chapter shrine "Chapter 3" "The Shrine Steps"
+    "The steps are crowded."
+    ending good "Good End" "Lanterns Rising"
+label promise:
+    flowchart scene "The Promise" hidden no jump
+    "The bridge is quiet."
+    flowchart hidden
+    ending true "True End" "Lanterns on the Water"

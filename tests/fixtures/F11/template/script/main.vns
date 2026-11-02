@@ -1,0 +1,22 @@
+define hana = Character("Hana")
+default trust = 0
+label start:
+    scene bg room
+    play music "bgm/theme.ogg"
+    hana "Hey, have you ever written a poem? I wrote one about paper lanterns last night."
+    $ wind = dice.roll(1, 1000)
+    "The wind picks up."
+    menu:
+        hana "Where should we go?"
+        "Help Hana with the posters":
+            $ trust += 1
+            hana "Thanks!"
+        "Go home":
+            "Home."
+    scene bg street with fade 2.0
+    $ gust = dice.roll(1, 1000)
+    "End of the day."
+    return
+label late:
+    "Late line."
+    return

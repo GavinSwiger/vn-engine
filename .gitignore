@@ -1,0 +1,58 @@
+# --- Planning specs and AI tooling (kept local, never committed) -------------------------
+specs/
+PLAN.md
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+scripts/agent_audit.py
+# Owner checklists and test-review reports from the planning process
+docs/process/
+# The architecture hub: written and amended through the specs, and links into specs/
+docs/architecture.md
+# Spike S0 report (written by the spike agent) and its raw run log, appended on each run
+tests/perf/S0-results.md
+tests/perf/s0_6_runs.jsonl
+
+# --- Python ----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+.coverage
+htmlcov/
+build/
+dist/
+
+# --- Files the example game writes when you run it ------------------------------------
+game/logs/
+# F11 saves, F12 persistent data, F16 settings of dev runs
+game/saves/
+game/persistent/
+game/settings/
+# F31 meta files the story writes and deletes at run time
+game/characters/
+
+# --- Generated test and bench data -----------------------------------------------------
+# F04 bench game, written by tests/perf/gen_stage_bench.py (about 110 MB)
+tests/perf/stage_bench/
+# F05 typing bench games, written by tests/perf/gen_text_bench.py (about 110 MB of art)
+tests/perf/text_bench/
+# F07 choice bench game, written by tests/perf/gen_choice_bench.py (about 110 MB of art)
+tests/perf/choice_bench/
+# F14 rollback bench story, written by tests/fixtures/F14/perf/gen_steps.py when run by hand
+tests/fixtures/F14/perf/steps100/
+
+# --- Editors and operating systems -----------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.bak
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,23 @@
+lock item rusty_key "Rusty Key"
+lock item string "String"
+lock item magnet "Magnet"
+lock item magnet_string "Magnet on a String"
+lock item door_key "Door Key"
+lock tip lanterns "Paper Lanterns"
+default attic_state = None
+label start:
+    jump attic_room
+label attic_room:
+    minigame puzzle_room skippable room=attic state=attic_state into attic_state
+    if attic_state["hotspot"] == "drawer":
+        "The key turns. Inside, a magnet."
+        lock item rusty_key
+    if attic_state["hotspot"] == "door":
+        lock item door_key
+    if attic_state["action"] == "exit":
+        jump hallway
+    jump attic_room
+label hallway:
+    "Hallway."
+    return
+include "rooms.vns"

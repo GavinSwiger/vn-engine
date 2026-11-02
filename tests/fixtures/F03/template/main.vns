@@ -1,0 +1,11 @@
+define hana = Character(name_from="hana_name", color="#e8a0b4")
+define daichi = Character("Daichi", color="#8fb3d9")
+define fortunes = ["great luck", "small luck", "bad luck"]
+default trust = 0
+default hana_name = "???"
+label start:
+    hana "Start."
+    <S>
+    "End."
+    return
+<T>

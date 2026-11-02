@@ -1,0 +1,8 @@
+include "a.vns"
+include "b.vns"
+define hana = Character("Hana")
+label start:
+    hana "Hi."
+    call a_scene
+    jump b_scene
+define daichi = Character("Daichi")

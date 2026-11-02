@@ -1,0 +1,33 @@
+# F14 06 §5 walls/: rollback block, off (twice), on (from off, then again while on), a fixed
+# menu, and a block as the first statement of a choice (AC-F14-06, 13, 14, 15).
+label start:
+    "A1."
+    "A2."
+    rollback block
+    "B1."
+    "B2."
+    rollback off
+    rollback off
+    "C1."
+    "C2."
+    rollback on
+    "D1."
+    "D2."
+    rollback on
+    "D3."
+    rollback fixed
+    menu:
+        "Promise?"
+        "Yes":
+            "Y1."
+        "No":
+            "N1."
+    menu:
+        "Tell him?"
+        "Tell the truth":
+            rollback block
+            "T1."
+        "Lie":
+            "L1."
+    "End."
+    return

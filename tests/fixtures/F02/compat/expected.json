@@ -1,0 +1,1552 @@
+{
+ "defines": [
+  {
+   "column": 1,
+   "end_line": 7,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 7,
+   "name": "hana",
+   "sid": "define:hana",
+   "value": {
+    "column": 15,
+    "kind": "PyCode",
+    "line": 7,
+    "mode": "eval",
+    "names": [
+     "Character"
+    ],
+    "source": "Character(\"Hana\", color=\"#e8a0b4\")"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 8,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 8,
+   "name": "daichi",
+   "sid": "define:daichi",
+   "value": {
+    "column": 17,
+    "kind": "PyCode",
+    "line": 8,
+    "mode": "eval",
+    "names": [
+     "Character"
+    ],
+    "source": "Character(\"Daichi\")"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 9,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 9,
+   "name": "mio",
+   "sid": "define:mio",
+   "value": {
+    "column": 14,
+    "kind": "PyCode",
+    "line": 9,
+    "mode": "eval",
+    "names": [
+     "Character"
+    ],
+    "source": "Character(\"Mio\")   # full-width: stored as mio (NFKC)"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 10,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 10,
+   "name": "café",
+   "sid": "define:café",
+   "value": {
+    "column": 15,
+    "kind": "PyCode",
+    "line": 10,
+    "mode": "eval",
+    "names": [],
+    "source": "1"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 11,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 11,
+   "name": "trust_start",
+   "sid": "define:trust_start",
+   "value": {
+    "column": 22,
+    "kind": "PyCode",
+    "line": 11,
+    "mode": "eval",
+    "names": [],
+    "source": "2"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 12,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 12,
+   "name": "doubled",
+   "sid": "define:doubled",
+   "value": {
+    "column": 18,
+    "kind": "PyCode",
+    "line": 12,
+    "mode": "eval",
+    "names": [
+     "trust_start"
+    ],
+    "source": "trust_start * 2"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 14,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 13,
+   "name": "palette",
+   "sid": "define:palette",
+   "value": {
+    "column": 18,
+    "kind": "PyCode",
+    "line": 13,
+    "mode": "eval",
+    "names": [],
+    "source": "{\"a\": [1, 2],\n                  \"b\": (3, 4)}"
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 15,
+   "file": "script/main.vns",
+   "kind": "Define",
+   "line": 15,
+   "name": "greeting",
+   "sid": "define:greeting",
+   "value": {
+    "column": 19,
+    "kind": "PyCode",
+    "line": 15,
+    "mode": "eval",
+    "names": [
+     "trust_start"
+    ],
+    "source": "f\"{trust_start!r:>{4}}\""
+   }
+  },
+  {
+   "column": 1,
+   "end_line": 2,
+   "file": "script/part.vns",
+   "kind": "Define",
+   "line": 2,
+   "name": "kaito",
+   "sid": "define:kaito",
+   "value": {
+    "column": 16,
+    "kind": "PyCode",
+    "line": 2,
+    "mode": "eval",
+    "names": [
+     "Character"
+    ],
+    "source": "Character(\"Kaito\")"
+   }
+  }
+ ],
+ "files": [
+  "script/main.vns",
+  "script/part.vns",
+  "script/tabs/t.vns"
+ ],
+ "identity_scheme": 1,
+ "labels": [
+  {
+   "block": [
+    {
+     "column": 5,
+     "end_line": 19,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 19,
+     "path": [
+      0
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 19,
+      "mode": "exec",
+      "names": [],
+      "source": "trust = trust_start"
+     },
+     "sid": "start/75460ead6601"
+    },
+    {
+     "column": 5,
+     "end_line": 20,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 20,
+     "path": [
+      1
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 20,
+      "mode": "exec",
+      "names": [],
+      "source": "seen = []"
+     },
+     "sid": "start/9ef741ab9239"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 21,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 21,
+     "path": [
+      2
+     ],
+     "sid": "start/cc633dfc6f40",
+     "speaker": null,
+     "text": "Café — “quoted” ‘single’ … naïve"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 22,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 22,
+     "path": [
+      3
+     ],
+     "sid": "start/3a5cefb00abc",
+     "speaker": null,
+     "text": "Привет, мир"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 23,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 23,
+     "path": [
+      4
+     ],
+     "sid": "start/7de77b43bce7",
+     "speaker": null,
+     "text": "日本語のテキスト、です。"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 24,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 24,
+     "path": [
+      5
+     ],
+     "sid": "start/944cf3e60bfb",
+     "speaker": null,
+     "text": "مرحبا بالعالم"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 25,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 25,
+     "path": [
+      6
+     ],
+     "sid": "start/f5d73a841e9b",
+     "speaker": null,
+     "text": "👨‍👩‍👧 ❤️ 🏳️‍🌈"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 26,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 26,
+     "path": [
+      7
+     ],
+     "sid": "start/8ee7ab2ca0e4",
+     "speaker": null,
+     "text": "é and می‌خواهم"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 27,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 27,
+     "path": [
+      8
+     ],
+     "sid": "start/c63a372d86f2",
+     "speaker": "hana",
+     "text": "‫שלום‬ — ok"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 28,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 28,
+     "path": [
+      9
+     ],
+     "sid": "start/00e50107c497",
+     "speaker": "hana",
+     "text": "I'm #1!"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "column": 5,
+     "end_line": 29,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 29,
+     "path": [
+      10
+     ],
+     "sid": "start/b6312cdfa8c0",
+     "speaker": "hana",
+     "text": "You came!"
+    },
+    {
+     "attributes": [
+      "a",
+      "b",
+      "c",
+      "2b"
+     ],
+     "column": 5,
+     "end_line": 30,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 30,
+     "path": [
+      11
+     ],
+     "sid": "start/85dd30a48248",
+     "speaker": "hana",
+     "text": "Four attributes."
+    },
+    {
+     "attributes": [
+      "worried"
+     ],
+     "column": 5,
+     "end_line": 31,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 31,
+     "path": [
+      12
+     ],
+     "sid": "start/b6e8a9112c10",
+     "speaker": "hana",
+     "text": "Spaced out."
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 32,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 32,
+     "path": [
+      13
+     ],
+     "sid": "start/1e3797a79b9e",
+     "speaker": "hana",
+     "text": "No space before the text."
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 33,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 33,
+     "path": [
+      14
+     ],
+     "sid": "start/f16346eeff1a",
+     "speaker": "hana",
+     "text": "A full-width speaker is hana."
+    },
+    {
+     "attributes": [
+      "smiling"
+     ],
+     "column": 5,
+     "end_line": 34,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 34,
+     "path": [
+      15
+     ],
+     "sid": "start/8f499fa512a9",
+     "speaker": "mio",
+     "text": "Hello."
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 35,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 35,
+     "path": [
+      16
+     ],
+     "sid": "start/02898f3127f2",
+     "speaker": null,
+     "text": "She said \"hi\"."
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 36,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 36,
+     "path": [
+      17
+     ],
+     "sid": "start/b009d53592a4",
+     "speaker": null,
+     "text": "a\\b and one\ntwo"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 38,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 37,
+     "path": [
+      18
+     ],
+     "sid": "start/032370cc869d",
+     "speaker": null,
+     "text": "joinedhere"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 40,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 39,
+     "path": [
+      19
+     ],
+     "sid": "start/2444a8da9af1",
+     "speaker": null,
+     "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 43,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 41,
+     "path": [
+      20
+     ],
+     "sid": "start/b859aba13e27",
+     "speaker": null,
+     "text": "a b"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 44,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 44,
+     "path": [
+      21
+     ],
+     "sid": "start/6fa661f4da6c",
+     "speaker": null,
+     "text": ""
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 45,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 45,
+     "path": [
+      22
+     ],
+     "sid": "start/bc69384f96dd",
+     "speaker": null,
+     "text": "  spaced  "
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 46,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 46,
+     "path": [
+      23
+     ],
+     "sid": "start/1ff8f2260515",
+     "speaker": null,
+     "text": "It's Hana's — “really” and «bye»"
+    },
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 48,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "start",
+     "line": 47,
+     "path": [
+      24
+     ],
+     "sid": "start/2bf0455db52b",
+     "speaker": null,
+     "text": "one # not a comment"
+    },
+    {
+     "column": 5,
+     "end_line": 55,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 52,
+     "path": [
+      25
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 52,
+      "mode": "exec",
+      "names": [],
+      "source": "x = (1,\n# at column 1\n\n        2)"
+     },
+     "sid": "start/50f59f418952"
+    },
+    {
+     "column": 5,
+     "end_line": 56,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 56,
+     "path": [
+      26
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 56,
+      "mode": "exec",
+      "names": [],
+      "source": "y = f\"{trust!r:>{4}} {'nested' + \"q\"} {{braces}}\"  # PEP 701"
+     },
+     "sid": "start/b217d23b89b3"
+    },
+    {
+     "column": 5,
+     "end_line": 57,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 57,
+     "path": [
+      27
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 57,
+      "mode": "exec",
+      "names": [],
+      "source": "s = \"#notcomment\""
+     },
+     "sid": "start/db3dc6b927ca"
+    },
+    {
+     "column": 5,
+     "end_line": 58,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 58,
+     "path": [
+      28
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 58,
+      "mode": "exec",
+      "names": [],
+      "source": "trust += 1"
+     },
+     "sid": "start/4e4d6a715d04"
+    },
+    {
+     "column": 5,
+     "end_line": 59,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 59,
+     "path": [
+      29
+     ],
+     "py": {
+      "column": 6,
+      "kind": "PyCode",
+      "line": 59,
+      "mode": "exec",
+      "names": [],
+      "source": "trust=trust"
+     },
+     "sid": "start/c52af467ebc5"
+    },
+    {
+     "column": 5,
+     "end_line": 60,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 60,
+     "path": [
+      30
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 60,
+      "mode": "exec",
+      "names": [],
+      "source": "if trust: seen.append(1)"
+     },
+     "sid": "start/dec0c35835ae"
+    },
+    {
+     "column": 5,
+     "end_line": 61,
+     "file": "script/main.vns",
+     "kind": "PythonLine",
+     "label": "start",
+     "line": 61,
+     "path": [
+      31
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 61,
+      "mode": "exec",
+      "names": [],
+      "source": "total = sum(v for v in [1, 2, 3] if v > 1)"
+     },
+     "sid": "start/ca06cb000552"
+    },
+    {
+     "branches": [
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 63,
+         "file": "script/main.vns",
+         "kind": "Say",
+         "label": "start",
+         "line": 63,
+         "path": [
+          32,
+          0,
+          0
+         ],
+         "sid": "start/7f025d08c626",
+         "speaker": null,
+         "text": "Walrus."
+        },
+        {
+         "branches": [
+          {
+           "block": [
+            {
+             "attributes": [],
+             "column": 13,
+             "end_line": 65,
+             "file": "script/main.vns",
+             "kind": "Say",
+             "label": "start",
+             "line": 65,
+             "path": [
+              32,
+              0,
+              1,
+              0,
+              0
+             ],
+             "sid": "start/c26173b99bf5",
+             "speaker": null,
+             "text": "Nested."
+            }
+           ],
+           "column": 9,
+           "condition": {
+            "column": 12,
+            "kind": "PyCode",
+            "line": 64,
+            "mode": "eval",
+            "names": [],
+            "source": "trust > 5"
+           },
+           "keyword": "if",
+           "kind": "IfBranch",
+           "line": 64
+          },
+          {
+           "block": [
+            {
+             "attributes": [],
+             "column": 13,
+             "end_line": 67,
+             "file": "script/main.vns",
+             "kind": "Say",
+             "label": "start",
+             "line": 67,
+             "path": [
+              32,
+              0,
+              1,
+              1,
+              0
+             ],
+             "sid": "start/84204a09bbc9",
+             "speaker": null,
+             "text": "Nested elif."
+            }
+           ],
+           "column": 9,
+           "condition": {
+            "column": 14,
+            "kind": "PyCode",
+            "line": 66,
+            "mode": "eval",
+            "names": [],
+            "source": "trust > 3"
+           },
+           "keyword": "elif",
+           "kind": "IfBranch",
+           "line": 66
+          },
+          {
+           "block": [
+            {
+             "attributes": [],
+             "column": 13,
+             "end_line": 71,
+             "file": "script/main.vns",
+             "kind": "Say",
+             "label": "start",
+             "line": 71,
+             "path": [
+              32,
+              0,
+              1,
+              2,
+              0
+             ],
+             "sid": "start/a0b0a58e4f24",
+             "speaker": null,
+             "text": "Nested else."
+            }
+           ],
+           "column": 9,
+           "condition": null,
+           "keyword": "else",
+           "kind": "IfBranch",
+           "line": 70
+          }
+         ],
+         "column": 9,
+         "end_line": 64,
+         "file": "script/main.vns",
+         "kind": "If",
+         "label": "start",
+         "line": 64,
+         "path": [
+          32,
+          0,
+          1
+         ],
+         "sid": "start/b85000bc743a"
+        }
+       ],
+       "column": 5,
+       "condition": {
+        "column": 8,
+        "kind": "PyCode",
+        "line": 62,
+        "mode": "eval",
+        "names": [],
+        "source": "(n := trust) > 1"
+       },
+       "keyword": "if",
+       "kind": "IfBranch",
+       "line": 62
+      },
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 73,
+         "file": "script/main.vns",
+         "kind": "Say",
+         "label": "start",
+         "line": 73,
+         "path": [
+          32,
+          1,
+          0
+         ],
+         "sid": "start/015e1a49a72a",
+         "speaker": "daichi",
+         "text": "Elif."
+        }
+       ],
+       "column": 5,
+       "condition": {
+        "column": 10,
+        "kind": "PyCode",
+        "line": 72,
+        "mode": "eval",
+        "names": [],
+        "source": "café"
+       },
+       "keyword": "elif",
+       "kind": "IfBranch",
+       "line": 72
+      },
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 75,
+         "file": "script/main.vns",
+         "kind": "Say",
+         "label": "start",
+         "line": 75,
+         "path": [
+          32,
+          2,
+          0
+         ],
+         "sid": "start/c01f1a93fe33",
+         "speaker": null,
+         "text": "Else."
+        }
+       ],
+       "column": 5,
+       "condition": null,
+       "keyword": "else",
+       "kind": "IfBranch",
+       "line": 74
+      }
+     ],
+     "column": 5,
+     "end_line": 62,
+     "file": "script/main.vns",
+     "kind": "If",
+     "label": "start",
+     "line": 62,
+     "path": [
+      32
+     ],
+     "sid": "start/b8f577be75f2"
+    },
+    {
+     "column": 5,
+     "end_line": 78,
+     "file": "script/main.vns",
+     "kind": "Jump",
+     "label": "start",
+     "line": 78,
+     "path": [
+      33
+     ],
+     "sid": "start/db4469bc2b56",
+     "target": "riverbank"
+    }
+   ],
+   "column": 1,
+   "end_line": 17,
+   "file": "script/main.vns",
+   "kind": "Label",
+   "line": 17,
+   "name": "start",
+   "sid": "start"
+  },
+  {
+   "block": [
+    {
+     "attributes": [],
+     "column": 3,
+     "end_line": 81,
+     "file": "script/main.vns",
+     "kind": "Say",
+     "label": "narrow",
+     "line": 81,
+     "path": [
+      0
+     ],
+     "sid": "narrow/7e7a5c9ff70f",
+     "speaker": null,
+     "text": "A two-space label body."
+    },
+    {
+     "branches": [
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 8,
+         "end_line": 83,
+         "file": "script/main.vns",
+         "kind": "Say",
+         "label": "narrow",
+         "line": 83,
+         "path": [
+          1,
+          0,
+          0
+         ],
+         "sid": "narrow/fc9352f6dceb",
+         "speaker": null,
+         "text": "Five more under the if."
+        },
+        {
+         "column": 8,
+         "end_line": 84,
+         "file": "script/main.vns",
+         "kind": "PythonLine",
+         "label": "narrow",
+         "line": 84,
+         "path": [
+          1,
+          0,
+          1
+         ],
+         "py": {
+          "column": 10,
+          "kind": "PyCode",
+          "line": 84,
+          "mode": "exec",
+          "names": [],
+          "source": "trust -= 1"
+         },
+         "sid": "narrow/5ea9efda84ce"
+        }
+       ],
+       "column": 3,
+       "condition": {
+        "column": 6,
+        "kind": "PyCode",
+        "line": 82,
+        "mode": "eval",
+        "names": [],
+        "source": "trust > 0"
+       },
+       "keyword": "if",
+       "kind": "IfBranch",
+       "line": 82
+      },
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 4,
+         "end_line": 86,
+         "file": "script/main.vns",
+         "kind": "Say",
+         "label": "narrow",
+         "line": 86,
+         "path": [
+          1,
+          1,
+          0
+         ],
+         "sid": "narrow/52cc952b3dd9",
+         "speaker": null,
+         "text": "One more under the else."
+        }
+       ],
+       "column": 3,
+       "condition": null,
+       "keyword": "else",
+       "kind": "IfBranch",
+       "line": 85
+      }
+     ],
+     "column": 3,
+     "end_line": 82,
+     "file": "script/main.vns",
+     "kind": "If",
+     "label": "narrow",
+     "line": 82,
+     "path": [
+      1
+     ],
+     "sid": "narrow/a86c4ab25890"
+    },
+    {
+     "column": 3,
+     "end_line": 87,
+     "file": "script/main.vns",
+     "kind": "Return",
+     "label": "narrow",
+     "line": 87,
+     "path": [
+      2
+     ],
+     "sid": "narrow/7892f6c9ce50"
+    }
+   ],
+   "column": 1,
+   "end_line": 80,
+   "file": "script/main.vns",
+   "kind": "Label",
+   "line": 80,
+   "name": "narrow",
+   "sid": "narrow"
+  },
+  {
+   "block": [
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 5,
+     "file": "script/part.vns",
+     "kind": "Say",
+     "label": "riverbank",
+     "line": 5,
+     "path": [
+      0
+     ],
+     "sid": "riverbank/7581a63af49d",
+     "speaker": "kaito",
+     "text": "The river is high tonight."
+    },
+    {
+     "column": 5,
+     "end_line": 6,
+     "file": "script/part.vns",
+     "kind": "Call",
+     "label": "riverbank",
+     "line": 6,
+     "path": [
+      1
+     ],
+     "sid": "riverbank/fe73ba636bc3",
+     "target": "aside"
+    },
+    {
+     "column": 5,
+     "end_line": 7,
+     "file": "script/part.vns",
+     "kind": "Call",
+     "label": "riverbank",
+     "line": 7,
+     "path": [
+      2
+     ],
+     "sid": "riverbank/64744245a7d4",
+     "target": "narrow"
+    },
+    {
+     "branches": [
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 9,
+         "file": "script/part.vns",
+         "kind": "Say",
+         "label": "riverbank",
+         "line": 9,
+         "path": [
+          3,
+          0,
+          0
+         ],
+         "sid": "riverbank/1347fe47b0ed",
+         "speaker": "hana",
+         "text": "Then let's go."
+        }
+       ],
+       "column": 5,
+       "condition": {
+        "column": 8,
+        "kind": "PyCode",
+        "line": 8,
+        "mode": "eval",
+        "names": [],
+        "source": "trust >= 3"
+       },
+       "keyword": "if",
+       "kind": "IfBranch",
+       "line": 8
+      },
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 11,
+         "file": "script/part.vns",
+         "kind": "Say",
+         "label": "riverbank",
+         "line": 11,
+         "path": [
+          3,
+          1,
+          0
+         ],
+         "sid": "riverbank/8e43d4f01967",
+         "speaker": null,
+         "text": "Maybe."
+        }
+       ],
+       "column": 5,
+       "condition": {
+        "column": 10,
+        "kind": "PyCode",
+        "line": 10,
+        "mode": "eval",
+        "names": [],
+        "source": "trust == 2"
+       },
+       "keyword": "elif",
+       "kind": "IfBranch",
+       "line": 10
+      },
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 9,
+         "end_line": 13,
+         "file": "script/part.vns",
+         "kind": "Say",
+         "label": "riverbank",
+         "line": 13,
+         "path": [
+          3,
+          2,
+          0
+         ],
+         "sid": "riverbank/85f395bbe920",
+         "speaker": null,
+         "text": "Not yet."
+        }
+       ],
+       "column": 5,
+       "condition": null,
+       "keyword": "else",
+       "kind": "IfBranch",
+       "line": 12
+      }
+     ],
+     "column": 5,
+     "end_line": 8,
+     "file": "script/part.vns",
+     "kind": "If",
+     "label": "riverbank",
+     "line": 8,
+     "path": [
+      3
+     ],
+     "sid": "riverbank/34a8e7f12946"
+    },
+    {
+     "column": 5,
+     "end_line": 16,
+     "file": "script/part.vns",
+     "kind": "PythonLine",
+     "label": "riverbank",
+     "line": 14,
+     "path": [
+      4
+     ],
+     "py": {
+      "column": 7,
+      "kind": "PyCode",
+      "line": 14,
+      "mode": "exec",
+      "names": [],
+      "source": "bought = (\n        True\n        )"
+     },
+     "sid": "riverbank/ee529f875db7"
+    },
+    {
+     "column": 5,
+     "end_line": 17,
+     "file": "script/part.vns",
+     "kind": "Jump",
+     "label": "riverbank",
+     "line": 17,
+     "path": [
+      5
+     ],
+     "sid": "riverbank/1cc704ee2afa",
+     "target": "始まり"
+    }
+   ],
+   "column": 1,
+   "end_line": 4,
+   "file": "script/part.vns",
+   "kind": "Label",
+   "line": 4,
+   "name": "riverbank",
+   "sid": "riverbank"
+  },
+  {
+   "block": [
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 20,
+     "file": "script/part.vns",
+     "kind": "Say",
+     "label": "aside",
+     "line": 20,
+     "path": [
+      0
+     ],
+     "sid": "aside/737391a9868f",
+     "speaker": null,
+     "text": "An aside."
+    },
+    {
+     "column": 5,
+     "end_line": 21,
+     "file": "script/part.vns",
+     "kind": "Return",
+     "label": "aside",
+     "line": 21,
+     "path": [
+      1
+     ],
+     "sid": "aside/7892f6c9ce50"
+    }
+   ],
+   "column": 1,
+   "end_line": 19,
+   "file": "script/part.vns",
+   "kind": "Label",
+   "line": 19,
+   "name": "aside",
+   "sid": "aside"
+  },
+  {
+   "block": [
+    {
+     "attributes": [],
+     "column": 5,
+     "end_line": 24,
+     "file": "script/part.vns",
+     "kind": "Say",
+     "label": "始まり",
+     "line": 24,
+     "path": [
+      0
+     ],
+     "sid": "始まり/a9b28f42a5f7",
+     "speaker": null,
+     "text": "The beginning, in a non-ASCII label."
+    },
+    {
+     "column": 5,
+     "end_line": 25,
+     "file": "script/part.vns",
+     "kind": "Call",
+     "label": "始まり",
+     "line": 25,
+     "path": [
+      1
+     ],
+     "sid": "始まり/f48cd84754fc",
+     "target": "tabbed"
+    },
+    {
+     "column": 5,
+     "end_line": 26,
+     "file": "script/part.vns",
+     "kind": "Return",
+     "label": "始まり",
+     "line": 26,
+     "path": [
+      2
+     ],
+     "sid": "始まり/7892f6c9ce50"
+    }
+   ],
+   "column": 1,
+   "end_line": 23,
+   "file": "script/part.vns",
+   "kind": "Label",
+   "line": 23,
+   "name": "始まり",
+   "sid": "始まり"
+  },
+  {
+   "block": [
+    {
+     "attributes": [],
+     "column": 2,
+     "end_line": 3,
+     "file": "script/tabs/t.vns",
+     "kind": "Say",
+     "label": "tabbed",
+     "line": 3,
+     "path": [
+      0
+     ],
+     "sid": "tabbed/da0b6b5bd759",
+     "speaker": "daichi",
+     "text": "Tabs work."
+    },
+    {
+     "branches": [
+      {
+       "block": [
+        {
+         "attributes": [],
+         "column": 3,
+         "end_line": 5,
+         "file": "script/tabs/t.vns",
+         "kind": "Say",
+         "label": "tabbed",
+         "line": 5,
+         "path": [
+          1,
+          0,
+          0
+         ],
+         "sid": "tabbed/486976ed670d",
+         "speaker": null,
+         "text": "Inside a tab block."
+        },
+        {
+         "column": 3,
+         "end_line": 6,
+         "file": "script/tabs/t.vns",
+         "kind": "PythonLine",
+         "label": "tabbed",
+         "line": 6,
+         "path": [
+          1,
+          0,
+          1
+         ],
+         "py": {
+          "column": 5,
+          "kind": "PyCode",
+          "line": 6,
+          "mode": "exec",
+          "names": [],
+          "source": "trust -= 1"
+         },
+         "sid": "tabbed/5ea9efda84ce"
+        }
+       ],
+       "column": 2,
+       "condition": {
+        "column": 5,
+        "kind": "PyCode",
+        "line": 4,
+        "mode": "eval",
+        "names": [],
+        "source": "trust"
+       },
+       "keyword": "if",
+       "kind": "IfBranch",
+       "line": 4
+      },
+      {
+       "block": [
+        {
+         "branches": [
+          {
+           "block": [
+            {
+             "attributes": [],
+             "column": 4,
+             "end_line": 9,
+             "file": "script/tabs/t.vns",
+             "kind": "Say",
+             "label": "tabbed",
+             "line": 9,
+             "path": [
+              1,
+              1,
+              0,
+              0,
+              0
+             ],
+             "sid": "tabbed/84dacd24babb",
+             "speaker": null,
+             "text": "Two tabs deep."
+            }
+           ],
+           "column": 3,
+           "condition": {
+            "column": 6,
+            "kind": "PyCode",
+            "line": 8,
+            "mode": "eval",
+            "names": [],
+            "source": "trust < 0"
+           },
+           "keyword": "if",
+           "kind": "IfBranch",
+           "line": 8
+          }
+         ],
+         "column": 3,
+         "end_line": 8,
+         "file": "script/tabs/t.vns",
+         "kind": "If",
+         "label": "tabbed",
+         "line": 8,
+         "path": [
+          1,
+          1,
+          0
+         ],
+         "sid": "tabbed/b1ae50438596"
+        }
+       ],
+       "column": 2,
+       "condition": null,
+       "keyword": "else",
+       "kind": "IfBranch",
+       "line": 7
+      }
+     ],
+     "column": 2,
+     "end_line": 4,
+     "file": "script/tabs/t.vns",
+     "kind": "If",
+     "label": "tabbed",
+     "line": 4,
+     "path": [
+      1
+     ],
+     "sid": "tabbed/495a86065881"
+    },
+    {
+     "attributes": [],
+     "column": 2,
+     "end_line": 11,
+     "file": "script/tabs/t.vns",
+     "kind": "Say",
+     "label": "tabbed",
+     "line": 10,
+     "path": [
+      2
+     ],
+     "sid": "tabbed/e6e49450c9ca",
+     "speaker": null,
+     "text": "Back at one tab, and continued three tabs deeper."
+    },
+    {
+     "column": 2,
+     "end_line": 12,
+     "file": "script/tabs/t.vns",
+     "kind": "Return",
+     "label": "tabbed",
+     "line": 12,
+     "path": [
+      3
+     ],
+     "sid": "tabbed/7892f6c9ce50"
+    }
+   ],
+   "column": 1,
+   "end_line": 2,
+   "file": "script/tabs/t.vns",
+   "kind": "Label",
+   "line": 2,
+   "name": "tabbed",
+   "sid": "tabbed"
+  }
+ ]
+}

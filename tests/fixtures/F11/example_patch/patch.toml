@@ -1,0 +1,43 @@
+# The fixture patch to game/ (F11 06 §5, AC-F11-66): the typical edits of a game update
+# (PR-F11-23) — lines added before, after, and between the saved lines, a new variable with
+# its default, and a new label. tests/persist/example_saves.py applies it to a copy of
+# game/; every [[insert]] anchor must match exactly one whole line of its file.
+
+# A new variable and its default.
+[[insert]]
+file = "script/main.vns"
+after = 'default fortune = ""'
+lines = ["default lanterns_seen = 0"]
+
+# A line just before the prologue save's line.
+[[insert]]
+file = "script/main.vns"
+after = '    $ hana_name = "Hana"'
+lines = ['    "Somewhere upriver, a drum started up."']
+
+# A line and a use of the new variable just before the fortune save's line.
+[[insert]]
+file = "script/chapter1.vns"
+after = '    "\"One fortune, one hundred yen,\" the stall keeper said."'
+lines = ['    $ lanterns_seen += 1',
+         "    \"Behind the stall, a radio played last year's festival song.\""]
+
+# A line inside a choice, before the nested menu the stall save waits at.
+[[insert]]
+file = "script/chapter1.vns"
+after = '        "Buy a lantern":'
+lines = ['            "I counted my coins twice."']
+
+# A line inside a called label, before the release save's line.
+[[insert]]
+file = "script/routes/daichi.vns"
+after = '    show daichi at 760 behind hana with dissolve'
+lines = ['    daichi "Careful. The water is colder than it looks."']
+
+# A new label at the end of a file.
+[[append]]
+file = "script/routes/daichi.vns"
+lines = ["",
+         "label afterword:",
+         '    "Next year, the lanterns came back."',
+         "    return"]

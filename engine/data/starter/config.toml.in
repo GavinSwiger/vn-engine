@@ -1,0 +1,18 @@
+# Settings for this game. Every key is optional; the title shows on the window.
+
+[game]
+id = "$id"
+title = $title
+version = "0.1.0"
+
+# A content warning shown after the game loads and before the title, with "I understand"
+# and "Quit". Remove the "#" from the lines below to turn it on, and keep the text short
+# (about 220 characters) so players with large text don't have to scroll.
+# [content_warning]
+# show = "once"          # "never" (off), "once" (until the player continues), or "always"
+# version = 1            # raise it after changing the text to show it once more
+# min_seconds = 2        # "I understand" can be pressed after this many seconds; 0 = at once
+# text = """
+# This game is not suitable for children or those who are easily disturbed.
+#
+# It contains scenes of self-harm and psychological horror."""

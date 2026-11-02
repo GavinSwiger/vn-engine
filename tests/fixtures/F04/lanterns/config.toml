@@ -1,0 +1,6 @@
+[stage]
+art_height = 1080            # my art is drawn for 1920×1080
+
+[stage.positions]
+stall_spot = 1060            # x only: stands on the bottom edge
+hana_close = [560, 760]      # x and y: a step nearer, a little lower

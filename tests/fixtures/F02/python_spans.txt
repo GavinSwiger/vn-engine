@@ -1,0 +1,312 @@
+py_all	x = r'a#b'
+py_all	x = r"a#b" # comment
+py_all	x = r'''a#b'''
+py_all	x = r"""a#b: "quoted" """
+py_condition	r'a#b' == y:
+py_after_equals	r"a#b"
+py_all	x = b'a#b'
+py_all	x = b"a#b" # comment
+py_all	x = b'''a#b'''
+py_all	x = b"""a#b: "quoted" """
+py_condition	b'a#b' == y:
+py_after_equals	b"a#b"
+py_all	x = u'a#b'
+py_all	x = u"a#b" # comment
+py_all	x = u'''a#b'''
+py_all	x = u"""a#b: "quoted" """
+py_condition	u'a#b' == y:
+py_after_equals	u"a#b"
+py_all	x = f'{x}'
+py_all	x = f"{x}" # comment
+py_all	x = f'''{x}'''
+py_all	x = f"""{x}: "quoted" """
+py_condition	f'{x}' == y:
+py_after_equals	f"{x}"
+py_all	x = rb'a#b'
+py_all	x = rb"a#b" # comment
+py_all	x = rb'''a#b'''
+py_all	x = rb"""a#b: "quoted" """
+py_condition	rb'a#b' == y:
+py_after_equals	rb"a#b"
+py_all	x = br'a#b'
+py_all	x = br"a#b" # comment
+py_all	x = br'''a#b'''
+py_all	x = br"""a#b: "quoted" """
+py_condition	br'a#b' == y:
+py_after_equals	br"a#b"
+py_all	x = fr'{x}'
+py_all	x = fr"{x}" # comment
+py_all	x = fr'''{x}'''
+py_all	x = fr"""{x}: "quoted" """
+py_condition	fr'{x}' == y:
+py_after_equals	fr"{x}"
+py_all	x = rf'{x}'
+py_all	x = rf"{x}" # comment
+py_all	x = rf'''{x}'''
+py_all	x = rf"""{x}: "quoted" """
+py_condition	rf'{x}' == y:
+py_after_equals	rf"{x}"
+py_all	x = R'a#b'
+py_all	x = R"a#b" # comment
+py_all	x = R'''a#b'''
+py_all	x = R"""a#b: "quoted" """
+py_condition	R'a#b' == y:
+py_after_equals	R"a#b"
+py_all	x = B'a#b'
+py_all	x = B"a#b" # comment
+py_all	x = B'''a#b'''
+py_all	x = B"""a#b: "quoted" """
+py_condition	B'a#b' == y:
+py_after_equals	B"a#b"
+py_all	x = U'a#b'
+py_all	x = U"a#b" # comment
+py_all	x = U'''a#b'''
+py_all	x = U"""a#b: "quoted" """
+py_condition	U'a#b' == y:
+py_after_equals	U"a#b"
+py_all	x = F'{x}'
+py_all	x = F"{x}" # comment
+py_all	x = F'''{x}'''
+py_all	x = F"""{x}: "quoted" """
+py_condition	F'{x}' == y:
+py_after_equals	F"{x}"
+py_all	x = Rb'a#b'
+py_all	x = Rb"a#b" # comment
+py_all	x = Rb'''a#b'''
+py_all	x = Rb"""a#b: "quoted" """
+py_condition	Rb'a#b' == y:
+py_after_equals	Rb"a#b"
+py_all	x = bR'a#b'
+py_all	x = bR"a#b" # comment
+py_all	x = bR'''a#b'''
+py_all	x = bR"""a#b: "quoted" """
+py_condition	bR'a#b' == y:
+py_after_equals	bR"a#b"
+py_all	x = RB'a#b'
+py_all	x = RB"a#b" # comment
+py_all	x = RB'''a#b'''
+py_all	x = RB"""a#b: "quoted" """
+py_condition	RB'a#b' == y:
+py_after_equals	RB"a#b"
+py_all	x = Br'a#b'
+py_all	x = Br"a#b" # comment
+py_all	x = Br'''a#b'''
+py_all	x = Br"""a#b: "quoted" """
+py_condition	Br'a#b' == y:
+py_after_equals	Br"a#b"
+py_all	x = fR'{x}'
+py_all	x = fR"{x}" # comment
+py_all	x = fR'''{x}'''
+py_all	x = fR"""{x}: "quoted" """
+py_condition	fR'{x}' == y:
+py_after_equals	fR"{x}"
+py_all	x = Fr'{x}'
+py_all	x = Fr"{x}" # comment
+py_all	x = Fr'''{x}'''
+py_all	x = Fr"""{x}: "quoted" """
+py_condition	Fr'{x}' == y:
+py_after_equals	Fr"{x}"
+py_all	x = RF'{x}'
+py_all	x = RF"{x}" # comment
+py_all	x = RF'''{x}'''
+py_all	x = RF"""{x}: "quoted" """
+py_condition	RF'{x}' == y:
+py_after_equals	RF"{x}"
+py_all	x = rF'{x}'
+py_all	x = rF"{x}" # comment
+py_all	x = rF'''{x}'''
+py_all	x = rF"""{x}: "quoted" """
+py_condition	rF'{x}' == y:
+py_after_equals	rF"{x}"
+py_all	x = Rf'{x}'
+py_all	x = Rf"{x}" # comment
+py_all	x = Rf'''{x}'''
+py_all	x = Rf"""{x}: "quoted" """
+py_condition	Rf'{x}' == y:
+py_after_equals	Rf"{x}"
+py_all	x = "a\"b"
+py_all	x = 'it\'s'
+py_all	x = r"a\"b"
+py_all	x = r'a\'b'
+py_all	x = "#not a comment"
+py_all	x = 1  # a comment
+py_all	x = 1 # comment with 'quote' and "dq" and :
+py_all	trust += 1
+py_all	trust=1
+py_all	x = f"{a!r:>{w}}" # note
+py_all	x = f"{"nested"}"
+py_all	x = f'{'same'}'
+py_all	x = f"{f"{x}"}"
+py_all	x = f"{{literal}}"
+py_all	x = f"{{{x}}}"
+py_all	x = f"{x:{w}.{p}}"
+py_all	x = f'{x:%H:%M}'
+py_all	x = f"{d["k"]}"
+py_all	x = f'{d["k:v"]:>10}'
+py_all	x = f"{x!s}"
+py_all	x = f"{x=}"
+py_all	x = f"{(lambda: 1)()}"
+py_all	x = f"a{b}c{d}e"
+py_all	x = f'''{x}'''
+py_all	x = rf"\d{x}"
+py_all	x = fr"{x}\n"
+py_all	x = [1, 2, 3][1:2]
+py_all	x = y[::2]
+py_all	x = {'a': 1, 'b': [1, 2]}
+py_all	x = {1: {2: 3}}
+py_all	f = lambda a, b=1: a + b
+py_all	f = lambda: 0
+py_all	g = lambda *a, **k: (a, k)
+py_all	x = (n := 2)
+py_all	print(n := 3)
+py_all	if x: pass
+py_all	x: int = 1
+py_all	x = 1 if y else 2
+py_all	d[k] = v
+py_all	a, b = b, a
+py_all	x = not y
+py_all	x = 'a' 'b'
+py_all	x = ('a'⏎    'b')
+py_all	x = '''one'''  # end
+py_all	x = "\\"
+py_all	x = '\\'
+py_all	x = b'\x00'
+py_all	x = '\N{BULLET}'
+py_all	x = f"\N{BULLET} {x}"
+py_all	x = 0x1F + 1e5 + 1_000 + 3j
+py_all	x = ...
+py_all	x = [i for i in y if i]
+py_all	x = {k: v for k, v in d.items()}
+py_all	x = (yield)
+py_all	del x[0]
+py_all	assert x, 'msg'
+py_all	x = y @ z
+py_all	x = a // b % c ** d
+py_all	x = ~a ^ b | c & d
+py_all	x <<= 2
+py_all	x = a != b
+py_all	x = 'a' # 'b'
+py_all	x = "don't"
+py_all	x = 'say "hi"'
+py_all	x = ''
+py_all	x = ""
+py_all	x = ''''''
+py_all	x = f''
+py_all	x = f"{x:}"
+py_all	x = f"{x:>{10}}"
+py_all	x = (1,⏎        2)
+py_all	x = [⏎        1,⏎        2,⏎        ]
+py_all	x = {⏎        'a': 1,⏎    }
+py_all	x = f(a,⏎        b,⏎        c)
+py_all	x = (1,  # first⏎        2)  # second
+py_all	x = ('a:b',⏎        {'c': 'd'})
+py_all	x = [lambda: 1,⏎        lambda y=2: y]
+py_all	x = f'{a}'
+py_all	x = foo(⏎    1)
+py_condition	d["k:v"] == 1:
+py_condition	x[1:2]:
+py_condition	(n := 2) > 1:
+py_condition	{"a": 1}:
+py_condition	x[::2] == y:
+py_condition	f(lambda: 1):
+py_condition	(lambda: 1)():
+py_condition	f"{x:>3}" == y:
+py_condition	f'{d["a:b"]}':
+py_condition	x == 1:  # comment: with colon
+py_condition	x == 1: # 'quoted'
+py_condition	x == '#':
+py_condition	a and b or not c:
+py_condition	trust >= 2 and bought:
+py_condition	x in {1: 2}:
+py_condition	y[a:b, c:d]:
+py_condition	x:
+py_condition	x == 1:pass
+py_condition	(a,⏎        b):
+py_condition	[1,⏎        2] == x:
+py_condition	f(a,⏎        b=c[1:2]):
+py_condition	{1:⏎        2}:
+py_condition	x if y else z:
+py_condition	x == f'{a:{b}}':
+py_condition	x == '''a:b''':
+py_condition	x == r'\\':
+py_condition	x == b':':
+py_condition	x == rb':':
+py_condition	(x := y[1:]):
+py_condition	len(s) > 0 and s[0] == ':':
+py_after_equals	Character("Hana", color="#e8a0b4")
+py_after_equals	{"a": [1, 2]}
+py_after_equals	lambda x: x + 1
+py_after_equals	[1, 2, 3]
+py_after_equals	{'k': 'v:w'}
+py_after_equals	f'{x}:{y}'
+py_after_equals	(1,⏎        2)
+py_after_equals	dict(a=1,⏎        b=2)
+py_after_equals	x[1:2]
+py_after_equals	1 if a else 2
+py_after_equals	'a' # comment
+py_after_equals	b'\x00'
+py_after_equals	None
+py_after_equals	...
+py_condition	x[r'a'] == r"b":
+py_after_equals	(r'a',⏎        r"b")
+py_all	x = [r'a:b', r"c#d"]  # r
+py_condition	x[b'a'] == b"b":
+py_after_equals	(b'a',⏎        b"b")
+py_all	x = [b'a:b', b"c#d"]  # b
+py_condition	x[u'a'] == u"b":
+py_after_equals	(u'a',⏎        u"b")
+py_all	x = [u'a:b', u"c#d"]  # u
+py_condition	x[f'a'] == f"b":
+py_after_equals	(f'a',⏎        f"b")
+py_all	x = [f'a:b', f"c#d"]  # f
+py_condition	x[rb'a'] == rb"b":
+py_after_equals	(rb'a',⏎        rb"b")
+py_all	x = [rb'a:b', rb"c#d"]  # rb
+py_condition	x[br'a'] == br"b":
+py_after_equals	(br'a',⏎        br"b")
+py_all	x = [br'a:b', br"c#d"]  # br
+py_condition	x[fr'a'] == fr"b":
+py_after_equals	(fr'a',⏎        fr"b")
+py_all	x = [fr'a:b', fr"c#d"]  # fr
+py_condition	x[rf'a'] == rf"b":
+py_after_equals	(rf'a',⏎        rf"b")
+py_all	x = [rf'a:b', rf"c#d"]  # rf
+py_condition	x[R'a'] == R"b":
+py_after_equals	(R'a',⏎        R"b")
+py_all	x = [R'a:b', R"c#d"]  # R
+py_condition	x[B'a'] == B"b":
+py_after_equals	(B'a',⏎        B"b")
+py_all	x = [B'a:b', B"c#d"]  # B
+py_condition	x[U'a'] == U"b":
+py_after_equals	(U'a',⏎        U"b")
+py_all	x = [U'a:b', U"c#d"]  # U
+py_condition	x[F'a'] == F"b":
+py_after_equals	(F'a',⏎        F"b")
+py_all	x = [F'a:b', F"c#d"]  # F
+py_condition	x[Rb'a'] == Rb"b":
+py_after_equals	(Rb'a',⏎        Rb"b")
+py_all	x = [Rb'a:b', Rb"c#d"]  # Rb
+py_condition	x[bR'a'] == bR"b":
+py_after_equals	(bR'a',⏎        bR"b")
+py_all	x = [bR'a:b', bR"c#d"]  # bR
+py_condition	x[RB'a'] == RB"b":
+py_after_equals	(RB'a',⏎        RB"b")
+py_all	x = [RB'a:b', RB"c#d"]  # RB
+py_condition	x[Br'a'] == Br"b":
+py_after_equals	(Br'a',⏎        Br"b")
+py_all	x = [Br'a:b', Br"c#d"]  # Br
+py_condition	x[fR'a'] == fR"b":
+py_after_equals	(fR'a',⏎        fR"b")
+py_all	x = [fR'a:b', fR"c#d"]  # fR
+py_condition	x[Fr'a'] == Fr"b":
+py_after_equals	(Fr'a',⏎        Fr"b")
+py_all	x = [Fr'a:b', Fr"c#d"]  # Fr
+py_condition	x[RF'a'] == RF"b":
+py_after_equals	(RF'a',⏎        RF"b")
+py_all	x = [RF'a:b', RF"c#d"]  # RF
+py_condition	x[rF'a'] == rF"b":
+py_after_equals	(rF'a',⏎        rF"b")
+py_all	x = [rF'a:b', rF"c#d"]  # rF
+py_condition	x[Rf'a'] == Rf"b":
+py_after_equals	(Rf'a',⏎        Rf"b")
+py_all	x = [Rf'a:b', Rf"c#d"]  # Rf

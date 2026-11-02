@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "values": {
+    "text_cps": 5,
+    "text_size_pct": 400,
+    "auto_scale_pct": 24,
+    "auto_wait_voice": "yes",
+    "skip_all": 1,
+    "master_volume": -1,
+    "music_volume": 101,
+    "sound_volume": null,
+    "voice_volume": 12345678,
+    "text_blips": {},
+    "voice_sustain": [],
+    "audio_unfocused": 0,
+    "audio_minimized": "no",
+    "mono": 1.5,
+    "fullscreen": "true",
+    "reduce_motion": "yes",
+    "window_size": [
+      1,
+      2
+    ],
+    "warning_seen": 1001
+  }
+}

@@ -1,0 +1,2 @@
+define bad1 = {"a": 1}
+define quiet = ["hi"]

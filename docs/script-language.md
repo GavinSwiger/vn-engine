@@ -1,0 +1,3047 @@
+# The .vns script language
+
+This is the reference for writing a story for vn-engine. You don't need to know how to
+program. A story is plain text: mostly dialogue, plus a few English words that say where
+scenes start and where the story goes next.
+To write a scene and preview it in a window, see [The scene editor](scene-editor.md).
+
+Owned by `vn-narrative-designer`. Sections marked **(proposed, …)** are planned, not yet
+approved, and may change.
+The full rules are in `specs/F02-script-parser/02-script.md`,
+`specs/F03-interpreter-gamestate/02-script.md`, `specs/F04-stage-sprites/02-script.md`,
+`specs/F05-adv-textbox/02-script.md`, `specs/F07-choice-menus/01-design.md` (menus),
+`specs/F08-audio/02-script.md`, and `specs/F09-transitions/01-design.md` (transitions).
+
+**Contents:** 1. A first story · 2. Files and includes · 3. Writing text · 4. Comments ·
+5. Indentation · 6. Names · 7. Statements · 8. Characters · 9. Story variables ·
+10. Random numbers · 11. Python modules · 12. Backgrounds and sprites · 13. Music and sound ·
+14. Dialogue text · 15. Menus and theme · 16. Transitions and effects · 17. Saves ·
+18. Rollback · 19. Reserved words · 20. Coming later · 21. Common errors ·
+22. Run-time errors
+
+---
+
+## 1. A first story
+**(proposed, F02)**
+
+`game/script/main.vns`:
+```
+# The story always starts in main.vns, at label start.
+define hana = Character("Hana")
+
+label start:
+    "The festival lanterns were already lit when I reached the river."
+    hana "You came! I didn't think you would."
+```
+
+`define` creates a character: `hana` is what you type, `"Hana"` is what the player sees.
+`label start:` is where the story begins; the indented lines under it are the scene. Text
+in quotes alone is **narration**; a name before it makes it **dialogue**.
+
+---
+
+## 2. Files and includes
+**(proposed, F02)**
+
+Story files end in `.vns` and live in `game/script/` (subfolders are fine). The story
+starts from `script/main.vns`. Only `main.vns` and the files it **includes** are part of
+the game, so a backup like `chapter1 - Copy.vns` can't break it.
+
+```
+include "chapter1.vns"
+include "routes/hana.vns"
+```
+
+- Paths start inside the `script` folder, use `/`, and must match capitals exactly.
+- Includes go at the top level of a file (no indentation), usually at the top.
+- Order doesn't matter, and files can include each other.
+- Labels in any included file can be reached from every file.
+
+---
+
+## 3. Writing text
+**(proposed, F02)**
+
+Save files as **UTF-8** (the default in most editors). Any line endings work. Text can be
+in any language, with any punctuation or emoji.
+
+**Quotes.** Text goes between straight double quotes `"like this"`. Apostrophes and curly
+quotes **inside** need nothing special. The quotes **around** the text must be straight;
+word processors often turn them curly, and the engine will tell you.
+
+```
+    hana "I'm sure she said “tomorrow.”"
+```
+
+**Special characters.**
+
+| To show | Write |
+|---|---|
+| `"` | `\"` |
+| `\` | `\\` |
+| a new line in the text box | `\n` |
+| `{` | `{{` |
+
+```
+    daichi "She's been saying \"just one more\" since six o'clock."
+```
+
+Any other backslash is an error. `{ }` hold text tags such as `{b}` for bold; see
+[Dialogue text](#14-dialogue-text). `[ ]` are always plain text.
+
+**Long lines.** Leave the quote open and indent the next lines **more**. Line breaks
+become single spaces. End a line with `\` to join with no space (for Japanese or Chinese).
+
+```
+    "Paper lanterns drifted past us one by one, each carrying
+        somebody's wish downstream."
+    hana "提灯が川を\
+        流れていく。"
+```
+
+---
+
+## 4. Comments
+**(proposed, F02)**
+
+`#` starts a comment that runs to the end of the line. Inside quotes, `#` is just text.
+
+```
+    hana "Ready?"   # a note
+    # hana "A line I'm not sure about yet."
+    # TODO: rewrite the bridge scene
+```
+
+Comment lines can be at any indentation. Comments starting with `TODO` are listed in the
+log when you test the game.
+
+---
+
+## 5. Indentation
+**(proposed, F02)**
+
+Lines ending in `:` open a **block**; its lines are indented under it.
+
+```
+label riverbank:
+    if bought_lantern:
+        hana "You actually bought one!"
+    else:
+        hana "Not even a small one?"
+    jump bridge
+```
+
+- Use spaces or tabs, but only one kind per file (continued lines too).
+- Any width works; every line of a block lines up.
+- Blank lines and comment lines never matter.
+- A block needs at least one real line. For an unwritten scene, write `return`.
+
+---
+
+## 6. Names
+**(proposed, F02)**
+
+Label and `define` names use letters (any language), digits, and `_`, and can't start with
+a digit: `hana`, `chapter_2`, `始まり`. Capitals matter. A name can't be a reserved word
+(section 19) in any capitals, a Python word (`True`, `None`, `and`, `for`, `class`, …),
+`Character`, `persistent`, `engine`, or `narrator`, and can't start with `_`.
+
+The same rules apply to `default` names and to names a `$` line sets.
+`dice`, `module`, `points`, and `codex` are engine names too.
+
+---
+
+## 7. Statements
+
+### label
+**(proposed, F02)**
+
+```
+label bridge:
+    "The bridge was crowded with people waiting for the fireworks."
+    jump fireworks
+```
+
+Names a scene. Top level only; each name once in the whole game. The game needs a label
+`start`. When a label's lines run out, it acts like `return` (it never runs into the next
+label), so end scenes with `jump`.
+
+### jump
+**(proposed, F02)**
+
+```
+    jump bridge
+```
+
+Continues at a label and doesn't come back. Every `jump` is checked when the game starts.
+
+### call and return
+**(proposed, F02)**
+
+```
+label riverbank:
+    call lantern_stall
+    hana "So? What did you wish for?"
+
+label lantern_stall:
+    "The stall keeper held up a lantern the size of my fist."
+    return
+```
+
+`call` visits a label and comes back to the next line when it reaches `return` (or its
+last line). A `return` with no `call` ends the story.
+
+### Dialogue and narration
+**(proposed, F02)**
+
+```
+    "The festival lanterns were already lit."
+    hana "You came!"
+    hana surprised "You came!"
+```
+
+Dialogue is a character's name, then text in quotes. The character must be created with
+`define` somewhere in the game. Up to 4 words between the name and the text (like
+`surprised`) change the character's expression on that line; see
+[Expressions on dialogue lines](#expressions-on-dialogue-lines). Tags inside the quotes
+style words and time pauses; see [Dialogue text](#14-dialogue-text).
+
+### define
+**(proposed, F02)**
+
+```
+define hana = Character("Hana", color="#e8a0b4")
+define wish_cost = 300
+```
+
+Sets a name once for the whole game, before the story starts. Top level only; each name
+once. A `define` can use other defined names (in any file) but not itself. The part after
+`=` is Python. The story can't change a defined name; for a value the story changes, use
+`default`.
+
+### default
+
+```
+default trust = 0
+default hana_name = "???"
+default visited = []
+```
+
+Declares a **story variable** and its starting value. Top level only; each name once, and
+not also a `define`. The value is set when a new game starts. It is also set when a player
+loads a save made before you added the `default`, so adding variables in a patch never
+breaks old saves. It never replaces a value the game already has. Defaults can use defined
+names and other defaults, in any file. Then change the variable with `$`:
+
+```
+    $ trust += 1
+```
+
+**Use a `default` for every variable your story changes.** A variable created only by a
+`$` line doesn't exist in saves made before that line ran.
+
+> **Warning:** `default` values are Python too, like `$` lines and `define` values (see
+> below), and run whenever a new game starts or a save is loaded.
+
+### $ (one line of Python)
+**(proposed, F02)**
+
+> **Warning:** `$` lines, `if`/`elif` conditions, and `define` values all run real Python,
+> with the same access to the player's computer as any program. `define` values run at
+> **every launch, before the title screen**. A shared `.vns` file or mod is a program,
+> even if it has no `$` lines. Players should only run scripts from people they trust.
+
+```
+    $ trust = 0
+    $ trust += 1
+```
+
+Everything after `$` is one line of Python, with Python's own rules for quotes. A long line
+can continue onto more-indented lines while a bracket `(` `[` `{` is open.
+
+### if, elif, else
+**(proposed, F02)**
+
+```
+    if bought_lantern and trust >= 2:
+        hana happy "You actually bought one!"
+    elif bought_lantern:
+        hana "Oh. You bought one."
+    else:
+        hana sad "Not even a small one?"
+```
+
+`if` runs its lines when the condition is true; `elif` is checked only if everything above
+was false; `else` runs when nothing above was true and comes last. They line up exactly.
+Conditions are Python: `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`.
+
+### menu (choices)
+
+```
+    menu:
+        hana "Will you buy a lantern?"
+        "The red one":
+            $ lantern = "red"
+        "The paper crane (2 coins)" if coins >= 2:
+            $ coins -= 2
+            $ lantern = "crane"
+        "Not this year":
+            jump walk_home
+    hana happy "Let's go to the river."
+```
+
+`menu:` stops the story and shows its choices as buttons over the scene, above the text box.
+The player picks one with the mouse, the arrow keys and Enter or Space, the number keys 1–6,
+or a gamepad (D-pad or left stick, then A). That choice's lines run, then the story goes on
+after the menu, unless they `jump`, `call`, or `return` (which work as anywhere).
+
+- **The question** is optional: one line of dialogue or narration, first in the menu. It
+  stays in the text box, complete, while the player chooses. A `voice` line can go directly
+  above it. Without a question, the last line stays on screen (right after a `scene`, the
+  text box is hidden instead).
+- **Choices**: 1 to 6 per menu, each quoted text ending in `:`, with its lines indented
+  under it. To have a choice do nothing, write `$ pass` under it. Comments and blank lines
+  can go anywhere in the menu.
+- **Conditions**: `"text" if condition:` shows the choice only when the condition is true,
+  checked once when the menu is reached (the same Python as `if`). At least one choice must
+  show, so give every menu one choice without `if`, such as `"That's all":`.
+- **Locked choices**: to show unavailable choices dimmed, with a lock, instead of hiding
+  them, set `show_locked = true` under `[choice]` in `config.toml`. A locked choice can't
+  be picked or focused.
+- **Choice text** can use `{b}`, `{i}`, `{color=…}`, `{var=…}`, and `{{`, but not
+  `{pause}`, `{speed}`, `{size}`, or `{next}`. A `{var=…}` shows its value as the menu is
+  reached. Keep a choice to one line, about 50 characters: a choice shows at most two
+  lines, and anything longer is cut with "…". Two choices may have the same text.
+- **A menu inside a choice** asks a second question once that choice is picked.
+- **A "Talk" loop** is a menu in a label of its own whose topics `jump` back to that label.
+  Hide each topic once it's asked with `if not asked_…`, and keep one choice without `if`
+  that leaves:
+
+  ```
+  default asked_fox = False
+  default asked_bridge = False
+
+  label talk:
+      menu:
+          daichi "What do you want to ask?"
+          "The fox shrine" if not asked_fox:
+              $ asked_fox = True
+              daichi "The foxes guard the lanterns."
+              jump talk
+          "The old bridge" if not asked_bridge:
+              $ asked_bridge = True
+              daichi "Older than the town hall."
+              jump talk
+          "That's all":
+              return
+  ```
+
+  Reach it with `call talk`, so `return` comes back to the line after the call.
+- **Saving**: each menu is one save and rollback point. A save made at a menu loads with the
+  same question and choices and nothing focused; going back to a menu lets the player choose
+  again. Picks appear in the history log.
+- A click or key press in the first quarter second after the choices appear doesn't pick,
+  so a fast click through the question never picks by accident.
+
+**Settings in `config.toml`.** How menus behave is under `[choice]`; how they look is under
+`[theme.choice]` (colors, text size, width, frame images, the focus marker, the locked
+look, the fade-in, and focus and pick sounds). Every `choice.*` token, with its default and
+range, is in `docs/ui-system.md` (Theme tokens, "Choices").
+
+```
+[choice]
+show_locked = false     # true: a choice whose condition is false shows locked, not hidden
+
+[theme.choice]
+# text_size = 28        # 20-48; without it, the text box's size
+# width = 800           # 400-1200
+# frame_image = "gui/choice.png"          # a nine-slice picture for every button
+# focused.frame_image = "gui/choice_focused.png"
+# pick_sound = "sfx/pick.ogg"             # a file in the audio folder
+# focus_sound = "sfx/focus.ogg"
+```
+
+`show_locked` takes only `true` or `false`; anything else stops the launch:
+`config.toml, line 7: [choice] show_locked must be true or false, but found the text "yes"`.
+
+**When a menu is wrong.** The game checks menus at launch and lists every mistake with its
+file and line:
+
+| Message | Fix |
+|---|---|
+| `menu needs : at the end of the line. Write menu:` | Add `:`. |
+| `menu takes nothing else on its line. Put the question on the first line inside the menu, e.g. hana "Where to?"` | Move the question inside the menu. |
+| `this menu has no lines under it. Indent its question and choices under it.` | Indent the question and choices under `menu:`. |
+| `this choice has no lines under it. Indent what happens when it's picked; to just go on, write $ pass.` | Indent the choice's lines, or write `$ pass`. |
+| `this menu has no choices. Under the question, add choices like "Go left": with that choice's lines indented under it.` | Add a choice. |
+| `this menu has 7 choices, but a menu shows at most 6. Move the rarer ones into a second menu behind a choice such as "Something else...":.` | Split a big menu in two. |
+| `the question goes on the first line of the menu, before the choices. Move this line up, or indent it inside a choice.` | Question first, choices after. |
+| `this looks like a choice but has no : at the end. Write "Go left":.` | Add `:`. |
+| `only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.` | Everything but the question goes inside a choice. |
+| `this choice has no text, so the player couldn't see it. Write its words between the quotes.` | Write the choice's words. |
+| `{pause} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.` (`{speed}`, `{size}`, and `{next}` the same) | Remove the tag. |
+| `there is no tag "colour". Did you mean "color"?` (every tag mistake of [When a tag is wrong](#when-a-tag-is-wrong)) | Fix the tag. |
+| `{var=met_daichi} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Add default met_daichi = "" at the top level.` (warning) | Add the `default`. |
+| `this line of text ends with :, which only menu choices do. Remove the :, or put the choice in a menu: block.` | A choice outside a menu: put it in one. |
+| `voice goes directly above a line, not above a menu. Put a voice inside each branch.` (warning) | Put the `voice` above the question, or inside each choice. |
+| `this choice needs 2 lines at text size 28. Choices are easiest to read on one line, about 50 characters.` (warning, dev runs) | Shorten the choice. |
+| `this choice needs 3 lines at text size 28, but a choice shows at most 2, so the end is cut with "…". Shorten it.` (warning, dev runs) | Shorten the choice. |
+| `config.toml: [theme.choice] pick_sound "pik.ogg" doesn't exist, so no sound plays. Did you mean "pick.ogg"?` (warning) | Fix the file name; sounds are in the `audio` folder. |
+
+One mistake shows only while the story runs (see [Run-time errors](#22-run-time-errors)):
+`every choice in this menu is hidden, because all their conditions are false, so the player can't pick anything. Add a choice without if, such as "That's all":.`
+(with `show_locked = true`: `every choice in this menu is locked, …`). Give the menu a
+choice without `if`.
+
+### include
+See [Files and includes](#2-files-and-includes).
+
+### scene, show, hide, image
+See [Backgrounds and sprites](#12-backgrounds-and-sprites).
+
+### play, queue, stop, voice
+See [Music and sound](#13-music-and-sound).
+
+### with, shake, flash, pause
+See [Transitions and effects](#16-transitions-and-effects).
+
+### rollback
+See [Rollback](#18-rollback): `rollback block`, `rollback off`, `rollback on`, and
+`rollback fixed`.
+
+### chapter
+```
+    scene bg festival
+    chapter festival "Chapter 2" "The Lantern Festival"
+    hana happy "The lanterns are already lit!"
+```
+Marks where a chapter starts. The screen goes to a title card, holds it 3 seconds, then
+shows the stage, so set the next scene **above** the `chapter` line. A click finishes each
+part. The first line after it is auto-saved, saves in the chapter are named after it
+("Chapter 2: The Lantern Festival"), and chapters ever reached are remembered across
+playthroughs.
+- **Name**: like a label name, one per chapter; it may match a label.
+- **Texts**: a title, or a heading and a title (`chapter prologue "Prologue"`); plain
+  text, no `{b}` or `{var}` (write `{{` for a `{`). Heading up to 60 characters, title up
+  to 120; a title that needs more than two lines on the card is cut with "…".
+- **Card length**: seconds after the texts, e.g. `5`, from 0 to 30; `0` shows no card,
+  but the chapter still starts, is auto-saved, and names saves.
+- **with**: any [transition](#with), used going in and coming out; default `fade`.
+  `chapter river "Chapter 3" "By the River" 5 with dissolve 1.5`
+- Skip passes the card; auto mode waits out its length; menus pause it.
+
+The example game has three: a prologue, and two chapters with headings (one with a card
+length and `with`).
+
+**Settings in `config.toml`**
+
+| Setting | Default | What it changes |
+|---|---|---|
+| `[chapter] autosave` | true | An Auto save at the first line after each `chapter` |
+| `[chapter] name_saves` | true | Saves named after their chapter; false: after their line |
+
+**Looks** (`[theme.chapter]`, screen units; the card's text doesn't grow with the
+player's text size)
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `chapter.fill_color` | `"#2A1E26"` | | The card |
+| `chapter.fill_opacity` | 1.0 | 0.0–1.0 | Below 1.0 the scene shows through |
+| `chapter.heading.text_font` | `ui.text_font` | | The heading |
+| `chapter.heading.text_size` | 32 | 20–64 | |
+| `chapter.heading.text_color` | `"#F0A0C0"` | | |
+| `chapter.title.text_font` | `ui.bold_font` | | The title |
+| `chapter.title.text_size` | 56 | 24–96 | |
+| `chapter.title.text_color` | `"#FFF4F8"` | | |
+| `chapter.gap` | 16 | 0–64 | Between heading and title |
+| `chapter.max_width` | 1040 | 400–1240 | Where the title wraps |
+
+| Message | Fix |
+|---|---|
+| `there are two chapters named "festival": here and at story.vns, line 12. Give each chapter its own name.` | Rename one. |
+| `chapter needs a name and a title in quotes, e.g. chapter festival "The Lantern Festival".` / `chapter has three texts; …` / `this line has "slowly" left over after the chapter title. …` | Write `chapter name "Heading" "Title" 3 with fade` in that order. |
+| `the chapter title has 140 characters; keep it to 120.` / `chapter text is shown as written, so it can't use text tags such as {b}. …` | Plain text up to 120 characters (heading 60, name 64). |
+| `chapter takes a card length from 0 to 30 seconds (0 shows no card), but this has 45.` | Use seconds from 0 to 30. |
+| `the title of chapter "festival" needs more than 2 lines on its card at size 56, so it is cut with "…". Shorten it to about 60 characters.` (warning) | Shorten the title. |
+| `[theme.chapter] title.text_color "#60505A" has a contrast of 2.1:1 on the chapter card, under 4.5:1, so players may not read it.` (warning) | Pick colors further apart. |
+
+### ending, lock route, unlock route
+```
+lock route promise "Hana's Promise" until sad, good
+
+label river_end:
+    hana "Maybe next year."
+    ending sad "Sad End" "Paper Ashes"
+
+label festival_end:
+    hana "Look at the lanterns!"
+    ending good "Good End" "The Lantern Festival"
+
+label promise:
+    hana "You came."
+    lock ending sad
+    lock ending good
+    ending true "True End" "Hana's Promise"
+```
+```
+label bridge:
+    if "sad" in persistent.endings:
+        hana "You look like you've lost someone before."
+    if len(persistent.endings) >= 3:
+        "Something about tonight feels familiar."
+    menu:
+        hana "The bridge, or home?"
+        "Wait at the bridge" if "promise" in persistent.routes:
+            jump promise
+        "Go home":
+            jump walk_home
+```
+
+**`ending name "Heading" "Title"`** ends the story. The game remembers the ending across
+playthroughs, shows a card with its texts for 3 seconds, then fades to the title screen.
+It works the same inside a `call` or a menu choice.
+- **Name**: like a label name, one per ending; it may match a label or a chapter. Up to
+  1,000 endings.
+- **Texts**: a title, or a heading and a title, as for [chapter](#chapter): plain text, no
+  `{b}` or `{var}` (write `{{` for a `{`), heading up to 60 characters and title up to 120.
+- **Card length**: seconds after the texts, from 0 to 30; `0` shows no card and goes
+  straight to the title screen. **with**: any [transition](#with), used for the card's way
+  in; default `fade`. `ending good "Good End" "The Lantern Festival" 5 with dissolve`
+- Nothing after an `ending` runs, so give the ending's lines **above** it. The card uses
+  `[theme.chapter]`. A click ends the card early; skip passes it.
+- The ending is remembered the moment the line runs, so quitting during the card keeps it.
+  An ending makes no save, and the player can't roll back once it starts.
+
+**`lock route label "Title"`** at the top level declares a **route** that starts locked, at
+that label. Add `until sad, good` (1 to 32 ending names) to open it once the player has
+reached all of those endings, in any playthroughs: a true route. Without `until`, only
+`unlock route` opens it. Up to 1,000 routes.
+
+Inside a label, **`unlock route name`** opens a route for good, **`lock route name`** closes
+it again, and **`lock ending name`** makes the game forget an ending, which can close a route
+that needs it (an ending that wasn't reached is left as it is). None of them waits or shows
+anything. An ending is recorded only by reaching its `ending` line, so there is no
+`unlock ending`.
+
+The engine doesn't stop a `jump` into a locked route: check it in the choice's condition, as
+above, and set `show_locked = true` under `[choice]` in `config.toml` to show the choice
+dimmed, with a lock, until it opens (see [menu (choices)](#menu-choices)).
+
+**`persistent.endings`** (the endings reached, first reached first) and
+**`persistent.routes`** (the open routes, in the order they are declared) are lists you can
+read anywhere, but not change or give a `default`: use `ending`, `lock ending`, and
+`unlock route`/`lock route`. A copy (`$ seen = persistent.endings`) is an ordinary list.
+Only names your script declares are listed.
+
+Loading a save, rolling back, New Game, and `persistent._clear()` never change endings or
+routes. Players reset them with "delete persistent data" in Settings.
+
+The example game has three endings at the bridge, in `script/endings.vns`: the true ending
+is the promise route, locked until both others are reached, and it forgets them again.
+
+| Message | Fix |
+|---|---|
+| `ending needs a name and a title in quotes, e.g. ending good "The Lantern Festival".` / `ending has three texts; …` / `this line has "slowly" left over after the ending title. …` | Write `ending name "Heading" "Title" 3 with fade` in that order. |
+| `ending goes inside a label, because it runs when the story reaches it.` | Move it into a label. |
+| `there are two endings named "good": here and at script/story.vns, line 40. Give each ending its own name.` / `route "promise" is declared twice: …` | Rename one, or keep one `lock route` line. |
+| `the ending title has 140 characters; keep it to 120.` / `ending text is shown as written, so it can't use text tags such as {b}. …` / `ending takes a card length from 0 to 30 seconds (0 shows no card), but this has 45.` | Plain text up to 120 characters (heading 60, name 64), seconds from 0 to 30. |
+| `lock route promis names the label the route starts at, but there is no label "promis". Did you mean "promise"?` / `until names endings, but there is no ending "god". Did you mean "good"?` | Use a label name, and ending names from `ending` lines. |
+| `until lists "good" twice.` / `until lists 40 endings; the most is 32.` | List each ending once, up to 32. |
+| `there is no route "promis". Did you mean "promise"? …` / `there is no ending "god". Did you mean "good"?` | Fix the name, or declare the route with `lock route`. |
+| `unlock ending can't be used: an ending is recorded when the story reaches its ending line.` | Reach the `ending` line instead. |
+| `at the top level, lock only declares a route, …` / `lock route promise declares a route, so it goes at the top level. …` | Declare routes at the top level; put `unlock` and `lock` lines in a label. |
+| `persistent.endings is kept by the engine, so this line can't change it. Endings are recorded by the ending statement and forgotten with lock ending.` / `persistent.endings is kept by the engine (the endings reached so far), so it can't have a default. Remove this line.` | Read it; change it with `ending` and `lock ending` (`persistent.routes`: `unlock route`, `lock route`). |
+| `this story has 1,204 endings; the engine allows 1,000.` | Up to 1,000 endings and 1,000 routes. |
+| `the lines after this ending never run, because ending ends the story. Move them above the ending or into another label.` (warning, dev runs) | Move them above the `ending`. |
+| `lock route promise has no effect while its until endings (sad, good) are reached. Lock one of those endings too, or remove until.` (warning, dev runs) | Add `lock ending` for one of them, or remove `until`. |
+| `persistent data had its own value named "endings" from an older version of the game. 2 ending names in it were recorded as reached, and the value was dropped.` (warning) | Nothing to do: an older version's own `persistent.endings` list was moved over. |
+
+### lock tip, lock item, unlock (codex)
+```
+lock tip lanterns "Paper Lanterns" in "Festival":
+    "Lanterns are folded from washi paper and set on the river on the last night."
+    "Each carries one wish. Hana never says what hers is."
+lock tip river_god "The River God" in "Legends"
+lock item red_lantern "Red Lantern" in "Things" image items red_lantern:
+    "Bought at Daichi's stall. The paper is {i}still warm{/i}."
+
+label stall:
+    daichi "One lantern, please."
+    unlock item red_lantern
+    hana "Let's go to the river."
+    unlock tip lanterns
+    jump bridge
+```
+```
+label bridge:
+    if "red_lantern" in codex.items:
+        hana "Is that... the lantern from the stall?"
+    menu:
+        "Ask about the river god" if "river_god" in codex.tips:
+            jump river_story
+        "Say nothing":
+            thought "Some things are better not asked."
+    "The lanterns drifted on."
+
+label river_story:
+    hana "He grants one wish a year."
+    unlock tip river_god
+    lock item red_lantern
+```
+
+The **codex** is a page of the game menu that lists what the player knows and holds. It
+has two kinds of entry:
+- A **tip** is something the player learns: a custom, a legend, a word. **Tips are kept
+  across playthroughs.** Loading a save, rolling back, and New Game never take one away.
+- An **item** is something the player has right now: a key, a clue, a gift. **Items belong
+  to this playthrough.** They are saved and rolled back like story variables, and a new
+  game starts with none. Use items for clues that should reset, too.
+
+**Declare** each entry once at the top level of any file: **`lock tip name "Title"`** or
+**`lock item name "Title"`**. The entry starts locked: the player doesn't have it yet.
+- **Name**: like a label name, one per entry across tips and items, up to 64 characters.
+- **Title**: plain text up to 60 characters, shown in the list and above the entry. No
+  `{b}` or `{var}` (write `{{` for a `{`).
+- **`in "Category"`**: the tab the entry is listed under, up to 24 characters. Without it,
+  tips go under "Tips" and items under "Items". A category holds tips or items, not both,
+  and categories differ by their exact spelling. Up to 24 categories.
+- **`image items red_lantern`**: a picture shown above the text, named as for `show` (here
+  `images/items/red_lantern.png`). A large picture is made smaller to fit; a small one is
+  never enlarged. A name with no picture gets the usual missing-picture warning when the
+  game starts.
+- **The text**: one quoted paragraph per indented line under the declaration, up to 32
+  paragraphs of 2,000 characters. `{b}`, `{i}`, and `{color}` work; other tags don't.
+- Up to 1,000 tips and 1,000 items.
+
+**Inside a label**, **`unlock tip name`** adds a tip for good, and **`unlock item name`**
+gives the player an item; each new one shows a notice ("New tip: Paper Lanterns").
+**`lock item name`** takes an item away, and **`lock tip name`** makes the game forget a
+tip. None of them waits or shows anything else, and the next line already sees the change.
+Unlocking an entry the player already has does nothing.
+
+**Read** them anywhere Python runs: **`codex.tips`** (the tips the player has, in the order
+they are declared) and **`codex.items`** (the items the player holds, in the order they got
+them) are lists of names: `"red_lantern" in codex.items`, `len(codex.tips)`. You can't
+change them, give them a `default`, or read them in a `define` (use a `lambda`): use
+`unlock` and `lock`. A copy (`$ seen = codex.items`) is an ordinary list. `tip` and `item`
+are still free as variable names; `codex` is the engine's.
+
+**Rolling back** past `unlock item` takes the item away again, and scrolling forward gives
+it back without a second notice. A tip stays, so a condition on `codex.tips` can turn out
+differently when the player goes forward again; then the lines ahead are played afresh.
+Players reset tips with "delete persistent data" in Settings; that keeps their items.
+
+The codex page shows in the game menu, after History, once the story declares an entry.
+Its tabs are the categories that have an entry to show; a dot marks an entry the player
+hasn't opened yet. On the title screen it lists tips only, and only when `[title] entries`
+names it (`entries = ["new_game", "load", "codex", "settings", "quit"]`) and the player has
+a tip.
+
+The example game has two tips ("Paper Lanterns" in Festival, "The River God" in Legends) and
+two items: the paper lantern, with a picture, which the river takes when it is let go, and
+the fortune slip, which stays tied to the rail on bad luck.
+
+**Settings in `config.toml`**
+
+| Setting | Default | What it changes |
+|---|---|---|
+| `[codex] notify` | true | A notice for each new tip or item; false: none |
+| `[codex] show_locked` | false | true: tips the player doesn't have yet are listed as `???` |
+
+**Looks** (`[theme.codex]`, `[theme.codex.new]`, `[theme.codex.locked]`) and **words**
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `codex.new.fill_color` | `button.marker.fill_color` (`"#A02860"`) | | The dot on an entry not opened yet |
+| `codex.locked.text_color` | `button.disabled.text_color` (`"#6E5E68"`) | | `???` rows |
+| `codex.image_height` | 200 | 0–320 | The picture's height; 0 shows no pictures |
+
+The list and the panel use the `button.*`, `list.*`, and `panel.*` settings. The words are
+`codex` "Codex", `codex_tips` "Tips", `codex_items` "Items", `codex_new_tip` "New tip",
+`codex_new_item` "New item", `codex_locked` "???", and `codex_empty` "Nothing here yet.",
+each changed under `[words]`.
+
+| Message | Fix |
+|---|---|
+| `lock tip needs a name and a title in quotes, e.g. lock tip lanterns "Paper Lanterns".` / `lock tip lanterns "Paper Lanterns" declares a tip, so it goes at the top level. …` / `unlock goes inside a label, because it runs when the story reaches it.` | Declare entries at the top level as `lock tip name "Title" in "Category" image …`, in that order; put `unlock` and `lock` lines in a label. |
+| `there are two codex entries named "lanterns": here and at script/codex.vns, line 4. Give each tip and item its own name.` | Rename one. |
+| `the tip title has 75 characters; keep it to 60.` / `a tip paragraph can use {b}, {i}, and {color}, but not {var}.` | Plain titles up to 60 characters; only `{b}`, `{i}`, `{color}` in the text. |
+| `there is no tip "lantern". Did you mean "lanterns"? Declare tips at the top level, e.g. lock tip lantern "Title".` / `brass_key is an item, not a tip. Write unlock item brass_key.` | Fix the name, or declare the entry. |
+| `this story has 1,204 tips; the engine allows 1,000.` | Up to 1,000 tips, 1,000 items, and 24 categories. |
+| `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock`. |
+| `define hint couldn't be set: it reads codex, which holds items only once a game has started. Use a lambda or a default.` (when the game starts) | Use `define hint = lambda: …` or a `default`. |
+| `the category "festival" differs from "Festival" (script/codex.vns, line 1) only in capitals or spaces, so they show as two tabs. Use one spelling.` (warning, dev runs) | Spell the category one way. |
+| `tip river_god is declared, but no unlock tip river_god line names it, so players get it only if code unlocks it.` (warning, dev runs) | Add an `unlock tip` line, or remove the tip. |
+| `lock item brass_key does nothing here, because the player doesn't have it.` (warning, dev runs) | Check for the item first: `if "brass_key" in codex.items:`. |
+
+### flowchart (the story map)
+```
+lock route promise "Hana's Promise" until sad, good
+
+label festival:
+    chapter festival "Chapter 2" "The Lantern Festival"
+    hana "You made it! They light the river lanterns at nine."
+    jump stall
+
+label stall:
+    flowchart scene "Daichi's Stall"
+    daichi "Red's the lucky colour this year. Or so I tell everyone."
+    menu:
+        "Buy the red one" if coins >= 2:
+            $ coins -= 2
+        "Just look":
+            $ pass
+    hana "Come on, the good spots are filling up."
+    flowchart "Where should we watch the lanterns?"
+    rollback fixed
+    menu:
+        "By the river":
+            jump river
+        "From the shrine steps":
+            jump shrine
+        "Wait at the bridge" if "promise" in persistent.routes:
+            jump promise
+
+label promise:
+    flowchart scene "The Promise" hidden no jump
+    hana "You remembered. Even after everything."
+    flowchart hidden
+    ending true "True End" "Lanterns on the Water"
+```
+```
+label second_act:
+    flowchart forget
+    lock ending sad
+    lock ending good
+    "The festival grounds are empty. Were they ever full?"
+```
+
+The **Flowchart** page draws your story as a map, left to right. Players see where they have
+been and `???` for what they haven't found yet, and they can **jump** back to any point they
+have reached, with the story as it was then. They open it from the game menu (Esc), and from
+the title screen once there is a point to jump to.
+
+You get it with no extra lines. These are boxes on the chart:
+- every `chapter` and every `ending`;
+- a menu whose choices lead to different boxes. A small-talk menu whose choices join up
+  again, like the stall's first menu above, isn't one;
+- a padlocked gate for each route `lock route` keeps closed, ticking off its `until` endings;
+- a Start box, when the story shows something before its first box.
+
+A path out of a menu is labelled with its choice's text as plain text: a `{var=…}` in it
+shows as `…`, never as a value, and its `if` condition never shows. Labels without a box are
+passed through, so a path follows a `jump` or `call` to a plain label.
+
+Every other choice about the chart is a line that starts with **`flowchart`**:
+- **`flowchart scene "Title"`** as the first line of a label makes that label a box with
+  this title. Use it for a scene players will want to find again.
+- **`flowchart "Title"`** right above a `menu:` puts the menu on the chart with that title,
+  whatever `[flowchart] menus` says. A plain `flowchart` uses the menu's question as the
+  title. **`flowchart omit`** leaves a menu off the chart. A `rollback fixed` line may sit
+  between the mark and its `menu:`.
+- **`hidden`** after either line, or **`flowchart hidden`** right above a `chapter` or
+  `ending`, keeps that box and its paths off the chart until the player reaches it. Use it
+  for secret routes and the true ending. A locked route's boxes are hidden anyway until it
+  opens; `hidden` keeps them hidden after that, until they are reached.
+- **`no jump`** after a scene or menu line, or `flowchart no jump` right above a `chapter`,
+  means players can't jump to that box (its panel says "You can't jump to this point."). Use
+  it for scenes that must be played in order. Endings are never jump targets.
+- **`flowchart forget`** makes the game forget the whole chart: each box goes back to `???`
+  and its jump point is deleted. **`flowchart forget stall`** forgets only the boxes written
+  in label `stall`: its scene, and the chapters and menus in it, not the labels it jumps to
+  or calls. Endings follow their own records, so forget them with `lock ending`. Forgetting
+  happens at once, and loading a save or rolling back doesn't undo it.
+
+Titles are plain text of 1 to 120 characters, with no `{b}` or `{var}` (write `{{` for a
+`{`). A `flowchart` line never changes what it marks, so adding, retitling, or removing one
+keeps every player's chart and jump points.
+
+**A jump** loads the story as it was when the player last reached that box: the scene, the
+music, story variables, items, meters, and history, as loading a save does, and rollback
+starts again from there. It keeps everything the game remembers across playthroughs:
+endings, routes, tips, read lines, and the chart itself. A menu offers the choices allowed
+*now*, so a route opened since then is offered: its conditions run again, on the story
+variables of that moment and today's persistent data, as `default`s do when a save loads. In
+the game a jump asks first and, with `[saves] autosave_quit`, makes an Auto save of where
+the player was; from the title it asks nothing. Saves are never changed.
+
+**Jump points are files.** Each box's jump point is a copy of the story state, kept in the
+game's saves folder next to the saves (`node-….vnnode` files, up to 256 MiB in all).
+**Delete progress** in Settings and `flowchart forget` delete them; deleting saves doesn't.
+When a point couldn't be kept (no room, a folder that can't be written), its box says "Reach
+this point again to jump here."; when the story has changed so much that the point no longer
+fits, "This part of the story has changed.".
+
+**Settings in `config.toml`**
+
+| Setting | Default | What it changes |
+|---|---|---|
+| `[flowchart] enabled` | true | false: no Flowchart page (`flowchart` lines are still checked) |
+| `[flowchart] menus` | `"branching"` | `"all"`: every menu is a box; `"marked"`: only menus with a `flowchart` line |
+| `[flowchart] unvisited` | `"mystery"` | `"hidden"`: boxes not reached yet aren't drawn, so the chart grows as it's explored |
+| `[flowchart] jump` | true | false: a map only, with no Jump button |
+
+The page's colours and sizes are the `flowchart.*` tokens of the UI system, set in
+`[theme.flowchart]`; its words (`flowchart`, `flowchart_jump`, `flowchart_no_jump`,
+`flowchart_var`, and the rest) are changed under `[words]`.
+
+The example game marks the lantern stall as a scene, titles the bridge's last menu "How
+should the night end?", and hides the promise route's scene and the True End.
+
+| Message | Fix |
+|---|---|
+| `"hiden" isn't a flowchart word. Did you mean "hidden"? A flowchart line takes a title in quotes, hidden, no jump, scene, omit, or forget.` / `flowchart scene needs the scene's title in quotes, e.g. flowchart scene "Daichi's Stall".` | Fix the spelling. The title comes right after `flowchart` (or `flowchart scene`), then `hidden` and `no jump`. |
+| `flowchart scene must be the first line of label stall, so the flowchart knows where the scene starts. Move it above line 12.` / `flowchart lines go inside a label, next to the scene, menu, chapter, or ending they mark.` | Move it to the top of its label. |
+| `a flowchart line marks the menu, chapter, or ending right below it, but the next line here is a line of dialogue (line 31). Move it right above the menu:.` / `a flowchart line above a chapter takes only hidden and no jump, because the chapter line gives the title. Remove "Festival Night".` | Put it right above the `menu:` (a `rollback fixed` may sit between). Above a chapter or ending, write only `hidden` or `no jump`. |
+| `the flowchart title has 140 characters; keep it to 120.` / `flowchart titles are shown as written, so they can't use text tags such as {b} or {var}. Write {{ for a "{".` | Plain text, 1–120 characters. |
+| `there is no label named "rivr". Did you mean "river"? flowchart forget takes a label name, or nothing to forget the whole flowchart.` | Name a label, or write `flowchart forget` alone. |
+| `this story's flowchart has 3,204 boxes; the engine allows 3,000. Leave small menus off with flowchart omit, or set [flowchart] menus = "marked".` | Up to 3,000 boxes and 10,000 paths. |
+| `scene "Old Ending" (label old_ending) can't be reached from the start of the story, so it stays ??? on the flowchart for every player. Add a jump or call that leads to it, or remove its flowchart line.` (warning, dev runs) | Jump to it, or remove the line. |
+| `the flowchart can't tell where this line goes, so it draws no path from here. The story still plays; use jump or call with a label name to draw the path.` (warning, dev runs) | Use `jump` or `call` with a label name where the chart should follow. |
+| `this choice's text is only {var=lantern_color}, so its path on the flowchart reads "…". Add a word or two, e.g. "Buy the {var=lantern_color} one".` (warning, dev runs) | Add words around the `{var}`. |
+| `flowchart forget stall does nothing, because label stall has no flowchart boxes in it. Add flowchart scene "Title" as its first line, or name another label.` (warning, dev runs) | Mark a box in that label, or name another. |
+| `the flowchart state for scene:stall is too large to keep, so this point can't be jumped to.` (warning, dev runs, while playing) | The story state there is over the save size limit (see "Saves"); the box keeps no jump point. |
+| `couldn't jump to scene:stall: no state is kept for it` (warning, dev runs, while playing) | The point's file is missing or damaged, or the story changed; reaching the box again makes a new one. |
+
+### points
+See [points (character stats)](#points-character-stats) in section 9.
+
+### nvl (full-screen text)
+```
+    scene bg river_dusk
+    nvl on
+    "The festival comes once a year, on the night the river runs slowest."
+    "Every family folds a lantern. Mine never floated."
+    hana "You're thinking about last year again."
+    nvl clear
+    "Three days later, the letter came."
+    nvl off
+    hana happy "Come on, the stalls are opening!"
+```
+
+`nvl on` switches to **full-screen text**: a panel covers the scene, and each line is
+added below the one before it, like a page in a book. `nvl off` goes back to the text box.
+`nvl clear` starts a new, empty page. Use it for long narration, a letter, or a diary
+entry; the scene stays visible through the panel.
+
+- **Pages fill up by themselves:** when the next line doesn't fit, the page empties and
+  the line starts at the top. Use `nvl clear` for a deliberate break, such as a time skip.
+  A line too long for a whole page shows in parts, with a click between them, like a
+  long line in the text box.
+- **Lines work as usual:** dialogue and narration, names (on their own row above the
+  text, in the character's color), expressions, `voice`, and every
+  [text tag](#text-tags). Each line types, pauses, and waits for a click as in the text
+  box.
+- **Menus:** the question goes on the page like any line (a menu with no question keeps
+  the last line), and the choices sit just under it, lined up from the top. If they don't
+  fit under the page, the page shows only the question with the choices under it; if
+  they still don't fit, they are centered over the page as usual. After a pick, the next
+  line starts a new page.
+- **Where it goes:** `nvl on`, `nvl off`, and `nvl clear` go on a line of their own,
+  anywhere a story line can: in a label, under `if`, or inside a choice's block (not
+  directly under `menu:`). Nothing else goes on the line, except a `#` comment.
+- **Transitions:** the panel appears and goes at once. Put a transition on the `scene`
+  line before `nvl on` instead (`nvl on with dissolve` is an error). During a
+  `scene … with dissolve` in full-screen text, the panel hides and comes back, with its
+  page, at the next line. A `scene` never clears the page.
+- **Chapters:** a `chapter` card doesn't end the page or change the mode. To start the
+  new chapter on a fresh page, write `nvl clear` after the `chapter` line.
+- Every game starts with the text box. `nvl off` empties the page, so a later `nvl on`
+  starts on an empty one.
+- Saves, history, skip, auto, and rollback work as with the text box. Loading a save or
+  rolling back shows the page as it was, already typed out.
+- A page keeps its last 32 lines for loading and rollback. Write `nvl clear` at least
+  every 32 lines (a dev run warns otherwise).
+- **Looks** come from `[theme.nvl]` in `config.toml`. By default the panel matches the
+  text box (`#FFF4F8` at 0.85 over the scene, the same font, size, and colors), so
+  character colors that read in the text box read here too.
+
+```toml
+[theme.nvl]
+fill_color = "#3a2a3f"        # the panel; without it, the text box's fill_color
+fill_opacity = 0.9            # 0.5 to 1.0
+text_color = "#fff4f8"        # without it, the text box's text_color
+name.text_color = "#f0a0c0"   # names of characters with no color
+indicator.fill_color = "#f0a0c0"
+```
+
+| Key | Default | Allowed |
+|---|---|---|
+| `fill_color` | the text box's (`"#FFF4F8"`) | `"#RRGGBB"` |
+| `fill_opacity` | `0.85` | 0.5–1.0 |
+| `width` | `920` | 640–1200; the text column, centered |
+| `top_gap` | `64` | 24–200; the screen's top to the first line |
+| `bottom_gap` | `72` | 40–200; the last line to the screen's bottom (keeps the quick menu clear) |
+| `line_gap` | `20` | 0–80; the space between two lines |
+| `text_size` | the text box's (`28`) | 20–48; the player's text size scales it |
+| `text_color` | the text box's (`"#3D2B36"`) | `"#RRGGBB"` |
+| `name.text_color` | the name plate's (`"#A02860"`) | `"#RRGGBB"` |
+| `indicator.fill_color` | the text box's indicator (`"#A02860"`) | `"#RRGGBB"` |
+
+**Dev-run warnings.** A line in full-screen text that needs more than one page gets the
+long-line warning below instead of the text box's. The game decides which lines are in
+full-screen text by reading each label from the top: a line counts when the nearest
+`nvl on` or `nvl off` above it in the same label is `nvl on` (jumps and calls aren't
+followed, and every label starts with the text box). When the script uses `nvl on`, the
+`[theme.nvl]` colors are checked on the panel over a black and a white picture, and so is
+every character's name color.
+
+| Message | Fix |
+|---|---|
+| `nvl needs on, off, or clear after it, e.g. nvl on.` / `nvl takes on, off, or clear, but this has "of". Did you mean "off"?` / `write nvl on in lower case.` | Write `nvl on`, `nvl off`, or `nvl clear`, in lower case. |
+| `nvl on takes nothing else on its line, but this has "now".` / `full-screen text appears instantly, so nvl on can't take "with dissolve". Put the transition on the scene line before it.` / `nvl doesn't start a block, so it takes no ":". Write nvl on, then the lines under it at the same indentation.` | Put anything else on its own line; put transitions on the `scene` line before it. |
+| `this full-screen line needs 2 pages at text size 28, so the player clicks once partway through. To choose where it breaks, split it into two lines.` (warning) | Split the line. |
+| `33 lines have gone by in full-screen text since the last nvl clear, so the oldest isn't kept for loading and rollback, and a page restored here may start at a different line. Add nvl clear where a new page should begin.` (warning) | Add `nvl clear` at page breaks. |
+| `config.toml: [theme.nvl] text_color #A0A0A0 on fill_color #FFF4F8 at fill_opacity 0.85 gives 1.7:1 over a black picture; full-screen text needs at least 4.5:1. Pick colors further apart.` (warning; also for `name.text_color` and `indicator.fill_color`, which need 3:1) | Pick colors further apart, or raise `fill_opacity`. |
+| `rin's color #C060A0 gives 2.5:1 on the full-screen text panel ([theme.nvl]); names need at least 3:1. Pick a darker color, or change [theme.nvl] fill_color.` (warning) | Pick a darker color for her, or change the panel. |
+
+The example game's prologue opens in full-screen text, with one `nvl clear` and one
+`nvl off`.
+
+---
+
+## 8. Characters
+
+```
+define daichi = Character("Daichi", color="#3a6aa8")
+define narrator_box = Character("")          # no name plate
+```
+
+| Option | What it does |
+|---|---|
+| `"Daichi"` (first) | The name the player sees. `""` shows no name plate. |
+| `color="#3a6aa8"` | The name's color: `#` and six digits or letters a–f. |
+| `name_from="hana_name"` | Take the shown name from a story variable instead (below). |
+| `image_tag="daichi"` | Which sprite the character's lines change, when it isn't the define name. See [Expressions on dialogue lines](#expressions-on-dialogue-lines). |
+| `text_color="#1e4a9c"` | The color of the character's lines. See [Text style for a character](#text-style-for-a-character). |
+| `text_italic=True` | The character's lines are in italics. |
+| `blip="blips/hana.ogg"` | A short sound played as the character's lines type (below). |
+| `blip_every=2` | Blip on every 2nd letter or digit: a whole number from 1 to 10 (default 2). |
+| `blip_pitch=0.1` | Vary each blip's pitch by up to ±10%: 0.0 to 0.5 (default 0.0, as recorded). |
+| `blip_volume=70` | The blip's loudness, as a percentage of the sound volume: 0 to 100 (default 100). |
+
+**A name that changes.** To show `???` until a character introduces herself, give the
+character `name_from` with the name of a `default`, in quotes, and change that variable:
+
+```
+define hana = Character(name_from="hana_name", color="#b03070")
+default hana_name = "???"
+
+label start:
+    hana "Oh, sorry. I'm Hana."
+    $ hana_name = "Hana"
+    hana "He said you'd get lost at least twice."    # the plate now reads Hana
+```
+
+The new name shows from the next line, is saved with the game, and goes back if the player
+rolls back. The history keeps the name each line was shown with. Use either a name or
+`name_from`, not both. Characters are checked when the game starts: every name that speaks
+must be a `Character`, and every option must be spelled right.
+
+**Blips.** A blip is a short sound played as a character's line types, so players can tell
+speakers apart by ear:
+
+```
+define hana   = Character("Hana", color="#b03070", blip="blips/hana.ogg", blip_pitch=0.1)
+define daichi = Character("Daichi", blip="blips/low.wav", blip_every=3, blip_volume=70)
+```
+
+The file is inside the `audio` folder, written as in `play` (`"blips/hana.ogg"`, not
+`"audio/blips/hana.ogg"`), and is `.ogg`, `.opus`, `.flac`, `.mp3`, or `.wav`. Only letters
+and digits blip, in any language; spaces, punctuation, symbols, and emoji stay silent.
+`blip_every=2` blips on the line's first letter, then on every 2nd one; each new line counts
+from its first letter again, and a `{pause}` or a page break doesn't restart the count. So
+at `blip_every=2`, `"You're late!"` blips on Y, u, e, a, and e.
+
+Blips follow the text as it appears: none while the text waits at a `{pause}`, while the
+text box is hidden or a menu is open, or after the player clicks to show the rest of the
+line. At most one blip starts every 0.04 seconds, and a new blip cuts off the one before,
+so text that appears all at once (`{speed=instant}`, a speed of 0, or the player's instant
+text setting) blips once. With `blip_pitch=0.1` each blip plays at one of five pitches
+from 0.9 to 1.1 times its recorded pitch; a higher one is also a little shorter.
+
+Voiced lines, narration, and skipped lines don't blip, and neither does a line shown again
+by rollback or by loading a save. Keep a pitched blip to half a second or less: a longer one
+plays at its recorded pitch, with a warning. `blip_every`, `blip_pitch`, and `blip_volume`
+need `blip` in the same `Character(...)`. A missing file is a warning at the define, and a
+file that can't be played is a warning the first time it is needed; either way the game
+plays on without the blip. The example game gives Hana a bright blip with `blip_pitch=0.1`
+and Daichi a lower, quieter one (`script/main.vns`, `game/audio/blips/`).
+
+---
+
+## 9. Story variables
+
+A name set by a `$` line or a `default` is a **story variable**. Every later `$` line and
+condition can use it, in every label and file. It is saved with the game and rolled back.
+Labels and `call` don't make separate variables.
+
+**What Python can see:** story variables, defined names, `Character`, `dice`, `module`,
+`persistent` and `points` (below), `codex` (see [lock tip, lock item,
+unlock](#lock-tip-lock-item-unlock-codex)), and Python's built-ins (`len`, `min`, `round`,
+…).
+
+**What a variable can hold:** `None`, `True`/`False`, whole and decimal numbers, text, lists,
+and dictionaries with text keys, inside each other as deep as you like. Anything else
+(a set, a function, a module, a character) can't be saved and stops the story with a
+message saying what to use instead.
+
+**What a `$` line can't set:** a defined name (use `default`), an engine name (`dice`,
+`Character`, …), a name starting with `_`, or `import` (see section 11). Setting part of a
+value is fine: `$ scores["hana"] = 2`.
+
+Good to know:
+- Two variables that share one list (`$ b = a`) get separate, equal lists after a load or
+  rollback.
+- A defined list changed by a `$` line isn't saved, and keeps the change in the next new
+  game. Use `default` for anything that changes.
+- A `define` value can't read story variables or roll `dice`, because defines are set at
+  launch, before any game exists. A `lambda` in a define can, since it runs later:
+  `define bonus = lambda: trust * 2`.
+- In dev runs, `print()` output goes to the log.
+
+### persistent (data across playthroughs)
+
+```
+default persistent.festivals = 0
+default persistent.hana_remembers = False
+
+label river_end:
+    $ persistent.festivals += 1
+    $ persistent.hana_remembers = True
+
+label bridge:
+    if persistent.hana_remembers:
+        hana sad "Have we... done this before?"
+```
+
+`persistent.<name>` is remembered **across playthroughs**: quitting, starting a new game,
+loading a save, and rolling back never change it. Use it for what the game should remember
+about the player rather than the story ("finished once", "saw the sad ending").
+
+- **`default persistent.<name> = value`** (top level, once per name) gives the starting value.
+  It is used only when the name has no stored value, so adding one in a patch is safe and
+  changing it later doesn't change what players already have.
+- **Reading a name that has no value and no default** stops the story with a did-you-mean.
+  Give every persistent name a `default`.
+- **Values:** the same kinds as story variables (text, numbers, `True`/`False`, `None`, lists,
+  dictionaries with text keys). `persistent.flowers.append("iris")` is kept. At most 1 MB in
+  total and 10,000 names (E183).
+- **Names** starting with `_` are the engine's. `$ persistent._clear()` forgets all your
+  values (defaults apply again). `$ persistent._clear(progress=True)` also forgets which lines
+  were read and which choices were picked. Unlocks (gallery, endings, achievements) stay;
+  only the settings' "delete persistent data" button removes them.
+- **`define` values can't read `persistent`**: they are set once at launch. Use a `lambda`.
+- **Rollback re-runs lines**, so `$ persistent.festivals += 1` can count twice if the player
+  rolls back over it and forward again. Prefer `= value`, or put a `rollback block` after
+  it (see [Rollback](#18-rollback)).
+- **Players can edit and share the file**, so treat what you read as untrusted: never pass a
+  persistent value to `eval` or `exec`, and never build a file name or an image or sound
+  name from one. Check a value's type before using it (`if persistent.festivals == 2:`
+  rather than doing arithmetic on whatever is there), and never store anything personal.
+- Saved automatically (within 2 seconds, at the story's end, and on quit) to
+  `persistent/persistent.json` in the game folder during development, or the player's data
+  folder in a release (set `[game] id`; without it the game runs but nothing is saved, with
+  a warning). Players reset it by deleting that file. A damaged file is set aside as
+  `persistent.bad.json` and the game starts fresh; a file from a newer engine version is
+  left alone and nothing is saved that session. To test a first playthrough, run
+  `python -m engine run --no-persistent` (dev runs only): nothing is read or saved.
+
+| Message | Fix |
+|---|---|
+| `persistent.met_hana has no value yet. …` / `… Did you mean "hana_remembers"?` | Fix the spelling, or add `default persistent.met_hana = False`. |
+| `persistent.visited can't hold a set, …` / `persistent data is now 1.3 MB, over the 1 MB limit. …` | Store plain values; keep flags and counts, not long text. |
+| `persistent.bag[…][0] can't hold a set, …` | `[…]` stands for a dictionary key that isn't written in your script (it may come from the player's file), so it is never shown. |
+| `persistent names starting with _ belong to the engine, …` / `default persistent.a.b sets one name …` | Use a plain name such as `seen_intro`. |
+| `define title couldn't be set: it reads persistent.cleared, …` | Use a `lambda` or a `default`. |
+| `persistent.hana_rememebrs is read here but never set or given a default. …` (warning, dev runs) | Fix the spelling or add a `default`. |
+
+### points (character stats)
+
+```
+points hana daichi 0 to 10
+points courage 0 to 100 start 50
+default bonus = 2
+
+label bridge:
+    points daichi += 1
+    points courage -= bonus * 2
+    if points.highest("hana", "daichi") == "hana":
+        hana happy "Same time next year?"
+```
+
+A **meter** is a whole number the story keeps, such as how much each character likes the
+player.
+
+- **Declare** at the top level, once, in any file: `points hana daichi` starts each at 0.
+  Add `0 to 10` to keep a meter in that range, and `start 5` to start elsewhere. Without a
+  range a meter can go from -1,000,000,000 to 1,000,000,000; when 0 is outside the range, it
+  starts at the low number. A story can have up to 200 meters.
+- **Change** in a label: `points hana += 2`, `-= 1`, or `= 0`. The amount can be any Python
+  that gives a whole number, e.g. `bonus * 2`. Adding past the top stops at the top, and
+  taking away past the bottom stops at the bottom.
+- **Read** wherever Python runs: `if points.hana >= 5:`, `points["hana"]`, and
+  `points.highest("hana", "daichi")`, the name of the highest (the first listed wins a tie;
+  with no names, every meter in the order they were declared). `$` lines can't change
+  meters.
+- **`define` values can't read `points`**: they are set at launch, before any game starts.
+  Use a `lambda` or a `default`.
+- A meter can share a character's name: `points.hana` is the meter, `hana` the character.
+  Meters are saved and rolled back like variables. A save made before you added a meter
+  starts it at its start, and a saved value outside a range you changed later moves into the
+  range.
+- In dev runs, **F3** shows every meter under the frame rate, such as `hana 2 (0-10)` (the
+  range only when you declared one). After 12 meters it shows how many more there are.
+
+| Message | Fix |
+|---|---|
+| `points needs a meter name, e.g. points sayori 0 to 10 at the top level, or points sayori += 2 in a label.` | Name the meter: `points hana 0 to 10` at the top level, `points hana += 2` in a label. |
+| `there are two meters named "sayori": here and at script/story.vns, line 3. Declare each meter once.` | Delete one of the two declarations. |
+| `the range 10 to 0 is backwards; write the low number first.` | Write `0 to 10`. |
+| `there is no meter named "sayory". Did you mean "sayori"? Declare meters at the top level, e.g. points sayory 0 to 10.` | Fix the spelling, or declare the meter. |
+| `Python can't change points.sayori. Use the points statement, e.g. points sayori = 3.` | Change meters with a `points` line, not a `$` line. |
+| `this story has 240 meters; the engine allows 200.` | Keep the rest in story variables. |
+| `the amount for points sayori must be a whole number, but it is 1.5 (a decimal number).` | Round it: `points sayori += round(bonus)`. |
+| `points sayori += 5 went past the top of its range, so sayori is 10, not 12.` (warning, dev runs, once per line) | Fine if you meant it; otherwise widen the range or change the meter by less. |
+
+---
+
+## 10. Random numbers
+
+```
+    $ wind = dice.roll(1, 6)            # 1, 2, 3, 4, 5, or 6
+    $ fortune = dice.pick(fortunes)     # one item from a list
+    if dice.decimal() < 0.25:           # a 25% chance
+        "A gust took the lantern before I could write on it."
+    $ deck = dice.shuffle(deck)         # a shuffled copy
+```
+
+| Call | Gives |
+|---|---|
+| `dice.roll(low, high)` | a whole number from `low` to `high`, both included |
+| `dice.pick(items)` | one item from a non-empty list |
+| `dice.decimal()` | a decimal number from 0 up to (not including) 1 |
+| `dice.shuffle(items)` | a new, shuffled list; `items` stays as it was |
+
+`dice` results are saved with the game: reloading or rolling back gives the **same**
+results, so players can't reroll by reloading. Each new game rolls differently. `dice` can
+be used once a game has started: in `$` lines, conditions, defaults, and `lambda` helpers,
+but not directly in a `define` value.
+
+**Use `dice`, not `random` or `time`.** Python's `random` module and the clock (`time`,
+through `module`) work, but their results don't replay: after a load or a rollback they
+give different numbers, so a player can reroll by reloading, and a scene that depends on
+them can't be played back the same way.
+
+> **Warning:** `$` lines, `if`/`elif` conditions, and `define` values run real Python, with
+> the same access to the player's computer as any program, and `define` values run at
+> every launch. Code that uses `dice` is no different. Players should only run scripts
+> from people they trust.
+
+---
+
+## 11. Python modules
+
+```
+define math = module("math")
+
+label shop:
+    $ lanterns = math.floor(money / 300)
+```
+
+To use a Python module in the whole game, define it with `module("name")` at the top level.
+That is the only way: `import` in a `$` line is an error, because a module can't be saved
+with the game. Built-ins such as `len`, `min`, `max`, and `round` need no module.
+
+---
+
+## 12. Backgrounds and sprites
+
+**Pictures come from files.** Put PNG, JPEG, or WebP files in `game/images/` (subfolders
+are fine). A file's name in the script is its path inside `images/`, with the folders and
+the file name as words and no extension. There is no list to keep.
+```
+game/images/bg/river_dusk.png         →  scene bg river_dusk
+game/images/hana/happy.png            →  show hana happy
+game/images/hana/yukata/happy.png     →  show hana yukata happy
+game/images/stall.png                 →  show stall
+```
+
+The first word (`hana`) is the image's **tag**. Names match files exactly, capitals
+included. In file and folder names use letters, digits, and `_`: no spaces, hyphens, or
+extra dots, at most 5 words, and not a statement word or `layer`, `zoom`, `flip`. The log
+lists any file that breaks these, with a name to rename it to. The example game's pictures
+are in `game/images/`.
+
+**Art scale.** Sprites are drawn at their own size on a screen 720 high. If your art was
+drawn for a 1920×1080 screen, say so once in `game/config.toml`. Backgrounds always fill
+the screen, whatever their size.
+```toml
+[stage]
+art_height = 1080          # 180 to 4320; 720 when left out
+```
+
+### scene
+```
+    scene bg river_dusk
+    scene black
+```
+Removes every character and sets the background. `black` is built in. `scene` alone
+clears to an empty black stage.
+
+### show
+```
+    show hana happy
+    show hana sad
+    show hana at left
+    show daichi grin at right
+```
+Shows a sprite. One sprite per tag: `show hana sad` replaces `hana happy` in the same
+place, and `show hana at left` moves Hana without changing her face. A sprite shown for
+the first time stands at `center`. After the image name you can add, in any order:
+
+| Write | What it does |
+|---|---|
+| `at left`, `at center`, `at right` | Built-in positions. |
+| `at by_the_rail` | A position you named in `config.toml` (below). |
+| `at 400`, `at 400 680` | x (and y) on a 1280×720 screen, for the sprite's bottom center. −1280 to 2560, so a sprite can wait off-screen. |
+| `behind hana` | Directly behind the sprite tagged `hana`. |
+| `layer 10` | Higher layers are always in front. −100 to 100; normally 0. |
+| `zoom 1.5` | Bigger or smaller, 0.25 to 4. `zoom 1` is normal size. |
+| `flip on`, `flip off` | Mirror the sprite left to right, or undo it. |
+| `as girl_b` | Use another tag, so the same picture can be shown twice. |
+
+Each stays until you change it. On the same layer, the sprite shown most recently is in
+front.
+
+`at` takes a position name or numbers:
+```
+    show hana happy at left                  # left, center, or right
+    show hana happy at by_the_rail           # a name from [stage.positions]
+    show daichi at 760                       # x only: feet on the bottom edge
+    show daichi at 760 680                   # x and y
+```
+
+`behind`, `layer`, `zoom`, `flip`, and `as`:
+```
+    show daichi at 760 behind hana           # just behind Hana
+    show railing layer 10                    # always in front of the characters
+    show hana happy zoom 1.3                 # a step closer
+    show lantern_girl as girl_a at 900 flip on
+    show lantern_girl as girl_b at -200      # waits off-screen
+```
+
+**Your own positions.** Name positions once in `config.toml` and use them like `left`:
+```toml
+[stage.positions]
+by_the_rail = 560          # x only: stands on the bottom edge
+hana_close = [560, 760]    # x and y
+left = 240                 # the built-in ones can move too
+```
+
+### hide
+```
+    hide daichi
+```
+Removes the sprite with that tag. Write only the tag. Hiding someone who isn't shown does
+nothing.
+
+### Expressions on dialogue lines
+```
+    show hana happy
+    hana pout "You're late!"
+    hana "Fine. I forgive you."        # still pouting
+```
+Words between the name and the text change the speaker's sprite on that line, as if
+`show hana pout` ran just before it, and the face stays. If the character isn't on stage,
+the words do nothing. Only expression words go there; positions belong on a `show` line.
+`hana sad` shows `hana sad`, not `hana yukata sad`: give the full name to keep an outfit.
+
+If a character's images use another name, such as for a short speaker name, give the
+`Character` an `image_tag`:
+```
+define d = Character("Daichi", color="#3a6aa8", image_tag="daichi")
+```
+
+### image
+```
+image bg dusk = "#2b2140"
+image hana festival = "art/commissions/hana_yukata_v3.png"
+```
+Names a file outside `images/` (path from the game folder), or a solid color that fills
+the screen (`#` and six digits or letters a–f). Top level only; each name once. Most games
+need none.
+
+**When pictures change.** Nothing changes on screen until the next line of text, choice,
+`with`, or `pause`; then the whole picture changes together. `scene` followed by three
+`show` lines is one picture, never a background without its characters.
+
+### Transitions
+```
+    scene bg bridge_night with fade
+    show hana happy with dissolve
+    hide daichi with dissolve
+```
+`with` at the end of `scene`, `show`, or `hide` changes the picture through a transition
+instead of at once. See [Transitions and effects](#16-transitions-and-effects).
+
+### Missing pictures and positions
+Missing pictures don't stop the game. You get a warning at launch, and a checkered
+placeholder stands in while you play, so you can write before the art is done:
+
+- `there is no image "hana hapy", so a placeholder will show. Did you mean "hana happy"?`
+- `there is no image "hana blush", so a placeholder will show. Add images/hana/blush.png, or check the spelling.`
+- `there is no image "hana happy", so a placeholder will show. Names match files exactly: rename images/hana/Happy.png to happy.png, or write hana Happy.`
+
+A wrong position does stop the launch:
+
+- `there is no position named "rigth". Did you mean "right"?`
+- `there is no position named "stall". Use left, center, right, or a number such as at 400, or add stall to [stage.positions] in config.toml.`
+- `1400 is too far right. Positions go from -1280 to 2560; the screen itself is 0 to 1280 across and 0 to 720 down.` (or `too far left`, `too high`, `too low`)
+- `at takes a position name or one or two numbers, e.g. at left or at 400 680, but this has "400px". Numbers have no units.`
+- `at takes at most two numbers, x and y, but this has 3.`
+
+---
+
+## 13. Music and sound
+
+**Sounds come from files.** Put audio files in `game/audio/` (subfolders are fine, e.g.
+`bgm/`, `sfx/`, `voice/`). In the script, write the file's path **inside** `audio/`, in
+quotes, with its extension: `"bgm/festival.ogg"` plays `audio/bgm/festival.ogg`. Paths use
+`/` and match capitals exactly.
+
+**Formats.** Use **Ogg Vorbis (`.ogg`)**, especially for music: it is small and loops with
+no gap. Opus, FLAC, WAV (16-bit), and MP3 play too. WAV loops with no gap as well, but its
+files are about ten times larger. **Don't loop MP3 music:** an MP3 encoder adds a few
+milliseconds of silence at the start and end of every file, so the track has a short gap
+each time it loops (the game warns about it). Other files (`.m4a`, `.aac`, `.wma`, `.mid`)
+don't play; convert them to `.ogg`.
+
+**Loudness.** Aim for about the same loudness in every file: around −16 LUFS for music and
+voice, effects and ambience a little quieter, and peaks under −1 dB, so players don't have
+to keep changing the volume. Most audio editors can measure and set it (in Audacity:
+Effect, Loudness Normalization).
+
+There are three **channels**: `music` (one track at a time), `sound` (many effects at once),
+and `voice` (one voice line at a time).
+
+The example game, *Paper Lanterns*, uses each statement below: music that fades in and a
+river that loops under it (`script/main.vns`), a chime over the river
+(`script/chapter1.vns`), a change of music, a hard stop, a firework, and a queue
+(`script/routes/daichi.vns`), three voiced lines, one of them a menu's question, and
+Hana's and Daichi's text blips (section 8). Its files are in `game/audio/`; `game/audio/LICENSES.txt` records who made each one and its
+license. Keep such a record for your own files too: where each came from, and its license.
+
+### play
+```
+    play music "bgm/festival.ogg" fadein 2.0
+    play sound "sfx/firework.ogg"
+    play sound "sfx/rain.ogg" loop volume 40
+```
+Music loops and replaces the music playing (the old track fades out first). Playing the
+track that's **already playing** leaves it alone, so music carries on when you jump to
+another label. Effects play once and never stop anything else; with `loop`, an effect
+repeats until `stop sound` (rain, a crowd, a river), and other effects play over it. After
+the file you can add, in any order:
+
+| Write | What it does |
+|---|---|
+| `fadein 2.0` | Fade in over 2 seconds (0 to 60). |
+| `fadeout 1.0` | Music only: fade the old track out over 1 second. `fadeout 0` is a hard cut. |
+| `volume 40` | Play at 40% of the channel's volume (0 to 100). |
+| `loop`, `once` | Repeat until stopped, or play one time. |
+| `restart` | Music only: start again even if this track is already playing. |
+| `from 12.5`, `from current` | Music only: start 12.5 seconds in, or where the old track was (for swapping to a remix; add `fadeout 0` for a seamless swap). |
+
+### queue
+```
+    play music "bgm/omen.ogg"
+    queue music "bgm/shrine_steps.ogg"
+```
+Plays the track after the music before it ends. Only the **last** track in the queue loops,
+so here `omen` plays once and `shrine_steps` loops. On a silent channel it plays at once.
+Takes `fadein`, `volume`, `loop`, `once`. Only music can be queued.
+
+### stop
+```
+    stop music fadeout 2.0
+    stop music fadeout 0
+    stop sound
+    stop sound "sfx/crowd.ogg" fadeout 1.5
+    stop voice
+```
+Stops the channel and clears the music queue. `stop sound` stops every effect playing;
+with a file, it stops only that effect and leaves the rest (rain keeps falling).
+`fadeout 0` is a hard cut, for a sudden silence; without `fadeout`, music fades over half
+a second, and effects and the voice stop at once. Stopping a silent channel does nothing.
+
+### voice
+```
+    voice "voice/hana_014.ogg"
+    hana "You came! I didn't think you would."
+```
+Put `voice` **directly above** the line it voices: only comments and `scene`, `show`,
+`hide`, `play`, `queue`, `stop`, and `$` lines may come between. The voice starts when the
+line appears and stops when the player moves on, at the next voice, or at `stop voice`.
+The line's text always shows too, so players who play without sound miss nothing.
+
+A `voice` directly above a menu's question voices the question; it plays each time the
+menu appears:
+
+```
+    menu:
+        voice "voice/daichi_020.ogg"
+        daichi "What do you want to ask?"
+        "The fox shrine":
+            jump fox_shrine
+        "That's all":
+            return
+```
+
+A voice with no line below it, above an `if`, or above `menu:` never plays, and a warning
+says so when the game starts. In the History log a voiced line has a speaker icon: clicking
+the line plays its voice again, and leaving History stops it.
+
+### Settings in config.toml
+```toml
+[audio]
+music_volume = 60          # starting volumes, 0 to 100; players change them in Settings
+music_fadeout = 1.0        # default fade for changing or stopping music
+
+[audio.loop_start]
+"bgm/festival.ogg" = 8.0   # the intro plays once; every repeat starts at 8.0 seconds
+```
+Loop points work only in `.ogg` and `.opus` files; other files loop from the start, and the
+log says so.
+Other keys: `master_volume`, `sound_volume`, `voice_volume`, `music_fadein`,
+`sound_fadein`, `sound_fadeout`, `restore_fadein`, `restore_fadeout`, and `play_unfocused`,
+`play_minimized` (`false` pauses audio while the game is in the background). The example
+game's `config.toml` lists each key with its default.
+
+**Saving and loading.** A save remembers the music, its queue, and looping effects, not
+where in the track the music was. After a load or rollback they come back from the start
+of the track (`restore_fadeout` and `restore_fadein` fade between); one-shot effects don't
+replay, but the voice of the line on screen does. Music that plays `once` isn't brought
+back, so **loop the music under each scene**.
+
+**Skipping.** While the player skips, one-shot effects and the voices of skipped lines
+don't play, and fades are shortened, but music and looping effects follow the story, so
+when skipping stops, what plays is what the line would have.
+
+**Missing files are found at launch.** Before the title screen, the game looks up every
+file named by `play`, `queue`, `stop sound`, and `voice` and lists the missing ones in the
+log, with the file it thinks you meant. The game still starts; missing files play as
+silence.
+
+**Nothing about sound stops the game.** A missing or damaged file plays as silence, and the
+log says which file and suggests a fix. With no sound device, or when it is unplugged, the
+game runs silently and the log says so once; when a device is plugged in, the music and
+looping effects of the current scene come back. Don't carry story-critical information in
+sound alone.
+
+---
+
+## 14. Dialogue text
+
+Lines appear in a text box at the bottom of the screen and type out letter by letter. The
+speaker's name sits on a plate above the box, in the character's `color`. The player
+clicks (or presses Space or Enter) once to finish a line that is still typing, and again
+to go on.
+
+### Text tags
+
+Tags go inside the quotes, in `{ }`, and are never shown. Most come in pairs: `{b}` starts
+bold and `{/b}` ends it.
+
+```
+    hana "I saw it... {pause=0.6}the {b}{color=#9a1c14}lantern{/color}{/b} moved."
+    daichi "That's impossible. {pause}...Isn't it?"
+    hana "{speed=0.5}Slowly,{/speed} it turned {i}upstream{/i}. {size=1.5}Look!{/size}"
+```
+
+| Tag | What it does |
+|---|---|
+| `{b}…{/b}` | bold |
+| `{i}…{/i}` | italic |
+| `{color=#9a1c14}…{/color}` | color: `#` and six digits or letters a–f |
+| `{size=1.5}…{/size}` | bigger or smaller: 0.5 to 2 times the normal size |
+| `{speed=0.5}…{/speed}` | type slower or faster: 0.1 to 10 times the player's speed (2 is twice as fast) |
+| `{speed=instant}…{/speed}` | show these words all at once |
+| `{pause=0.6}` | stop typing for 0.6 seconds (0.1 to 30) |
+| `{pause}` | stop until the player clicks; the text so far stays |
+| `{var=player_name}` | show a story variable's value |
+| `{next}` | at the very end: go on to the next line without a click |
+| `{{` | show a `{` |
+
+- Tags are lower case with no spaces inside: `{color=#9a1c14}`, not `{Color = "#9a1c14"}`.
+  Numbers have no units: `{pause=0.5}`, not `{pause=0.5s}`.
+- Close tags in the reverse order you opened them: `{b}{i}…{/i}{/b}`. A tag still open
+  at the end of the line closes there.
+- A `}` on its own is just a `}`. To show a tag as text, write `{{b}`.
+- Speeds are relative, so a player who reads fast still gets your slow line, only faster.
+  Pauses always happen, even when the player shows text instantly.
+- **If a color carries meaning (red for clues), make those words bold too**, for players
+  who can't tell the colors apart: `{b}{color=#9a1c14}clue{/color}{/b}`. On the default
+  box, red `#9a1c14` and blue `#1e4a9c` are easy to read.
+
+**Showing a variable.** `{var=player_name}` shows the value of a `default` or `define`, text
+or a number, as it was when the line started. Braces in the value show as they are, and
+values over 200 letters are cut with "…". Anything else, such as a list or `True`, stops
+the story with a message.
+
+```
+default player_name = "Ren"
+default wishes = 3
+    hana "{var=player_name}, we still have {var=wishes} wishes left."
+```
+
+**Interruptions.** A line that ends with `{next}` moves on by itself once it has typed out.
+If the player clicked to finish it early, it waits for one more click, so nothing goes by
+unread.
+
+```
+    daichi "Hana, it's a paper bag with a candle in i-{next}"
+    hana "LOOK! It's turning around!"
+```
+
+**Long lines** are never cut off. A line too long for the box continues in a fresh box
+after a click. In a dev run, the game warns about each such line so you can split it
+where you like:
+
+| Message | Fix |
+|---|---|
+| `this line needs 2 text boxes at text size 28, so the player clicks once partway through. To choose where it breaks, split it into two lines.` (warning, dev runs) | Split the line into two lines where you want the break, or leave it. |
+| `…and 12 more lines need more than one text box.` (warning, dev runs) | After 20 such lines, the rest are counted. |
+
+The check measures each `{var}` as its `default`'s value (or empty), at the `text_size` and
+fonts in `config.toml`.
+
+### Text style for a character
+
+```
+define thought = Character("", text_color="#1e4a9c", text_italic=True)
+    thought "Lanterns don't swim against the current. Do they?"
+```
+
+`text_color` and `text_italic=True` set how that character's lines look; tags inside still
+apply, and `{color}` wins inside its span. `Character("")` has no name plate, which suits
+thoughts. Names are plain text and never take tags.
+
+### Settings in config.toml (text box)
+
+```toml
+[textbox]
+cps = 35                                # letters per second; 0 shows text instantly
+
+[theme.textbox]
+text_size = 28                          # 20 to 48
+fill_color = "#3a2a3f"                  # the box
+fill_opacity = 0.85                     # 0.0 (clear) to 1.0 (solid)
+text_color = "#fff4f8"
+text_font = "fonts/Lora-Regular.ttf"    # inside the game folder
+bold_font = "fonts/Lora-Bold.ttf"
+italic_font = "fonts/Lora-Italic.ttf"
+bold_italic_font = "fonts/Lora-BoldItalic.ttf"
+frame_image = "gui/textbox.png"         # a box picture in gui/, instead of the drawn box
+
+[theme.textbox.name_tab]
+text_color = "#8a1f50"                  # names of characters with no color
+```
+
+| Key | Default | Allowed |
+|---|---|---|
+| `[textbox] cps` | `40` | 0 (instant) or 1–1000 |
+| `[theme.textbox] text_font`, `bold_font`, `italic_font`, `bold_italic_font` | the built-in Noto Sans faces | a `.ttf` or `.otf` file in the game folder |
+| `[theme.textbox] text_size` | `28` | 20–48 |
+| `[theme.textbox] text_color`, `fill_color` | `"#3D2B36"`, `"#FFF4F8"` | `"#RRGGBB"` |
+| `[theme.textbox] fill_opacity` | `0.80` | 0.0–1.0 |
+| `[theme.textbox] frame_image` | none: the drawn box | an image in `gui/` |
+| `[theme.textbox.name_tab] text_color` | `"#A02860"` | `"#RRGGBB"` |
+
+The other look settings (sizes, borders, the name plate, the indicator) are listed in
+[the UI system](ui-system.md), "Token list". Players can change the speed and size in
+Settings. A missing font gives a warning and the built-in font is used; if you set
+`text_font` without `bold_font` or `italic_font`, bold or italic is made from your font,
+with a warning that suggests adding the real face.
+
+**Readable colors.** In a dev run, the game warns when a character's name color is hard to
+read on the name plate (under 3:1), or a `text_color` or the box's own colors are hard to
+read over a black or a white picture (under 4.5:1). A dark box needs light text colors, and
+the other way round.
+
+### When a tag is wrong
+
+The game checks every tag when it loads and stops with the file, line, and column of the
+`{`. The messages:
+
+| Message | Fix |
+|---|---|
+| `there is no tag "colour". Did you mean "color"?` | Fix the spelling. |
+| `there is no tag "blink". The tags are b, i, color, size, speed, pause, var, and next.` | Use one of these tags. |
+| `tags are lower case: write {b}, not {B}.` | Write the tag in lower case. |
+| `there is no tag "bold". For bold, write {b}…{/b}.` | Tags from other engines get a hint like this. |
+| `there is no tag "w". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.` | Use `{pause}`. |
+| `there is no tag "cps". To change typing speed, write {speed=2}…{/speed} for twice as fast.` | Use `{speed=…}`. |
+| `there is no tag "nw". To move on by itself, end the text with {next}.` | Use `{next}`. |
+| `there is no tag "shake" in this engine version.` | Remove it. |
+| `this { never closes. End the tag with }, or write {{ to show a {.` | Close the tag, or write `{{`. |
+| `{} is an empty tag. To show {}, write {{}.` | Write `{{}`. |
+| `a { can't go inside a tag. To show a {, write {{.` | Close the tag first. |
+| `this line has more than 50 style tags open at once. Close some with {/…}.` | Close tags you no longer need. |
+| `tags have no spaces inside: write {color=#e05050}.` | Remove the spaces. |
+| `write {pause=0.6}, with = between the tag and its value.` | Add `=`. |
+| `tag values have no quotes: write {color=#e05050}.` | Remove the quotes. |
+| `write {color=#e05050}, with = instead of :.` | Write `=`. |
+| `{color} needs a color, e.g. {color=#e05050}…{/color}.` | Add the color. |
+| `{size} needs a number, e.g. {size=1.5} for half again as big.` | Add the number. |
+| `{speed} needs a number, e.g. {speed=0.5} for half speed, or {speed=instant}.` | Add the number or `instant`. |
+| `{var} needs a variable's name, e.g. {var=player_name}.` | Add the name. |
+| `{b} takes no value. Write {b}…{/b}.` | Remove the value (the same for `{i}` and `{next}`). |
+| `a closing tag takes no value. Write {/color}.` | Remove the value. |
+| `"#e0505" isn't a color. Write # and six digits or letters a to f, e.g. {color=#e05050}.` | Use `#` and six digits or letters a–f. |
+| `write the color with #: {color=#e05050}.` | Add `#`. |
+| `{pause=…} takes seconds from 0.1 to 30, but this has 45.` | Stay in range. |
+| `numbers in tags have no units: write {pause=0.5}, not {pause=0.5s}.` | Remove the unit. |
+| `{speed=…} takes a number from 0.1 to 10, or instant, but this has 40. Speeds are relative: 2 is twice as fast, 0.5 half as fast.` | Use a relative speed. |
+| `{size=…} takes a number from 0.5 to 2, but this has 28. Sizes are relative: 1.5 is half again as big.` | Use a relative size. |
+| `write 0.5, not .5.` | Start the number with 0. |
+| `{var=…} takes one variable's name, such as {var=player_name}, but this has "hana.name". To show something else, store it in a variable first.` | `$ shown_name = hana.name`, then `{var=shown_name}`. |
+| `{/b} closes bold, but no {b} is open here. Remove it, or add {b} where bold should start.` | Remove it, or add the `{b}`. |
+| `{pause} doesn't open anything, so there is no {/pause}. Remove it.` | Remove the closing tag (the same for `{var}` and `{next}`). |
+| `{/b} closes bold, but {i} was opened inside it and is still open. Close {/i} first: {b}…{i}…{/i}{/b}.` | Close the inner tag first. |
+| `{next} goes at the very end of the text, because the line moves on as soon as it is shown. Move it to the end, or use {pause} to wait here.` | Move it to the end. |
+| `this line has {next} twice. Keep the last one.` | Remove the first. |
+
+---
+
+## 15. Menus and theme
+
+Every game comes with a title screen, a game menu, a quick menu under the text box, and
+yes/no questions, all in the default pink theme. You change their pictures, colors, music,
+and words in `config.toml`; no code is needed. The example game sets a title picture, a
+logo, title music, and a button frame: look at its `config.toml` and `gui/` folder.
+
+- **Title screen.** The picture, the logo (or the game's title as text), a column of
+  buttons, and the version number in the bottom-right corner. Its music loops. The buttons
+  include **New Game**, **Load** (see [Saves](#17-saves)), **Settings** (see
+  [The Settings page](#the-settings-page)), and **Quit**; others join them as they are
+  added to the engine.
+- **Game menu.** Esc, a right click, gamepad B (east), or Start opens it during the story;
+  so does **Menu** in the quick menu. It shows **Return**, **Save**, **Load**,
+  **Settings**, **Main Menu**, and **Quit**, among others (**Codex**, after **History**,
+  once the story declares a tip or an item: see
+  [lock tip, lock item, unlock](#lock-tip-lock-item-unlock-codex)), over the dimmed scene.
+  The story waits while it is open.
+- **Quick menu.** Small buttons under the text box, such as **Hide**, **Menu**, **Save**,
+  **Q.Save**, **Q.Load**, and **Settings**, shown whenever the text box is. Every one also has a key, so
+  players never need the mouse.
+- **Questions.** Main Menu and Quit ask "Yes" or "No" first. Esc means No. While
+  leaving makes an auto-save, they don't say "Unsaved progress will be lost." (see
+  [Saves](#17-saves)).
+- **Widget sampler.** In a dev run, Shift+F3 on the title or in the game menu shows every
+  kind of button, toggle, slider, and list in every state, with your colors. Use it to
+  check a theme, including widgets your game's screens don't show yet.
+
+### Title picture, logo, and music
+
+Put your pictures in the `gui/` folder and your music in `audio/`, then name them:
+
+```toml
+[theme.title]
+background_image = "gui/title_bg.png"   # 1280x720; other sizes are scaled to fill the screen
+logo_image = "gui/logo.png"             # up to 560x200, at the top left
+music = "bgm/title.ogg"                 # a file in audio/, played over and over
+```
+
+- **The picture** fills the whole screen, keeping its shape; the edges of a picture of
+  another shape are cut off. Without one, the title is a plain background that goes from
+  `title.fill_top_color` at the top to `title.fill_bottom_color` at the bottom.
+- **The logo** sits in a box 560 wide and 200 tall at the top left, at its left edge and
+  centered from top to bottom. A bigger logo is made smaller to fit; a smaller one is never
+  enlarged. Without a logo, the title shows `[game] title` as large text (two lines at
+  most). A logo with a see-through background (PNG) looks best.
+- **The music** is a file inside `audio/`, written without `audio/` in front, like the
+  files in `play music`. It starts on the title, fades out when a game starts, and starts
+  again each time the player comes back to the title.
+- If a picture is missing or can't be read, the game warns and uses the plain background,
+  the title as text, or the drawn button instead; it never shows a broken picture. Missing
+  music is silent, and the log names the file.
+
+### Buttons
+
+```toml
+[theme.button]
+frame_image = "gui/button.png"   # every button: title, game menu, and questions
+frame_slice_width = 24           # the size of the picture's corners
+text_color = "#3D2B36"           # the words on the buttons
+```
+
+A button frame is a **nine-slice** picture: its four corners (`frame_slice_width` square)
+are drawn as they are, and its edges and middle stretch to fit each button, so one small
+picture (72x72 is enough) fits every button. Keep the edges the same all along, so they
+stretch without a seam. `fill_opacity` makes the whole frame see-through (0.90 by default).
+
+The frame replaces the button's fill and border. A focused, pressed, selected, or disabled
+button keeps its drawn look unless you give that state its own picture too, such as
+`[theme.button.focused] frame_image`. Keep the words readable on every look: a dark frame
+needs a light `text_color`, and then the drawn focused fill (`button.focused.fill_color`,
+pink by default) needs a dark color too, or a frame of its own. Text needs at least 4.5:1
+contrast with its button over a black and over a white picture.
+
+Without any of these settings, buttons are drawn with the colors in the list below.
+
+### Button words
+
+Every word on a button or in a question can be changed under `[words]`:
+
+```toml
+[words]
+new_game = "Begin"
+confirm_quit = "Leave the festival? Unsaved progress will be lost."
+```
+
+| Key | Default |
+|---|---|
+| `new_game` | "New Game" |
+| `load` | "Load" |
+| `settings` | "Settings" |
+| `extras` | "Extras" |
+| `help` | "Help" |
+| `quit` | "Quit" |
+| `return` | "Return" |
+| `history` | "History" |
+| `save` | "Save" |
+| `main_menu` | "Main Menu" |
+| `yes` | "Yes" |
+| `no` | "No" |
+| `hide` | "Hide" |
+| `menu` | "Menu" |
+| `on` | "On" |
+| `off` | "Off" |
+| `loading` | "Loading" |
+| `list_empty` | "Nothing here yet." |
+| `confirm_main_menu` | "Return to the title screen? Unsaved progress will be lost." |
+| `confirm_quit` | "Quit the game? Unsaved progress will be lost." |
+
+A word is plain text, up to 200 characters (the two questions up to 1,000). An empty word
+keeps its default, with a warning. A word too wide for its button is made smaller, down to
+24, and then ends in "…"; a dev run warns, and tells you which width to raise. The
+Saves and Settings pages add words of their own (see [Saves](#17-saves) and
+[The Settings page](#the-settings-page)).
+
+### Which buttons show
+
+```toml
+[title]
+enabled = true                  # false: no title screen
+show_version = true             # the version number in the corner
+entries = ["new_game", "quit"]  # the title's buttons, in this order
+
+[quick_menu]
+enabled = true                  # false: no quick menu
+entries = ["hide", "menu"]      # the quick menu's buttons, in this order
+```
+
+| Key | Default | Allowed |
+|---|---|---|
+| `[title] enabled` | `true` | `true` or `false` |
+| `[title] show_version` | `true` | `true` or `false` |
+| `[title] entries` | not set: every title button in the standard order | a list of button names |
+| `[quick_menu] enabled` | `true` | `true` or `false` |
+| `[quick_menu] entries` | not set: every quick-menu button in the standard order | a list of button names |
+
+- **The names** are the `[words]` keys of the buttons: on the title `new_game` and `quit`,
+  in the quick menu `hide` and `menu` (later screens add theirs: saving adds `load` on the
+  title and `save`, `q_save`, and `q_load` in the quick menu), up to 16 names. `codex` is
+  on the title only when the list names it (after `extras` in the standard order), and
+  then only once the player has a tip. `flowchart` comes after `load` and shows once the
+  player has reached a point they can jump to. A name
+  that isn't a button of that menu gets a warning with the right spelling and the list of
+  names; an empty list shows the standard buttons, with a warning.
+- **No title.** With `enabled = false` the story starts as soon as the game opens. At the
+  end of the story, or after Main Menu and Yes, the game closes.
+- **Testing a late scene.** `--start` skips the title, and every New Game starts at that
+  label again ([The scene editor](scene-editor.md)).
+
+### The quick-menu strip
+
+The quick menu sits in the strip between the text box and the bottom of the screen, which
+is `[theme.textbox] bottom_gap` tall (32). The quick menu is 28 tall with its text at 20,
+so it fits. If you make the strip shorter than 28, the quick menu overlaps the text box; at
+a larger text size the quick menu grows to 32 and fills the strip. Turn it off with
+`[quick_menu] enabled = false` if you want the text box lower.
+
+### Every theme setting
+
+Each setting goes under `[theme.<area>]` in `config.toml`, with the part before the last
+dot as the table: `button.focused.fill_color` is `fill_color` under
+`[theme.button.focused]`. Colors are `"#RRGGBB"`; opacity goes from 0.0 (invisible) to 1.0
+(solid); sizes and lengths are whole numbers in screen units of the 1280x720 screen; times
+(`_ms`) are in milliseconds. Pictures are files in `gui/` (frames are nine-slice), fonts
+`.ttf` or `.otf` files in the game folder, and sounds files in `audio/`. Text sizes grow
+with the player's text size setting. A wrong name or value gets the usual `config.toml`
+warning or error, with a "did you mean".
+
+**Fonts, fades, and panels** (the game menu, questions, and the version label)
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `ui.text_font` | `textbox.text_font` (the text box's font) | | All menu text |
+| `ui.bold_font` | `textbox.bold_font` | | Headings and the title as text |
+| `ui.fade_ms` | 150 | 0–1000 | Menus fading in and out |
+| `ui.back_sound` | none | | Played on Back |
+| `panel.fill_color` | `"#FFF4F8"` | | Menu panels and the question box |
+| `panel.fill_opacity` | 0.94 | 0.0–1.0 | Their fill or frame |
+| `panel.border_color` | `"#F0A0C0"` | | Their border |
+| `panel.border_width` | 2 | 0–8 | |
+| `panel.corner_radius` | 16 | 0–48 | |
+| `panel.frame_image` | none | | A nine-slice picture instead of fill and border |
+| `panel.frame_slice_width` | 24 | 0–96 | Its corner size |
+| `panel.text_size` | 28 | 24–48 | Questions, list rows, values |
+| `panel.text_color` | `"#3D2B36"` | | The same |
+| `panel.heading.text_size` | 32 | 24–64 | Headings |
+| `panel.heading.text_color` | `"#A02860"` | | Headings |
+
+**Buttons** (every button; the focused look is shared by every widget)
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `button.text_size` | 28 | 24–48 | Button words |
+| `button.text_color` | `"#3D2B36"` | | Button words |
+| `button.fill_color` | `"#FFF4F8"` | | Fill (also when disabled) |
+| `button.fill_opacity` | 0.90 | 0.0–1.0 | Fill or frame, every state |
+| `button.border_color` | `"#F0A0C0"` | | Border |
+| `button.border_width` | 2 | 0–8 | Border |
+| `button.corner_radius` | 12 | 0–28 | Corners |
+| `button.frame_image` | none | | Frame picture |
+| `button.frame_slice_width` | 24 | 0–96 | Its corner size, every state |
+| `button.height` | 56 | 40–120 | Smallest height |
+| `button.side_padding` | 32 | 24–80 | Edge to words |
+| `button.gap` | 12 | 0–48 | Space between buttons |
+| `button.focused.fill_color` | `"#FFD6E8"` | | Focused (and selected) fill |
+| `button.focused.border_color` | `"#A02860"` | | Focus outline |
+| `button.focused.border_width` | 4 | 2–8 | Focus outline |
+| `button.focused.frame_image` | none | | Focused frame picture |
+| `button.pressed.fill_color` | `"#FFC2DC"` | | Pressed fill |
+| `button.pressed.frame_image` | none | | Pressed frame picture |
+| `button.selected.frame_image` | none | | Selected frame picture |
+| `button.disabled.text_color` | `"#6E5E68"` | | Words of a button that can't be used |
+| `button.disabled.border_width` | 0 | 0–8 | Its border |
+| `button.disabled.track_color` | `"#C8B8C2"` | | Tracks of toggles and sliders that can't be used |
+| `button.disabled.frame_image` | none | | Disabled frame picture |
+| `button.marker.fill_color` | `"#A02860"` | | The focus arrow, on/off dot, and selected bar |
+| `button.focus_sound` | none | | Played when the focus moves |
+| `button.activate_sound` | none | | Played when a button is used |
+
+**Toggles, sliders, and lists** (later screens, such as Settings; see them in the sampler)
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `toggle.track_color` | `"#7E5C74"` | | Off track and knob |
+| `toggle.on.track_color` | `"#A02860"` | | On track |
+| `toggle.on.knob_color` | `"#FFFFFF"` | | On knob |
+| `slider.track_color` | `"#7E5C74"` | | Empty part of the bar |
+| `slider.fill_color` | `"#A02860"` | | Filled part of the bar |
+| `slider.thumb_color` | `"#A02860"` | | The handle |
+| `slider.thumb_border_color` | `"#FFF4F8"` | | The handle's border |
+| `list.row_height` | 48 | 32–120 | Smallest row height |
+| `list.divider_color` | `"#F0A0C0"` | | Lines between rows |
+| `list.scrollbar_color` | `"#A02860"` | | Scroll bar |
+| `list.scrollbar_track_color` | `"#F0D0DE"` | | Scroll bar track |
+| `list.empty.text_color` | `"#6E5E68"` | | "Nothing here yet." |
+
+**Title screen**
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `title.background_image` | none | | The title picture |
+| `title.logo_image` | none | | The logo |
+| `title.music` | none | | Title music |
+| `title.fill_top_color` | `"#FFF4F8"` | | Plain background, top |
+| `title.fill_bottom_color` | `"#FFD6E8"` | | Plain background, bottom |
+| `title.logo.text_size` | 64 | 40–96 | The title as text |
+| `title.logo.text_color` | `"#A02860"` | | The title as text |
+| `title.button_width` | 320 | 200–560 | Title buttons |
+| `title.version.text_size` | 20 | 16–28 | Version number |
+| `title.version.text_color` | `"#6E5E68"` | | Version number |
+| `title.version.fill_opacity` | 0.90 | 0.0–1.0 | Its label |
+| `title.loading.text_color` | `"#FFE6F0"` | | "Loading" on a slow start |
+| `title.fade_in_ms` | 500 | 0–2000 | The title fading in from black |
+
+**Game menu and questions**
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `menu.dim_color` | `"#2A1E26"` | | Darkens the scene under menus and questions |
+| `menu.dim_opacity` | 0.55 | 0.0–1.0 | How dark, under the game menu |
+| `menu.button_width` | 288 | 200–312 | Game-menu buttons |
+| `confirm.dim_opacity` | 0.35 | 0.0–1.0 | Extra darkening under a question |
+| `confirm.width` | 640 | 480–1000 | The question box |
+| `confirm.button_width` | 200 | 160–280 | Yes and No, at least |
+
+**Quick menu**
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `quick_menu.text_size` | 20 | 20–24 | Words (they grow with the text size up to 24) |
+| `quick_menu.text_color` | `"#3D2B36"` | | Words |
+| `quick_menu.fill_color` | `"#FFF4F8"` | | Background |
+| `quick_menu.fill_opacity` | 0.90 | 0.0–1.0 | Background or frame |
+| `quick_menu.corner_radius` | 14 | 0–16 | Corners |
+| `quick_menu.frame_image` | none | | A nine-slice picture instead of the background |
+| `quick_menu.frame_slice_width` | 12 | 0–16 | Its corner size |
+| `quick_menu.side_padding` | 12 | 4–24 | Space around each word |
+| `quick_menu.bottom_gap` | 2 | 0–32 | Bottom of the screen to the quick menu |
+| `quick_menu.focused.text_color` | `"#A02860"` | | Word under the mouse |
+| `quick_menu.focused.underline_width` | 2 | 1–4 | Its underline |
+| `quick_menu.pressed.fill_color` | `"#FFD6E8"` | | A button being clicked |
+| `quick_menu.on.fill_color` | `"#FFD6E8"` | | A button that is on |
+| `quick_menu.on.border_color` | `"#A02860"` | | Its border |
+| `quick_menu.on.border_width` | 2 | 1–4 | Its border |
+| `quick_menu.disabled.text_color` | `"#6E5E68"` | | A button that can't be used |
+| `quick_menu.activate_sound` | none | | Played on a click (instead of `button.activate_sound`) |
+
+The text box's own settings are in section 14; every look setting's full description is in
+[the UI system](ui-system.md), "Token list".
+
+### The Settings page
+
+Players open **Settings** from the title, the game menu, or the quick menu. Every change
+applies at once, with no Apply button, and the game opens the same way next time.
+
+| Group | Rows |
+|---|---|
+| Display | Fullscreen · Reduce motion and flashing |
+| Text | Text speed (10 to 200 letters a second, or Instant) · Text size (100% to 150%) · Auto-advance wait (25% to 400%) · Auto-advance waits for voices · Skip unread text |
+| Sound | Master, Music, Sound, and Voice volume (0 to 100) · Text blips · Let voices finish · Play audio when unfocused · Play audio when minimized · Mono audio |
+| Data | Reset settings · Delete progress (on the title only) |
+
+- **Your `config.toml` gives the starting values**: `[textbox] cps`, `[auto]
+  wait_for_voice`, `[skip] all`, the four `[audio]` volumes, `[audio] play_unfocused` and
+  `play_minimized`, and `[window] fullscreen`, `width`, and `height`. Settings adds no key
+  of its own, only the words below.
+- **Only what a player changes is stored.** Every setting they never touched follows your
+  `config.toml`, even after an update: raise `[audio] sound_volume` in a patch, and
+  everyone who never moved that slider hears the new volume.
+- **`[effects] reduce = true`** turns reduced motion on for every player: the toggle shows
+  On and can't be turned off (see [Transitions and effects](#16-transitions-and-effects)).
+- **Settings aren't part of the story.** Saves, loading, rollback, and New Game never
+  change them, and your script can't read or set them.
+- **Reset settings** forgets every stored value after a question, so your `config.toml`
+  applies again. **Delete progress**, on the title, asks first, then forgets what the game
+  remembers across playthroughs: read text, picked choices, unlocks, and your `persistent`
+  values (see [persistent](#persistent-data-across-playthroughs)). Saves and settings are
+  kept.
+- **Where settings live.** `settings.json` in the game folder's `settings/` during
+  development, or the player's own data folder in a release, next to their saves. A
+  release needs `[game] id` (see [Saves](#17-saves)); without one, settings last only until
+  the game closes, with a warning. Delete `game/settings/` to test as a new player, and
+  don't share it with the game.
+- **The file belongs to the player**, so it is checked strictly. A value the game can't use
+  goes back to its default, and a damaged file is set aside as `settings.bad.json` and every
+  setting starts from its default. The game always starts.
+
+Every word on the page can be changed under `[words]`, like the menu words above:
+
+| Key | Default |
+|---|---|
+| `settings_display`, `settings_text`, `settings_sound`, `settings_data` | "Display", "Text", "Sound", "Data" (the group headings) |
+| `fullscreen` | "Fullscreen" |
+| `reduce_motion` | "Reduce motion and flashing" |
+| `text_speed`, `text_instant` | "Text speed", "Instant" |
+| `text_size` | "Text size" |
+| `auto_wait`, `auto_voice` | "Auto-advance wait", "Auto-advance waits for voices" |
+| `skip_unread` | "Skip unread text" |
+| `master_volume`, `music_volume`, `sound_volume`, `voice_volume` | "Master volume", "Music volume", "Sound volume", "Voice volume" |
+| `text_blips` | "Text blips" |
+| `voice_sustain` | "Let voices finish" |
+| `audio_unfocused`, `audio_minimized` | "Play audio when unfocused", "Play audio when minimized" |
+| `mono` | "Mono audio" |
+| `reset_settings`, `confirm_reset_settings` | "Reset settings", "Reset every setting to its default?" |
+| `delete_progress`, `confirm_delete_progress` | "Delete progress", "Delete everything this game remembers between playthroughs, such as read text and unlocked extras? Your saves are kept. This can't be undone." |
+| `notice_settings_default` | "Your settings couldn't be read, so the defaults are used." (shown when the file was damaged) |
+
+The page's name and its button are `settings` (above). The rules are those of every word: up
+to 200 characters, the two questions up to 1,000; an empty word keeps its default, with a
+warning.
+
+These warnings are logged; the game uses the default settings and goes on. `…` stands for
+the file, such as `<game>/settings/settings.json`.
+
+| Message | Fix |
+|---|---|
+| `settings in … couldn't be used (not valid JSON), so the default settings are used. The old file was kept as settings.bad.json.` | Nothing in your game: the file was damaged or edited by hand. Look at `settings.bad.json`, then delete it. |
+| `settings in …: text_size_pct must be a whole number from 100 to 150, but found 200, so the default is used.` | Nothing in your game: a value in the file was edited by hand. |
+| `settings in … had 2 unknown entries; they were ignored.` | Nothing: they are dropped the next time a setting changes. |
+| `settings in … were made by a newer engine version, so only the settings this version knows are used, and the file won't be changed this session.` | The player went back to an older version of the game; the file is kept for the newer one. |
+| `settings won't be saved, because config.toml has no [game] id. Set a unique id under [game], e.g. id = "paper-lanterns", before releasing.` | Set `[game] id`. |
+| `settings couldn't be saved to … (disk full). Changes apply this session and are tried again at the next change.` | Free some space, or check that the folder can be written. |
+
+### Content warning
+
+A content warning is a full screen shown after the game loads and before the title (or
+before the story, with `[title] enabled = false`): your heading, your text, and two
+buttons, **I understand** and **Quit**. Turn it on in `config.toml`:
+
+```toml
+[content_warning]
+show = "once"          # "never" (the default), "once", or "always"
+version = 1            # raise it after changing the text to show it once more
+min_seconds = 2        # "I understand" can be pressed after this many seconds; 0 = at once
+text = """
+This game is not suitable for children or those who are easily disturbed.
+
+It contains scenes of self-harm and psychological horror."""
+```
+
+| Key | Default | What it does |
+|---|---|---|
+| `[content_warning] show` | "never" | `"once"` shows it until the player presses I understand; `"always"` at every launch. |
+| `[content_warning] text` | not set | Plain text, up to 2,000 characters. A line break stays a line break; a blank line starts a new paragraph. `{b}` and `[` show as written. Required unless `show` is `"never"`. |
+| `[content_warning] version` | 1 | 1–1000. With `"once"`, raise it after changing the text and everyone sees the warning once more. |
+| `[content_warning] min_seconds` | 2 | 0–10 seconds before I understand can be pressed. |
+| `warning_heading` | "Content warning" | Under `[words]`: the heading. |
+| `warning_continue` | "I understand" | Under `[words]`: the button that goes on. Quit uses `quit`. |
+
+- **Only a button leaves it.** Esc and the gamepad's B do nothing, and it never closes by
+  itself. Quit closes the game at once and remembers nothing.
+- **"once" is remembered in the player's settings**, so **Reset settings** shows it again
+  at the next launch (Delete progress doesn't). To test it as a new player, delete
+  `game/settings/`.
+- **It isn't shown** when you start from a label (`--start`, `--set`, or Studio's "play
+  from here"), and only once per launch: returning to the title doesn't show it again.
+- **Keep it short.** About 220 characters fit without scrolling at the largest text size
+  (about 600 at the default size); longer text scrolls. In a dev run the game warns when
+  that happens:
+  `config.toml: [content_warning] text needs 9 lines at 150% text size but 5 fit, so
+  players with large text must scroll to read it. About 220 characters fit without
+  scrolling.` Fix: shorten the text, or accept the scrolling.
+
+### When something is wrong
+
+These are warnings: the game still starts, and the default is used.
+
+| Message | Fix |
+|---|---|
+| `config.toml: [theme.button] frame_image "gui/buton.png" doesn't exist, so the drawn button is used. Did you mean "gui/button.png"?` | Fix the file name. The same message names the logo, the title picture, and other frames. |
+| `config.toml: [theme.title] logo_image "gui/logo.png" doesn't exist, so the game's title is shown as text.` | Add the picture, or remove the line. |
+| `config.toml: [theme.ui] text_font "fonts/Lora.ttf" couldn't be read as a font, so the text box font is used.` | Use a `.ttf` or `.otf` font file. |
+| `config.toml: [words] new_game is empty, so "New Game" is shown. Write the words to show, e.g. new_game = "Begin".` | Write the words, or remove the line. |
+| `config.toml: [quick_menu] entries has "hied", which isn't a quick-menu button. Did you mean "hide"? The buttons are hide and menu.` | Use a name from the list. |
+| `config.toml: [words] main_menu "Return to the main title screen" doesn't fit its button at text size 28, so it shows as "Return to the main…". Use fewer words, or widen the button with [theme.menu] button_width.` (dev runs) | Shorten the words, or widen the buttons. |
+
+---
+
+## 16. Transitions and effects
+
+A **transition** changes the picture over time instead of all at once: `with dissolve`
+blends, `with fade` goes through black. Two **effects** act on the picture for a moment:
+`shake` and `flash`. `pause` holds the story for a beat. They only change what the player
+sees: lines, choices, variables, and saves are the same whether they play in full, are
+clicked through, or are turned down. The example game uses each one, with a comment above
+its first use.
+
+### with
+```
+    scene bg bridge_night with fade
+    show hana surprised with dissolve 0.3
+    hide daichi with dissolve
+    scene bg river_dusk with fade 2.0 white
+    scene bg river_dusk with fade 0.4 "#ffe08a"
+    show hana at left with cut
+```
+`with` and a transition's name go last on a `scene`, `show`, or `hide` line (and on a
+[chapter](#chapter) line, for its card).
+
+| Transition | What it does | Length when none is given |
+|---|---|---|
+| `cut` | The new picture at once, as with no `with` | 0 |
+| `dissolve` | Blends the old picture into the new one | 0.5 seconds |
+| `fade` | The old picture fades to black, then the new one fades in | 1.0 second, half each way |
+| a name you `define` | See [Your own transitions](#your-own-transitions) | its own |
+
+After the name, in any order and each at most once:
+- **a length** in seconds, 0 to 30, with no unit: `with dissolve 1.5`. 0 is a cut.
+- **a color**, for `fade` only: `white`, `black`, `red`, or `"#RRGGBB"` in quotes (a `#`
+  outside quotes starts a comment). Black when left out.
+
+`cut` takes neither. Names are checked when the game starts, after every `define`, so a
+misspelled one stops the launch with a "Did you mean".
+
+**One moment, one transition.** A `with` plays every change since the picture was last
+shown, all together:
+```
+    scene bg bridge_night
+    show hana happy at left
+    show daichi smile at right with fade
+```
+The bridge and both characters fade in at once; the empty bridge is never shown. Changes
+after the last `with` appear with the next line, at once. Two `with` lines in a row play
+one after the other. A word on a dialogue line (`hana pout "…"`) always changes with its
+line, at once.
+
+**The story waits** for a transition before the next line, choice, or pause. The text box
+is hidden during one that includes a `scene`; otherwise it stays, empty. A click (or any
+key that moves the story on) finishes the transition at once, and the next line then
+types as usual. A picture that doesn't change takes no time.
+
+**Saves and rollback.** A transition, pause, or effect is never a place to save or roll
+back to: a save made during one stores the line before it, and loading or rolling back
+shows that line's picture at once, with no transition.
+
+### shake
+```
+    shake
+    shake large
+    shake small horizontal 2.0
+```
+Shakes the stage picture; the text box and menus stay still. In any order, each at most
+once: a size, `small`, `medium` (the default), or `large`; a direction, `horizontal` or
+`vertical` (both when left out); and a length from 0.1 to 10 seconds (0.5 when left out).
+It starts with whatever is shown next (a line, a choice, a `with`, or a `pause`) and never
+holds up the text. A second `shake` before then wins.
+
+### flash
+```
+    flash
+    flash red
+    flash "#ffe08a" 0.6
+```
+Covers the stage with a color, under the text box, that fades back. In any order, each at
+most once: a color as for `fade` (white when left out) and a fade-back length from 0.1 to
+2 seconds (0.3 when left out). Like `shake`, it starts with what is shown next and never
+holds up the text.
+
+**At most 3 flashes a second.** To protect players who are sensitive to flashing, the game
+never shows more than 3 flashes in any one second, whatever the script says. Each `flash`
+counts, and so does each `fade` shorter than 1 second (it goes dark and back). An extra
+flash isn't shown and an extra short fade plays as a dissolve; the story goes on the same,
+and the log says so.
+
+**Reduced effects.** Players can turn on **Reduce motion and flashing** in Settings, and
+`[effects] reduce = true` turns it on for everyone. Then `shake` doesn't move, and a
+`flash` becomes a soft brightening to half strength, at least 0.3 seconds each way and at
+most one a second. `cut`, `dissolve`, `fade`, and your `Mask` transitions play as usual.
+
+**Don't let a flash or shake carry the story on its own.** Some players turn effects
+down, and some can't see them well. Say what happened in the line too, or play a sound
+with it: the example game's firework has both.
+
+### pause
+```
+    scene bg river_dusk with fade
+    pause 1.5
+    pause
+```
+Holds the story: `pause 1.5` for that many seconds (0.1 to 30), `pause` alone until the
+player clicks. A click ends a timed pause early. Changes waiting to be shown appear first,
+at once, and a `shake` or `flash` written before it starts with it. The text box stays
+empty meanwhile, and a pause is never a save point.
+
+### Your own transitions
+```
+define slow_dissolve = Dissolve(1.5)
+define white_fade = Fade(0.6, color="#ffffff")
+define lantern = Mask("masks/lantern_glow.png", 1.2)
+define lantern_out = Mask("masks/lantern_glow.png", 1.2, reverse=True)
+```
+A `define` names a transition, used like a built-in one: `with lantern`, or
+`with slow_dissolve 2.0` for another length.
+
+| Write | Arguments |
+|---|---|
+| `Dissolve(seconds)` | seconds 0–30, 0.5 when left out |
+| `Fade(seconds, color=…)` | seconds 0–30, 1.0 when left out; `color` `"white"`, `"black"`, `"red"`, or `"#RRGGBB"`, black when left out |
+| `Mask(file, seconds, soft=…, reverse=…)` | a picture file (below); seconds 0–30, 1.0 when left out; `soft` 0–0.5, 0.1 when left out; `reverse=True` or `False` |
+
+**Masks.** `Mask` uncovers the new picture through a gray picture: where it is black
+first, where it is white last, with a soft edge `soft` wide (a fraction of the way from
+black to white). `reverse=True` uncovers the white parts first. The file is a path from
+the game folder, like an [image](#image)'s: the example game's is
+`game/masks/lantern_glow.png`, darkest in the middle, with its license in
+`game/masks/LICENSES.txt`.
+- **Use a gray picture no bigger than 640×360**, a PNG whose every pixel has equal red,
+  green, and blue. The game reads it exactly and scales it to the screen.
+- A colored picture still works, but it is turned gray by an approximate formula, so
+  areas you meant to be the same shade may not open together.
+- A missing file is a warning at launch. A missing file, or one that can't be used
+  (damaged, or over the engine's picture size limits), plays as a `dissolve`.
+- Reduced effects don't change a `Mask`, and it never counts as a flash.
+
+`cut`, `dissolve`, and `fade` can't be redefined. `Dissolve`, `Fade`, and `Mask` are engine
+names, like `Character`; `Transition` is kept for a later version. A `define` that isn't a
+transition is fine until a `with` uses it.
+
+**Settings in `config.toml`.** The lengths and colors used when the script gives none:
+```toml
+[effects]
+dissolve = 0.5            # seconds, 0 to 30
+fade = 1.0                # seconds, 0 to 30
+shake = 0.5               # seconds, 0.1 to 10
+shake_size = "medium"     # small, medium, or large
+flash = 0.3               # seconds, 0.1 to 2
+reduce = false            # true: reduced effects for every player
+
+[theme.effects]
+flash_color = "#FFFFFF"
+fade_color = "#000000"
+```
+
+### When something is wrong
+Errors stop the launch with the file and line; warnings let the game start.
+
+| Code | Message | Fix |
+|---|---|---|
+| E190 | `there is no transition "disolve". Did you mean "dissolve"?` / `there is no transition "swirl". The transitions are cut, dissolve, fade, and the ones this game defines: lantern, slow_dissolve.` | Fix the spelling, or `define` the transition. |
+| E191 | `with hana: hana is a Character, not a transition. Use cut, dissolve, or fade, or define one, e.g. define slow = Dissolve(1.5).` | Use a transition's name after `with`. |
+| E192 | `with dissolve takes a length from 0 to 30 seconds, but this has 90.` / `lengths have no units: write 0.5, not 0.5s.` / `write 0.5, not .5.` | Write plain seconds from 0 to 30. |
+| E193 | `"#e0505" isn't a color. Write "#" and six digits or letters a to f in quotes, e.g. "#ffe08a", or use white, black, or red.` / `"pink" isn't a color here. Use white, black, red, or a color in quotes such as "#ffc0cb".` | Write `"#"` and six digits or letters a–f in quotes, or white, black, or red. |
+| E194 | `cut takes no length or color.` / `dissolve takes a length but no color; only fade goes through a color.` / `with fade has two lengths; give one.` / `this line has "slowly" left over after with dissolve. with takes a transition name, then a length and, for fade, a color.` / `with lantern: lantern is a Mask, so it takes a length but no color; only fade goes through a color.` | Write the name, then at most one length and, for a fade, one color. |
+| E195 | `shake takes small, medium, or large, horizontal or vertical, and a length from 0.1 to 10 seconds, but this has "huge".` / `shake takes a length from 0.1 to 10 seconds, but this has 30.` / `shake has two sizes; give one.` | `small`, `medium`, or `large`; `horizontal` or `vertical`; 0.1 to 10 seconds. |
+| E196 | `flash takes a color and a length from 0.1 to 2 seconds, but this has 5.` / `flash has two colors; give one.` | One color and 0.1 to 2 seconds. |
+| E197 | `pause takes a length from 0.1 to 30 seconds, or nothing to wait for a click, but this has 45.` | 0.1 to 30 seconds, or nothing. |
+| E198 | `dissolve is a built-in transition, so define can't use that name. Pick another, e.g. dissolve_slow.` | Pick another name. |
+| E199 | `Mask needs an image file in quotes, e.g. Mask("masks/iris.png", 1.0).` / `Dissolve takes seconds from 0 to 30, but this has -1.` / `Mask's soft takes a number from 0 to 0.5, but this has 2.` / `Mask needs a PNG, JPEG, or WebP image, but "masks/iris.gif" isn't one. Convert it to .png.` | Fix the argument (see [Your own transitions](#your-own-transitions)). |
+| W60 | `Mask uses "masks/iris.png", which doesn't exist, so lantern plays as a dissolve. Did you mean "masks/iris.webp"?` (warning) | Add the file, or fix the path. |
+| W61 | `the flash from this line wasn't shown, because the game shows at most 3 flashes a second to protect players who are sensitive to flashing.` / `the fade from this line played as a dissolve, because the game shows at most 3 flashes a second to protect players who are sensitive to flashing.` (warning, while playing) | Space the flashes out, or make the fade 1 second or longer. |
+| W62 | `the transition "dissolve" couldn't be drawn (MemoryError), so the picture changed instantly. dissolve plays as a cut for the rest of this run.` (warning, while playing) | Nothing to fix in the script: the story goes on. If it keeps happening, close other programs; report it with the log. |
+
+---
+
+## 17. Saves
+
+Players can save at any line or menu and come back to it later. Your script needs nothing
+for this: the Save and Load pages, quick saves, and auto-saves come with every game. This
+section says what players see, where saves live, how to keep saves working when you update
+your game, and how to change the save settings.
+
+- **Save and Load.** Esc opens the game menu. Its **Save** page shows numbered pages of six
+  slots; **Load** shows the **Auto** and **Quick** pages first, then the numbered ones. The
+  title screen has **Load** too. A slot shows a small picture of the scene, the date and
+  time, and the line it was saved at (or its chapter's name, see [chapter](#chapter)).
+  Saving over a slot, loading during a game, and deleting a save (the Delete key, or the ×
+  on a slot) each ask first.
+- **Quick saves.** F5, or **Q.Save** in the quick menu, saves to the Quick page at once and
+  shows "Quick saved." F9, or **Q.Load**, loads the newest quick save after asking. The
+  Quick page keeps six; each new quick save replaces the oldest.
+- **Auto-saves** go to the Auto page, which also keeps six: every 5 minutes of play (time in
+  menus doesn't count), when a menu of choices appears, at the first line after each
+  `chapter`, and when the player leaves by Main Menu or Quit. Because of that last one, the
+  Main Menu and Quit questions leave out "Unsaved progress will be lost."
+- **What a save holds:** the line or menu on screen, the backgrounds and sprites, the music
+  and looping sounds, every story variable, the choices picked so far, and the `dice`
+  results still to come. Loading shows the line again from its start, with the saved music
+  (from the beginning of the song, unless that song is already playing). A save made while
+  a line is still typing holds that line; one made during a transition or a `pause` holds
+  the line before it.
+- **Not in a save:** settings, the window size, volumes, and `persistent` data. Loading
+  never changes them.
+
+### Where saves live
+
+| Run | Folder |
+|---|---|
+| While you make the game (`python main.py`, `python -m engine run`) | `saves/` in the game folder |
+| A release (`--release`, or a built game) | the player's own folder: `%APPDATA%\vn-engine\<id>\saves` on Windows, `~/Library/Application Support/vn-engine/<id>/saves` on macOS, `~/.local/share/vn-engine/<id>/saves` on Linux |
+
+Each slot is one file named after its page and slot: `auto-1.vnsave`, `quick-2.vnsave`,
+`page3-4.vnsave` (page 3, slot 4). Players back up or share a save by copying one file, and
+a save copied between Windows, macOS, and Linux loads. The game reads only files with these
+names and never deletes any other file in the folder.
+
+- **A release needs `[game] id`.** `<id>` above is `[game] id` in `config.toml`: lowercase
+  letters, digits, and `-`, up to 40 characters.
+
+  ```toml
+  [game]
+  title = "Paper Lanterns"
+  id = "paper-lanterns"
+  ```
+
+  Without it a release still runs but can't save: Save, Load, Q.Save, and Q.Load are hidden,
+  F5 and F9 do nothing, and the log says why. Choose the id once and never change it after
+  release: players' saves and persistent data are found by it.
+- **Test a release** with `python main.py --release`, or
+  `python -m engine run <game folder> --release`. Saves then go to your own per-user folder,
+  as a player's would, and you see what a player sees when `[game] id` is missing.
+- **Builds leave out `saves/`.** The game folder's `saves/` holds your own test saves, not a
+  player's. If you copy the game folder by hand to share it, leave `saves/` out too (and
+  `logs/`, `persistent/`, and `settings/`).
+
+### Keeping saves working when you update the game
+
+Players keep their saves when you release a fixed or longer version. A save remembers the
+line it was made at and finds that line again in the new script, so these changes are safe:
+
+- **Add, remove, or move other lines, menus, and labels.** A save at a line you didn't
+  change loads at that exact line.
+- **Give every new variable a `default`.** A save made before the variable existed loads
+  with its starting value, so the new scene works for old saves too:
+
+  ```
+  default trust = 0
+  default met_daichi = False    # new in version 1.1: older saves load with False
+  ```
+
+  A variable created only by a `$` line doesn't exist in older saves, and the first line
+  that reads it stops the story.
+- **Keep label names.** A save inside a label you rename can't find its line any more.
+  Rename labels only before your first release.
+
+When the saved line itself was rewritten or deleted, loading asks the player "The story has
+changed since this save. Continue from the nearest point?" Yes goes on from the line that
+now stands in that place; No leaves everything as it was. When no nearby point can be found
+(the label is gone, for example), the slot can't be loaded and the player sees "This save no
+longer fits the story and can't be loaded." In a dev run the log names the save's label and
+statement, so you can see which edit did it:
+`couldn't load Slot 3: the saved line in label bridge (statement 4) is gone; offering the nearest point`.
+
+To check an update, keep a few saves from the old version (copy the `saves/` folder), make
+your changes, and load each one.
+
+### Saves are input
+
+A save file is plain text that players can edit and share, so treat what it holds like
+anything a player types:
+
+- **A shared save can start the story at any line or menu, with any values** its variables
+  can hold: `trust` at 99 before the scene that raises it, or a flag set without its scene.
+  Don't count on the story having reached a line "the normal way"; check the values you
+  need.
+- **`default` runs on the restored values.** When a save from before a `default` is
+  loaded, that `default` runs with the save's variables already set, so
+  `default ratio = 10 // trust` stops the load (the player sees "This save couldn't be
+  loaded.") for a save with `trust` 0. Keep defaults to plain starting values.
+- **Never build a file name from a story variable**, in a `$` line or anywhere else: a value
+  from a shared save could name any file on the player's computer.
+- **Never put values from the player's computer in a story variable**: their user name, a
+  folder path, the computer's name. A save carries them to everyone it is shared with, and
+  the Load page shows its line and picture.
+
+### Settings in config.toml
+
+Every key is optional; the example game's `config.toml` lists them with their defaults.
+
+```toml
+[saves]
+pages = 10  # numbered pages of 6 slots on the Save and Load pages
+autosave_interval = 300  # 5 minutes
+autosave_choices = true  # auto-save when a menu of choices appears
+autosave_quit = true  # auto-save when the player leaves by Main Menu or Quit
+confirm_quick_load = true  # false: F9 and Q.Load load without asking
+```
+
+| Key | Default | Allowed |
+|---|---|---|
+| `[saves] pages` | `10` | 1–100 |
+| `[saves] autosave_interval` | `300` | `0` (off) or 60–3600 seconds of play |
+| `[saves] autosave_choices` | `true` | `true` or `false` |
+| `[saves] autosave_quit` | `true` | `true` or `false`; with `false` the Main Menu and Quit questions say "Unsaved progress will be lost." |
+| `[saves] confirm_quick_load` | `true` | `true` or `false` |
+
+With fewer pages, saves on the pages left out stay in the folder but aren't shown; raising
+`pages` again brings them back. A value outside its range gets the usual `config.toml`
+warning, and the default is used.
+
+**Words.** Every word of the Save and Load pages, their questions, and the notices can be
+changed under `[words]`, like the menu words in section 15. Slot names are the word, a
+space, and the number ("Slot 3", "Auto 2", "Quick 1"); a failed save shows "Couldn't save:",
+a space, and the reason.
+
+| Key | Default |
+|---|---|
+| `q_save` | "Q.Save" |
+| `q_load` | "Q.Load" |
+| `save_page_auto` | "Auto" |
+| `save_page_quick` | "Quick" |
+| `save_slot` | "Slot" |
+| `save_newest` | "Newest" |
+| `save_empty` | "Empty slot" |
+| `save_loading` | "Loading…" |
+| `save_no_picture` | "No picture" |
+| `save_none` | "No saves yet." |
+| `save_damaged` | "Damaged save" |
+| `save_newer` | "Made by a newer version of the game." |
+| `save_other_game` | "This save is from a different game." |
+| `confirm_overwrite` | "Overwrite this save?" |
+| `confirm_delete` | "Delete this save?" |
+| `confirm_load` | "Load this save? Unsaved progress will be lost." |
+| `confirm_nearest` | "The story has changed since this save. Continue from the nearest point?" |
+| `confirm_main_menu_autosave` | "Return to the title screen?" |
+| `confirm_quit_autosave` | "Quit the game?" |
+| `notice_quick_saved` | "Quick saved." |
+| `notice_no_quick_save` | "No quick save yet." |
+| `notice_cant_save` | "Can't save right now." |
+| `notice_save_failed` | "Couldn't save:" |
+| `save_reason_disk_full` | "the disk is full." |
+| `save_reason_folder` | "the save folder can't be written." |
+| `save_reason_other` | "the file couldn't be written." |
+| `save_reason_slots` | "every slot on that page holds a save this version can't replace." |
+| `notice_too_large` | "This save is too large." |
+| `notice_load_damaged` | "This save is damaged and can't be loaded." |
+| `notice_load_no_fit` | "This save no longer fits the story and can't be loaded." |
+| `notice_load_failed` | "This save couldn't be loaded." |
+| `notice_delete_failed` | "Couldn't delete this save." |
+
+A word is plain text, up to 200 characters (the `confirm_` questions up to 1,000).
+
+**Looks.** The slots and the notices (the small messages in the top-right corner, such as
+"Quick saved.") follow the menu theme. These settings change them, as in "Every theme
+setting" in section 15:
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `save.text_size` | 24 | 24–36 | A slot's date, line, and tags |
+| `save.badge.fill_color`, `.fill_opacity`, `.text_color` | `"#FFF4F8"`, 0.90, `"#3D2B36"` | | The tag with the slot's name |
+| `save.newest.fill_color`, `.text_color` | `"#A02860"`, `"#FFFFFF"` | | The "Newest" tag |
+| `save.placeholder.fill_color`, `.text_color` | `"#F0D0DE"`, `"#3D2B36"` | | An empty or damaged slot |
+| `save.no_picture_image` | none | | A picture in `gui/` for a save without one |
+| `save.load_fade_ms` | 300 | 0–2000 | The fade from black after a load |
+| `notice.fill_color`, `.fill_opacity`, `.border_color` | the panel's | | A notice's box |
+| `notice.border_width`, `.corner_radius` | 2, 12 | 0–8, 0–28 | |
+| `notice.frame_image`, `.frame_slice_width` | none, 24 | 0–96 | A nine-slice picture instead |
+| `notice.text_size`, `.text_color` | 24, the panel's | 24–36 | |
+| `notice.marker.fill_color` | the buttons' marker | | The bar of a problem notice |
+| `notice.max_width` | 560 | 320–800 | |
+| `notice.duration_ms`, `.fade_ms` | 1500, 200 | 1000–10000, 0–1000 | How long a notice shows, and its fade |
+| `notice.sound` | none | | A sound in `audio/` played with each notice |
+
+### When something is wrong
+
+These are warnings in the log; the game goes on.
+
+| Code | Message | Fix |
+|---|---|---|
+| W80 | `saving is off: a release run needs [game] id in config.toml` | Add `id` under `[game]`. |
+| W81 | `saves can't be written this session: the save folder <game>/saves is a link` / `… is not a real folder` / `… couldn't be created` | Make `saves/` a real folder in the game folder, or delete it so the game makes one. |
+| W82 | `couldn't load Slot 3: the saved line in label bridge (statement 4) is gone; offering the nearest point` / `… is gone and no nearby point was found` / `couldn't load Slot 3: it was made by a different game` (dev runs only) | See "Keeping saves working" above. |
+| W83 | `couldn't save to Slot 3: disk full` / `… no permission` / `… couldn't write` / `couldn't delete Slot 3: …` | Free some disk space, or check that the save folder can be written. |
+
+---
+
+## 18. Rollback
+
+Players can step back through the lines and menus they have already read, and forward
+again. Your script needs nothing for this: rollback works in every game from the first
+line.
+
+- **Back:** mouse wheel up, Page Up, the gamepad's left shoulder button, or **Back** in the
+  quick menu. Each notch or press is one step: one line, or one menu with its question.
+- **Forward:** wheel down, Page Down, or the right shoulder button, through the lines
+  already read. Clicking on a line read before just goes on with the story, as usual.
+- **A step looks as it did.** The same backgrounds, sprites, music, variables, history, and
+  `dice` results. The line shows complete, with no typing, transition, shake, or flash.
+- **Picking again.** Back at a menu, the player can pick any choice. The same pick keeps the
+  lines read after it. A different pick drops them, and the story goes on down the new
+  branch.
+- **Where back stops:** the first line of a new game, the line a save was loaded at, a
+  `rollback block`, anything read while rollback is off, and `[rollback] steps` steps back
+  (100). There, a small mark appears on the text box and Back in the quick menu is grayed
+  out. Neither says why, so a stop never gives away a scare.
+- While the player reads the past, a small tag in the top-left corner shows how many steps
+  back they are.
+
+### What is and isn't rolled back
+
+| Rolled back | Not rolled back |
+|---|---|
+| The line or menu on screen, the backgrounds and sprites, the music and looping sounds | `persistent` data |
+| Every story variable and meter (`points`) | Which lines were read and which choices were picked (used by skip and the choice marks), and unlocks |
+| The `dice` results still to come | The player's settings |
+| The choices picked, the History log, and the `call` stack | `define` values (a defined list changed by a `$` line stays changed) |
+| Whether rollback is on or off | Anything outside the story: files, the clock, other Python modules |
+
+**Going forward runs the story again.** The lines between two steps run again as the player
+moves forward, by wheel or by click. Story variables and `dice` come back as they were at
+the step, so they give the same results. What isn't rolled back changes a second time:
+
+```
+default persistent.count = 0
+
+label festival_end:
+    "The last lantern drifted out of sight."
+    $ persistent.count += 1
+    "Next year, then."
+```
+
+A player who reaches "Next year, then.", scrolls back to "The last lantern…", and scrolls
+forward again runs `$ persistent.count += 1` twice: one festival, counted 2. Two fixes:
+
+- **Set a value instead of adding to one.** Running `$ persistent.saw_festival = True` twice
+  changes nothing.
+- **Block rollback right after it.** The player can never step back to a line before the
+  block, so the line above it never runs twice:
+
+```
+default persistent.count = 0
+
+label festival_end:
+    "The last lantern drifted out of sight."
+    $ persistent.count += 1
+    rollback block
+    "Next year, then."
+```
+
+The same goes for anything else that stays done, such as a file the game writes: block
+rollback right after it.
+
+### Stopping rollback
+
+Four lines control rollback. Each goes on a line of its own inside a label.
+
+| Line | What it does |
+|---|---|
+| `rollback block` | A wall: the player can't step back past this point. The lines after it roll back as usual. |
+| `rollback off` | Turns rollback off. Back does nothing, and no line read while it is off can be stepped back to later. |
+| `rollback on` | Turns rollback on again. The first line after it is as far back as the player can go. |
+| `rollback fixed` | Goes on the line right above a `menu:`. The player can step back through that menu, but can't change the pick. |
+
+Rollback is on until a `rollback off`. Running one of these lines again, as the story does
+going forward, changes nothing more. On and off are saved with the game: a save made while
+rollback is off loads with it off.
+
+**A scare** only works once. Block rollback right after it, so the player can't scroll back
+and replay it:
+
+```
+label shrine:
+    "The lanterns along the path went out, one by one."
+    flash red
+    shake large
+    "Something was standing where Hana had been."
+    rollback block
+    hana "...Did you see that?"
+```
+
+**A choice that can't be undone.** Put `rollback block` first in the choice's lines. Once
+the player picks it, they can't step back to the menu:
+
+```
+default told_daichi = False
+
+label truth:
+    menu:
+        hana "Will you tell Daichi the truth?"
+        "Tell him":
+            rollback block
+            $ told_daichi = True
+            daichi "...Thank you for telling me."
+        "Keep it to yourself":
+            $ told_daichi = False
+```
+
+**A fixed choice** is the softer version. The player can step back through the menu and the
+lines before it, but only the choice they picked can be picked again; the others show
+locked. The first time the menu appears, or after a load, it is a normal menu.
+
+```
+default going = False
+
+label invitation:
+    rollback fixed
+    menu:
+        daichi "The fireworks start at nine. Will you come?"
+        "Yes":
+            $ going = True
+        "Not this year":
+            $ going = False
+```
+
+**A tense run of lines**, such as a chase, can turn rollback off before it and on after it.
+Once it is on again, the player can step back only to the lines after `rollback on`:
+
+```
+label chase:
+    "Footsteps behind me. Running."
+    rollback off
+    "I didn't look back."
+    "Left at the shrine, down the stone steps, into the crowd."
+    rollback on
+    hana "There you are! Where did you run off to?"
+```
+
+A block never takes away the player's saves or the game menu. Let the words carry a scare
+too, not only a flash or shake, for players who turn effects down.
+
+### Settings in config.toml
+
+```toml
+[rollback]
+steps = 100  # how many steps back a player can go; 0 turns rollback off for the game
+marker = true  # false: no tag in the corner while the player reads the past
+```
+
+| Key | Default | Allowed |
+|---|---|---|
+| `[rollback] steps` | `100` | 0–1,000. `0` turns rollback off for the whole game: the wheel does nothing and the quick menu has no Back |
+| `[rollback] marker` | `true` | `true` or `false` |
+
+Each step kept holds a copy of the story's variables, so more steps use more memory: about
+0.2 MB a step in a game with 1,000 variables. A game whose choices must always stick, such
+as a trial, can set `steps = 0`.
+
+**Words and looks.** The quick menu's Back is the word `back` under `[words]` ("Back"). The
+mark that shows where back stops is set in `[theme.rollback]`, as in "Every theme setting"
+in section 15:
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `rollback.mark.fill_color`, `.border_color`, `.glyph_color` | `"#FFE6F0"`, `"#F0A0C0"`, `"#A02860"` | | The mark: a small pill on the text box's top edge with a bar over an up-arrow |
+| `rollback.mark.image` | none | | A picture in `gui/` drawn instead of the pill |
+| `rollback.bump_height` | 6 | 0–12 | How far the text box jumps up with the mark; 0: no jump (never with reduced motion) |
+| `rollback.limit_sound` | none | | A sound in `audio/` played as the mark appears |
+
+In dev runs a glyph color too close to the fill is warned about: `config.toml:
+[theme.rollback.mark] glyph_color #F0B0C8 is hard to see on fill_color #FFE6F0 (1.4:1;
+marks need at least 3:1). Pick a darker glyph_color.` A missing picture gives
+`config.toml: [theme.rollback.mark] image "gui/mrak.png" doesn't exist, so the drawn limit
+mark is used. Did you mean "gui/mark.png"?`
+
+### When something is wrong
+
+The game checks `rollback` lines at launch and lists every mistake with its file and line.
+W90 is a warning in the log; the game goes on.
+
+| Code | Message | Fix |
+|---|---|---|
+| E200 | `rollback needs one word after it: block, off, on, or fixed. Write "rollback block" to stop rollback here.` | Add `block`, `off`, `on`, or `fixed`. |
+| E201 | `"of" isn't a rollback word. Did you mean "off"? rollback takes block, off, on, or fixed.` / `"back" isn't a rollback word. rollback takes block, off, on, or fixed.` | Fix the word. |
+| E202 | `rollback off takes nothing after "off", but this line goes on with "now". Put anything else on its own line.` | Put the rest on a line of its own. |
+| E203 | `rollback doesn't take a block. Remove the ":" and un-indent the lines under it.` | Remove the `:` and un-indent the lines under it. |
+| E204 | `rollback fixed must be the line right above a menu: or a minigame line, but the next line here is a line of dialogue (line 31). Move it above the menu or minigame, or use "rollback block".` / `rollback fixed must be the line right above a menu: or a minigame line, but nothing comes after it here. Move it above the menu or minigame, or use "rollback block".` | Move it to the line right above `menu:`, or use `rollback block`. |
+| W90 | `Rollback stopped: a step in label "bridge" no longer matches the script (it was changed), so it and older steps were dropped.` / `… uses a different script version, …` / `… failed while filling a default (see the error above), …` | The script changed while the game ran, or a `default` now fails. The player stays on the line they were reading; fix the `default` if the log names one. |
+
+---
+
+## 19. Reserved words
+**(proposed, F02)**
+
+These 40 words can't be names, in any capitals. Some aren't available yet; they're
+reserved so your script keeps working when they arrive.
+
+| Words | Status |
+|---|---|
+| `label` `jump` `call` `return` `if` `elif` `else` `define` `include` | available |
+| `default` | available |
+| `scene` `show` `hide` `at` `behind` `as` `image` | available |
+| `window` | coming: text box |
+| `menu` | available |
+| `play` `stop` `queue` `voice` | available |
+| `with` `shake` `flash` `pause` | available |
+| `chapter` | available |
+| `points` | available |
+| `nvl` | available |
+| `cg` | coming: gallery |
+| `ending` `lock` `unlock` | available |
+| `minigame` · `effect` · `file` | coming: minigames, glitch effects, meta files |
+| `rollback` | available |
+| `flowchart` | available |
+| `python` | not supported; use `$` lines |
+
+`tip` and `item` aren't reserved: they mean something only right after `lock` or `unlock`,
+so `default item = None` still works. `codex`, like `dice` and `points`, is an engine name,
+so it can't be a variable, a label, or a character.
+
+---
+
+## 20. Coming later
+**(proposed, F02)**
+
+Every statement follows one pattern: `verb target [modifiers] [with transition]`, e.g.
+`show hana happy at left with dissolve`. Text uses the same quotes and escapes as
+dialogue, times are plain seconds (`fadein 2.0`), and `with …` comes last. Each statement
+gets its own section here when it is planned.
+
+---
+
+## 21. Common errors
+**(proposed, F02)**
+
+The game checks every file at launch and lists every problem (up to 50) with file, line,
+and what to do. The log also shows the line with a `^` under the exact spot. Messages are
+shortened below.
+
+### Files
+| Message | Fix |
+|---|---|
+| `this file isn't saved as UTF-8. …` / `… is saved as UTF-16. …` | Re-save the file as UTF-8. |
+| `… doesn't look like a text file. …` | A non-text file has a `.vns` name. Rename or remove it. |
+| `this line contains an invisible character (U+0007). …` / `… a hidden line-separator character …` | Delete and retype around the column given. |
+| `this line contains a hidden text-direction character (U+202E), …` | Direction marks are only allowed inside dialogue and narration. In a Python string, use an escape instead. |
+| `The story has more than 1,000,000 statements …` / `… more than 250,000 pieces of Python …` / `The story's Python adds up to more than 4,000,000 characters …` | Remove unneeded includes; keep large data out of the script. |
+| `… is larger than 16 MB. …` / `The story's files add up to more than 256 MB. …` | Split big files; remove unneeded includes. |
+| `script/main.vns doesn't exist. Did you mean "Main.vns"? …` | The first file must be named exactly `main.vns`. |
+| `script/main.vns is a folder. …` / `… couldn't be read. …` / `… points to a place outside the game folder. …` | Make `main.vns` a normal, readable file inside the game's `script` folder. |
+
+### Indentation
+| Message | Fix |
+|---|---|
+| `this line is indented with a tab, but earlier lines in this file use spaces. …` | Re-indent pasted lines with one kind. |
+| `this line is indented with a non-breaking space (U+00A0) …` | Retype the indentation with the space bar or Tab. |
+| `this if has no lines under it. …` / `label "bridge" has no lines under it. …` | Indent its lines (comment lines don't count), or write `return`. |
+| `this line is indented more than the line above, but the line above doesn't start a block. …` | Line it up with the line above. |
+| `this line's indentation doesn't line up with any block above it. Indent it by 0, 4, or 8 spaces.` | Use one of the listed widths. |
+
+### Quotes and text
+| Message | Fix |
+|---|---|
+| `this line uses curly quotes “ ” around the text. …` | Retype the outer quotes as `"`. |
+| `this quote is never closed. …` | Add the closing `"`, or indent the next line more if the text continues. |
+| `… the text ends with a curly quote ”. …` | Retype the last quote as `"`. |
+| `text goes between double quotes, not single quotes. …` | Use `"…"`. |
+| `this line has more after the closing quote: … Write a quote inside the text as \".` | Write inner quotes as `\"`. |
+| `"\q" is not a special sequence. …` | Use `\\`, `\"`, `\n`, or `{{`. |
+
+### Statements
+| Message | Fix |
+|---|---|
+| `"jmup" is not a statement. Did you mean "jump"?` | Fix the spelling. |
+| `"Jump" is not a statement. Statement words are lower case: jump.` | Use lower case. |
+| `"The" is not a statement, and this line has no text in quotes. …` / `hana's line has no text in quotes. …` | Put the text in quotes. |
+| `"show" is not available yet in this engine version. …` / `"at" can't start a line. …` | Comment the line out for now. |
+| `label start needs : at the end of the line. …` / `if needs : …` | Add `:`. |
+| `this line is outside any label, so the story can never reach it. …` | Put it under a label. |
+| `this elif has no if directly above it at the same indentation. …` | Line `elif`/`else` up under their `if`. |
+| `else doesn't take a condition. …` / `write elif instead of else if.` | Use `elif condition:`. |
+| `this line of text ends with :, which only menu choices do. …` | Remove the `:`. |
+| `python: blocks aren't supported. …` | Use one `$` line per line of Python. |
+
+### Labels, characters, names
+| Message | Fix |
+|---|---|
+| `there is no label named "chapter_2". Did you mean "chapter2"?` | Fix the `jump`/`call` or the label. |
+| `… It is defined in script/chapter3.vns, which is not included. Add include "chapter3.vns".` | Add the include. |
+| `there is already a label named "rooftop" in … Rename one of them.` | Label names are unique across files. |
+| `The story has no label named "start". …` | Add `label start:` to `main.vns`. |
+| `no character named "hnaa". Did you mean "hana"?` | Fix the spelling, or `define` the character. |
+| `"scene" is a statement word, so it can't be a character name. …` / `"class" is a word Python uses, …` / `"_intro" starts with _, …` / `"chapter-2" can't be a name. …` | Rename it, e.g. as suggested. |
+| `the name "…" contains an invisible character (U+3164), …` | Retype the name; it hides a character you can't see. |
+| `the name "…" mixes Latin and Cyrillic letters, …` (warning) | Retype it in one alphabet; a lookalike letter slipped in. |
+| `"hana" is already defined in script/main.vns, line 5. …` | Define each name once. |
+| `define sets a name once, … so it must be at the top level. …` | Move it out of the label, or use `$`. |
+| `define trust uses itself, …` / `define a uses b, and b uses a …` | Give the value without the loop. |
+
+### Variables, characters, and modules
+Found when the game starts, before the story begins.
+
+| Message | Fix |
+|---|---|
+| `default sets a variable's starting value before the story begins, so it must be at the top level. …` | Move it out of the label; use `$` to change it later. |
+| `"trust" already has a default in … Remove one of them.` / `"trust" is set by define in …, and by default here. …` | One declaration per name: `default` if the story changes it. |
+| `"hana" is set by define in …, so the story can't change it. …` | Use `default` for values that change, or `name_from` for a name. |
+| `"dice" is a name the engine uses. Pick another name, …` | Rename your variable. |
+| `a $ line can't import a module, … Add define math = module("math") …` | Define the module at the top level. |
+| `dice.shuffle gives back a shuffled copy and leaves deck unchanged. …` (warning) | Write `$ deck = dice.shuffle(deck)`. |
+| `"daichi" speaks in the story (…), but its define gives text, not a character. …` | `define daichi = Character("Daichi")`. |
+| `Character has no option "colour". Did you mean "color"? …` / `"#e8a0b" isn't a color. …` | Fix the option; colors are `"#RRGGBB"`. |
+| `Character needs the name to show, in quotes, …` / `… either a name or name_from, not both. …` | Give one name in quotes, or `name_from`. |
+| `name_from="hana_nmae" doesn't name a default. …` / `name_from takes the variable's name in quotes: …` | Name a `default`, in quotes. |
+| `blip is a file in quotes inside the audio folder, e.g. blip="blips/hana.ogg", but this has 3.` / `can't use "..\blips\hana.ogg" for blip: … Paths start in the audio folder and use /, …` / `"blips/hana.m4a" isn't a format the engine plays, so it can't be a blip. Use .ogg, .opus, .flac, .mp3, or .wav.` / `blip paths start inside the audio folder, so write "blips/hana.ogg", not "audio/blips/hana.ogg".` | Write the file as in `play`: inside `audio/`, with `/`, in a format the engine plays. |
+| `blip_every must be a whole number from 1 to 10, e.g. blip_every=2, but this has 0.` / `blip_pitch must be a number from 0.0 to 0.5, e.g. blip_pitch=0.1, but this has 2.` / `blip_volume must be a whole number from 0 to 100, e.g. blip_volume=60, but this has 150.` / `blip_every needs blip="…" in the same Character(...).` | Use a value in the range, or add `blip`. |
+| `define opening couldn't be set: it uses dice, …` / `define bonus couldn't be set: it uses "trust", which is a story variable …` | Make it a `default`. |
+| `define maths couldn't be set: there is no Python module named "maths". …` | Fix the module's name. |
+
+### Backgrounds and sprites
+Warnings let the game start; the rest stop the launch.
+
+| Message | Fix |
+|---|---|
+| `there is no image "hana hapy", so a placeholder will show. Did you mean "hana happy"?` (warning) | Fix the spelling, or add the file. |
+| `… Names match files exactly: rename images/hana/Happy.png to happy.png, …` (warning) | Match the capitals. |
+| `Some image files have names a script can't use: …` (warning) | Rename the files as suggested. |
+| `hana's line has the word "pout", but there are no images for hana, …` (warning) | Add the images, or give the Character an `image_tag`. |
+| `there is no position named "rigth". Did you mean "right"?` | Fix it, or add the name to `[stage.positions]`. |
+| `1400 is too far right. Positions go from -1280 to 2560; …` / `at takes a position name or one or two numbers, … Numbers have no units.` | Write `at 400` with a number in range. |
+| `"at" can't go on a dialogue line; only expression words can. …` | Put a `show` line above it. |
+| `hide takes only the tag: write hide hana, not hide hana happy.` | Write only the tag. |
+| `"hana/happy.png" is a file, not an image name. …` | Write `show hana happy`. |
+| `flip takes on or off: …` / `zoom takes a number from 0.25 to 4, …` / `layer takes a whole number from -100 to 100, …` | Use one of the allowed values. |
+
+### Transitions and effects
+Every message for `with`, `shake`, `flash`, `pause`, and transition `define`s is in
+[When something is wrong](#when-something-is-wrong-1), at the end of Transitions and
+effects.
+
+### Rollback
+Every message for `rollback` lines is in
+[When something is wrong](#when-something-is-wrong-3), at the end of Rollback.
+
+### Full-screen text
+Each message in full is in [nvl (full-screen text)](#nvl-full-screen-text).
+
+| Message | Fix |
+|---|---|
+| `nvl needs on, off, or clear after it, e.g. nvl on.` / `nvl takes on, off, or clear, but this has "of". Did you mean "off"?` / `write nvl on in lower case.` | Write `nvl on`, `nvl off`, or `nvl clear`. |
+| `nvl on takes nothing else on its line, …` / `full-screen text appears instantly, so nvl on can't take "with dissolve". …` / `nvl doesn't start a block, so it takes no ":". …` | Put anything else on its own line, and transitions on the `scene` line before it. |
+| `this full-screen line needs 2 pages at text size 28, …` / `33 lines have gone by in full-screen text since the last nvl clear, …` (warnings, dev runs) | Split the line; add `nvl clear` where a new page should begin. |
+| `config.toml: [theme.nvl] text_color #A0A0A0 on fill_color #FFF4F8 … gives 1.7:1 …` / `rin's color #C060A0 gives 2.5:1 on the full-screen text panel …` (warnings, dev runs) | Pick colors further apart. |
+
+### Audio
+Warnings let the game start; the rest stop the launch.
+
+| Message | Fix |
+|---|---|
+| `play needs a channel before the file, e.g. play music "bgm/festival.ogg" or play sound "sfx/door.ogg".` / `stop needs a channel: stop music, stop sound, or stop voice.` / `"musc" isn't a channel. Did you mean "music"? …` | Write `play music` or `play sound`; `stop music`, `stop sound`, or `stop voice`; `queue music`. |
+| `voice lines aren't started with play. Put voice "voice/hana_014.ogg" on the line above the line it voices.` / `only music can be queued. …` | Use `play music`, `play sound`, `queue music`, or `voice` above a line. |
+| `play music needs a file in quotes, e.g. play music "bgm/festival.ogg".` / `the file goes in quotes: …` | Put the file in quotes. Names and variables can't stand for a file. |
+| `can't use "..\bgm\theme.ogg": … Paths start in the audio folder and use /, …` | Use `/` and stay inside `audio/`. |
+| `paths start inside the audio folder, so write "bgm/festival.ogg", not "audio/bgm/festival.ogg".` | Drop `audio/`. |
+| `"bgm/festival" needs the file's extension, e.g. "bgm/festival.ogg".` | Add the extension. |
+| `play has no option "fadin". Did you mean "fadein"?` / `play doesn't start a block. Remove the :.` / `play doesn't take with; transitions are for pictures. …` | Fix or remove the word; each statement's options are listed above. |
+| `this line has fadein twice. Keep one.` / `loop and once can't be used together. Keep one.` | Keep one. |
+| `fadeout can't go on play sound, because a new effect never stops the others. To fade effects out, use stop sound fadeout 1.0.` / `restart only works with play music; …` / `stop music stops whatever music is playing, so it doesn't take a file. …` / `voice takes only the file. …` / `crossfade is not available in this engine version. Use fadeout and fadein.` | Remove the option, or use the statement that takes it. |
+| `fadein needs a number of seconds after it, e.g. fadein 2.0.` / `volume needs a percentage after it, e.g. volume 50.` / `from needs a time in seconds or current, e.g. from 12.5.` | Add the value. |
+| `fadein takes seconds from 0 to 60, e.g. fadein 2.0, but this has 90.` / `… but this has "2s". Numbers have no units.` | Plain seconds: 0 to 60 for fades, up to 3600 for `from`. |
+| `volume takes a whole number from 0 to 100 (a percentage), e.g. volume 50 for half, but this has 0.5.` / `write volume 50, without %.` | A whole percentage, e.g. `volume 50`. |
+| `this voice has no line of dialogue or narration below it, so it never plays. Put voice directly above the line it voices.` / `voice goes directly above a line, not above an if. …` (warning) | Put `voice` directly above its line, or inside each branch. |
+| `"bgm/theme.m4a" is an M4A file, which the engine can't play, so it will be silent. Convert it to .ogg (Ogg Vorbis) in an audio editor.` (warning) | Convert it to `.ogg`. |
+| `3 music files loop but are MP3: bgm/festival.mp3, bgm/omen.mp3, and 1 more. MP3 adds a short silence each time a track loops; …` (warning) | Convert looping music to `.ogg`. |
+| `there is no file audio/bgm/festval.ogg, so it will be silent. Did you mean "bgm/festival.ogg"?` (warning) | Fix the spelling or capitals, or add the file. |
+| `Some voice files don't exist, so those lines have no voice: …` (warning) | Add the recordings; the lines work without them meanwhile. |
+| `config.toml: [audio.loop_start] names "bgm/festval.ogg", which doesn't exist. Did you mean "bgm/festival.ogg"?` (warning) | Fix the file name in the key. |
+| `config.toml: [audio.loop_start] gives "bgm/festival.mp3" a loop point, but loop points work only in .ogg and .opus files, so it loops from the start. Convert it to .ogg.` (warning) | Convert the file to `.ogg`, or remove the key. |
+| `config.toml, line 2: [audio] music_volume must be a whole number from 0 to 100, but found 0.7` / `… [audio] music_fadeout must be seconds from 0 to 60, …` | Fix the value in `config.toml`. |
+
+These appear only in the log, while the game runs, once per file; the game goes on:
+
+| Message | Fix |
+|---|---|
+| `audio/bgm/festival.ogg is missing, so it plays as silence.` / `… couldn't be read, so it plays as silence. …` / `… can't be played: it is damaged or isn't really an Ogg Vorbis file. Export it again as .ogg.` | Add the file, close the program locking it, or export it again. |
+| `audio/bgm/festival.ogg is damaged 1:23 in, so it stopped there. Export it again as .ogg.` | Export it again. |
+| `audio/blips/hana.ogg is 1.4 seconds long, so it plays without blip_pitch. Blips with blip_pitch must be at most 0.5 seconds; trim the file to one short sound.` | Trim the blip to one short sound. |
+| `[audio.loop_start] "bgm/festival.ogg" = 95 is past the end of the track (1:12), so it loops from the start. Use a time before 1:12.` | Use a loop point before the end. |
+| `audio/bgm/festival.ogg can't use its loop point because the file's header has no room for the loop tags, so it loops from the start. …` | Export it again as `.ogg`. |
+| `A restored game plays audio/bgm/old_theme.ogg, which is missing, so the music is silent.` | A save names a file that was renamed or removed: put it back under its old name. |
+| `No sound device could be opened, so the game runs without sound.` / `The sound device stopped working, so the game continues without sound.` | Nothing to fix in the game: check the speakers or headphones. Sound comes back when a device is plugged in. |
+
+### Text tags
+All the tag messages are in [When a tag is wrong](#when-a-tag-is-wrong). Warnings let the
+game start; the rest stop the launch.
+
+| Message | Fix |
+|---|---|
+| `there is no tag "colour". Did you mean "color"?` / `there is no tag "bold". For bold, write {b}…{/b}.` | Use a tag from the table in section 14. |
+| `this { never closes. …` | End the tag with `}`, or write `{{` to show a `{`. |
+| `tags have no spaces inside: …` / `write {pause=0.6}, with = …` | Write `{name=value}` and nothing else. |
+| `"#e0505" isn't a color. …` | `#` and six digits or letters a–f. |
+| `{pause=…} takes seconds from 0.1 to 30, but this has 45.` / `{speed=…} takes a number from 0.1 to 10, or instant, …` | Stay in range; numbers have no units. |
+| `{/b} closes bold, but no {b} is open here. …` | Remove it, or add the `{b}`. |
+| `{/b} closes bold, but {i} was opened inside it and is still open. …` | Close the inner tag first. |
+| `{next} goes at the very end of the text, …` | Move it to the end. |
+| `text_color must be a color: …` / `character names are shown exactly as written, …` | Fix the `Character` option; names take no tags. |
+| `{var=player_nmae} shows a variable that no default or define sets, …` (warning) | Fix the name, or add a `default`. |
+| `this line needs 2 text boxes at text size 28, …` (warning, dev runs) | Split the line if you want to choose the break. |
+| `hana's name color #f4d0dc is hard to read on the name plate …` (warning, dev runs) | Pick a color with more contrast. |
+| `config.toml: [theme.textbox] text_font "fonts/Lora-Regular.tff" doesn't exist, so the built-in font is used. …` (warning) | Fix the path. |
+
+### Python
+| Message | Fix |
+|---|---|
+| `this Python has a mistake: "(" was never closed.` | Add the missing `)`; the column points at the `(`. |
+| `this condition has a mistake: … Maybe you meant "==" …?` | Compare with `==`. |
+| `… it uses a curly quote “. Python needs straight quotes " or '.` | Retype the quotes. |
+| `"jump" is a statement, not Python. Remove the $.` | Remove the `$`. |
+| `this Python is too long or too deeply nested to check. …` / `… longer than 100,000 characters …` | Split it into several `$` lines. |
+| `Python warns: "is" with a literal. Did you mean "=="?` (warning) | Follow Python's hint; the game still starts. |
+
+### Includes
+| Message | Fix |
+|---|---|
+| `can't include "chapter2.vns" because script/chapter2.vns doesn't exist. …` | Match the name exactly; don't start with `script/`. |
+| `can't include "../secret.vns": paths must stay inside the script folder …` | Keep files inside `script/` and use `/`. |
+| `… only .vns files can be included.` / `… that is a folder. …` | Include each `.vns` file by name. |
+| `include can't be inside a label or block, …` / `the file name goes in quotes. …` | Top level, with quotes. |
+
+---
+
+## 22. Run-time errors
+
+Some mistakes only show while the story runs, such as a misspelled variable in a scene
+nobody has reached yet. The story stops on an error screen with the file, the line, and
+what to do; players see the same screen and can send you the line. Their saves are safe:
+nothing is saved after an error. Messages are shortened below. The code in the first
+column isn't shown on the screen; it is the message's name in the engine's documents, so
+you can look one up or mention it when you ask for help.
+
+| Code | Message | Fix |
+|---|---|---|
+| E85b | `there is no variable named "trsut". Did you mean "trust"?` | Fix the spelling. |
+| E85b | `there is no variable named "met_daichi" yet. It is set by a $ line … Add default met_daichi = False …` | Add the `default`. |
+| E85d | `this adds text and a whole number, which Python can't do. …` | Convert with `int(…)` or `str(…)`. |
+| E85g | `this divides by zero. …` | Check the number first with `if`. |
+| E85e | `"visited" holds a set, which can't be saved …` / `… holds a function …` / `… holds a module …` | Use a list; put helpers and modules in a `define`. |
+| E75h | `hana's name comes from hana_name, which holds a whole number (3), not text. …` | Set the variable to text. |
+| E85j | `dice.roll(6, 1) needs the smaller number first. …` / `dice.pick got an empty list, …` | Fix the `dice` call. |
+| E85c | `dice has no "rol". Did you mean "roll"? …` / `text has no "uper". Did you mean "upper"?` | Fix the spelling of the call. |
+| E45 | `the story ran 100,000 steps without showing a line, so it is probably stuck in a loop …` | A `jump` loop never reaches a line; give it a line or a way out. |
+| E45b | `1,000 calls are waiting to return, … Did you mean jump? …` | Use `jump` to move on for good. |
+| E85m | `this Python ran for 5 seconds without finishing, so it is probably stuck in a loop. …` | Check any `while` loop in the line and in the helpers it uses. |
+| E85i | `this Python ran helpers inside each other too deeply, so a helper may call itself without end. …` | Give the helper a way to stop calling itself. |
+| E85f | `this $ line tried to close the game with exit(). …` | End the story with `return`. |
+| E85n | `input() can't be used in a game, because there is no console to type into. …` | Remove it; ask the player with a [menu](#menu-choices). |
+| E178 | `every choice in this menu is hidden, because all their conditions are false, so the player can't pick anything. …` / `every choice in this menu is locked, …` | Add a choice without `if`, such as `"That's all":`. |
+| E170 | `{var=trsut} shows a variable that doesn't exist. Did you mean "trust"?` | Fix the spelling, or add a `default`. |
+| E171 | `{var=visited} can show text or a number, but visited holds a list. …` | Show a variable that holds text or a number. |
+| E180 | `persistent.met_hana has no value yet. Give it a starting value with default persistent.met_hana = False at the top level of a file.` / `… Did you mean "hana_remembers"?` | Fix the spelling, or add the `default`. |
+| E181 | `persistent.visited can't hold a set, because persistent data is saved as plain values. …` / `persistent.bag[…][0] can't hold a set, …` | Store lists, dictionaries with text keys, text, numbers, `True`/`False`, or `None`. |
+| E182 | `persistent names starting with _ belong to the engine, so persistent._secret can't be set. …` / `persistent has no "_clera". Did you mean "_clear"?` | Use a plain name; `_clear()` is the engine's one. |
+| E183 | `persistent data is now 1.3 MB, over the 1 MB limit, so it can't be saved. …` / `persistent data now has 10,001 names, over the 10,000 limit. …` | Store flags and counts, not long text or big lists. |
+| E184 | `default persistent.a.b sets one name after "persistent.", …` (when the game loads) | One name per `default persistent.` line. |
+| E185 | `define title couldn't be set: it reads persistent.cleared, but define values are set once at launch …` (at launch) | Use a `lambda` or a `default`. |
+| E256 | `Python can't change codex. Use unlock tip, unlock item, and lock item.` / `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `define hint couldn't be set: it reads codex, …` (at launch) | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock` (see [lock tip, lock item, unlock](#lock-tip-lock-item-unlock-codex)). |
+| W56 | `persistent.hana_rememebrs is read here but never set or given a default. …` (warning, dev runs) | Fix the spelling or add a `default`. |
+| E85 | `this Python stopped with an error: … the log has the details.` | Check the values the line uses. |
+
+When the mistake is inside a helper written in a `define`, the message names the line that
+used it and adds `(in define bonus, script/main.vns, line 7)`.
+
+---
+
+## Changelog
+- 2026-11-01: Created with the F02 proposal.
+- 2026-11-01: Shortened to one short section and example per statement (rules stay in
+  02-script.md). Added the errors for `main.vns` being a folder, unreadable, or outside
+  the game folder; a 256 MB total; a `define` that uses itself; Python too complex; and
+  Python warnings. Noted that continued lines count for the tab/space rule. Messages
+  updated to the revised 02-script.md wording.
+- 2026-11-01: The Python warning now names conditions and `define` values, which run at
+  every launch before the title screen (security Q-S2). Added errors for text-direction
+  characters, invisible or mixed-alphabet names, and the story-size limits.
+- 2026-11-01: F03 proposal: `default`, Characters (`color`, `name_from`), Story variables,
+  Random numbers (`dice`), Python modules (`module`), the F03 launch errors, and Run-time
+  errors. Sections 8–11 and 15 are new; Reserved words, Coming later, and Common errors are
+  renumbered 12–14.
+- 2026-11-01: F04 proposal: new section 12, Backgrounds and sprites (`scene`, `show`,
+  `hide`, expressions on dialogue lines, `image`, `[stage]` in `config.toml`), the
+  `image_tag` Character option, and its common errors. The seven F04 words are available.
+  Sections 12–15 are renumbered 13–16.
+- 2026-11-01: F08 proposal: new section 13, Audio: music and sound (`play`, `queue`, `stop`,
+  `voice`, formats, `[audio]` and `[audio.loop_start]` in `config.toml`, saving and
+  loading), a pointer in section 7, and Audio common errors. `play stop queue voice` are
+  available. Sections 13–16 are renumbered 14–17.
+- 2026-11-01: F08: `stop sound "<file>"` stops one effect (PR-F08-34); its common error
+  now covers a file on `stop music`.
+- 2026-11-01: F05 proposal: new section 14, Dialogue text (text tags `{b}` `{i}` `{color}`
+  `{size}` `{speed}` `{pause}` `{var}` `{next}` and `{{`, the `text_color` and `text_italic`
+  Character options, `[textbox]` in `config.toml`), pointers in sections 3 and 7, Text tags
+  common errors, and two run-time errors. Sections 14–17 are renumbered 15–18.
+- 2026-11-01: F05: text box look settings are `[theme.textbox]` tokens (`fill_color`,
+  `fill_opacity` 0.0–1.0, `text_font`, `bold_font`, …); only `cps` stays in `[textbox]`.
+- 2026-11-02: F04 built (step 8): section 12 is no longer proposed. It shows the
+  `images/` names as a code block, `at` with names, numbers, and `[stage.positions]`,
+  `behind`, `layer`, `zoom`, `flip`, and `as` in code, `with` before transitions, and the
+  missing-picture and position messages in full. Examples follow the example game
+  (`bg river_dusk`, `by_the_rail`, Daichi's name color `#3a6aa8`).
+- 2026-11-02: F08 step 1: section 13's statements (`play`, `queue`, `stop`, `voice`) and
+  their load messages are built and no longer proposed; the section says the sound itself
+  comes with the audio player, and so do the missing-file warnings. A voice with no line below
+  it is warned about when the game starts.
+- 2026-11-02: F03 built (step 14): `default` and sections 8–11 and 18 are no longer
+  proposed. Random numbers says plainly that `random` and `time` results don't replay and
+  repeats the real-Python warning. Run-time errors gives each message's code and adds the
+  5-second, helper-depth, `exit()`, and `input()` messages. Character examples use the
+  example game's name colors (`#b03070`, `#3a6aa8`).
+- 2026-11-02: F05 built (step 7): section 14 and the F05 parts of sections 3, 7, 8, 17, and
+  18 are no longer proposed. Section 14 adds every `[theme.textbox]` key with its default,
+  readable colors (the dev warnings), the long-line warning in full, and a new "When a tag
+  is wrong" with every tag message. Examples use colors that read well on the default box
+  (`#9a1c14`, `#1e4a9c`), as the example game does.
+- 2026-11-02: F12 built (step 6): `persistent` (data across playthroughs) moves from
+  Coming later into section 9 and is no longer proposed, with its limits, `_clear`,
+  `--no-persistent`, and the warning that players can edit and share the file. Run-time
+  errors drop E85h and list E180–E185 and W56; a dictionary key from the player's file
+  shows as `[…]` in E181. Examples use `persistent.flowers`, since `persistent.endings`
+  and `persistent.routes` will belong to the engine (F19).
+- 2026-11-02: F10 built (step 9): new section 15, Menus and theme: the title picture, logo,
+  and music, button frames, `[words]`, `[title]`, `[quick_menu]`, the quick-menu strip,
+  every theme setting with its default, and the menu warnings. The example game's
+  `config.toml` and `gui/` show each one. Sections 15–18 are renumbered 16–19.
+- 2026-11-02: F07 built (step 5): `menu` (choices) is a statement of section 7 and is no
+  longer proposed (out of Coming later): questions, conditions, locked choices
+  (`[choice] show_locked`), choice text tags, a menu inside a choice, the "Talk" loop,
+  saving at a menu, the `[theme.choice]` settings, and every menu message in full (the
+  long-choice and missing-sound warnings too). `menu` is available; Run-time errors list
+  E178.
+- 2026-11-02: F08 built (step 12): section 13 is now "Music and sound" (the contents and the
+  pointer in section 7 follow) and its audio is heard. It adds why MP3 loops have gaps, the
+  loudness target with how to set it, the example game's audio and its license record,
+  `stop music fadeout 0`, a voiced menu question, replay from the History log, skipping,
+  the launch's missing-file check, and playing without a sound device. Common errors
+  "Audio" gives a message for every load, startup, and launch mistake and adds the
+  messages logged while the game runs.
+- 2026-11-02: F06 step 1 (proposed, F06): the four blip options in section 8 with a short
+  "Blips" note, and their messages in Common errors (the option errors under "Variables,
+  characters, and modules", the long-blip warning under "Audio"). Blips are heard from F06
+  step 3.
+- 2026-11-02: F06 built (step 3): blips are heard and no longer proposed. The "Blips" note in
+  section 8 adds how the count runs, the 0.04-second gap and instant text, the pitch steps,
+  the lines that never blip, and the example game's blips (section 13 names them too).
+- 2026-11-02: F18 built (step 3): `chapter` in section 7 (title cards, the chapter
+  auto-save, save names, `[chapter]` and `[theme.chapter]`, its messages), available in
+  Reserved words; the example game has a prologue and two chapters.
+- 2026-11-02: F09 built (step 5): new section 16, Transitions and effects: `with` (`cut`,
+  `dissolve`, `fade`, lengths, fade colors, one transition per moment, waiting, clicking
+  through), `shake`, `flash` with the 3-a-second limit and reduced effects, `pause`, your
+  own transitions (`Dissolve`, `Fade`, `Mask`, with the 640×360 gray mask advice),
+  `[effects]` and `[theme.effects]`, the advice not to let a flash or shake carry the story
+  alone, and every message (E190–E199, W60–W62). Section 12's "the picture changes
+  instantly for now" note and its warning are gone; section 7 points to the new section;
+  `with`, `shake`, `flash`, and `pause` are available. Sections 16–19 are renumbered 17–20.
+- 2026-11-02: F11 built (step 12): new section 17, Saves: what players see (the Save and
+  Load pages, quick saves, auto-saves), what a save holds, where saves live in dev runs and
+  releases, `[game] id` and testing with `--release`, that builds leave out `saves/`, how
+  to keep saves working across updates (`default`, keeping labels, the nearest-point
+  question), that saves are input (shared saves, `default` on restored values, no file
+  names from story variables, nothing from the player's computer), `[saves]`, the 32 save
+  words, `[theme.save]` and `[theme.notice]`, and W80–W83. Section 15 names Load, Save,
+  Q.Save, and Q.Load. Sections 17–20 are renumbered 18–21.
+- 2026-11-02: F22 built (step 3): `points (character stats)` in section 9 (declaring,
+  changing, and reading meters, `points.highest`, saves and rollback, the F3 overlay
+  lines, and E230–E236 and W120 with fixes); section 7 points to it, section 9 lists
+  `points` among the names Python can see, and `points` is available in Reserved words.
+  The example game declares meters for Hana and Daichi and branches on
+  `points.highest`.
+- 2026-11-02: F16 built (step 5): section 15 gains "The Settings page": where it opens,
+  its rows, the `config.toml` keys that give the starting values (Settings adds none),
+  that only changed values are stored, `[effects] reduce`, that settings aren't story
+  state, Reset settings and Delete progress, where `settings.json` lives, the 26 page
+  words under `[words]`, and W70–W75. The title, game menu, and quick menu name
+  Settings; "Button words" points to the page's words. No script syntax changed.
+- 2026-11-02: F14 built (step 6): new section 18, Rollback: what players see and where back
+  stops, what is and isn't rolled back, that going forward runs the story again (a
+  `$ persistent.count += 1` counted twice, fixed by `= value` or a block), `rollback block`,
+  `off`, `on`, and `fixed` with a scare, a choice that can't be undone, a fixed choice, and
+  a chase, `[rollback] steps` and `marker`, the `back` word and `[theme.rollback]`, and
+  E200–E204 and W90. Section 7 points to it, section 9's persistent note names the block,
+  Reserved words lists all 39 words with `rollback` available, and Common errors points to
+  the new messages. Sections 18–21 are renumbered 19–22.
+- 2026-11-02: F17 built (step 5): `nvl (full-screen text)` in section 7, no longer
+  proposed: `nvl on`, `nvl off`, `nvl clear`, pages that fill up by themselves, lines
+  longer than a page, menus (choices just under the question, the question-only page when
+  they don't fit, a new page after a pick), where the lines may go, transitions and
+  `scene`, `chapter` with `nvl clear`, saves and rollback, the 32-line page record, the
+  `[theme.nvl]` keys with their defaults and ranges, the dev-run warnings and how lines are
+  counted as full-screen (by file order in each label), and E210, E211, W100, W101, and
+  W102. `nvl` is available in Reserved words; Common errors has a "Full-screen text" part.
+  The E204 row of Rollback names minigame lines (F23).
+- 2026-11-02: F19 built (step 6): `ending, lock route, unlock route` in section 7, no
+  longer proposed: endings and their card, routes locked `until` endings, `unlock route`,
+  `lock route`, and `lock ending` in a label, `persistent.endings` and `persistent.routes`
+  as read-only lists, and E240–E246, W130, W131, and W132. `ending`, `lock`, and `unlock`
+  are available in Reserved words. The example game has three endings and the promise
+  route (`script/endings.vns`).
+- 2026-11-02: F21 built (step 5): `lock tip, lock item, unlock (codex)` in section 7: tips
+  (kept across playthroughs) and items (this playthrough) declared with a title, a category,
+  a picture, and paragraphs; `unlock tip`, `unlock item`, `lock item`, and `lock tip` in a
+  label; `codex.tips` and `codex.items` as read-only lists; rollback; the Codex page in the
+  game menu and, when listed, on the title; `[codex]`, `[theme.codex]`, the seven words, and
+  E250–E256 and W140–W142. Section 6 and Reserved words say `codex` is an engine name and
+  `tip` and `item` aren't reserved; section 9 lists `codex`; section 15 names the Codex
+  entry; Run-time errors list E256. The example game has two tips and two items.
+- 2026-11-02: F20 built (step 9): `flowchart (the story map)` in section 7: what is a box
+  with no extra lines, `flowchart scene`, titled and plain menu marks, `flowchart omit`,
+  `hidden`, `no jump`, `flowchart forget` (all, or per label), what a jump brings back and
+  keeps, jump points as files in the saves folder (Delete progress and `forget` delete them,
+  deleting saves doesn't; menu conditions run again at a jump), the four `[flowchart]`
+  settings, and E260–E265 and W150–W155. Reserved words list `flowchart` (40 words). The
+  example game marks a scene, titles the bridge's last menu, and hides the promise route.

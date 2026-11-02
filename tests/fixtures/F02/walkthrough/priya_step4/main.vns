@@ -1,0 +1,8 @@
+include "chapter1.vns"
+
+define hana = Character("Hana", color="#e8a0b4")
+
+label start:
+    "The festival lanterns were already lit when I reached the river."
+    hana "You're late."
+    jump chapter1

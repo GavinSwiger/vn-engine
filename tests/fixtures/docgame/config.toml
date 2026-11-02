@@ -1,0 +1,7 @@
+[game]
+id = "docgame"
+title = "Doc Game"
+
+# F32 (07 I-9): the table the ui style example names.
+[style.ashes.theme.textbox]
+fill_color = "#1E1A1C"

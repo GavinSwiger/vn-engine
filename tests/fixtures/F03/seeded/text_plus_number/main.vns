@@ -1,0 +1,6 @@
+default lanterns = "3"
+label start:
+    "I counted the lanterns."
+    $ lanterns = lanterns + 1
+    "One more."
+    return

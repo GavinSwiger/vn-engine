@@ -1,0 +1,6 @@
+label chapter1:
+    "Paper lanterns drifted past us one by one."
+    hana “You came!”
+    jmup bridge
+    hnaa "Hi."
+    return

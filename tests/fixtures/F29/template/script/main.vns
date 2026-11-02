@@ -1,0 +1,15 @@
+define hana = Character("Hana")
+default hana_name = "Hana"
+label start:
+    hana "I'm {wave}so{/wave} happy you came today!"
+    hana "{shake=small}I just... {pause=0.6}{speed=0.2}don't{/speed} want you to leave.{/shake}"
+    hana "{glitch=large}You're not going anywhere.{/glitch}"
+    "My name is {glitch}{var=hana_name}{/glitch}."
+    nvl on
+    "{wave=large}The river{/wave} was quiet."
+    hana "{shake}Did you hear that?{/shake}"
+    hana "{shake}Did you hear that?{/shake}"
+    "{glitch}It was... {/glitch}{speed=instant}GONE.{/speed}"
+    nvl off
+    "{speed=0.2}It was... {/speed}{speed=instant}{shake=large}GONE.{/shake}{/speed}"
+    "End."

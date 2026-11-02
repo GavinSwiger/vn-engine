@@ -1,0 +1,9 @@
+label bridge:
+    daichi "The bridge is this way."
+    return
+
+label lantern_stall:
+    "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+    if trust > 0:
+        $ bought_lantern = True
+    return

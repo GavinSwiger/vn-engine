@@ -1,0 +1,40 @@
+define daichi = Character("Daichi")
+define judge = Character("Judge")
+points credibility 0 to 5 start 5
+default stmt = None
+default shown = {}
+lock item brass_key "Brass Key" in "Evidence" image items brass_key
+lock item festival_map "Festival Map" in "Evidence"
+
+define daichi_says = {
+    "after_dark": "Nobody went near the shrine after dark.",
+    "gate":       "The gate was locked all night. I checked it myself.",
+    "priest":     "Only the priest has a key to that gate.",
+    }
+define daichi_answer = {"gate": "brass_key"}
+
+label start:
+    unlock item brass_key
+    unlock item festival_map
+    jump cross_exam
+
+label cross_exam:
+    minigame present_evidence skippable testimony=daichi_says answer=daichi_answer speaker="Daichi" penalty="credibility" at=stmt into shown
+    $ stmt = shown["statement"]
+    if shown["correct"]:
+        jump gate_breakthrough
+    if shown["action"] == "press":
+        daichi "I said what I said!"
+        jump cross_exam
+    judge "And how does that prove anything?"
+    if points.credibility == 0:
+        jump guilty_verdict
+    jump cross_exam
+
+label gate_breakthrough:
+    "Breakthrough."
+    return
+
+label guilty_verdict:
+    "Guilty."
+    return

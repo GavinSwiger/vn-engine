@@ -1,0 +1,21 @@
+points credibility 0 to 5 start 5
+default stmt = None
+default shown = {}
+lock item brass_key "Brass Key" in "Evidence"
+lock item festival_map "Festival Map" in "Evidence"
+lock item shrine_photo "Shrine Photo"
+lock tip lanterns "Paper Lanterns"
+define daichi_says = {
+    "after_dark": "Nobody went near the shrine after dark.",
+    "gate":       "The gate was locked all night. I checked it myself.",
+    "priest":     "Only the priest has a key to that gate.",
+    }
+define daichi_answer = {"gate": "brass_key"}
+label start:
+    unlock item brass_key
+    unlock item festival_map
+    unlock item shrine_photo
+    "Before."
+    minigame present_evidence skippable testimony=daichi_says answer=daichi_answer speaker="Daichi" penalty="credibility" at=stmt into shown
+    "After."
+    return

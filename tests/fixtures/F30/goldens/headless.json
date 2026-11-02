@@ -1,0 +1,198 @@
+{
+ "commands": [
+  {
+   "reason": "new_game",
+   "state": {
+    "music": [],
+    "sounds": []
+   },
+   "type": "AudioRestore"
+  },
+  {
+   "stage": {
+    "background": "bg room",
+    "sprites": []
+   },
+   "type": "ShowStage"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Start.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/af953cad70a2",
+   "speaker": null,
+   "text": "Start.",
+   "type": "Say"
+  },
+  {
+   "title": "She is here",
+   "type": "WindowTitle"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "I know who you are, ",
+      "type": "Span"
+     },
+     {
+      "style": {
+       "type": "Style",
+       "username": true
+      },
+      "text": "friend",
+      "type": "Span"
+     },
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": ".",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/7bcf14c88a40",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "I know who you are, {username}.",
+   "type": "Say"
+  },
+  {
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Traceback (most recent call last):\n  File \"lantern.vns\", line 7\nLanternError: Hana is not responding",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "for_stage": false,
+   "hide_box": false,
+   "seconds": null,
+   "sid": "start/efc27832eefe~2",
+   "type": "FakeCrash",
+   "wait_id": 1
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "...That wasn't me. Was it?",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/a601fe7df643",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "...That wasn't me. Was it?",
+   "type": "Say"
+  },
+  {
+   "title": null,
+   "type": "WindowTitle"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Morning came.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/0b740043f968",
+   "speaker": null,
+   "text": "Morning came.",
+   "type": "Say"
+  },
+  {
+   "card": {
+    "heading": "Lantern End",
+    "kind": "ending",
+    "name": "lantern",
+    "title": "Morning",
+    "type": "TitleCard"
+   },
+   "stage": {
+    "background": "bg room",
+    "sprites": []
+   },
+   "transition": {
+    "color": null,
+    "direction": null,
+    "kind": "fade",
+    "mask": null,
+    "name": "fade",
+    "reverse": false,
+    "seconds": null,
+    "sid": "start/cf1f097a043d",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/cf1f097a043d",
+   "type": "StoryWait",
+   "wait_id": 2
+  },
+  {
+   "for_stage": false,
+   "hide_box": true,
+   "seconds": 3.0,
+   "sid": "start/cf1f097a043d",
+   "type": "StoryWait",
+   "wait_id": 3
+  },
+  {
+   "type": "StoryEnded"
+  }
+ ],
+ "fixture": "walk",
+ "image_files": [
+  "images/bg/room.png"
+ ],
+ "seed": 42
+}

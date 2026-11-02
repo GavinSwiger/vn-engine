@@ -1,0 +1,24 @@
+define hana = Character("Hana")
+default persistent.playthrough = 1
+lock route promise "Hana's Promise" until sad, good
+label start:
+    hana "The bridge, or home?"
+    menu:
+        "Walk by the river":
+            jump river_end
+        "Go to the festival":
+            jump festival_end
+        "Wait at the bridge" if "promise" in persistent.routes:
+            jump promise
+label river_end:
+    hana "Maybe next year."
+    ending sad "Sad End" "Paper Ashes"
+label festival_end:
+    hana "Look at the lanterns!"
+    ending good "Good End" "The Lantern Festival"
+label promise:
+    hana "You came."
+    $ persistent.playthrough = 2
+    lock ending sad
+    lock ending good
+    ending true "True End" "Hana's Promise"

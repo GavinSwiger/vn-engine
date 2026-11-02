@@ -1,0 +1,10 @@
+define hana = Character("Hana")
+default v = "Mika"
+label start:
+    scene bg room
+    hana "Hello."
+    <S>
+    hana "I know who you are, {username}."
+    hana "Goodbye."
+    "End."
+<T>

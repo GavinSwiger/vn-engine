@@ -1,0 +1,7 @@
+default yen = 300
+default days = 0
+label start:
+    "Each day cost the same."
+    $ per_day = yen / days
+    "That was the plan."
+    return

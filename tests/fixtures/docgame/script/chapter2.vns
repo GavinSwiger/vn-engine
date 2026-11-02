@@ -1,0 +1,7 @@
+label river:
+    "The river."
+    return
+
+label lantern_stall:
+    "The stall."
+    return

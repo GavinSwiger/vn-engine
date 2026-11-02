@@ -1,0 +1,87 @@
+# The F02 compatibility corpus (06-acceptance.md §5.8, AC-F02-68). Its program dump is
+# compat/expected.json; a change to either needs a major version (PR-F02-27).
+
+include "part.vns"
+include "tabs/t.vns"
+
+define hana = Character("Hana", color="#e8a0b4")
+define daichi = Character("Daichi")
+define ｍｉｏ = Character("Mio")   # full-width: stored as mio (NFKC)
+define café = 1
+define trust_start = 2
+define doubled = trust_start * 2
+define palette = {"a": [1, 2],
+                  "b": (3, 4)}
+define greeting = f"{trust_start!r:>{4}}"
+
+label start:
+    # a comment inside the block
+    $ trust = trust_start
+    $ seen = []
+    "Café — “quoted” ‘single’ … naïve"
+    "Привет, мир"
+    "日本語のテキスト、です。"
+    "مرحبا بالعالم"
+    "👨‍👩‍👧 ❤️ 🏳️‍🌈"
+    "é and می‌خواهم"
+    hana "‫שלום‬ — ok"
+    hana "I'm #1!"  # a comment after the text
+    hana surprised "You came!"
+    hana a b c 2b "Four attributes."
+    hana   worried   "Spaced out."
+    hana"No space before the text."
+    ｈａｎａ "A full-width speaker is hana."
+    mio smiling "Hello."
+    "She said \"hi\"."
+    "a\\b and one\ntwo"
+    "joined\
+        here"
+    "Paper lanterns drifted past us one by one, each carrying
+        somebody's wish downstream."
+    "a   
+
+            b"
+    ""
+    "  spaced  "
+    "It's Hana's — “really” and «bye»"
+    "one
+        # not a comment"
+            # a deeper comment
+  # a shallower comment
+	# a tab comment in a space-indented file
+    $ x = (1,
+# at column 1
+
+        2)
+    $ y = f"{trust!r:>{4}} {'nested' + "q"} {{braces}}"  # PEP 701
+    $ s = "#notcomment"
+    $ trust += 1
+    $trust=trust
+    $ if trust: seen.append(1)
+    $ total = sum(v for v in [1, 2, 3] if v > 1)
+    if (n := trust) > 1:
+        "Walrus."
+        if trust > 5:
+            "Nested."
+        elif trust > 3:
+            "Nested elif."
+# between the branches
+
+        else:
+            "Nested else."
+    elif café:
+        daichi "Elif."
+    else:
+        "Else."
+    　
+ 	 
+    jump riverbank
+
+label narrow:
+  "A two-space label body."
+  if trust > 0:
+       "Five more under the if."
+       $ trust -= 1
+  else:
+   "One more under the else."
+  return

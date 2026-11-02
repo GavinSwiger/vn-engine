@@ -1,0 +1,19 @@
+label fortune_stall:
+    "\"One fortune, one hundred yen,\" the stall keeper said."
+    call draw_fortune
+    if fortune == "bad luck":
+        hana sad "Bad luck? Tie it to the rail. Then the river keeps it, not you."
+        $ trust += 1
+    elif fortune == "great luck" and trust >= 1:
+        hana happy "Great luck! See? The river likes you."
+    else:
+        daichi "Only Hana believes in those paper slips."
+    jump bridge
+
+label draw_fortune:
+    # dice results are saved: reloading gives the same slip.
+    $ fortune = dice.pick(fortunes)
+    if dice.roll(1, 6) == 6:
+        "The slip stuck to its neighbor, and I had to peel them apart."
+    "I unrolled the paper and read it twice."
+    return

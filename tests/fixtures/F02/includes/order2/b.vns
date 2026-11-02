@@ -1,0 +1,6 @@
+include "a.vns"
+include "main.vns"
+label b_scene:
+    hana "From b."
+    return
+define daichi = Character("Daichi")

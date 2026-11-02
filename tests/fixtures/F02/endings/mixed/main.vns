@@ -1,0 +1,27 @@
+define hana = Character("Hana")
+define daichi = Character("Daichi")    
+label start:
+    "The festival lanterns were already lit when I reached the river."    hana "You came! I didn't think you would."
+    $ trust = 1
+    $ items = [        "lantern",
+        "pen",
+        ]    "Paper lanterns drifted past us one by one, each carrying
+        somebody's wish downstream."
+    if trust > 0:        hana happy "Here, the pen's still wet."
+        $ trust += 1
+    elif trust < 0:        hana "Oh."
+    else:
+        daichi "She's been saying \"just one more\" since six o'clock."    
+    # A comment line.
+    call stall    jump bridge
+
+label stall:    "\"Three hundred yen,\" the stall keeper said."
+    if trust > 1:
+        $ bought = True    return
+
+label bridge:    daichi "The bridge is this way."
+    hana "Wait for me!"
+    $ trust = max(trust,            2)
+    "The lanterns kept drifting."
+    # TODO: a second draft    "The end."
+    return

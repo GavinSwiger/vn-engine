@@ -1,0 +1,12 @@
+define hana = Character("Hana")
+lock tip lanterns "Paper Lanterns" in "Festival":
+    "Lanterns are folded from washi paper."
+    "Each carries one {i}wish{/i}."
+lock tip river_god "The River God" in "Legends"
+lock item red_lantern "Red Lantern" in "Things"
+lock item brass_key "Brass Key"
+label start:
+    hana "Start."
+    <S>
+    "Before."
+<T>

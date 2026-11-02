@@ -1,0 +1,7 @@
+define hana = Character("Hana")
+label start:
+    "Start."
+    <S>
+    "End."
+    return
+<T>

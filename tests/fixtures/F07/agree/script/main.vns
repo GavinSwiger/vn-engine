@@ -1,0 +1,32 @@
+define hana = Character("Hana")
+default coins = 1
+default path = "start"
+label start:
+    "The festival is busy."
+    menu:
+        hana "Which lantern?"
+        "The red one":
+            $ path = "red"
+        "The gold one" if coins >= 2:
+            $ path = "gold"
+        "The paper one":
+            $ path = "paper"
+    "Between."
+    menu:
+        "Stay a while":
+            $ path += " stay"
+        "Walk on":
+            $ path += " walk"
+    scene black
+    menu:
+        "Ask Hana":
+            menu:
+                hana "Ask me what?"
+                "Nothing":
+                    $ path += " nothing"
+                "Everything":
+                    $ path += " everything"
+        "Go home":
+            $ path += " home"
+    "End: {var=path}."
+    return

@@ -1,0 +1,4 @@
+include "a.vns"
+include "b.vns"
+label start:
+    "Start."

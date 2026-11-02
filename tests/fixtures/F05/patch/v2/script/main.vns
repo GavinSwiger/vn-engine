@@ -1,0 +1,9 @@
+# AC-F05-06: version 2. The define is gone; line 7 is unchanged (same sid).
+# define shrine = "Inari"
+default visits = 0
+
+label start:
+    "We climb the steps."
+    "At {var=shrine}."
+    $ visits += 1
+    "Next."

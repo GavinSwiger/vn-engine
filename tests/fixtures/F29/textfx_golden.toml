@@ -1,0 +1,577 @@
+# F29 AC-F29-08 golden table: written by gen_textfx_golden.py, never by tests.
+
+[[mix32]]
+x = 0
+out = 0
+
+[[mix32]]
+x = 1
+out = 1753845952
+
+[[mix32]]
+x = 2
+out = 3507691905
+
+[[mix32]]
+x = 4294967295
+out = 1734902346
+
+[[mix32]]
+x = 4294967296
+out = 0
+
+[[mix32]]
+x = 45
+out = 2242135031
+
+[[mix32]]
+x = 203
+out = 3845987838
+
+[[mix32]]
+x = 2399
+out = 173371146
+
+[[mix32]]
+x = 2147483648
+out = 3427483940
+
+[[mix32]]
+x = 1540483477
+out = 2066478199
+
+[[mix32]]
+x = 123456789
+out = 2834422664
+
+[[mix32]]
+x = 1099511627783
+out = 2492178918
+
+[[shake_unit]]
+index = 0
+t = 0.0
+seed = 0
+ux = -0.3616943359375
+uy = -0.11700439453125
+
+[[shake_unit]]
+index = 1
+t = 0.11999
+seed = 1
+ux = 0.742401123046875
+uy = -0.5941162109375
+
+[[shake_unit]]
+index = 2
+t = 59.99
+seed = 13
+ux = -0.57049560546875
+uy = 0.537353515625
+
+[[shake_unit]]
+index = 45
+t = 0.0499
+seed = 0
+ux = -0.0887451171875
+uy = 0.329437255859375
+
+[[shake_unit]]
+index = 203
+t = 0.12
+seed = 1
+ux = -0.373870849609375
+uy = -0.929779052734375
+
+[[shake_unit]]
+index = 2399
+t = 3600.0
+seed = 13
+ux = 0.163543701171875
+uy = -0.585906982421875
+
+[[shake_unit]]
+index = 2147483648
+t = 0.05
+seed = 0
+ux = 0.78955078125
+uy = 0.816436767578125
+
+[[shake_unit]]
+index = 4294967295
+t = 1.0
+seed = 1
+ux = 0.910400390625
+uy = 0.450927734375
+
+[[shake_unit]]
+index = 0
+t = 0.0
+seed = 13
+ux = 0.811431884765625
+uy = -0.58349609375
+
+[[shake_unit]]
+index = 1
+t = 0.11999
+seed = 0
+ux = -0.28924560546875
+uy = -0.16717529296875
+
+[[shake_unit]]
+index = 2
+t = 59.99
+seed = 1
+ux = -0.49652099609375
+uy = -0.87457275390625
+
+[[shake_unit]]
+index = 45
+t = 0.0499
+seed = 13
+ux = 0.6302490234375
+uy = 0.906463623046875
+
+[[shake_unit]]
+index = 203
+t = 0.12
+seed = 0
+ux = 0.619384765625
+uy = 0.502716064453125
+
+[[shake_unit]]
+index = 2399
+t = 3600.0
+seed = 1
+ux = -0.78253173828125
+uy = -0.203826904296875
+
+[[shake_unit]]
+index = 2147483648
+t = 0.05
+seed = 13
+ux = 0.243896484375
+uy = -0.48199462890625
+
+[[shake_unit]]
+index = 4294967295
+t = 1.0
+seed = 0
+ux = -0.691680908203125
+uy = -0.24505615234375
+
+[[shake_unit]]
+index = 0
+t = 0.0
+seed = 1
+ux = -0.545379638671875
+uy = -0.574859619140625
+
+[[shake_unit]]
+index = 1
+t = 0.11999
+seed = 13
+ux = -0.506011962890625
+uy = 0.4822998046875
+
+[[shake_unit]]
+index = 2
+t = 59.99
+seed = 0
+ux = 0.4593505859375
+uy = -0.268707275390625
+
+[[shake_unit]]
+index = 45
+t = 0.0499
+seed = 1
+ux = 0.669769287109375
+uy = -0.096038818359375
+
+[[shake_unit]]
+index = 203
+t = 0.12
+seed = 13
+ux = 0.496826171875
+uy = -0.382965087890625
+
+[[shake_unit]]
+index = 2399
+t = 3600.0
+seed = 0
+ux = 0.070098876953125
+uy = -0.79473876953125
+
+[[shake_unit]]
+index = 2147483648
+t = 0.05
+seed = 1
+ux = -0.75860595703125
+uy = 0.090728759765625
+
+[[shake_unit]]
+index = 4294967295
+t = 1.0
+seed = 13
+ux = 0.14166259765625
+uy = 0.140716552734375
+
+[[wave_unit]]
+index = 0
+t = 0.0
+out = 0.0
+
+[[wave_unit]]
+index = 1
+t = 1.0
+out = 0.5646424733950348
+
+[[wave_unit]]
+index = 2
+t = 0.05
+out = 0.9983965503277462
+
+[[wave_unit]]
+index = 45
+t = 3600.0
+out = 0.9563759284048602
+
+[[wave_unit]]
+index = 203
+t = 0.12
+out = -0.03186335272654611
+
+[[wave_unit]]
+index = 2399
+t = 0.0499
+out = 0.7605083240808388
+
+[[wave_unit]]
+index = 2147483648
+t = 59.99
+out = -0.8540469738910162
+
+[[wave_unit]]
+index = 4294967295
+t = 0.11999
+out = 0.7274355174202161
+
+[[wave_unit]]
+index = 0
+t = 0.0
+out = 0.0
+
+[[wave_unit]]
+index = 1
+t = 1.0
+out = 0.5646424733950348
+
+[[wave_unit]]
+index = 2
+t = 0.05
+out = 0.9983965503277462
+
+[[wave_unit]]
+index = 45
+t = 3600.0
+out = 0.9563759284048602
+
+[[wave_unit]]
+index = 203
+t = 0.12
+out = -0.03186335272654611
+
+[[wave_unit]]
+index = 2399
+t = 0.0499
+out = 0.7605083240808388
+
+[[wave_unit]]
+index = 2147483648
+t = 59.99
+out = -0.8540469738910162
+
+[[wave_unit]]
+index = 4294967295
+t = 0.11999
+out = 0.7274355174202161
+
+[[wave_unit]]
+index = 0
+t = 0.0
+out = 0.0
+
+[[wave_unit]]
+index = 1
+t = 1.0
+out = 0.5646424733950348
+
+[[wave_unit]]
+index = 2
+t = 0.05
+out = 0.9983965503277462
+
+[[wave_unit]]
+index = 45
+t = 3600.0
+out = 0.9563759284048602
+
+[[wave_unit]]
+index = 203
+t = 0.12
+out = -0.03186335272654611
+
+[[wave_unit]]
+index = 2399
+t = 0.0499
+out = 0.7605083240808388
+
+[[wave_unit]]
+index = 2147483648
+t = 59.99
+out = -0.8540469738910162
+
+[[wave_unit]]
+index = 4294967295
+t = 0.11999
+out = 0.7274355174202161
+
+[[glitch_pick]]
+index = 0
+t = 0.0
+seed = 0
+p = 0.1
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 1
+t = 0.11999
+seed = 1
+p = 0.1
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 2
+t = 59.99
+seed = 13
+p = 0.1
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 45
+t = 0.0499
+seed = 0
+p = 0.25
+still = true
+out = 4
+
+[[glitch_pick]]
+index = 203
+t = 0.12
+seed = 1
+p = 0.25
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 2399
+t = 3600.0
+seed = 13
+p = 0.25
+still = true
+out = 15
+
+[[glitch_pick]]
+index = 2147483648
+t = 0.05
+seed = 0
+p = 0.5
+still = false
+out = 17
+
+[[glitch_pick]]
+index = 4294967295
+t = 1.0
+seed = 1
+p = 0.5
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 0
+t = 0.0
+seed = 13
+p = 0.5
+still = false
+out = 16
+
+[[glitch_pick]]
+index = 1
+t = 0.11999
+seed = 0
+p = 0.1
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 2
+t = 59.99
+seed = 1
+p = 0.1
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 45
+t = 0.0499
+seed = 13
+p = 0.1
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 203
+t = 0.12
+seed = 0
+p = 0.25
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 2399
+t = 3600.0
+seed = 1
+p = 0.25
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 2147483648
+t = 0.05
+seed = 13
+p = 0.25
+still = false
+out = 12
+
+[[glitch_pick]]
+index = 4294967295
+t = 1.0
+seed = 0
+p = 0.5
+still = true
+out = 16
+
+[[glitch_pick]]
+index = 0
+t = 0.0
+seed = 1
+p = 0.5
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 1
+t = 0.11999
+seed = 13
+p = 0.5
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 2
+t = 59.99
+seed = 0
+p = 0.1
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 45
+t = 0.0499
+seed = 1
+p = 0.1
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 203
+t = 0.12
+seed = 13
+p = 0.1
+still = false
+out = -1
+
+[[glitch_pick]]
+index = 2399
+t = 3600.0
+seed = 0
+p = 0.25
+still = true
+out = -1
+
+[[glitch_pick]]
+index = 2147483648
+t = 0.05
+seed = 1
+p = 0.25
+still = false
+out = 17
+
+[[glitch_pick]]
+index = 4294967295
+t = 1.0
+seed = 13
+p = 0.25
+still = true
+out = -1
+
+[[line_seed]]
+sid = ""
+out = 826821
+
+[[line_seed]]
+sid = "a"
+out = 292126
+
+[[line_seed]]
+sid = "b"
+out = 213009
+
+[[line_seed]]
+sid = "start/e6db5068f584"
+out = 288225
+
+[[line_seed]]
+sid = "start/26021b18b2ed"
+out = 944100
+
+[[line_seed]]
+sid = "start/66739b0087b9"
+out = 572502
+
+[[line_seed]]
+sid = "chapter_2/0ff871ab010a"
+out = 856702
+
+[[line_seed]]
+sid = "start/e6db5068f585"
+out = 279052
+
+[[line_seed]]
+sid = "ハナ/祭り"
+out = 149123
+
+[[line_seed]]
+sid = "café/😀"
+out = 996536
+
+[[line_seed]]
+sid = "label/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+out = 855582
+
+[[line_seed]]
+sid = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+out = 625434

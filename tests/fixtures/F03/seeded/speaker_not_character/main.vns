@@ -1,0 +1,4 @@
+define daichi = "Daichi"
+label start:
+    daichi "Over here!"
+    return

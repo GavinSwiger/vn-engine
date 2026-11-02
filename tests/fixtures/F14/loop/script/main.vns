@@ -1,0 +1,15 @@
+# F14 06 §5 loop/: a three-pass while-style loop holding rollback block and one line
+# (AC-F14-14's loop row).
+default i = 0
+label start:
+    "Before."
+    jump again
+label again:
+    if i < 3:
+        $ i += 1
+        "Lead {var=i}."
+        rollback block
+        "Pass {var=i}."
+        jump again
+    "After."
+    return

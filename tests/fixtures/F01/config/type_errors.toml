@@ -1,0 +1,10 @@
+[game]
+title = "Paper Lanterns"
+version = "0.1.0"
+[window]
+width = "big"
+height = true
+fullscreen = "true"
+letterbox_color = "red"
+[engine]
+fps = 300

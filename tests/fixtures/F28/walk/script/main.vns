@@ -1,0 +1,15 @@
+define hana = Character("Hana")
+label start:
+    scene bg river
+    "Start."
+    effect static small on
+    effect colorshift on
+    scene bg grain with glitch
+    show hana happy at center
+    effect jitter hana 1.0
+    effect tear 0.3
+    hana "You came back."
+    hana "You always {glitch}come back{/glitch}."
+    effect off
+    hana "...Sorry. Where were we?"
+    "End."

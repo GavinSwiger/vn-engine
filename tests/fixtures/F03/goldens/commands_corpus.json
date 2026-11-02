@@ -1,0 +1,2779 @@
+{
+ "flow": {
+  "commands": [
+   {
+    "reason": "new_game",
+    "state": {
+     "music": [],
+     "sounds": []
+    },
+    "type": "AudioRestore"
+   },
+   {
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "type": "ShowStage"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "1",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/784e70e32075",
+    "speaker": null,
+    "text": "1",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "2",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "a/4343e2da5852",
+    "speaker": null,
+    "text": "2",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "3",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "a2/bdb60331c95c",
+    "speaker": null,
+    "text": "3",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "4",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/ef4e9cec9747",
+    "speaker": null,
+    "text": "4",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "5",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "b/cd3fa79caa6b",
+    "speaker": null,
+    "text": "5",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "6",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "c/e1783fc9d752",
+    "speaker": null,
+    "text": "6",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "7",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "b/8fdc2808a91d",
+    "speaker": null,
+    "text": "7",
+    "type": "Say"
+   },
+   {
+    "type": "StoryEnded"
+   }
+  ],
+  "final": {
+   "checkpoint": {
+    "audio": {
+     "music": [],
+     "sounds": []
+    },
+    "call_stack": [],
+    "chapter": {
+     "current": null
+    },
+    "choices": {
+     "picks": [],
+     "waiting": null
+    },
+    "dice": "725ae23ed14fec5f",
+    "flow": {
+     "path": []
+    },
+    "format": 1,
+    "glitch": {
+     "on": []
+    },
+    "history": {
+     "entries": [
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/784e70e32075",
+       "text": "1"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "a/4343e2da5852",
+       "text": "2"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "a2/bdb60331c95c",
+       "text": "3"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/ef4e9cec9747",
+       "text": "4"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "b/cd3fa79caa6b",
+       "text": "5"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "c/e1783fc9d752",
+       "text": "6"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "b/8fdc2808a91d",
+       "text": "7"
+      }
+     ]
+    },
+    "identity_scheme": 1,
+    "items": {
+     "held": []
+    },
+    "minigame": {
+     "waiting": null
+    },
+    "nvl": {
+     "on": false,
+     "page": []
+    },
+    "points": {
+     "values": {}
+    },
+    "position": {
+     "at": [
+      "b",
+      [
+       2
+      ]
+     ],
+     "sid": "b/8fdc2808a91d"
+    },
+    "rollback": {
+     "enabled": true
+    },
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "variables": {}
+   },
+   "dice": "725ae23ed14fec5f",
+   "status": "ENDED",
+   "variables": {}
+  }
+ },
+ "lanterns": {
+  "commands": [
+   {
+    "reason": "new_game",
+    "state": {
+     "music": [],
+     "sounds": []
+    },
+    "type": "AudioRestore"
+   },
+   {
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "type": "ShowStage"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "The festival lanterns were already lit when I reached the river.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/ff5c3b71c940",
+    "speaker": null,
+    "text": "The festival lanterns were already lit when I reached the river.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "You came! I didn't think you would.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": "???",
+    "name_color": "#e8a0b4",
+    "sid": "start/b0367c222a77",
+    "speaker": "hana",
+    "speaker_tag": "hana",
+    "text": "You came! I didn't think you would.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "Oh, sorry. I'm Hana. Daichi's cousin.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": "???",
+    "name_color": "#e8a0b4",
+    "sid": "start/2336119ca829",
+    "speaker": "hana",
+    "speaker_tag": "hana",
+    "text": "Oh, sorry. I'm Hana. Daichi's cousin.",
+    "type": "Say"
+   },
+   {
+    "attributes": [
+     "happy"
+    ],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "He said you'd get lost at least twice.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": "Hana",
+    "name_color": "#e8a0b4",
+    "sid": "start/a815fa8300c5",
+    "speaker": "hana",
+    "speaker_tag": "hana",
+    "text": "He said you'd get lost at least twice.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "\"One fortune, one hundred yen,\" the stall keeper said.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "fortune_stall/94b4bda3deac",
+    "speaker": null,
+    "text": "\"One fortune, one hundred yen,\" the stall keeper said.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "I unrolled the paper and read it twice.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "draw_fortune/c16396ef1a30",
+    "speaker": null,
+    "text": "I unrolled the paper and read it twice.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "Only Hana believes in those paper slips.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": "Daichi",
+    "name_color": "#8fb3d9",
+    "sid": "fortune_stall/c75f31d7a5b7",
+    "speaker": "daichi",
+    "speaker_tag": "daichi",
+    "text": "Only Hana believes in those paper slips.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "The old footbridge creaked under the crowd.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "bridge/7dfc5bf85791",
+    "speaker": null,
+    "text": "The old footbridge creaked under the crowd.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "There you are. Hana's been looking for you all evening.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": "Daichi",
+    "name_color": "#8fb3d9",
+    "sid": "bridge/53599abcf41d",
+    "speaker": "daichi",
+    "speaker_tag": "daichi",
+    "text": "There you are. Hana's been looking for you all evening.",
+    "type": "Say"
+   },
+   {
+    "type": "StoryEnded"
+   }
+  ],
+  "final": {
+   "checkpoint": {
+    "audio": {
+     "music": [],
+     "sounds": []
+    },
+    "call_stack": [],
+    "chapter": {
+     "current": null
+    },
+    "choices": {
+     "picks": [],
+     "waiting": null
+    },
+    "dice": "71ba84607145c2a9",
+    "flow": {
+     "path": []
+    },
+    "format": 1,
+    "glitch": {
+     "on": []
+    },
+    "history": {
+     "entries": [
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/ff5c3b71c940",
+       "text": "The festival lanterns were already lit when I reached the river."
+      },
+      {
+       "kind": "line",
+       "name": "???",
+       "sid": "start/b0367c222a77",
+       "text": "You came! I didn't think you would."
+      },
+      {
+       "kind": "line",
+       "name": "???",
+       "sid": "start/2336119ca829",
+       "text": "Oh, sorry. I'm Hana. Daichi's cousin."
+      },
+      {
+       "kind": "line",
+       "name": "Hana",
+       "sid": "start/a815fa8300c5",
+       "text": "He said you'd get lost at least twice."
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "fortune_stall/94b4bda3deac",
+       "text": "\"One fortune, one hundred yen,\" the stall keeper said."
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "draw_fortune/c16396ef1a30",
+       "text": "I unrolled the paper and read it twice."
+      },
+      {
+       "kind": "line",
+       "name": "Daichi",
+       "sid": "fortune_stall/c75f31d7a5b7",
+       "text": "Only Hana believes in those paper slips."
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "bridge/7dfc5bf85791",
+       "text": "The old footbridge creaked under the crowd."
+      },
+      {
+       "kind": "line",
+       "name": "Daichi",
+       "sid": "bridge/53599abcf41d",
+       "text": "There you are. Hana's been looking for you all evening."
+      }
+     ]
+    },
+    "identity_scheme": 1,
+    "items": {
+     "held": []
+    },
+    "minigame": {
+     "waiting": null
+    },
+    "nvl": {
+     "on": false,
+     "page": []
+    },
+    "points": {
+     "values": {}
+    },
+    "position": {
+     "at": [
+      "bridge",
+      [
+       1
+      ]
+     ],
+     "sid": "bridge/53599abcf41d"
+    },
+    "rollback": {
+     "enabled": true
+    },
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "variables": {
+     "fortune": "small luck",
+     "hana_name": "Hana",
+     "trust": 0
+    }
+   },
+   "dice": "71ba84607145c2a9",
+   "status": "ENDED",
+   "variables": {
+    "fortune": "small luck",
+    "hana_name": "Hana",
+    "trust": 0
+   }
+  }
+ },
+ "realistic": {
+  "commands": {
+   "count": 4434,
+   "first": [
+    {
+     "reason": "new_game",
+     "state": {
+      "music": [],
+      "sounds": []
+     },
+     "type": "AudioRestore"
+    },
+    {
+     "stage": {
+      "background": null,
+      "sprites": []
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "flous ci jo laist veal kaind wout hol flup",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/bb4cc64a26dd",
+     "speaker": null,
+     "text": "flous ci jo laist veal kaind wout hol flup",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "hind fes deand joup neal wal dreast nea wel zel keas grait pleam jip",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/038d276a0786",
+     "speaker": null,
+     "text": "hind fes deand joup neal wal dreast nea wel zel keas grait pleam jip",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "fan zur clust ces chou grit",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/d1866e7db05b",
+     "speaker": null,
+     "text": "fan zur clust ces chou grit",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "flour zast brop fleam pait vin li tou jup cai vir flot heas flip group",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/4310d27d5c82",
+     "speaker": null,
+     "text": "flour zast brop fleam pait vin li tou jup cai vir flot heas flip group",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "dreal waind kom jor gos fair plop hea",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/8da98e2fa360",
+     "speaker": null,
+     "text": "dreal waind kom jor gos fair plop hea",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "drul bi tear laist nap cend most cham jer las chund rem bust raim mir sit",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/1558826ad2f2",
+     "speaker": null,
+     "text": "drul bi tear laist nap cend most cham jer las chund rem bust raim mir sit",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "fais flem cip pir great dim mur zeap clap jaip jel ga jun sest brea wus mit nel",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/6560e2d4cf94",
+     "speaker": null,
+     "text": "fais flem cip pir great dim mur zeap clap jaip jel ga jun sest brea wus mit nel",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "sean cleam brai nain hand kast ve ni pit tind chur",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/205d24f53c01",
+     "speaker": null,
+     "text": "sean cleam brai nain hand kast ve ni pit tind chur",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "beand gail vond run vost rais moust",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/14085a5de7f8",
+     "speaker": null,
+     "text": "beand gail vond run vost rais moust",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "pil jast bul sep chind gu wut dreap gos pout gear tais heap gream fel cem nim",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/19f433dfdd71",
+     "speaker": null,
+     "text": "pil jast bul sep chind gu wut dreap gos pout gear tais heap gream fel cem nim",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "gres toum bram hap flup zim breast fai",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/6b532c10bda0",
+     "speaker": null,
+     "text": "gres toum bram hap flup zim breast fai",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "plot jais flais brul ror mul seast bre tir jo brip can gain clist mar jaip",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/92030ff2be22",
+     "speaker": null,
+     "text": "plot jais flais brul ror mul seast bre tir jo brip can gain clist mar jaip",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "grus lep plean ceat sist rail faind plom ji jan hun brou mat houn vo cleat vout",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/e956318b5009",
+     "speaker": null,
+     "text": "grus lep plean ceat sist rail faind plom ji jan hun brou mat houn vo cleat vout",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "plust fos sil joul fais pest loul chaim joul grond nin grem plait cap pear",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/adfe6cf77a6d",
+     "speaker": null,
+     "text": "plust fos sil joul fais pest loul chaim joul grond nin grem plait cap pear",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "zer chol flund wo clor plu",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/576b74c2b0c4",
+     "speaker": null,
+     "text": "zer chol flund wo clor plu",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "chap wost cend sest zen har",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/16a3be7b2006",
+     "speaker": null,
+     "text": "chap wost cend sest zen har",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "rost teal chound dond flond tip bos hel gou cleast loust",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/e9239a2f9e85",
+     "speaker": null,
+     "text": "rost teal chound dond flond tip bos hel gou cleast loust",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "clo dom peas jo hound caf\u00e9 ve gris",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "start/944db9f31acf",
+     "speaker": null,
+     "text": "clo dom peas jo hound caf\u00e9 ve gris",
+     "type": "Say"
+    }
+   ],
+   "sha256": "f91276f87645f6a8172db576e26d82c5ae93ef4ad34b313bbcd18d867b9028ab"
+  },
+  "final": {
+   "checkpoint": {
+    "audio": {
+     "music": [],
+     "sounds": []
+    },
+    "call_stack": [],
+    "chapter": {
+     "current": null
+    },
+    "choices": {
+     "picks": [],
+     "waiting": null
+    },
+    "dice": "725ae23ed14fec5f",
+    "flow": {
+     "path": []
+    },
+    "format": 1,
+    "glitch": {
+     "on": []
+    },
+    "history": {
+     "entries": [
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s006/7c4e26fef6f9",
+       "text": "drip zol ploup clul bean clum wor mum ha brair chost plist drun best fe plen bar"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s006/ba3ff8c577cc",
+       "text": "grol rund gep plap rel tes sal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s006/07edcf44f163",
+       "text": "he hi goust zip coun mus jal loup clum chir clend wep dop grom goust"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s006/5e66b0f5afea",
+       "text": "cais zund cou dat plear \"ful\" gout jour min me nair"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/98645dfb2b5a",
+       "text": "ja gaim plo kind dos maim clem nist lust pear plaip flain clop"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s006/15dbc1516628",
+       "text": "gaist zep meand du go woul houp"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s006/ded6ac67179e",
+       "text": "ploup pand leal daist grind dreand je chet lal dis gren nus but wond clan clou jam sop"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s006/b14f5b822cfc",
+       "text": "vest cler brend plend dram round dus neam mum waim wear veand pleas res hound mat ge dep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s006/e56bd98b9587",
+       "text": "non claist drur plond choup teast nes chun woun tind man clos"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s006/68b4fad33464",
+       "text": "tout dri gais hind flem flop bous si"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/c38eabb87e2e",
+       "text": "je rum tai ral lend des beast mour plou"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/1e6e84bb9e2e",
+       "text": "pos wen grer dos geas gis doun rea clind les waip ca tind tean cheat gaist bras chor"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s006/9cbbacb948a6",
+       "text": "hus choum beat pes poul nin mais flet zut wer gaist met rol bist drep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s006/6809912cb594",
+       "text": "pil beas hil bal claist dren choup floul mom rost cet zound"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s006/632694be5d88",
+       "text": "pam bround ris flout plaip plo tend hon lil mip bour feam wir von"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s006/c6da91c6e61d",
+       "text": "mos chand cal brest chound clea"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s006/7c3e1e675efb",
+       "text": "seast taip choup mes dru grim tair plain zoul kin wait wim mound floust"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s006/fe8bb1a8ae54",
+       "text": "daip grear kul he plol wup gra"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/0e876c19d879",
+       "text": "bras flom mip bast flost jot pet lai flon sal poum chim feast naist rais flour"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s006/42e397da4e29",
+       "text": "jer mip kain rol ceal met"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/1e4e8c53925f",
+       "text": "cund near chous roup vel chaist hand keat kot weast chust him plar dil cloul wep"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s006/75798097959d",
+       "text": "hous gral zen flai wip dest jund bet dul tip hit pip pun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s007/004e677c809e",
+       "text": "bral cust most dout chi plait moun flan los brum tim bum wear clun kar hop cloust nist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s007/a721fe2b4095",
+       "text": "poup sit plaist brup tound cleas coul rer daim wean su"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/4a279feb3734",
+       "text": "clen zip round set vol gil wap"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/dac990d2f37a",
+       "text": "gir mop clu pli must zat brun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s007/2e4afcc3053f",
+       "text": "ker vol hund clop plar fles plost tem clu grai co vin"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s007/c9070ac371f3",
+       "text": "breat clit kout vu wol no gend wap ploum grol mist coust"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s007/bcc7ea748336",
+       "text": "hour kin dru kous jend list"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s007/b03ac031d111",
+       "text": "veap cheam gran drust bust che"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/d68f26a2aa5a",
+       "text": "jaip ploul pil net gom west ples"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s007/50e6803678db",
+       "text": "cou vos jem fleas do chit baim gaind zest der zait chep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s007/50ecdb4375cf",
+       "text": "loun to nast chap moup vai tis raip rur houn teas brain pais dream bous go chaist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s007/9f890e66cd05",
+       "text": "kest sar pep pom dro sus clind mound brai ce drur gris grup"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s007/1c89ebb06a26",
+       "text": "rai zound flot jep plop brus kum sot grais plun kun bor gait dom kit sop"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s007/b276fdb0f9e8",
+       "text": "he flot jous noust nout jous fut plit wai kut chos pais"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s007/c08140acb842",
+       "text": "just par clout rop tour claip flul sea plout cheast mer par ber"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s007/b43b1e3f0e7d",
+       "text": "waim jeast bros brot woun broun bait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s007/ab82d9f4e6f1",
+       "text": "zem vais plost cheand loul grup ner flen dos braind gel com dist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s007/6fb301b692f3",
+       "text": "cleat hair weat seap jand zip chas lair len fir gou bond gaip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s007/5a315cb7921c",
+       "text": "gout dost ler zast tep ror gist hain"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s007/c5399e0f842b",
+       "text": "lat wait cut flar tu gip pes"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/5fb2aef10447",
+       "text": "fain chu dround cip flous drai clour droup cloun tout wost brut cain zim gust dreal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s007/39cf937236d6",
+       "text": "pound chit clear jail mur flul kour kest da brel chap non dus zeal hos flu chun wum"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s007/fda0a0658b95",
+       "text": "ris son chat tear seast clar kat seal mean bor chout da rean ju ge dul sa dend"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/35acc0803c08",
+       "text": "vit bair nean groum brup sop bro drais ro drest zon"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s007/7d2945b23683",
+       "text": "pem ses deand vos fum clem clil"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/7509c1d9c51d",
+       "text": "set nus kan plol kep goul cen kund raip get mim greand"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s007/5950454dd121",
+       "text": "ful fest cheal som bean lon dous ban fland"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s007/ce2035abc218",
+       "text": "rend vou wil hep drea pair plour dun zol plus chop wu pas just zom"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s007/35c4d867bd62",
+       "text": "ja dreast kum main wel greast tust cear drou baim flot ru clat flaip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s007/93c73237e92a",
+       "text": "paind wai tust mand teand bout tot rais tur draim hes vem bout"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/eaf972a527f8",
+       "text": "jot paind ku wat bea jout"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s007/64f8e4a49755",
+       "text": "top poum bu taim chaip ches fat brus tut"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s007/9179cb3c9f50",
+       "text": "groul zast ri lost tous del pi sean flem sost kea"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s008/fa6558d0f52b",
+       "text": "kel cand flan fan je caist di cit dem mo ber zust"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s008/f0b00a04356b",
+       "text": "nair vir nu zast chend les plu geas zound lund"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s008/05e82a4800ec",
+       "text": "pa dror fleast lean waim ca keast"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s008/7c420f4a127e",
+       "text": "brop chop jul kean nous plost bes pes gon"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/331e2ad19623",
+       "text": "lain land dais pum vost voul reas rin tur rit nes rol cour kair lu mind brom"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s008/64574bb57f41",
+       "text": "graist por cil geas rean cel bror rir wear cleast cem sun hes"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s008/8234115ee71e",
+       "text": "kum saist fir mip chaim jes da pes"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/b0a96c042440",
+       "text": "vund zi sup flem grous drin brain cheap chim fleast bal vond flon chou"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s008/6e7016b8d17c",
+       "text": "vand bren kea rout tis drast ceand plep zel"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s008/ca65f64ba3cb",
+       "text": "plust rip lut brou clear chas ro"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s008/1eb3c857499a",
+       "text": "grur cleal keap peand gren har gean brust zea vom tel sir jound"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s008/7874cd32a6f4",
+       "text": "grur drer clol clor grost hon pen veas brup koul clen woup chast drup cheas kul paist fli"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s008/99f30e602086",
+       "text": "drend cair bal plot \ud83d\ude00 tun vin vost ve"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s008/a7aedeee1db5",
+       "text": "deas bean pot flaind clo vas"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s008/81e43a6da5ec",
+       "text": "gram drait ser brim vut taip chaind wund com kast"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s008/de8767f2ce97",
+       "text": "tin dot kat clair ser plur bu chol det rou chaim"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/0ec79972035c",
+       "text": "clis rea lait chair paip dru clun wul jur drul gru vond fon der gril cour"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s008/ae0d8b11832a",
+       "text": "zaist va jan hel ple kep wep gep vop gous cleam fep laim vel sut pum zer dist"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/b52b76612675",
+       "text": "bin pim flar plear gap dom jou fur boul drut"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/566b640e98b8",
+       "text": "bran gun cait wou jot geal pai zean so baip great jal ches sai floun kem joup chen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s008/89d720c0042a",
+       "text": "dral fles te pair cho flean drind faip pe jul"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/39dbc25759b9",
+       "text": "gund zoup zal clor pot sos si ris vis"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s008/1d31c5ca24fd",
+       "text": "vaind brut bum \"gron\" jeand tem zest geap hip pul pom jis plos zum chest dun cleam"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s008/23eb438e9b34",
+       "text": "lous dail bis zim zip pour drai peas nor bul paim roup tean gear boul rest gais"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s008/0173c5070401",
+       "text": "jor jaip fol clais dam flist paip tot jaist hand"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s008/ce1633da5130",
+       "text": "cet kas floup hup dep naip ron jain feap vem paind bin great was vail vip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s008/a9a49a0bd525",
+       "text": "clum man dror jol ploul zaim vo nond rail ton tom la nond bais flind vound lu ser"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/2baa66d30a8b",
+       "text": "kast tus zind chim kom gout veas ge taind clust wop zir kap hail plit gost"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s008/ea8a7a5f2141",
+       "text": "vun vom cloum vat boust seas koun gras voun bout keap"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s008/58e379b40189",
+       "text": "brair leap zout bal nom drut cul gra bon dem nound ta"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s008/242e124bc5be",
+       "text": "haim ple tear past wap lin dre jal dus dal jound sur plom for bas plis cas boup"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s008/12596cbbf18d",
+       "text": "dus mal fe jain raim plip gar send west brous kat flost gund maim keap ha"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s008/b022851b7d16",
+       "text": "vous leam cen flund feand ru mup flon graind flond teast pleand wup sous joun rum tal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s008/babe64b69562",
+       "text": "var rist hind joul tat kaim toun drout vos"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s009/32de952ab951",
+       "text": "him pond grair ho caind pleam sean gai cam das"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/7e59c3a919bf",
+       "text": "sea clim tos plol ple gen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s009/91412bf78ef1",
+       "text": "ploun rust plust mas lous droup ta pum cind tain jand teas clind mond jel dror hum toul"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s009/9dd9515972fd",
+       "text": "git pun cat mul drel hou lous nus fair com gream loun flon"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s009/0fe4c1869ef9",
+       "text": "rout clis mest paist cloust chus lem dind drund drep clea flea meas"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s009/9681fbecff7a",
+       "text": "seand tear cho wep real hond gra grea cim round chil cas rur joun wis kail gut pep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/6ec44bc548d7",
+       "text": "bror gat hes drut brond flol dril droum chor flost tes dre jol co toup poul breat"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s009/5bfd33185d9c",
+       "text": "grear peat zaist clust cli sound clour brim"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/cf87c74f6371",
+       "text": "clound hair num dean vain flast pais"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/faa5de79802f",
+       "text": "hup gro pan cles grir gron tep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s009/a61ac08005d5",
+       "text": "jep deast grast brost drair wi"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s009/1868d3973cd2",
+       "text": "rist laim grep nea veast pas greas sain"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s009/4d42684b0573",
+       "text": "cout kir zend nam cheas voust drop mou clos"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/5815084f581b",
+       "text": "nu jor grur drind sair plim last rou gaip zeand pund vom roup loun bim"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s009/b603cc096086",
+       "text": "drist chul zel zup paist sost dom bear dram teal tan fland vou"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/8d804d0b5bb9",
+       "text": "grait his lour clam sip co bost cleal chost cem veas greap"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/f8044015f8b3",
+       "text": "wa flit drous hair jir gust gus sond braip naip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s009/67cc7d26868d",
+       "text": "lat drai vat flen plus tail geas dind loust ta cu cond veas pat fais brem dai tail"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/53b90a634644",
+       "text": "hon so bait drond wou bap meal cem drel cest broum mep kup flea cind zol host dis"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/41dc34de0619",
+       "text": "grop him jep kil draist just dar lol rost dain ter flas caind"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s009/afb7a2a20236",
+       "text": "zos pot kaist graip mip bip sost chul bup rir peand"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/c8b23be3a75f",
+       "text": "bin lost mai moum jo nus dust fas cind dust cust zound breat"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s009/b46aa6cf0fd4",
+       "text": "group clou mous hul bist jair rond jat brout hes top clon peas ni jast plot"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s009/c55c25341de9",
+       "text": "mind va mat git plem bait near plar plind gound zis cheas gron cos baind wop"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/40d3751c5fcb",
+       "text": "brust his chend zea breast flais hust nand pam wu zaim va least cain grond vaip fot"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s009/2fc9c2aed7ca",
+       "text": "not mait rait nul fler zar brait keam toust foum vi roum"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/e7b3ef774f83",
+       "text": "graip cor vi fast wep pound bres sou chous dai bear bral mus tim lom zip vaist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s009/0765c2dc622f",
+       "text": "rol fout fos rep dap sond"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/dc8943302704",
+       "text": "teast jand wend paist vaip grais zond zes clair rur zast can pleap woum clean rai"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s009/55fd7e607e5a",
+       "text": "plaind dun gat jeam geap cai drail zair hup draip grum"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s009/3f983426916c",
+       "text": "floust braind ros dim jeat vain dus ze flor loum nol claim"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s009/fee15dfca5bf",
+       "text": "\u2014 pos drol sin doul flond"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s009/862cdfffa293",
+       "text": "graim cha flip gait rot vait cet"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/a64ec86317dc",
+       "text": "nit ha \"jis\" til bral dat gor maist grear sap heap flait zo drond gis"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s010/76e7360d3bda",
+       "text": "veast nem plir wout veast sout pam flest chou flear bou group vest mas"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/5fec0e58ece1",
+       "text": "weat til chem dair grom pea bram plon lou dis pin ches wos tund"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/ac10db6e5da1",
+       "text": "sit taist roul bu jain houm cal drer brel"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/915cbd089d29",
+       "text": "plait leand ceand sand braind dros ner hean hean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s010/db75c580c1c9",
+       "text": "nail co joun kam droup dap cher floum flund mul grun bri jait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s010/745ac6846fcd",
+       "text": "cheast mul chat pla plail haist sil flum poun sol sin caf\u00e9"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s010/961964868b61",
+       "text": "chund jo chan faind nou det nais gon pait ba vat zat but par clip band bris braip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s010/14031223466d",
+       "text": "fos wep dat fur flos bip flast chait wour plur vand kop vaist keal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s010/35f08abbe935",
+       "text": "jar baist plest por chaim mut but dres tean fan send mop"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s010/46ab1051d3bb",
+       "text": "zos gous cleal gund plair gip grais graind sim mo grum plel sis clour mand"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s010/34f2bff8751c",
+       "text": "grail kam grop gom ploup brand sol plol"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s010/c04122fcdc07",
+       "text": "lus pest flet voum west fon wer foun baind gen sind flait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s010/02eb51d38d5e",
+       "text": "graind po pus kost grost nal chan sous wom jand rair"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s010/ee0f99bb05c7",
+       "text": "bust sit flost plat bon bais houn"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/3dee56724765",
+       "text": "pin graist grund flal can hais kir bast tis cist chet bra vot floul flind weap ser"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/2a3cec27ac68",
+       "text": "plus tep dur vut feap kea ten vap dust jond gras fit"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s010/ec59f4261156",
+       "text": "ves graim per drop brist clur bap map grais gi plas chut gend kus"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s010/a49a51db3423",
+       "text": "dil zeam geand lom sut clut dris geap plail"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s010/a6b403e07593",
+       "text": "gou flair \u201cquoted\u201d cound dot lund plen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s010/8aff52c8ca87",
+       "text": "je flaind mout brais veat gair brot pus bund cup"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s010/628a7b5a2c2b",
+       "text": "rund brum clir plom grust wal gous mund pil gru cou brail chair dap saist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s010/821ef0ff662e",
+       "text": "plur floun kil was ju flan clear faind zeal beap lound"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s010/8649ce2a1083",
+       "text": "cen hust zep flal flul zous gaim deast clos haim grep grean mat mer"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/afe6d1ba4622",
+       "text": "mup bret lail jir fun fleam zout gair vaim pol drail nem jel ful dup mea nop sand"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s010/e37d2ec0df43",
+       "text": "cout vin der roust tim grep hun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s010/e7035a3acf85",
+       "text": "naip paip chir dist chain brul must fais flup"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s010/1912158cbb5e",
+       "text": "gop flist lost dim clain clor moun jeat fost wit koul tes"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s010/59f8f20c5f3e",
+       "text": "pleam heat cep tus brom kun hend poust plet zaip gop clout kul vai"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s010/ae4affe3c262",
+       "text": "clais clest mind waip mist brund kom jist ten lair jun cal plour drat rai zit drus woun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s010/9ecfb7d7e82d",
+       "text": "wun chet geap kis jait real jast veand west zair cam flir ro bi"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s010/36f0a9a741f0",
+       "text": "plem weap lin jeas gaind jear drul to flun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s010/ec0a7184a28c",
+       "text": "plaip bal toup bail vol dean jeam sous brea kist wem mait vup lun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s011/70d6595746da",
+       "text": "flim flust vul dir bap joun hear gep bream gril cast clean tea gou dat"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s011/71b6f1b0eb35",
+       "text": "reap sit fend tait plout noup bous gra jep meal coun nus coun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s011/1b9aa41e6d41",
+       "text": "fim rail plup pem lor dit lop pam non"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/fd5653d0c73b",
+       "text": "tai pleat ceal brun naind chur ka"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s011/64527b5e727f",
+       "text": "brean drul drup flea plous pim cut gea ren chest"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s011/92a711a72e64",
+       "text": "reand fous jast flound vust dait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s011/336c3e0d32de",
+       "text": "dreast sous kor dos sit si gais gust mo gup brur vos weap ra"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s011/14745e2fa6b4",
+       "text": "ple clit chit drat wur hus tor mest grair mat vip"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s011/97711076ccd4",
+       "text": "jus cest fleam jom vist jat dait rul cloup cond wi cind vor"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/0b81387156b6",
+       "text": "breast chast jel wu broul cut sot grais flim bre raind rim zoup"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s011/dcf8cb484b8c",
+       "text": "nean dra brum claip chaip nund drot"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s011/15a9bfd8b5a0",
+       "text": "drap clail pom tan maist least cind seam car peast"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s011/568184ed9e01",
+       "text": "brip clis cap zand sais dret baim lest sit bos lap rup bet ple"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s011/e1281da09c75",
+       "text": "kait re sais clout plest gre cor dour pand chir ze dout"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s011/5610c72662de",
+       "text": "fust flund goust hi cour drou sais pat gond dis ror tust clos sat plund seand fast dop"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s011/fa150fd424f2",
+       "text": "nend tup voun pais vor ges tim pail maind to chour"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/88ea531b60fc",
+       "text": "ret grim feap but clou jeam"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/634a642f40cb",
+       "text": "seap dras nus men dret dret"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/e92346c12591",
+       "text": "drep saip zail clon nus sund zend hul wou grem sin sea wand clit drou ground"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s011/c00d7fff3380",
+       "text": "ten bait cound dar band feas plas nes kast flum vour"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/36ab36b242a3",
+       "text": "vem coul drup pean clound teand kait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/880b797faf5d",
+       "text": "drous woul del vo lear pan bop brean chip brout pel"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s011/3d63d73ef11a",
+       "text": "chair jel ceas chend fust fleam four gren put gond bu wu plas dra"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s011/1d16cb61771e",
+       "text": "houm lit noup wail daip paist dram son sim hin gir woul sur zust wu kair clous"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s011/12ee976e4c2f",
+       "text": "flis hai plu lost fat nes tem"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s011/fea4c430c6a2",
+       "text": "coup pea zan su dri feand"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s011/05eb632d89d1",
+       "text": "neam jaip mou par cend nit tound vip grim flund"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s011/3d7132c2e6f8",
+       "text": "jes beam geap non rais zear drar brer gou fer plas rup drir dist drour"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s011/7887f0dfd97d",
+       "text": "\"fai\" rait bair cair beat bror clour coup hut vun chond"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s011/89199cc66eb3",
+       "text": "fai brur taip dound jais tup lam graim wep pup sast"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s011/238dac1579dd",
+       "text": "flur sou seas tend kast graim zin \ud83d\ude00 wim mil tend"
+      },
+      {
+       "kind": "line",
+       "name": "Name 0",
+       "sid": "ch009_s011/7d2edd72b60c",
+       "text": "zis cop kean feap pel gund wep seal cloul cleam ful zear sest sous jor maist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s011/276129edbff2",
+       "text": "drar brur mat lain do caist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/d4260341be10",
+       "text": "tel cen po tim grot vais ka plout coul bost brus kand cost clop dip"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/92f88e67a865",
+       "text": "cloust peal dir goun leap great son nop peas cloup fas ground nond cu zoust flup veap"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/ab2d83869772",
+       "text": "zaist tal lest clain tas laip"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/fcce59f0b7cc",
+       "text": "jeas seand grous cun bon sout meam jom waind brel pep sour zeap vis tast fim pail paist"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s012/534573bed450",
+       "text": "put drol daist wim hust ru noul brond sust gut deast hir her jol brond vous plam hund"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/e2fdefe875ca",
+       "text": "noul kot lot kost wond dop jast ral fleam fleast ful"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s012/aad1f941a379",
+       "text": "chum dor vul kop laind brir gup chus plum ne war mip fet pleat plain maim real"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/50faf86fe4c3",
+       "text": "chip kap dat dul bund vi brap plea"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/3c9c66b76acf",
+       "text": "rast bras tur lol nais flit van bim bat"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/9d219f88bc46",
+       "text": "gain zoun grund hou ne jar fa run heal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/e6ed9b4e90fe",
+       "text": "kis sip cheap vat wist zour jean jain fum beand gait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s012/51df1dccf679",
+       "text": "plum plai pear weas cleap ces kast"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s012/461ec31d774e",
+       "text": "clir gir plep ner cit veam chel gist great ret dait brul jep dim goust vat loun"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s012/cbe2f0675219",
+       "text": "kist ver clep hund jo clou"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s012/f903d17d05d0",
+       "text": "bream lou voul mast choul flais wast cun nop ni ti jus nil sul sind pus nur"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/166187d706b0",
+       "text": "dean sist gre wit zaim moust clop drond sam weand dat plet"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s012/204273e3cc32",
+       "text": "cind fit bound cust se kast kol gust zu dous wat rout zeand maind ram floum"
+      },
+      {
+       "kind": "line",
+       "name": "Name 3",
+       "sid": "ch009_s012/17b9e05418b6",
+       "text": "broul wand plear ral tul leat flour fleas cout zain gom peat goun hind tas caind vas nis"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s012/74c87a3b459b",
+       "text": "por fou plu hu rand koust num gir vot"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s012/d4299bdb139f",
+       "text": "zust ja doum rar noup jaind broul"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s012/b31fa57e0916",
+       "text": "fis drim flup plom soust cat fler ros kost grand dap"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/b131906b1243",
+       "text": "nol drur bour ceand drain sep sol bre droum drar groum test cep"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s012/cdbf2ecafea1",
+       "text": "kop jain mop dut fer bair tal wais nust sil gem rol vais hai reand wat tir grel"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/b523691e55fe",
+       "text": "zar team wip flear flair wan"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_s012/0373b30be7d5",
+       "text": "jus"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/8428361fa3f2",
+       "text": "faim"
+      },
+      {
+       "kind": "line",
+       "name": "Name 4",
+       "sid": "ch009_s012/bb38a0868bdd",
+       "text": "mait"
+      },
+      {
+       "kind": "line",
+       "name": "Name 6",
+       "sid": "ch009_s012/6075bd8720b2",
+       "text": "feam"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_s012/a0884b128fb7",
+       "text": "hem"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_s012/ec7b78ce8c00",
+       "text": "gend"
+      },
+      {
+       "kind": "line",
+       "name": "Name 7",
+       "sid": "ch009_aside/b201ca04f224",
+       "text": "tean"
+      },
+      {
+       "kind": "line",
+       "name": "Name 5",
+       "sid": "ch009_aside/2b7da68a814b",
+       "text": "cheal"
+      },
+      {
+       "kind": "line",
+       "name": "Name 2",
+       "sid": "ch009_aside/60980688de36",
+       "text": "cen"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_aside/b088ed85849b",
+       "text": "rip"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/66bb4b244afc",
+       "text": "col"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s012/0196de932910",
+       "text": "sol"
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "ch009_s012/82179de73151",
+       "text": "wot"
+      },
+      {
+       "kind": "line",
+       "name": "Name 1",
+       "sid": "ch009_s012/305f58cbc0b5",
+       "text": "plous"
+      }
+     ]
+    },
+    "identity_scheme": 1,
+    "items": {
+     "held": []
+    },
+    "minigame": {
+     "waiting": null
+    },
+    "nvl": {
+     "on": false,
+     "page": []
+    },
+    "points": {
+     "values": {}
+    },
+    "position": {
+     "at": [
+      "ch009_s012",
+      [
+       35
+      ]
+     ],
+     "sid": "ch009_s012/305f58cbc0b5"
+    },
+    "rollback": {
+     "enabled": true
+    },
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "variables": {
+     "v0": 48,
+     "v1": 44,
+     "v2": 47,
+     "v3": 55,
+     "v4": 61,
+     "v5": 39,
+     "v6": 59,
+     "v7": 73
+    }
+   },
+   "dice": "725ae23ed14fec5f",
+   "status": "ENDED",
+   "variables": {
+    "v0": 48,
+    "v1": 45,
+    "v2": 47,
+    "v3": 55,
+    "v4": 61,
+    "v5": 40,
+    "v6": 59,
+    "v7": 73
+   }
+  }
+ },
+ "vars": {
+  "commands": [
+   {
+    "reason": "new_game",
+    "state": {
+     "music": [],
+     "sounds": []
+    },
+    "type": "AudioRestore"
+   },
+   {
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "type": "ShowStage"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "Go.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/c6000954c96e",
+    "speaker": null,
+    "text": "Go.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "W.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/29fe68580afd",
+    "speaker": null,
+    "text": "W.",
+    "type": "Say"
+   },
+   {
+    "attributes": [],
+    "body": {
+     "pieces": [
+      {
+       "style": {
+        "type": "Style"
+       },
+       "text": "Yes.",
+       "type": "Span"
+      }
+     ],
+     "type": "TaggedText"
+    },
+    "name": null,
+    "name_color": null,
+    "sid": "start/cc0765d6419a",
+    "speaker": null,
+    "text": "Yes.",
+    "type": "Say"
+   },
+   {
+    "type": "StoryEnded"
+   }
+  ],
+  "final": {
+   "checkpoint": {
+    "audio": {
+     "music": [],
+     "sounds": []
+    },
+    "call_stack": [],
+    "chapter": {
+     "current": null
+    },
+    "choices": {
+     "picks": [],
+     "waiting": null
+    },
+    "dice": "725ae23ed14fec5f",
+    "flow": {
+     "path": []
+    },
+    "format": 1,
+    "glitch": {
+     "on": []
+    },
+    "history": {
+     "entries": [
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/c6000954c96e",
+       "text": "Go."
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/29fe68580afd",
+       "text": "W."
+      },
+      {
+       "kind": "line",
+       "name": "",
+       "sid": "start/cc0765d6419a",
+       "text": "Yes."
+      }
+     ]
+    },
+    "identity_scheme": 1,
+    "items": {
+     "held": []
+    },
+    "minigame": {
+     "waiting": null
+    },
+    "nvl": {
+     "on": false,
+     "page": []
+    },
+    "points": {
+     "values": {}
+    },
+    "position": {
+     "at": [
+      "start",
+      [
+       5,
+       0,
+       0
+      ]
+     ],
+     "sid": "start/cc0765d6419a"
+    },
+    "rollback": {
+     "enabled": true
+    },
+    "stage": {
+     "background": null,
+     "sprites": []
+    },
+    "variables": {
+     "k": 2,
+     "met": true,
+     "round": 1,
+     "seen": 5,
+     "total": 3,
+     "x": 1
+    }
+   },
+   "dice": "725ae23ed14fec5f",
+   "status": "ENDED",
+   "variables": {
+    "k": 2,
+    "met": true,
+    "round": 1,
+    "seen": 5,
+    "total": 3,
+    "x": 1
+   }
+  }
+ }
+}

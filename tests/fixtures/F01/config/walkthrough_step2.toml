@@ -1,0 +1,7 @@
+[game]
+title = "Paper Lanterns"
+version = "0.1.0"
+
+[window]
+fulscreen = true
+icon = "gui/lantern.png"

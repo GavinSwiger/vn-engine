@@ -1,0 +1,12 @@
+include "chapter1.vns"
+include "routes/daichi.vns"
+
+define hana = Character("Hana", color="#e8a0b4")
+define daichi = Character("Daichi", color="#8fb3d9")
+
+label start:
+    $ trust = 1
+    $ bought_lantern = False
+    "The festival lanterns were already lit when I reached the river."
+    hana surprised "You came! I didn't think you would."
+    jump river

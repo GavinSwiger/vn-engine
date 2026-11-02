@@ -1,0 +1,30 @@
+define hana = Character("Hana", color="#e8a0b4")
+define d = Character("Daichi", color="#8fb3d9", image_tag="daichi")
+image bg dusk = "#2b2140"        # a plain color until the sky art is done
+
+label riverbank:
+    scene bg river_night
+    show stall at stall_spot      # a prop: images/stall.png
+    show hana happy               # first time, no position: center
+    "The festival lanterns were already lit when I reached the river."
+    hana pout "You're late! The good wishes are all taken."
+    show daichi grin at right
+    d "She's been saying that since six o'clock."
+    hana surprised "Daichi? You said you weren't coming."
+    show hana at hana_close
+    hana happy "Then we'll write three. One each, and one for the river."
+    d sigh "Fine. But I'm not writing mine where you can see it."
+    show daichi behind stall at 1120
+    "He ducked behind the stall, muttering about the price of ink."
+    hide daichi
+    jump bridge
+
+label bridge:
+    scene bg dusk
+    show railing layer 10         # always in front of the characters
+    show hana sad at left
+    show lantern_girl as girl_a at 900 flip on
+    show lantern_girl as girl_b at -200       # waits off-screen
+    hana "Look. Everyone's lanterns are going the same way."
+    show lantern_girl as girl_b at 1100
+    "Two girls ran past, laughing, and leaned over the railing."

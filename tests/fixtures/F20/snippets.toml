@@ -1,0 +1,287 @@
+# F20 06 §5: AC-F20-08's and AC-F20-09's snippets, each loaded as script/main.vns
+# (tests/script/test_flowgraph.py). Node names: a chapter, scene, or ending by its name,
+# "start", "gate:<route>", and a menu as "M<line>" (the line of its menu:). An edge is
+# [src, dst] or [src, dst, choice text, ...] for a choice edge (choices in script order).
+# `start` says whether the start node exists; `menus` is [flowchart] menus (default
+# "branching"); `nodes`, when given, is the exact node list in node order.
+
+[[snippet]]
+id = "first-node-before-any-line"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    "x"
+    chapter c2 "Two"
+'''
+edges = [["c1", "c2"]]
+
+[[snippet]]
+id = "line-before-first-node"
+ac = "AC-F20-08"
+start = true
+script = '''
+label start:
+    "hello"
+    chapter c1 "One"
+'''
+edges = [["start", "c1"]]
+
+[[snippet]]
+id = "jumps-through-labels"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    jump a
+label a:
+    jump b
+label b:
+    chapter c2 "Two"
+'''
+edges = [["c1", "c2"]]
+
+[[snippet]]
+id = "if-without-else"
+ac = "AC-F20-08"
+start = false
+script = '''
+default x = False
+label start:
+    chapter c1 "One"
+    if x:
+        chapter c2 "Two"
+    chapter c3 "Three"
+'''
+edges = [["c1", "c2"], ["c1", "c3"], ["c2", "c3"]]
+
+[[snippet]]
+id = "if-elif-else"
+ac = "AC-F20-08"
+start = false
+script = '''
+default x = 0
+label start:
+    chapter c1 "One"
+    if x == 1:
+        chapter c2 "Two"
+    elif x == 2:
+        chapter c3 "Three"
+    else:
+        chapter c4 "Four"
+'''
+edges = [["c1", "c2"], ["c1", "c3"], ["c1", "c4"]]
+
+[[snippet]]
+id = "scene-called-from-three-places"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    call help
+    chapter c2 "Two"
+    call help
+    chapter c3 "Three"
+    call help
+    chapter c4 "Four"
+label help:
+    flowchart scene "Help"
+    "A line."
+    return
+'''
+edges = [["c1", "help"], ["c2", "help"], ["c3", "help"], ["help", "c2"], ["help", "c3"],
+         ["help", "c4"]]
+
+[[snippet]]
+id = "unmarked-helper-resumes-after-its-own-call"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    call tidy
+    chapter c2 "Two"
+    jump second
+label second:
+    chapter c3 "Three"
+    call tidy
+    chapter c4 "Four"
+label tidy:
+    "One line."
+    return
+'''
+edges = [["c1", "c2"], ["c2", "c3"], ["c3", "c4"]]
+
+[[snippet]]
+id = "recursive-call"
+ac = "AC-F20-08"
+start = false
+script = '''
+default n = 3
+label start:
+    chapter c1 "One"
+    call r
+    chapter c2 "Two"
+label r:
+    if n > 0:
+        $ n -= 1
+        call r
+    return
+'''
+edges = [["c1", "c2"]]
+
+[[snippet]]
+id = "hub-loop"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    jump hub
+label hub:
+    flowchart scene "Hub"
+    flowchart omit
+    menu:
+        "To a":
+            jump a
+        "To b":
+            jump b
+label a:
+    chapter ca "A"
+    jump hub
+label b:
+    chapter cb "B"
+'''
+edges = [["hub", "ca"], ["hub", "cb"], ["ca", "hub"]]
+
+[[snippet]]
+id = "choice-ending-with-no-node"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    flowchart "Go on?"
+    menu:
+        "Go":
+            chapter c2 "Two"
+        "Quit":
+            return
+'''
+edges = [["c1", "M4"], ["M4", "c2", "Go"]]
+
+[[snippet]]
+id = "two-choices-one-edge"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    chapter c1 "One"
+    flowchart "Which?"
+    menu:
+        "First":
+            "a"
+        "Second":
+            "b"
+        "Third":
+            chapter c3 "Three"
+    chapter c2 "Two"
+'''
+edges = [["c1", "M4"], ["M4", "c2", "First", "Second"], ["M4", "c3", "Third"], ["c3", "c2"]]
+
+[[snippet]]
+id = "scene-then-menu-at-one-point"
+ac = "AC-F20-08"
+start = false
+script = '''
+label start:
+    jump h
+label h:
+    flowchart scene "H"
+    flowchart "Where?"
+    menu:
+        "A":
+            chapter ca "A"
+        "B":
+            chapter cb "B"
+'''
+edges = [["h", "M6"], ["M6", "ca", "A"], ["M6", "cb", "B"]]
+
+# AC-F20-09: J joins before c2; B leads to c2 and c3; J+ is a J with a mark; B- a B with
+# flowchart omit. Each table row of the AC is one snippet below with its own `menus`.
+[[snippet]]
+id = "menus-branching"
+ac = "AC-F20-09"
+menus = "branching"
+start = true
+script = '''
+label start:
+    "Hi."
+    menu:
+        "J one":
+            "a"
+        "J two":
+            "b"
+    chapter c1 "One"
+    menu:
+        "B one":
+            chapter c2 "Two"
+        "B two":
+            chapter c3 "Three"
+    flowchart
+    menu:
+        "J+ one":
+            "a"
+        "J+ two":
+            "b"
+    flowchart omit
+    menu:
+        "B- one":
+            chapter c4 "Four"
+        "B- two":
+            chapter c5 "Five"
+'''
+nodes = ["start", "c1", "M9", "c2", "c3", "M15", "c4", "c5"]
+
+[[snippet]]
+id = "menus-all"
+ac = "AC-F20-09"
+menus = "all"
+start = true
+script = "<menus-branching>"
+nodes = ["start", "M3", "c1", "M9", "c2", "c3", "M15", "c4", "c5"]
+
+[[snippet]]
+id = "menus-marked"
+ac = "AC-F20-09"
+menus = "marked"
+start = true
+script = "<menus-branching>"
+nodes = ["start", "c1", "c2", "c3", "M15", "c4", "c5"]
+
+[[snippet]]
+id = "two-joining-menus-are-not-a-branch"
+ac = "AC-F20-09"
+start = true
+script = '''
+label start:
+    "Hi."
+    menu:
+        "Left":
+            menu:
+                "a":
+                    "a"
+                "b":
+                    "b"
+        "Right":
+            menu:
+                "c":
+                    "c"
+                "d":
+                    "d"
+    chapter c2 "Two"
+'''
+nodes = ["start", "c2"]
+edges = [["start", "c2"]]

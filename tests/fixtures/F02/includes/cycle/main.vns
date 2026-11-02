@@ -1,0 +1,4 @@
+include "a.vns"
+include "a.vns"
+label start:
+    jump a_scene

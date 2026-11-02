@@ -1,0 +1,8 @@
+include "ch2.vns"
+define hana = Character("Hana")
+default trust = 0
+label start:
+    show hana happy
+    hana "Hi."
+    call club
+    jump bridge

@@ -1,0 +1,5 @@
+include "a.vns"
+define hana = Character("Hana")
+label start:
+    hana "Welcome to the festival."
+    jump a_scene

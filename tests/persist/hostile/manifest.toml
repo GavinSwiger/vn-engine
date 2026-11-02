@@ -1,0 +1,688 @@
+# F12 hostile corpus (05-security.md §5; 06-acceptance.md §0.2, AC-F12-22..24).
+# One row per input. Fields:
+#   id, group (A–F), gen (a generator in gen_hostile.py) plus its arguments,
+#   file     committed under hostile/ (else built at run time in tmp_path),
+#   outcome  ok | bad | newer | any;  reason (W50's reason word for bad),
+#   dropped  W54's exact count (min_dropped: at least), scheme_changed (W55),
+#   loads    "never": json.loads must not be called (the pre-scan refused it),
+#   max_str_digits  sys.set_int_max_str_digits for the read; max_seconds  a time bound,
+#   tier     default | slow. Default runs the smallest set covering every kind (one
+#            real-bound pre-scan shape, b_dicts_over; test_prescan_bound_patched runs every
+#            shape at a patched bound; one over-32 MB row, b_sparse_over); the rest is slow.
+# Every row also asserts: no exception escapes, json.loads gets only str, the files in
+# tmp_path/outside/ are unchanged, and nothing is created outside <game>/persistent/.
+# Groups D–F (quarantine, starvation at launch, links) are added with the sync and app steps.
+
+# --- Group A: syntax and top level (AC-F12-22) ----------------------------------------------
+
+[[row]]
+id = "a_empty"
+group = "A"
+gen = "empty"
+file = "a_empty.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_open_brace"
+group = "A"
+gen = "open_brace"
+file = "a_open_brace.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_bom"
+group = "A"
+gen = "bom"
+file = "a_bom.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_utf16"
+group = "A"
+gen = "utf16"
+file = "a_utf16.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_latin1_byte"
+group = "A"
+gen = "latin1_byte"
+file = "a_latin1_byte.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_nan"
+group = "A"
+gen = "nan"
+file = "a_nan.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_infinity"
+group = "A"
+gen = "infinity"
+file = "a_infinity.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_neg_infinity"
+group = "A"
+gen = "neg_infinity"
+file = "a_neg_infinity.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_dup_top"
+group = "A"
+gen = "dup_top"
+file = "a_dup_top.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_dup_nested"
+group = "A"
+gen = "dup_nested"
+file = "a_dup_nested.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_deep_100000"
+group = "A"
+gen = "deep_lists"
+levels = 100000
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_int_4301"
+group = "A"
+gen = "digits"
+digits = 4301
+file = "a_int_4301.json"
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_int_4300"
+group = "A"
+gen = "digits"
+digits = 4300
+file = "a_int_4300.json"
+outcome = "ok"
+dropped = 0
+tier = "default"
+
+[[row]]
+id = "a_int_1m_unlimited"
+group = "A"
+gen = "digits"
+digits = 1000000
+max_str_digits = 0
+max_seconds = 1.0
+outcome = "bad"
+reason = "not valid JSON"
+tier = "default"
+
+[[row]]
+id = "a_top_list"
+group = "A"
+gen = "top_list"
+file = "a_top_list.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_format_true"
+group = "A"
+gen = "format"
+value = true
+file = "a_format_true.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_format_float"
+group = "A"
+gen = "format_float"
+file = "a_format_float.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_format_zero"
+group = "A"
+gen = "format"
+value = 0
+file = "a_format_zero.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_format_missing"
+group = "A"
+gen = "format_missing"
+file = "a_format_missing.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_extra_key"
+group = "A"
+gen = "extra_key"
+file = "a_extra_key.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_values_list"
+group = "A"
+gen = "values_list"
+file = "a_values_list.json"
+outcome = "bad"
+reason = "not persistent data"
+tier = "default"
+
+[[row]]
+id = "a_format_2"
+group = "A"
+gen = "format"
+value = 2
+file = "a_format_2.json"
+outcome = "newer"
+tier = "default"
+
+[[row]]
+id = "a_format_2_extra"
+group = "A"
+gen = "extra_key"
+format = 2
+file = "a_format_2_extra.json"
+outcome = "newer"
+tier = "default"
+
+[[row]]
+id = "a_scheme_string"
+group = "A"
+gen = "scheme"
+value = "1"
+file = "a_scheme_string.json"
+outcome = "ok"
+dropped = 0
+scheme_changed = true
+tier = "default"
+
+[[row]]
+id = "a_lone_surrogate"
+group = "A"
+gen = "surrogate"
+file = "a_lone_surrogate.json"
+outcome = "ok"
+dropped = 0
+tier = "default"
+
+# --- Group B: size and the pre-scan (AC-F12-23) ---------------------------------------------
+
+[[row]]
+id = "b_dicts_over"
+group = "B"
+gen = "shape_over"
+shape = "dicts"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "default"
+
+[[row]]
+id = "b_lists_over"
+group = "B"
+gen = "shape_over"
+shape = "lists"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_floats_over"
+group = "B"
+gen = "shape_over"
+shape = "floats"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_names_over"
+group = "B"
+gen = "shape_over"
+shape = "names"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_dicts_32mib"
+group = "B"
+gen = "shape_32mib"
+shape = "dicts"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_lists_32mib"
+group = "B"
+gen = "shape_32mib"
+shape = "lists"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_floats_32mib"
+group = "B"
+gen = "shape_32mib"
+shape = "floats"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_names_32mib"
+group = "B"
+gen = "shape_32mib"
+shape = "names"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_dicts_at"
+group = "B"
+gen = "shape_at"
+shape = "dicts"
+outcome = "any"
+tier = "slow"
+
+[[row]]
+id = "b_lists_at"
+group = "B"
+gen = "shape_at"
+shape = "lists"
+outcome = "any"
+tier = "slow"
+
+[[row]]
+id = "b_floats_at"
+group = "B"
+gen = "shape_at"
+shape = "floats"
+outcome = "any"
+tier = "slow"
+
+[[row]]
+id = "b_names_at"
+group = "B"
+gen = "shape_at"
+shape = "names"
+outcome = "any"
+tier = "slow"
+
+[[row]]
+id = "b_labels_at"
+group = "B"
+gen = "shape_at"
+shape = "labels"
+outcome = "any"
+tier = "slow"
+
+[[row]]
+id = "b_labels_over"
+group = "B"
+gen = "shape_over"
+shape = "labels"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_sparse_over"
+group = "B"
+gen = "sparse"
+size = "over"
+outcome = "bad"
+reason = "over 32 MB"
+loads = "never"
+tier = "default"
+
+[[row]]
+id = "b_string_over"
+group = "B"
+gen = "string_over"
+outcome = "bad"
+reason = "over 32 MB"
+loads = "never"
+tier = "slow"
+
+[[row]]
+id = "b_sparse_4gib"
+group = "B"
+gen = "sparse"
+size = "4gib"
+outcome = "bad"
+reason = "over 32 MB"
+loads = "never"
+max_seconds = 1.0
+tier = "slow"
+
+[[row]]
+id = "b_nonascii_over"
+group = "B"
+gen = "nonascii_over"
+outcome = "bad"
+reason = "not persistent data"
+loads = "never"
+tier = "default"
+
+[[row]]
+id = "b_nonascii_at"
+group = "B"
+gen = "nonascii_at"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+# --- Group C: bad entries are dropped, the rest kept (AC-F12-24) ----------------------------
+
+[[row]]
+id = "c_name_dunder"
+group = "C"
+gen = "value_name"
+name = "__class__"
+file = "c_name_dunder.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_clear"
+group = "C"
+gen = "value_name"
+name = "_clear"
+file = "c_name_clear.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_space"
+group = "C"
+gen = "value_name"
+name = "a b"
+file = "c_name_space.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_keyword"
+group = "C"
+gen = "value_name"
+name = "for"
+file = "c_name_keyword.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_not_nfkc"
+group = "C"
+gen = "value_name"
+name = "ﬁle"
+file = "c_name_not_nfkc.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_256"
+group = "C"
+gen = "long_name"
+chars = 256
+file = "c_name_256.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_name_255"
+group = "C"
+gen = "long_name"
+chars = 255
+file = "c_name_255.json"
+outcome = "ok"
+dropped = 0
+tier = "default"
+
+[[row]]
+id = "c_names_10001"
+group = "C"
+gen = "many_names"
+names = 10001
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_value_101_deep"
+group = "C"
+gen = "deep_value"
+levels = 101
+file = "c_value_101_deep.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_value_100_deep"
+group = "C"
+gen = "deep_value"
+levels = 100
+file = "c_value_100_deep.json"
+outcome = "ok"
+dropped = 0
+tier = "default"
+
+[[row]]
+id = "c_value_1000001_members"
+group = "C"
+gen = "members"
+members = 1000001
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_seen_upper_hex"
+group = "C"
+gen = "seen_text"
+text = "3FA9C2D81B07"
+file = "c_seen_upper_hex.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_seen_11_hex"
+group = "C"
+gen = "seen_text"
+text = "0123456789a"
+file = "c_seen_11_hex.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_seen_tilde_0"
+group = "C"
+gen = "seen_text"
+text = "0123456789ab~0"
+file = "c_seen_tilde_0.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_seen_tilde_8_digits"
+group = "C"
+gen = "seen_text"
+text = "0123456789ab 0123456789ab~10000000"
+file = "c_seen_tilde_8_digits.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_slash"
+group = "C"
+gen = "seen_label"
+label = "a/b"
+file = "c_label_slash.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_space"
+group = "C"
+gen = "seen_label"
+label = "a b"
+file = "c_label_space.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_quote"
+group = "C"
+gen = "seen_label"
+label = 'a"b'
+file = "c_label_quote.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_backslash"
+group = "C"
+gen = "seen_label"
+label = 'a\b'
+file = "c_label_backslash.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_nul"
+group = "C"
+gen = "seen_label"
+label = "a\u0000b"
+file = "c_label_nul.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_label_256"
+group = "C"
+gen = "long_label"
+chars = 256
+file = "c_label_256.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_menu_1025"
+group = "C"
+gen = "long_menu"
+chars = 1025
+file = "c_menu_1025.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_kind_65"
+group = "C"
+gen = "long_kind"
+chars = 65
+file = "c_kind_65.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_kinds_33"
+group = "C"
+gen = "many_kinds"
+kinds = 33
+file = "c_kinds_33.json"
+outcome = "ok"
+dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_unlock_duplicate"
+group = "C"
+gen = "unlock_dup"
+file = "c_unlock_duplicate.json"
+outcome = "ok"
+min_dropped = 1
+tier = "default"
+
+[[row]]
+id = "c_scheme_2"
+group = "C"
+gen = "scheme"
+value = 2
+file = "c_scheme_2.json"
+outcome = "ok"
+dropped = 0
+scheme_changed = true
+tier = "default"

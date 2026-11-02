@@ -1,0 +1,295 @@
+{
+ "commands": [
+  {
+   "reason": "new_game",
+   "state": {
+    "music": [],
+    "sounds": []
+   },
+   "type": "AudioRestore"
+  },
+  {
+   "stage": {
+    "background": "bg river",
+    "sprites": []
+   },
+   "type": "ShowStage"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Start.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/af953cad70a2",
+   "speaker": null,
+   "text": "Start.",
+   "type": "Say"
+  },
+  {
+   "backgrounds": [
+    "bg grain"
+   ],
+   "sprites": [
+    "hana happy"
+   ],
+   "type": "PrefetchImages"
+  },
+  {
+   "stage": {
+    "background": "bg grain",
+    "sprites": []
+   },
+   "transition": {
+    "calm": false,
+    "color": null,
+    "direction": null,
+    "flashes": true,
+    "kind": "glitch",
+    "mask": null,
+    "name": "glitch",
+    "reverse": false,
+    "seconds": null,
+    "sid": "start/eb421edd9763",
+    "soft": 0.1,
+    "type": "TransitionSpec"
+   },
+   "type": "ShowStage"
+  },
+  {
+   "lasting": {
+    "on": [
+     {
+      "kind": "colorshift",
+      "size": null
+     },
+     {
+      "kind": "static",
+      "size": "small"
+     }
+    ]
+   },
+   "stops": [
+    [
+     "static",
+     null
+    ],
+    [
+     "colorshift",
+     null
+    ]
+   ],
+   "type": "Glitch"
+  },
+  {
+   "for_stage": true,
+   "hide_box": true,
+   "seconds": null,
+   "sid": "start/eb421edd9763",
+   "type": "StoryWait",
+   "wait_id": 1
+  },
+  {
+   "stage": {
+    "background": "bg grain",
+    "sprites": [
+     {
+      "at": "center",
+      "flip": false,
+      "image": "hana happy",
+      "layer": 0,
+      "tag": "hana",
+      "zoom": 1.0
+     }
+    ]
+   },
+   "type": "ShowStage"
+  },
+  {
+   "bursts": [
+    {
+     "kind": "jitter",
+     "seconds": 1.0,
+     "sid": "start/efc27832eefe~3",
+     "size": null,
+     "tag": "hana",
+     "type": "GlitchBurst"
+    },
+    {
+     "kind": "tear",
+     "seconds": 0.3,
+     "sid": "start/efc27832eefe~4",
+     "size": null,
+     "tag": null,
+     "type": "GlitchBurst"
+    }
+   ],
+   "lasting": {
+    "on": [
+     {
+      "kind": "colorshift",
+      "size": null
+     },
+     {
+      "kind": "static",
+      "size": "small"
+     }
+    ]
+   },
+   "type": "Glitch"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "You came back.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/845fa312d1e5",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "You came back.",
+   "type": "Say"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "You always ",
+      "type": "Span"
+     },
+     {
+      "style": {
+       "effect": {
+        "kind": "glitch",
+        "type": "TextEffect"
+       },
+       "type": "Style"
+      },
+      "text": "come back",
+      "type": "Span"
+     },
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": ".",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/d5b3c3c79db5",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "You always {glitch}come back{/glitch}.",
+   "type": "Say"
+  },
+  {
+   "lasting": {
+    "on": []
+   },
+   "stops": [
+    [
+     "tear",
+     null
+    ],
+    [
+     "colorshift",
+     null
+    ],
+    [
+     "static",
+     null
+    ],
+    [
+     "jitter",
+     null
+    ]
+   ],
+   "type": "Glitch"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "...Sorry. Where were we?",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/daf6f5697c65",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "...Sorry. Where were we?",
+   "type": "Say"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "End.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/54b507257aa0",
+   "speaker": null,
+   "text": "End.",
+   "type": "Say"
+  },
+  {
+   "type": "StoryEnded"
+  }
+ ],
+ "fixture": "walk",
+ "image_files": [
+  "images/bg/ember.png",
+  "images/bg/sea.png",
+  "images/bg/river.png",
+  "images/hana/happy.png",
+  "images/hana/sad.png",
+  "images/daichi/grin.png",
+  "images/bg/grain.png"
+ ],
+ "seed": 42
+}

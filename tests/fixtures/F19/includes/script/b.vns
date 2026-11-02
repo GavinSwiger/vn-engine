@@ -1,0 +1,7 @@
+label b_path:
+    "B."
+    ending b1 "B One"
+label b_menu:
+    menu:
+        "Go":
+            ending b2 "B Two" 0

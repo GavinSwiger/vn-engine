@@ -1,0 +1,172 @@
+# Paper Lanterns: the example story that comes with vn-engine.
+#
+# The story starts in this file, script/main.vns. Read it from top to bottom: each
+# comment explains the line below it. A line that starts with # is a comment. The game
+# skips comments, so use them for your own notes.
+#
+# Change this story or replace it with your own. Every rule is in
+# docs/script-language.md.
+#
+# Players can save at any line or menu: F5 saves at once, F9 loads the newest of those
+# quick saves, and the game menu (Esc) has Save and Load pages. The game also saves by
+# itself at every menu, at each chapter, every 5 minutes, and when the player leaves.
+# A save remembers the line, the pictures, the music, and every story variable, so
+# the story needs nothing for it. Saves made while you test are in the saves folder.
+
+# "include" adds another story file to the game. The path starts in the script folder.
+# Labels and characters work across files, so the order of the files doesn't matter.
+include "chapter1.vns"
+include "routes/daichi.vns"
+include "endings.vns"
+
+# "define" names a character. Only a defined name can speak. The color is the color of
+# the name above the character's lines. name_from="hana_name" takes the name to show
+# from the story variable hana_name, so it can change during the story.
+# blip="..." plays a short sound from the audio folder as the character's lines type, on
+# every second letter or digit. blip_pitch=0.1 varies its pitch a little each time, and
+# blip_every=3 and blip_volume=70 make Daichi's blips sparser and quieter.
+define hana = Character(name_from="hana_name", color="#b03070", blip="blips/hana.wav", blip_pitch=0.1)
+define daichi = Character("Daichi", color="#3a6aa8", blip="blips/daichi.wav", blip_every=3, blip_volume=70)
+# A Character("") has no name plate. text_color and text_italic style every line it
+# speaks: here your own thoughts, in blue italics.
+define thought = Character("", text_color="#1e4a9c", text_italic=True)
+# "define" can also name a value that never changes, like this list of fortunes.
+define fortunes = ["great luck", "small luck", "bad luck"]
+# "define" can also make a transition of your own. Mask uncovers the new picture through
+# a gray picture in the game folder: its black parts first, its white parts last.
+# masks/lantern_glow.png is darkest in the middle, so the new picture spreads out from
+# there like lantern light, over 1.2 seconds. Write "with lantern" to use it, as
+# Chapter 1's card does.
+define lantern = Mask("masks/lantern_glow.png", 1.2)
+
+# "default" names a story variable and its starting value. Saves remember it, and a
+# save made before you added a default still loads: the new variable gets its starting
+# value. Give every variable your story changes a default.
+default trust = 0
+default bought_lantern = False
+# Hana's name plate shows "???" until she says who she is.
+default hana_name = "???"
+default fortune = ""
+# Daichi's two topics on the bridge: each one is hidden once you have asked it.
+default asked_hana = False
+default asked_bridge = False
+# Who liked the wish written on the lantern (the poem game in routes/daichi.vns).
+default wish_for = None
+# Hana's cross-examination on the bridge: the statement the player was on, and what they
+# did there (routes/daichi.vns).
+default hana_at = None
+default hana_shown = {}
+# The replies picked in Hana's texts after the walk home (the phone chat in endings.vns).
+default hana_replies = {}
+# "default persistent." names a value the game remembers across playthroughs: quitting,
+# a new game, loading a save, and rolling back never change it.
+default persistent.festivals = 0
+# "points" declares meters: whole numbers the story keeps, here how much Hana and Daichi
+# like you. "0 to 10" keeps both in that range, and each starts at 0. A meter may share
+# a character's name: points.hana is the meter, hana still the character. Meters are
+# saved and rolled back like story variables. In a test run, press F3 to watch them.
+points hana daichi 0 to 10
+# A meter can start somewhere else than its bottom: credibility starts at 3, its top. It is
+# how far Hana believes you when you question her on the bridge (routes/daichi.vns).
+points credibility 0 to 3 start 3
+
+# "lock route" declares a route: a label the player can reach only once it is open. Here
+# it is the true ending, the promise route that starts at the label promise in
+# endings.vns. "until sad, good" opens it once the player has reached both of those
+# endings, in any playthroughs. The game remembers endings and routes across
+# playthroughs, so a new game, a load, or rolling back never changes them. The last menu
+# in routes/daichi.vns reads persistent.routes to offer the route.
+lock route promise "Hana's Promise" until sad, good
+
+# "lock tip" and "lock item" declare the codex: a page of the game menu (Esc, then Codex)
+# that lists what the player has learned and what they carry. Every entry starts locked;
+# "unlock tip" and "unlock item" in the story give it to the player, with a notice. A tip
+# is kept across playthroughs, like an ending. An item belongs to this playthrough: it is
+# saved and rolled back like a story variable, and a new game starts with none. "in"
+# names the entry's tab. The quoted lines under it are its text, one paragraph per line;
+# {b}, {i}, and {color} work there.
+lock tip lanterns "Paper Lanterns" in "Festival":
+    "Every family folds a lantern from washi paper, writes a wish on its side, and lets the river carry it away on the last night of the festival."
+    "Nobody reads another person's wish. That is the {i}one{/i} rule."
+lock tip river_god "The River God" in "Legends":
+    "The old people say a god sleeps under the footbridge and grants one wish a year."
+    "Nobody agrees on whose. Daichi says it goes to whoever asks the loudest."
+# "image" gives an entry a picture, named as for "show": "items lantern" is
+# images/items/lantern.png. The codex makes a large picture smaller to fit.
+lock item lantern "Paper Lantern" in "Things" image items lantern:
+    "Bought at the stall by the river for three hundred yen. Wishes are extra."
+lock item fortune_slip "Fortune Slip" in "Things":
+    "A paper fortune from the stall, rolled tight. One hundred yen."
+lock item festival_map "Festival Map" in "Things":
+    "Hana's map of the festival, drawn in pencil on the back of a flyer. The footbridge has a star on it."
+    "In one corner, very small: {i}7:40 train. Don't be late!{/i}"
+
+# "label" names a scene. The story begins at the label called start. Once players
+# have saves, keep your label names: a save finds its line again inside its label, even
+# after you add lines around it.
+# The lines of a scene are indented below its label.
+label start:
+    # A line that starts with $ is one line of Python. This one changes the story
+    # variable trust, which later scenes check.
+    $ trust = 1
+    # "scene" sets the background and clears the stage. Pictures are named after their
+    # files in the images folder: "bg river_dusk" is images/bg/river_dusk.png.
+    scene bg river_dusk
+    # "play music" starts a song from the audio folder. It loops until another song
+    # plays or "stop music" ends it; fadein 2.0 brings it in over two seconds.
+    play music "bgm/lantern_walk.wav" fadein 2.0
+    # "play sound" plays an effect. With loop it repeats until "stop sound" ends it, so the
+    # river runs under everything that follows, other effects too. volume 40 plays it at
+    # 40% of the sound volume, quiet enough to stay in the background.
+    play sound "sfx/river.wav" loop volume 40
+    # "chapter" starts a part of the story: the screen fades to a title card, holds it
+    # three seconds, then fades to the stage. Set the scene above the chapter line, as
+    # here, so the card fades out to it. The first line after it is auto-saved, and saves
+    # in this part are named after the card ("Prologue"). prologue is the chapter's name:
+    # like a label name, one per chapter.
+    chapter prologue "Prologue"
+    # "nvl on" switches to full-screen text: a panel covers the scene, and each line is
+    # added below the one before it, like a page in a book. It suits long narration, a
+    # letter, or a memory. When the next line doesn't fit, a new page starts by itself.
+    nvl on
+    # Text in quotes on a line of its own is narration.
+    "The festival comes once a year, on the night the river runs slowest."
+    "Every family folds a paper lantern, writes a wish on its side, and lets the water carry it away."
+    "I hadn't been back in six years. Then Daichi called."
+    # Dialogue works as usual: the name goes on its own row, in the character's color.
+    daichi "Come for the lanterns. My cousin is visiting, and she keeps asking about you."
+    thought "I said I would think about it. I had already bought the ticket."
+    # "nvl clear" starts a new, empty page: here, for a jump in time.
+    nvl clear
+    "Three days later, the train left me at the bridge with one bag and no plan."
+    "The river was louder than I remembered."
+    # "nvl off" goes back to the text box, and empties the page.
+    nvl off
+    "The festival lanterns were already lit when I reached the river."
+    # "show" puts a character on the stage: "hana happy" is images/hana/happy.png. A
+    # character shown for the first time stands in the center. "with" at the end of a
+    # scene, show, or hide line picks a transition: dissolve blends the old picture into
+    # the new one over half a second. The story waits for it; a click finishes it at once.
+    show hana happy with dissolve
+    # "voice" gives the next line a recording from the audio folder (comments may come in
+    # between). It plays when the line appears and stops when the player moves on. The
+    # text still shows, so players who play without sound miss nothing.
+    voice "voice/hana_001.wav"
+    # A character's name before the text makes it dialogue. A word in between, like
+    # "surprised", is an attribute: it changes the speaker's picture for this line, here
+    # to images/hana/surprised.png, and the new face stays until something changes it.
+    # Inside the quotes, text tags go in { }: {b} starts bold and {/b} ends it.
+    hana surprised "You came! I didn't think you {b}would{/b}."
+    # {pause=0.5} stops the typing for half a second, then the line goes on.
+    hana "Oh, sorry. {pause=0.5}I'm Hana. Daichi's cousin."
+    # Setting hana_name changes Hana's name plate: from the next line on it reads "Hana".
+    $ hana_name = "Hana"
+    hana happy "He said you'd get lost at least twice."
+    hana "So I drew you a map."
+    # "unlock item" gives the player an item declared above: a notice shows "New item:
+    # Festival Map", and the codex lists it until the story takes it away.
+    unlock item festival_map
+    # thought, defined above, speaks without a name plate.
+    thought "Only once. Well, twice."
+    # "jump" goes to another scene and doesn't come back.
+    jump riverbank

@@ -1,0 +1,9 @@
+label start:
+    "Start."
+    $ i = 0
+    jump spin
+label spin:
+    $ i += 1
+    if i < N:
+        jump spin
+    "Done."

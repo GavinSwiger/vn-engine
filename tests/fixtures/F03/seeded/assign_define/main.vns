@@ -1,0 +1,6 @@
+define hana = Character("Hana", color="#e8a0b4")
+label start:
+    hana "Call me by my real name."
+    $ hana = Character("Hanako")
+    hana "There."
+    return

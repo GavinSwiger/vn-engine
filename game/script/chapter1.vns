@@ -1,0 +1,119 @@
+# Chapter 1: the river. main.vns includes this file.
+
+label riverbank:
+    # Two texts on a chapter line are a heading and a title: "Chapter 1" goes small above
+    # the title. A chapter's name may match a label's, like riverbank here. The scene
+    # doesn't change, so the card goes back to the river as it was. "with lantern" opens
+    # the card, and then the river, through the transition main.vns defines.
+    chapter riverbank "Chapter 1" "Wishes on the Water" with lantern
+    # Quoted text can go on over several lines; the lines are joined with one space.
+    "Paper lanterns drifted past us one by one, each carrying
+        somebody's wish downstream."
+    # "unlock tip" gives the player a tip declared in main.vns: a notice shows "New tip:
+    # Paper Lanterns", and the codex lists it from now on, in every playthrough.
+    unlock tip lanterns
+    # codex.tips lists the tips the player has. Tips are kept across playthroughs, so this
+    # line shows only once the river god's tip (on the bridge) was found in an earlier one.
+    if "river_god" in codex.tips:
+        thought "Somewhere under the footbridge, the river god was already counting wishes."
+    hana "Did you write one? Everybody writes one. But first, a fortune."
+    # "call" plays another scene, then comes back here when that scene says "return".
+    call draw_fortune
+
+    # "if" checks a condition, written in Python. The indented lines below it run only
+    # when the condition is true.
+    if fortune == "bad luck":
+        hana sad "Bad luck? Tie it to the rail. Then the river keeps it, not you."
+        # "lock item" takes an item away: the slip stays on the rail.
+        lock item fortune_slip
+        $ trust += 1
+    # "elif" checks another condition when the ones above were false.
+    elif fortune == "great luck":
+        hana happy "Great luck! See? The river likes you."
+    # "else" runs when no condition above was true.
+    else:
+        daichi "Small luck. Only Hana believes in those paper slips."
+
+    call lantern_stall
+    # "at" after a show line says where the character stands: left, center, right, or a
+    # place named in config.toml. Hana is back from the water's edge, on the left. A
+    # number after a transition is its length in seconds: a slower dissolve here.
+    show hana pout at left with dissolve 0.8
+    if bought_lantern and trust >= 2:
+        hana happy "You actually bought one! Here, the pen's still wet."
+        $ trust += 1
+    elif bought_lantern:
+        hana "Oh. You bought one. That's... nice."
+    else:
+        hana sad "Not even a small one?"
+        daichi "She's been saying \"just one more\" since six o'clock."
+
+    # Tip: a comment that begins with the word TODO is listed in the log while you test.
+    jump bridge
+
+label draw_fortune:
+    "\"One fortune, one hundred yen,\" the stall keeper said."
+    # "dice" is the story's own random source. dice.pick takes one item from a list.
+    # Its results are saved with the game, so loading a save gives the same slip.
+    $ fortune = dice.pick(fortunes)
+    # "unlock item" gives the player an item: the slip is in the codex until it is taken.
+    unlock item fortune_slip
+    # dice.roll(1, 6) is a whole number from 1 to 6, like a die: here a one in six chance.
+    if dice.roll(1, 6) == 6:
+        "The slip stuck to its neighbor, and I had to peel them apart."
+    # "pause" holds the story with an empty text box: a second of suspense before the
+    # slip is read. "pause" with no number waits for a click instead.
+    pause 1.0
+    # {var=fortune} shows what the story variable fortune holds as the line starts.
+    # {color=#9a1c14} colors the words up to {/color}. Make colored words bold too, for
+    # players who can't tell the colors apart.
+    "I unrolled the paper and read it twice: {b}{color=#9a1c14}{var=fortune}{/color}{/b}."
+    # "return" goes back to the line after the "call".
+    return
+
+label lantern_stall:
+    # "flowchart scene" as a label's first line puts the label on the Flowchart page (Esc,
+    # then Flowchart): a map of the story, with a box for each chapter, each ending, and
+    # each menu whose choices lead to different places. This line adds a box for the stall.
+    # Players can jump back to any box they have reached, with the story as it was then.
+    flowchart scene "The Lantern Stall"
+    # "hide" takes a character off the stage: Hana waits by the water while you shop.
+    # Write only the first word of the picture's name: hide hana, not hide hana happy.
+    hide hana with dissolve
+    # "play sound" without loop plays an effect once, over the music and the river.
+    play sound "sfx/chime.wav"
+    # {pause} on its own waits for a click; the text so far stays in the box.
+    "\"Three hundred yen,\" the stall keeper said. {pause}\"Wishes are extra.\""
+    # "menu" stops the story until the player picks one of its choices, shown as buttons.
+    # Its first line is the question: it stays in the text box while the player chooses.
+    # Each choice is text in quotes ending in ":", with what it does indented below it.
+    # After a pick, the story goes on below the menu. The game auto-saves as a menu
+    # appears, so a player can come back to this choice from the Auto page.
+    menu:
+        thought "Three hundred yen. Hana is watching from the water."
+        "Buy a lantern":
+            $ bought_lantern = True
+            unlock item lantern
+            # "points" inside a label changes a meter: += adds, -= takes away, = sets. A
+            # meter never goes past its range, so Hana's stops at 10.
+            points hana += 1
+            # A menu can go inside a choice: this question comes only after "Buy a lantern".
+            menu:
+                "\"Red or white?\" the stall keeper asked."
+                "Red, like the shrine gate":
+                    "I took the red one. It glowed like a coal in my hands."
+                "White, like the moon":
+                    "I took the white one. It was so light it hardly felt real."
+        # "if" after a choice's text lets the player pick the choice only when the condition
+        # is true when the menu appears. Otherwise it is hidden, or shown dimmed with a lock,
+        # as this game's config.toml asks with [choice] show_locked = true. Write a choice
+        # without "if" too, so there is always one to pick.
+        "Buy one and write Hana's name on it" if trust >= 2:
+            $ bought_lantern = True
+            unlock item lantern
+            $ trust += 1
+            points hana += 2
+            "I wrote her name small, in one corner, where she might not notice."
+        "Not this year":
+            "I put my coins away. Next year, maybe."
+    return

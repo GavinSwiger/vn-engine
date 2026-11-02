@@ -1,0 +1,3 @@
+﻿label chapter1:
+    "Hello from chapter one."
+    return

@@ -1,0 +1,49 @@
+{
+ "format": 1,
+ "identity_scheme": 1,
+ "position": {
+  "sid": "start/26021b18b2ed",
+  "at": [
+   "start",
+   [
+    1
+   ]
+  ]
+ },
+ "call_stack": [],
+ "variables": {
+  "wish": "a lantern"
+ },
+ "dice": "977afd8015414a94",
+ "stage": {
+  "background": "red",
+  "sprites": []
+ },
+ "audio": {
+  "music": [],
+  "sounds": []
+ },
+ "choices": {
+  "picks": [],
+  "waiting": null
+ },
+ "history": {
+  "entries": [
+   {
+    "kind": "line",
+    "sid": "start/26021b18b2ed",
+    "name": "",
+    "text": "Before."
+   }
+  ]
+ },
+ "chapter": {
+  "current": null
+ },
+ "points": {
+  "values": {}
+ },
+ "rollback": {
+  "enabled": true
+ }
+}

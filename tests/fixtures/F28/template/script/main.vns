@@ -1,0 +1,9 @@
+define hana = Character("Hana")
+label start:
+    scene bg grain
+    show hana happy at center
+    <S>
+    hana "A."
+    hana "B."
+    "End."
+<T>

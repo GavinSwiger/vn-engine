@@ -1,0 +1,150 @@
+# F20 hostile node-file manifest (05-security.md §5 groups A, B, E; 06-acceptance.md §0.4,
+# AC-F20-42, AC-F20-45, and AC-F20-41's persist half). Beside F11's hostile/saves/manifest.toml.
+# One row per input, built by gen_hostile_nodes.py at run time from an engine-written node file
+# (node "scene:stall", game "f20-template"; the state is F11's P8 with the node's key in its
+# flow path), so nothing goes stale when the state JSON gains a field.
+#
+# Tier rule (06 §0.4): in each group one row of each expected-outcome kind runs in the default
+# tier, plus every row that is cheap; the full-size rows are "slow".
+#
+# Group A (entries at a node name). Fields: entry (folder | file_symlink | dir_symlink |
+#   junction | fifo | hardlink_slot | hardlink_outside), read (read_node's status), os (any |
+#   windows | posix). Every row: never listed by FlowListJob; NodeFolder.remove takes only the
+#   entry (a link's target, quick-1.vnsave, and outside files keep their bytes).
+# Group B (names). Fields: name ("{k}" is a real node key, "{K}" it in uppercase, "{k15}" and
+#   "{k17}" 15 and 17 hex digits, "{fw}" 16 full-width digits), os. Every row: never listed or
+#   removed; NodeFolder.accepts is False; read, remove, and job raise ValueError with no os call.
+# Group E (the node file). Fields: gen (a generator in gen_hostile_nodes.py) plus its arguments,
+#   or like (an F11 hostile save row id whose recipe is applied to the node file; its F11 "full"
+#   status must equal this row's unless F11 says "any"); status (read_node's: ok | missing |
+#   unreadable | damaged | newer | other_game | any = ok or damaged); game_id (the reader's
+#   id, default "f20-template"; "none" for no id); size_first (over SAVE_FILE_MAX by lstat: no
+#   byte read). Every row: no exception; json.loads receives only str; line 2 is never
+#   base64-decoded; slot files, persistent.json, settings.json, and tmp_path/outside keep their
+#   SHA-256; the reason holds no path and no "aiko". Values TOML can't hold: "@null" is null,
+#   "@surrogate" is the lone surrogate U+D800.
+# Group E's menu- and minigame-position rows (AC-F20-26, AC-F20-33) need restore(fresh_menu=)
+# and the service: they come with F20 s4/s6. Groups C, D, F, G, H are tables in
+# tests/app/test_flow_service.py (s6); group J (headless ids) in tests/runtime (s4).
+
+row = [
+  # --- Group A: entries at a node name (SEC-F20-01(d)) --------------------------------------
+  { id = "a_folder", group = "A", entry = "folder", read = "missing", os = "any", tier = "default" },
+  { id = "a_file_symlink", group = "A", entry = "file_symlink", read = "missing", os = "any", tier = "default" },
+  { id = "a_dir_symlink", group = "A", entry = "dir_symlink", read = "missing", os = "any", tier = "default" },
+  { id = "a_junction", group = "A", entry = "junction", read = "missing", os = "windows", tier = "default" },
+  { id = "a_fifo", group = "A", entry = "fifo", read = "missing", os = "posix", tier = "default" },
+  { id = "a_hardlink_slot", group = "A", entry = "hardlink_slot", read = "damaged", os = "any", tier = "default" },
+  { id = "a_hardlink_outside", group = "A", entry = "hardlink_outside", read = "damaged", os = "any", tier = "default" },
+
+  # --- Group B: names (SEC-F20-01(b), (c)) --------------------------------------------------
+  { id = "b_upper_name", group = "B", name = "NODE-{k}.VNNODE", os = "any", tier = "default" },
+  { id = "b_bak", group = "B", name = "node-{k}.vnnode.bak", os = "any", tier = "default" },
+  { id = "b_hex_15", group = "B", name = "node-{k15}.vnnode", os = "any", tier = "default" },
+  { id = "b_hex_17", group = "B", name = "node-{k17}.vnnode", os = "any", tier = "default" },
+  { id = "b_upper_hex", group = "B", name = "node-{K}.vnnode", os = "any", tier = "default" },
+  { id = "b_newline", group = "B", name = "node-{k}\n.vnnode", os = "posix", tier = "default" },
+  { id = "b_full_width", group = "B", name = "node-{fw}.vnnode", os = "any", tier = "default" },
+  { id = "b_temp_bad_token", group = "B", name = ".node-{k}.vnnode.zzzzzzzz.tmp", os = "any", tier = "default" },
+  { id = "b_slot_name", group = "B", name = "quick-1.vnsave", os = "any", tier = "default" },
+  { id = "b_slot_temp", group = "B", name = ".quick-1.vnsave.0123abcd.tmp", os = "any", tier = "default" },
+
+  # --- Group E: F11's shapes with the node meta line (SEC-F20-07) ---------------------------
+  { id = "e_a_empty", group = "E", like = "a_empty", status = "damaged", tier = "default" },
+  { id = "e_a_newline_only", group = "E", like = "a_newline_only", status = "damaged", tier = "default" },
+  { id = "e_a_line1_8193", group = "E", like = "a_line1_8193", status = "damaged", tier = "default" },
+  { id = "e_a_bom", group = "E", like = "a_bom", status = "damaged", tier = "default" },
+  { id = "e_a_extra_key", group = "E", like = "a_extra_key", status = "damaged", tier = "default" },
+  { id = "e_a_game_dotdot", group = "E", like = "a_game_dotdot", status = "damaged", tier = "default" },
+  { id = "e_a_game_con", group = "E", like = "a_game_con", status = "damaged", tier = "default" },
+  { id = "e_a_game_10000", group = "E", like = "a_game_10000", status = "damaged", tier = "default" },
+  { id = "e_a_nested_8000", group = "E", like = "a_nested_8000", status = "damaged", tier = "default" },
+  { id = "e_a_state_format_2", group = "E", like = "a_state_format_2", status = "newer", tier = "default" },
+  { id = "e_b_state_plus_1", group = "E", like = "b_state_plus_1", status = "damaged", tier = "default" },
+  { id = "e_b_state_minus_1", group = "E", like = "b_state_minus_1", status = "damaged", tier = "default" },
+  { id = "e_b_thumb_plus_1", group = "E", like = "b_thumb_plus_1", status = "damaged", tier = "default" },
+  { id = "e_b_cut_in_line1", group = "E", like = "b_cut_in_line1", status = "damaged", tier = "default" },
+  { id = "e_b_cut_after_line1", group = "E", like = "b_cut_after_line1", status = "damaged", tier = "default" },
+  { id = "e_b_cut_in_line2", group = "E", like = "b_cut_in_line2", status = "damaged", tier = "default" },
+  { id = "e_b_cut_after_line2", group = "E", like = "b_cut_after_line2", status = "damaged", tier = "default" },
+  { id = "e_b_cut_in_line3", group = "E", like = "b_cut_in_line3", status = "damaged", tier = "default" },
+  { id = "e_b_cut_last_newline", group = "E", like = "b_cut_last_newline", status = "damaged", tier = "default" },
+  { id = "e_b_crlf", group = "E", like = "b_crlf", status = "damaged", tier = "default" },
+  { id = "e_b_junk_after_line3", group = "E", like = "b_junk_after_line3", status = "damaged", tier = "default" },
+  { id = "e_b_thumb_0", group = "E", like = "b_thumb_0", status = "damaged", tier = "default" },
+  { id = "e_b_thumb_over", group = "E", like = "b_thumb_over", status = "damaged", tier = "default" },
+  { id = "e_b_state_declared_over", group = "E", like = "b_state_declared_over", status = "damaged", tier = "default" },
+  { id = "e_b_sparse_over", group = "E", like = "b_sparse_over", status = "damaged", size_first = true, tier = "default" },
+  { id = "e_b_sparse_4_gib", group = "E", like = "b_sparse_4_gib", status = "damaged", size_first = true, tier = "slow" },
+  { id = "e_b_grows_during_read", group = "E", like = "b_grows_during_read", status = "damaged", tier = "default" },
+  { id = "e_b_newline_in_line2", group = "E", like = "b_newline_in_line2", status = "damaged", tier = "default" },
+  { id = "e_b_line2_boundary", group = "E", like = "b_line2_boundary_not_newline", status = "damaged", tier = "default" },
+  { id = "e_b_line3_boundary", group = "E", like = "b_line3_boundary_not_newline", status = "damaged", tier = "default" },
+  { id = "e_d_prescan_over", group = "E", like = "d_prescan_over", status = "damaged", tier = "default" },
+  { id = "e_d_prescan_at", group = "E", like = "d_prescan_at", status = "any", tier = "slow" },
+  { id = "e_d_nested_100000", group = "E", like = "d_nested_100000", status = "damaged", tier = "default" },
+  { id = "e_d_nan", group = "E", like = "d_nan", status = "damaged", tier = "default" },
+  { id = "e_d_infinity", group = "E", like = "d_infinity", status = "damaged", tier = "default" },
+  { id = "e_d_negative_infinity", group = "E", like = "d_negative_infinity", status = "damaged", tier = "default" },
+  { id = "e_d_duplicate_nested", group = "E", like = "d_duplicate_nested", status = "damaged", tier = "default" },
+  { id = "e_d_duplicate_top", group = "E", like = "d_duplicate_top", status = "damaged", tier = "default" },
+  { id = "e_d_int_4301_digits", group = "E", like = "d_int_4301_digits", status = "damaged", tier = "default" },
+  { id = "e_d_int_4300_digits", group = "E", like = "d_int_4300_digits", status = "ok", tier = "default" },
+  { id = "e_d_non_ascii", group = "E", like = "d_non_ascii", status = "damaged", tier = "default" },
+  { id = "e_d_format_2", group = "E", like = "d_format_2", status = "newer", tier = "default" },
+  { id = "e_d_unknown_key", group = "E", like = "d_unknown_key", status = "newer", tier = "default" },
+  { id = "e_d_identity_scheme_2", group = "E", like = "d_identity_scheme_2", status = "ok", tier = "default" },
+  { id = "e_d_shape_zeros", group = "E", like = "d_shape_zeros", status = "any", tier = "default" },
+  { id = "e_d_shape_floats", group = "E", like = "d_shape_floats", status = "any", tier = "default" },
+  { id = "e_d_shape_dicts", group = "E", like = "d_shape_dicts", status = "any", tier = "default" },
+  { id = "e_d_shape_lists", group = "E", like = "d_shape_lists", status = "any", tier = "default" },
+  { id = "e_d_shape_long_keys", group = "E", like = "d_shape_long_keys", status = "any", tier = "default" },
+  { id = "e_d_shape_e_acute", group = "E", like = "d_shape_e_acute", status = "any", tier = "default" },
+  { id = "e_d_shape_astral", group = "E", like = "d_shape_astral", status = "any", tier = "default" },
+  { id = "e_d_shape_big_ints", group = "E", like = "d_shape_big_ints", status = "any", tier = "default" },
+  { id = "e_d_shape_short_strings", group = "E", like = "d_shape_short_strings", status = "any", tier = "default" },
+  { id = "e_d_shape_zeros_full", group = "E", like = "d_shape_zeros_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_floats_full", group = "E", like = "d_shape_floats_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_dicts_full", group = "E", like = "d_shape_dicts_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_lists_full", group = "E", like = "d_shape_lists_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_long_keys_full", group = "E", like = "d_shape_long_keys_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_e_acute_full", group = "E", like = "d_shape_e_acute_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_astral_full", group = "E", like = "d_shape_astral_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_big_ints_full", group = "E", like = "d_shape_big_ints_full", status = "any", tier = "slow" },
+  { id = "e_d_shape_short_strings_full", group = "E", like = "d_shape_short_strings_full", status = "any", tier = "slow" },
+
+  # --- Group E: the node meta line and line 2 (SEC-F20-07, SEC-F11-11) ----------------------
+  { id = "e_valid", group = "E", gen = "valid", status = "ok", tier = "default" },
+  { id = "e_vnnode_2", group = "E", gen = "meta", key = "vnnode", value = 2, status = "newer", tier = "default" },
+  { id = "e_vnnode_2_garbage", group = "E", gen = "newer_garbage", status = "newer", tier = "default" },
+  { id = "e_vnnode_2_other_faults", group = "E", gen = "newer_faults", status = "newer", tier = "default" },
+  { id = "e_vnnode_true", group = "E", gen = "meta", key = "vnnode", value = true, status = "damaged", tier = "default" },
+  { id = "e_vnnode_float", group = "E", gen = "meta", key = "vnnode", value = 1.0, status = "damaged", tier = "default" },
+  { id = "e_vnnode_string", group = "E", gen = "meta", key = "vnnode", value = "1", status = "damaged", tier = "default" },
+  { id = "e_vnnode_0", group = "E", gen = "meta", key = "vnnode", value = 0, status = "damaged", tier = "default" },
+  { id = "e_vnnode_duplicate", group = "E", gen = "dup_vnnode", status = "damaged", tier = "default" },
+  { id = "e_vnsave_meta", group = "E", gen = "vnsave_meta", status = "damaged", tier = "default" },
+  { id = "e_seventh_key", group = "E", gen = "meta_extra", status = "damaged", tier = "default" },
+  { id = "e_missing_node", group = "E", gen = "meta_drop", key = "node", status = "damaged", tier = "default" },
+  { id = "e_missing_game", group = "E", gen = "meta_drop", key = "game", status = "damaged", tier = "default" },
+  { id = "e_missing_vnnode", group = "E", gen = "meta_drop", key = "vnnode", status = "damaged", tier = "default" },
+  { id = "e_node_1201", group = "E", gen = "meta_text", key = "node", char = "a", chars = 1201, status = "damaged", tier = "default" },
+  { id = "e_node_1200_own_id", group = "E", gen = "node_id", char = "a", chars = 1200, status = "ok", tier = "default" },
+  { id = "e_node_empty", group = "E", gen = "meta", key = "node", value = "", status = "damaged", tier = "default" },
+  { id = "e_node_other_id", group = "E", gen = "meta", key = "node", value = "chapter:river", status = "damaged", tier = "default" },
+  { id = "e_node_surrogate", group = "E", gen = "meta", key = "node", value = "@surrogate", status = "damaged", tier = "default" },
+  { id = "e_node_number", group = "E", gen = "meta", key = "node", value = 7, status = "damaged", tier = "default" },
+  { id = "e_meta_non_ascii", group = "E", gen = "meta_raw", old = '"node":"scene:stall"', new = "\"node\":\"scéne:stall\"", status = "damaged", tier = "default" },
+  { id = "e_state_format_0", group = "E", gen = "meta", key = "state_format", value = 0, status = "damaged", tier = "default" },
+  { id = "e_state_format_2", group = "E", gen = "meta", key = "state_format", value = 2, status = "newer", tier = "default" },
+  { id = "e_game_other", group = "E", gen = "meta", key = "game", value = "other-game", status = "other_game", tier = "default" },
+  { id = "e_game_this", group = "E", gen = "meta", key = "game", value = "f20-template", status = "ok", tier = "default" },
+  { id = "e_game_null", group = "E", gen = "meta", key = "game", value = "@null", status = "ok", tier = "default" },
+  { id = "e_game_set_reader_none", group = "E", gen = "valid", game_id = "none", status = "ok", tier = "default" },
+  { id = "e_game_other_on_damaged", group = "E", gen = "meta2", key = "game", value = "other-game", key2 = "thumb", value2 = 0, status = "damaged", tier = "default" },
+  { id = "e_line2_space", group = "E", gen = "line2", text = "{\"jpeg\": null}\n", status = "damaged", tier = "default" },
+  { id = "e_line2_empty_jpeg", group = "E", gen = "line2", text = "{\"jpeg\":\"\"}\n", status = "damaged", tier = "default" },
+  { id = "e_line2_not_json", group = "E", gen = "line2", text = "ZZMARK\n", status = "damaged", tier = "default" },
+  { id = "e_line2_real_jpeg", group = "E", gen = "line2_jpeg", status = "damaged", tier = "default" },
+  { id = "e_path_without_key", group = "E", gen = "path", at = "none", status = "damaged", tier = "default" },
+]

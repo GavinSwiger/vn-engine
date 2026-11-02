@@ -1,0 +1,17 @@
+define d = Character("Daichi")
+default asked_fox = False
+default asked_bridge = False
+label start:
+    "Daichi waits."
+    jump talk
+label talk:
+    menu:
+        d "What do you want to ask?"
+        "The fox shrine" if not asked_fox:
+            $ asked_fox = True
+            jump talk
+        "The old bridge" if not asked_bridge:
+            $ asked_bridge = True
+            jump talk
+        "That's all":
+            return

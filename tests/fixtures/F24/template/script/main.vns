@@ -1,0 +1,18 @@
+points sayori natsuki yuri
+points monika
+default poem_for = None
+define w8 = {
+    "sunshine":   {"sayori": 3, "natsuki": 1},
+    "candy":      {"natsuki": 3},
+    "melancholy": {"yuri": 3, "sayori": 1},
+    "whisper":    "yuri",
+    "blank":      {},
+    "zero":       {"monika": 0},
+    "ribbon":     {"sayori": 2},
+    "lantern":    {"yuri": 1, "natsuki": 1},
+    }
+label start:
+    "Before."
+    minigame poem_game words=w8 rounds=2 page_words=3 into poem_for
+    "After {var=poem_for}."
+    return

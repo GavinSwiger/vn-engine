@@ -1,0 +1,11 @@
+include "ch.vns"
+
+label start:
+    "Go."
+    call setup
+    if (seen := 5) > 1:
+        "W."
+    $ round = 1
+    $ x = round
+    if met and total == 3 and k == 2:
+        "Yes."

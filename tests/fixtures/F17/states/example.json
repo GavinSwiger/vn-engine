@@ -1,0 +1,99 @@
+{
+ "format": 1,
+ "identity_scheme": 1,
+ "position": {
+  "sid": "start/e6db5068f584",
+  "at": [
+   "start",
+   [
+    5
+   ]
+  ]
+ },
+ "call_stack": [],
+ "variables": {
+  "wish": "a lantern"
+ },
+ "dice": "977afd8015414a94",
+ "stage": {
+  "background": "red",
+  "sprites": []
+ },
+ "audio": {
+  "music": [],
+  "sounds": []
+ },
+ "choices": {
+  "picks": [],
+  "waiting": null
+ },
+ "history": {
+  "entries": [
+   {
+    "kind": "line",
+    "sid": "start/26021b18b2ed",
+    "name": "",
+    "text": "Before."
+   },
+   {
+    "kind": "line",
+    "sid": "start/0ff871ab010a",
+    "name": "",
+    "text": "The festival comes once a year."
+   },
+   {
+    "kind": "line",
+    "sid": "start/66739b0087b9",
+    "name": "Hana",
+    "text": "You're thinking about last year again."
+   },
+   {
+    "kind": "line",
+    "sid": "start/e6db5068f584",
+    "name": "",
+    "text": "I didn't answer."
+   }
+  ]
+ },
+ "chapter": {
+  "current": null
+ },
+ "points": {
+  "values": {}
+ },
+ "rollback": {
+  "enabled": true
+ },
+ "nvl": {
+  "on": true,
+  "page": [
+   {
+    "sid": "prologue/3f2a9c1d0b7e",
+    "name": "",
+    "color": null,
+    "spans": [
+     {
+      "text": "The festival comes once a year, on the night the river runs "
+     },
+     {
+      "text": "slowest",
+      "italic": true
+     },
+     {
+      "text": "."
+     }
+    ]
+   },
+   {
+    "sid": "prologue/9c1d4e5f6a7b",
+    "name": "Hana",
+    "color": "#F0A0C0",
+    "spans": [
+     {
+      "text": "You're thinking about last year again."
+     }
+    ]
+   }
+  ]
+ }
+}

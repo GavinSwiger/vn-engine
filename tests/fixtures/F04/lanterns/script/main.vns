@@ -1,0 +1,5 @@
+# F04 06 §5.3: 02-script.md §4 verbatim is chapter1.vns; this file only starts it.
+include "chapter1.vns"
+
+label start:
+    jump riverbank

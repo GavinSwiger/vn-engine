@@ -1,0 +1,14 @@
+define hana = Character("Hana")
+label start:
+    play music "bgm/festival.ogg" fadein 2.0
+    play sound "sfx/rain.ogg" loop volume 40
+    play sound "sfx/door.ogg"
+    voice "voice/hana_014.ogg"
+    hana "A."
+    play music "bgm/omen.ogg"
+    queue music "bgm/shrine_steps.ogg"
+    stop sound
+    "B."
+    stop music fadeout 0
+    "C."
+    return

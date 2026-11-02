@@ -1,0 +1,13 @@
+lock item rusty_key "Rusty Key"
+lock item string "String"
+lock item magnet "Magnet"
+lock item magnet_string "Magnet on a String"
+lock item door_key "Door Key"
+lock tip lanterns "Paper Lanterns"
+default attic_state = None
+label start:
+    "Before."
+    minigame puzzle_room skippable room=attic state=attic_state into attic_state
+    "After."
+    return
+include "rooms.vns"

@@ -1,0 +1,19 @@
+define hana = Character("Hana")
+default coins = 2
+default lantern = "none"
+label start:
+    "Before."
+    menu:
+        hana "Will you buy a lantern?"
+        "The red one":
+            $ lantern = "red"
+        "The paper crane (2 coins)" if coins >= 2:
+            $ coins -= 2
+            $ lantern = "crane"
+        "Not this year":
+            jump walk_home
+    "After: {var=lantern}."
+    return
+label walk_home:
+    "Home."
+    return

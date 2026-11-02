@@ -1,0 +1,28 @@
+# Exact, hashed versions for CI and builds (SEC-F01-22, TR-F01-74).
+# Install with:  pip install --require-hashes -r requirements-ci.txt
+# Maintained by hand: for each package, `pip download <name>==<version> --no-deps
+# --only-binary=:all: --python-version 3.12 --implementation cp --platform <tag>` for every
+# CI platform, then `pip hash <wheel>`. pygame-ce has one wheel per CI platform:
+# win_amd64 (windows-latest), macosx_10_13_universal2 (macos-latest),
+# manylinux2014_x86_64 (ubuntu-latest).
+
+pygame-ce==2.5.8 \
+    --hash=sha256:2cfe8afe1e7955780f0bd4f01d65f1b4903f561407052081cfcec31e80957c3c \
+    --hash=sha256:0ae2141c81595b4b13b780d325b9ea0016c6647f8b3a6004278b00765a96664d \
+    --hash=sha256:bf9c8b4376077efec6ae31443172ae98545f278d0e4426852e81c28ab1f5d7c2
+pytest==9.2.0 \
+    --hash=sha256:07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588
+pytest-xdist==3.8.0 \
+    --hash=sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88
+execnet==2.1.2 \
+    --hash=sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec
+pluggy==1.7.0 \
+    --hash=sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec
+iniconfig==2.3.1 \
+    --hash=sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+pygments==2.21.0 \
+    --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9
+colorama==0.4.6 ; sys_platform == "win32" \
+    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6

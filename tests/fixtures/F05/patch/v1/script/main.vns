@@ -1,0 +1,9 @@
+# AC-F05-06: version 1 of a patched game. Line 7 shows the define.
+define shrine = "Inari"
+default visits = 0
+
+label start:
+    "We climb the steps."
+    "At {var=shrine}."
+    $ visits += 1
+    "Next."

@@ -1,0 +1,8 @@
+label ch3:
+    "Daichi waited by the bridge."
+    if met_daichi:
+        "He waved."
+    return
+label later:
+    $ met_daichi = True
+    return

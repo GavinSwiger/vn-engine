@@ -1,0 +1,10 @@
+label start:
+    "Start."
+    $ n = 0
+    call r
+    "Back."
+label r:
+    $ n += 1
+    if n < LIMIT:
+        call r
+    "Deep."

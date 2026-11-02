@@ -1,0 +1,10 @@
+define hana = Character("Hana")
+default persistent.festivals = 0
+default persistent.hana_remembers = False
+default trust = 0
+label start:
+    hana "Start."
+    <S>
+    "End."
+    return
+<T>

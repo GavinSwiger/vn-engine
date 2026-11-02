@@ -1,0 +1,3 @@
+label b_scene:
+    "The lanterns rise."
+    return

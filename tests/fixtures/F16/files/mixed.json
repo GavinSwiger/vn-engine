@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "values": {
+    "text_cps": 40,
+    "music_volume": 400,
+    "foo": 1,
+    "bar": 2
+  }
+}

@@ -1,0 +1,24 @@
+define hana = Character("Hana", color="#A02860")
+define thought = Character("", text_color="#1E4A9C", text_italic=True)
+default wish = "a lantern"
+label start:
+    scene red
+    "Before."
+    nvl on
+    "The festival comes once a year."
+    hana "You're thinking about {b}last year{/b} again."
+    thought "I didn't{pause=0.5} answer."
+    nvl clear
+    "Three days later, {var=wish} came."
+    $ wish = "a letter"
+    "It was {var=wish}."
+    menu:
+        hana "Will you open it?"
+        "Open it":
+            $ wish = "opened"
+        "Not yet":
+            $ wish = "kept"
+    "After the pick."
+    nvl off
+    hana "Back in the box."
+    return

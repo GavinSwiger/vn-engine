@@ -1,0 +1,4 @@
+label setup:
+    $ met = True
+    $ total = 0
+    $ for k in range(3): total += k

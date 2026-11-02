@@ -1,0 +1,11 @@
+define hana = Character("Hana")
+label start:
+    scene bg room
+    "Start."
+    effect window_title "She is here"
+    hana "I know who you are, {username}."
+    effect crash "Traceback (most recent call last):\n  File \"lantern.vns\", line 7\nLanternError: Hana is not responding"
+    hana "...That wasn't me. Was it?"
+    effect window_title off
+    "Morning came."
+    ending lantern "Lantern End" "Morning"

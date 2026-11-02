@@ -1,0 +1,13 @@
+define hana = Character("Hana")
+default turns = 0
+default found = None
+points hana 0 to 10
+lock item paper_lantern "Paper Lantern"
+lock tip lanterns "Paper Lanterns"
+label start:
+    hana "Before."
+    minigame probe pairs=6 into turns
+    "After {var=turns}."
+    $ r = dice.roll(1, 100)
+    "Roll {var=r}."
+    return

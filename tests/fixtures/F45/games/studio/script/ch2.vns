@@ -1,0 +1,13 @@
+label club:
+    menu:
+        "Go to the river":
+            jump river
+        "Stay":
+            "You stay."
+    return
+label bridge:
+    "The bridge."
+label river:
+    "The river."
+label side:
+    "Unreached."

@@ -1,0 +1,19 @@
+default flag = False
+define hana = Character("Hana")
+label start:
+    show hana happy
+    "A."
+    if flag:
+        scene bg a
+    else:
+        scene bg b
+    show hana
+    call side
+    hana pout "B."
+    jump end_part
+label side:
+    show daichi grin
+    return
+label end_part:
+    scene bg c
+    "C."

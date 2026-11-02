@@ -1,0 +1,39 @@
+{
+ "format": 1,
+ "identity_scheme": 1,
+ "position": {
+  "sid": "start/0cc25eb909ae",
+  "at": [
+   "start",
+   [
+    1
+   ]
+  ]
+ },
+ "call_stack": [],
+ "variables": {
+  "coins": 2,
+  "lantern": "none"
+ },
+ "dice": "977afd8015414a94",
+ "stage": {
+  "background": null,
+  "sprites": []
+ },
+ "audio": {
+  "music": [],
+  "sounds": []
+ },
+ "choices": {
+  "picks": [],
+  "waiting": {
+   "pickable": [
+    "6eb01389ed78",
+    "377c96004ada",
+    "5ac19a248083"
+   ],
+   "locked": [],
+   "kept": null
+  }
+ }
+}

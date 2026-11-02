@@ -1,0 +1,7 @@
+label a_path:
+    "A."
+    ending a1 "A One"
+label a_menu:
+    menu:
+        "Go":
+            ending a2 "A Heading" "A Two"

@@ -1,0 +1,19 @@
+default night = None
+define late_chat = [
+    "you awake?",
+    "i can't sleep...",
+    {"ask": "awake",
+        "yes": ["Yeah, what's up?", "nothing really"],
+        "sleep": ["Go to sleep, Sayori.", "ok ok... one more thing!!"],
+        "ignore": True},
+    {"time": "11:51 PM"},
+    "can we walk to school together tomorrow?",
+    {"ask": "walk", "sure": "Sure. Same corner as always?", "busy": "I have to go early."},
+    "yay!! see you then",
+    ]
+label start:
+    "Before."
+    minigame phone_chat chat=late_chat contact="Sayori" time="11:42 PM" into night
+    "After."
+    return
+include "extra.vns"

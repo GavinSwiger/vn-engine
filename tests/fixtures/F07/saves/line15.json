@@ -1,0 +1,38 @@
+{
+ "format": 1,
+ "identity_scheme": 1,
+ "position": {
+  "sid": "start/780db90bdfb8",
+  "at": [
+   "start",
+   [
+    2
+   ]
+  ]
+ },
+ "call_stack": [],
+ "variables": {
+  "coins": 0,
+  "lantern": "crane"
+ },
+ "dice": "977afd8015414a94",
+ "stage": {
+  "background": null,
+  "sprites": []
+ },
+ "audio": {
+  "music": [],
+  "sounds": []
+ },
+ "choices": {
+  "picks": [
+   {
+    "menu": "start/0cc25eb909ae",
+    "choice": "377c96004ada",
+    "text": "The paper crane (2 coins)",
+    "question": "Will you buy a lantern?"
+   }
+  ],
+  "waiting": null
+ }
+}

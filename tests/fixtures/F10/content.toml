@@ -1,0 +1,29 @@
+# AC-F10-19 content rows (F10 06 §5): each is used as a title, sidebar, confirm, and
+# quick-menu label at scale 1.0 and 1.5. "repeat" repeats "text" that many times.
+
+[[row]]
+name = "cjk"
+text = "はじめから"
+
+[[row]]
+name = "emoji"
+text = "🎮 Play"
+
+[[row]]
+name = "rtl"
+text = "ابدأ اللعبة"
+
+[[row]]
+name = "combining"
+text = "e\u0301"
+repeat = 30
+
+[[row]]
+name = "long_word"
+text = "a"
+repeat = 200
+
+[[row]]
+name = "long_message"
+text = "Quit now? "
+repeat = 100

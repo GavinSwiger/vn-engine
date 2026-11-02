@@ -1,0 +1,53 @@
+# AC-F03-77 (06-acceptance §5.7): "Start." and then 200 lines, each 1,000 steps after the
+# one before: 600 $ lines, 200 conditions, 100 jumps, and 50 call/return pairs. One turn
+# of the loop is 20 steps (12 $, 4 if, call, return, 2 jumps); every 50th turn shows a line,
+# so the jump after a line plus 49 turns plus 19 steps of the 50th make exactly 1,000.
+# The story ends a few steps after line 200.
+default i = 0
+default a = 0
+default b = 0
+default c = 0
+default d = 0
+default e = 0
+default total = 0
+default trust = 0
+default mood = "calm"
+default name = "Hana"
+default flag = False
+default seen = [0, 0, 0, 0, 0, 0, 0, 0]
+default never = 0
+
+label start:
+    "Start."
+    jump spin
+
+label spin:
+    $ i += 1
+    $ a = i * 3
+    $ b = a - i
+    $ c = b // 2
+    $ d = c % 7
+    $ e = a + b + c
+    $ total += d
+    $ trust = trust + 1 if d == 3 else trust
+    $ name = "Hana" if i % 2 else "Daichi"
+    $ seen[i % 8] = i
+    $ flag = i % 3 == 0
+    $ mood = "calm" if flag else "curious"
+    if i > 10000:
+        return
+    if a < 0:
+        $ never = 1
+    if b < 0:
+        $ never = 2
+    call helper
+    jump spin2
+
+label spin2:
+    if i % 50 == 0:
+        "Line."
+        jump spin
+    jump spin
+
+label helper:
+    return

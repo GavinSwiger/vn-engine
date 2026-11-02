@@ -1,0 +1,21 @@
+node start kind=start key=a0261f42351509f7 anchor_line=- label=start chapter=- route=- order=0 flags=-- text=''
+node chapter:festival kind=chapter key=d590cfae2efb6358 anchor_line=7 label=start chapter=- route=- order=1 flags=-- text='Chapter 2: The Lantern Festival'
+node scene:stall kind=scene key=ba9a7819fa1f3528 anchor_line=11 label=stall chapter=chapter:festival route=- order=2 flags=-- text="Daichi's Stall"
+node menu:stall/8290d167e6ff~2 kind=choice key=7d1dbd8a4a73313b anchor_line=21 label=stall chapter=chapter:festival route=- order=3 flags=-- text='Where should we watch the lanterns?'
+node chapter:river kind=chapter key=0989bf24ba7e6e75 anchor_line=29 label=river chapter=chapter:festival route=- order=4 flags=-- text='Chapter 3: By the River'
+node ending:sad kind=ending key=673a4f03ac94d259 anchor_line=31 label=river chapter=chapter:river route=- order=7 flags=-J text='Sad End: Paper Ashes'
+node chapter:shrine kind=chapter key=7849085d770ba72d anchor_line=33 label=shrine chapter=chapter:festival route=- order=5 flags=-- text='Chapter 3: The Shrine Steps'
+node ending:good kind=ending key=941b461fc2dd982d anchor_line=35 label=shrine chapter=chapter:shrine route=- order=8 flags=-J text='Good End: Lanterns Rising'
+node gate:promise kind=gate key=f9ab30c460c2bd49 anchor_line=37 label=promise chapter=chapter:festival route=- order=6 flags=-J text="Hana's Promise"
+node scene:promise kind=scene key=d7d6850940fff990 anchor_line=37 label=promise chapter=chapter:festival route=gate:promise order=9 flags=HJ text='The Promise'
+node ending:true kind=ending key=dc782a0b8c21f9cf anchor_line=40 label=promise chapter=chapter:festival route=gate:promise order=10 flags=HJ text='True End: Lanterns on the Water'
+edge start -> chapter:festival choices=0 texts=[] record=a0261f42351509f7d590cfae2efb6358
+edge chapter:festival -> scene:stall choices=0 texts=[] record=d590cfae2efb6358ba9a7819fa1f3528
+edge scene:stall -> menu:stall/8290d167e6ff~2 choices=0 texts=[] record=ba9a7819fa1f35287d1dbd8a4a73313b
+edge menu:stall/8290d167e6ff~2 -> chapter:river choices=1 texts=['By the river'] record=None
+edge menu:stall/8290d167e6ff~2 -> chapter:shrine choices=1 texts=['From the shrine steps'] record=None
+edge menu:stall/8290d167e6ff~2 -> gate:promise choices=1 texts=['Wait at the bridge'] record=None
+edge chapter:river -> ending:sad choices=0 texts=[] record=0989bf24ba7e6e75673a4f03ac94d259
+edge chapter:shrine -> ending:good choices=0 texts=[] record=7849085d770ba72d941b461fc2dd982d
+edge gate:promise -> scene:promise choices=0 texts=[] record=f9ab30c460c2bd49d7d6850940fff990
+edge scene:promise -> ending:true choices=0 texts=[] record=d7d6850940fff990dc782a0b8c21f9cf

@@ -1,0 +1,13 @@
+# F09 06 §5 group/: one picture per moment (AC-F09-09).
+define hana = Character("Hana")
+label start:
+    scene bg ember
+    "A."
+    scene bg river
+    show hana happy at left
+    show daichi grin at right with dissolve
+    show hana sad
+    "B."
+    scene bg sea with fade
+    show hana happy with dissolve
+    hana sad "C."

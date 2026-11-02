@@ -1,0 +1,6 @@
+include "main.vns"
+include "a.vns"
+include "b.vns"
+label a_scene:
+    call b_scene
+    return

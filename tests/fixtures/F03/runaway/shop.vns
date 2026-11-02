@@ -1,0 +1,7 @@
+label start:
+    "Start."
+    jump shop
+label shop:
+    jump street
+label street:
+    jump shop

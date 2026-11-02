@@ -1,0 +1,5 @@
+include "routes/b.vns"
+include "routes/x.vns"
+label a_scene:
+    call b_scene
+    return

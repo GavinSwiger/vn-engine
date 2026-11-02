@@ -1,0 +1,19 @@
+# F09 06 §5 waits/: two lines, a menu, and 4 waits (with fade, with cut, pause 1.0, pause),
+# a shake before the third wait (AC-F09-11, 15).
+define hana = Character("Hana")
+default stayed = False
+label start:
+    scene bg ember
+    "One."
+    scene bg sea with fade
+    show hana happy with cut
+    hana "Two."
+    menu:
+        "Stay.":
+            $ stayed = True
+        "Go.":
+            $ stayed = False
+    shake
+    pause 1.0
+    pause
+    return

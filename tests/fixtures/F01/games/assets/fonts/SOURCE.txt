@@ -1,0 +1,5 @@
+Test fonts (SIL Open Font License 1.1, see OFL.txt):
+- test.ttf: copy of engine/data/fonts/NotoSans-Regular.ttf (see engine/data/fonts/SOURCE.txt).
+- test.otf: NotoSerif/unhinted/otf/NotoSerif-Regular.otf (CFF outlines) from
+  https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSerif-v2.015/NotoSerif-v2.015.zip
+  SHA-256 effc8af8f0abbcca580d7f018f854ca6373dd981d807c0ea66e67439b12b981c

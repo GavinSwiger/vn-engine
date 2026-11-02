@@ -1,0 +1,213 @@
+# The bridge, where Daichi waits. main.vns includes this file too.
+
+label bridge:
+    # A second "scene": a new background, and everyone from the last one leaves the stage.
+    scene bg bridge_night
+    # "play music" while a song plays changes the song: the old one fades out, then the
+    # new one starts. fadeout 1.5 takes a second and a half (without it, half a second).
+    play music "bgm/bridge_night.wav" fadeout 1.5
+    # A number after a chapter's texts is how long its card stays, in seconds (0 shows no
+    # card), and "with" picks the transition in and out: here a slow dissolve.
+    chapter bridge "Chapter 2" "The Old Footbridge" 4 with dissolve 1.5
+    "The old footbridge creaked under the crowd. Halfway across, Daichi leaned on the
+        rail and watched the water."
+    # "at right" puts Daichi on the right of the screen.
+    show daichi smile at right with dissolve
+    daichi "There you are. Hana's been looking for you all evening."
+    # "with cut" changes the picture at once, as a line with no "with" does. Write it to
+    # make that choice plain: Hana bursts in.
+    show hana pout at left with cut
+    # {speed=0.4} types the words up to {/speed} at 0.4 times the speed, for a slow "not".
+    hana "I have {speed=0.4}not{/speed}. I've been looking for a good spot to let the lanterns go."
+    thought "That wasn't what Daichi had said on the phone."
+    call hana_testimony
+    call bridge_talk
+    if bought_lantern:
+        daichi grin "Then this is it. Nobody else ever thinks of the middle of the bridge."
+        call lantern_release
+    else:
+        daichi sigh "Shame. The stall closes at eight, and it's eight."
+    "Below us, the river carried the last of the lights out of sight."
+    # A "with" plays every change since the last picture together: the bridge and both
+    # characters come back at once, never the empty bridge first.
+    scene bg bridge_night
+    show hana happy at left
+    # "fade" goes through black: the old picture fades out, then the new one fades in.
+    # Fading back to the same place says that time has passed.
+    show daichi smile at right with fade
+    if persistent.festivals > 0:
+        hana "Funny. I feel like we've stood on this bridge before."
+    $ persistent.festivals += 1
+    # Players can scroll back through lines they have read, and forward again. Going
+    # forward runs the lines in between again, and persistent data is never rolled back,
+    # so a player who scrolled back past the += 1 and forward again would count this
+    # festival twice. "rollback block" is a wall: the player can't step back past it, so
+    # the line above runs only once. The lines after it roll back as usual. Use it after
+    # a scare too, or inside a choice that can't be undone.
+    rollback block
+    # points.hana reads a meter. points.highest("hana", "daichi") is the name of the
+    # meter with the most points, and a tie goes to the first one listed: whoever likes
+    # you more asks the question.
+    if points.highest("hana", "daichi") == "hana":
+        hana happy "Same time next year?"
+    else:
+        daichi grin "Same time next year? I'll save you a spot on the rail."
+    # "stop music" ends the song. fadeout 0 is a hard cut: the music stops at once, so
+    # the firework below bursts into silence. Without fadeout it fades over half a second.
+    stop music fadeout 0
+    play sound "sfx/firework.wav"
+    # "shake" jolts the picture, and small is the gentlest. Like flash below, it starts
+    # with the next line and never holds up its text.
+    shake small
+    # "flash" lights the screen for a moment, then fades back: here a warm gold, over 0.6
+    # seconds. Some players turn effects down, so let the words and the sound say what
+    # happened too.
+    flash "#ffe08a" 0.6
+    "Before I could answer, the first firework burst over the river, and Hana laughed."
+    # "queue music" plays a song after the music before it ends. Only the last song in the
+    # queue loops, so lantern_walk plays once, then bridge_night loops until the end.
+    play music "bgm/lantern_walk.wav"
+    queue music "bgm/bridge_night.wav"
+    "I nodded. The lanterns were gone, but none of us moved to leave."
+    # How the night ends: each choice jumps to a label in endings.vns that ends the story.
+    # persistent.routes lists the routes that are open, so "Wait at the bridge" shows only
+    # once the promise route is open (see "lock route" in main.vns). config.toml sets
+    # [choice] show_locked = true, so until then it shows dimmed, with a lock: players
+    # can see there is more to find.
+    # "flowchart" right above a menu gives its box on the Flowchart page a title. Without
+    # it, the box shows the menu's question.
+    flowchart "How should the night end?"
+    menu:
+        thought "The last train leaves at ten. Hana was watching the water."
+        "Walk Hana home along the river":
+            jump river_end
+        "Stay for the last of the festival":
+            jump festival_end
+        "Wait at the bridge" if "promise" in persistent.routes:
+            jump promise
+
+label bridge_talk:
+    # A "Talk" loop: each topic ends by jumping back to this label, so the menu shows
+    # again with the topics not asked yet. "if not asked_hana" locks a topic once it has
+    # been asked (config.toml's show_locked shows it dimmed; without it, it is hidden),
+    # and the last choice has no "if", so there is always a way out.
+    menu:
+        # A "voice" above the question voices it: it plays each time the menu appears.
+        voice "voice/daichi_001.wav"
+        daichi "The fireworks don't start for a while. Ask me anything."
+        "Ask about Hana" if not asked_hana:
+            $ asked_hana = True
+            # Daichi likes being asked: each topic adds a point to his meter.
+            points daichi += 1
+            daichi grin "She practiced saying hello to you all afternoon."
+            # Voiced lines can be heard again: open History and click a line with a
+            # speaker icon.
+            voice "voice/hana_002.wav"
+            hana pout "I can hear you, you know."
+            jump bridge_talk
+        "Ask about the old bridge" if not asked_bridge:
+            $ asked_bridge = True
+            points daichi += 1
+            daichi "It's older than the town hall. Every year someone says it'll fall down."
+            daichi smile "Every year, it doesn't."
+            # The codex can hold more than the story says: the tip tells the bridge's legend.
+            unlock tip river_god
+            jump bridge_talk
+        "Let's find that spot":
+            return
+
+# Hana's story, for the cross-examination below. Each key names a statement, and its text
+# is what Hana says; the player reads them in this order. hana_slips says which item gives
+# a statement away: the map she drew says when the train got in.
+define hana_says = {
+    "spot": "I only came up here to find a good spot for the lanterns.",
+    "train": "I didn't even know when your train got in.",
+    "asked": "And I never asked Daichi about you. Not once.",
+    }
+define hana_slips = {"train": "festival_map"}
+
+label hana_testimony:
+    # "minigame" plays a game inside the story; the story waits until it ends.
+    # present_evidence, a cross-examination, comes with the engine: the player reads
+    # Hana's statements one at a time and presses her on one (Press) or presents an item
+    # from the codex against it (Present). Each press or present ends the game, so the
+    # story can answer it and come back here. A wrong item takes 1 from the meter penalty
+    # names, shown as a bar that is full at penalty_max.
+    # at=hana_at reopens the game on the statement the player was on. "into hana_shown"
+    # stores what they did: its "statement", "action" ("press" or "present"), "evidence"
+    # (the item, or None), and "correct". skippable lets the player skip the game from the
+    # game menu, as if the right item was presented; in a test run, Shift+F8 does the same.
+    minigame present_evidence skippable testimony=hana_says answer=hana_slips speaker="Hana" penalty="credibility" penalty_max=3 at=hana_at into hana_shown
+    $ hana_at = hana_shown["statement"]
+    if hana_shown["correct"]:
+        hana surprised "That's my map! Where did you..."
+        thought "Her handwriting, in the corner: when my train got in."
+        hana pout "Fine. Maybe I asked about you. Twice."
+        daichi grin "Eleven times."
+        points hana += 1
+        return
+    if hana_shown["action"] == "press":
+        if hana_at == "spot":
+            hana "The middle of the bridge is the best spot. Everybody knows that."
+        elif hana_at == "train":
+            hana "Trains come all the time. Who keeps track of trains?"
+        else:
+            daichi grin "She asked me at breakfast."
+            hana pout "About the weather!"
+        jump hana_testimony
+    hana pout "And what does that have to do with anything?"
+    # A wrong item can bring credibility to 0. Then Hana wins, and the story goes on.
+    if points.credibility == 0:
+        thought "She had me there. I let it go, for now."
+        return
+    jump hana_testimony
+
+# The words the player can write on the lantern, for the poem game below. Each word names
+# the meters it raises: {"hana": 2} gives Hana 2 points, {"hana": 1, "daichi": 1} gives
+# each of them 1, a meter's name alone ("daichi") means 1 point, and {} gives nobody any.
+define wish_words = {
+    "fireworks": "daichi",
+    "river": "hana",
+    "summer": {"daichi": 1},
+    "home": {"hana": 2},
+    "promise": {"hana": 2},
+    "friends": {"daichi": 2},
+    "lanterns": {"hana": 1, "daichi": 1},
+    "loud": {"daichi": 1},
+    "moonlight": {"hana": 1},
+    "together": {"hana": 1, "daichi": 1},
+    "train": {},
+    "rain": {},
+    }
+
+label lantern_release:
+    # "by_the_rail" is a place this game names in config.toml, under [stage.positions].
+    show hana happy at by_the_rail
+    # A number after "at" is where the character's feet are, across a screen 1280 wide.
+    # "behind hana" puts Daichi just behind her, so she stays in front. The dissolve
+    # covers both show lines: Hana and Daichi move to the rail together.
+    show daichi at 760 behind hana with dissolve
+    hana "Write your wish on the side first. Only three words: the paper is small."
+    # poem_game is another minigame that comes with the engine: the player picks one word
+    # from a page of six, three times, and each word's points go to the meters wish_words
+    # names. "into wish_for" stores who scored the most: "hana", "daichi", or None if every
+    # word scored nothing. In a test run, Shift+F8 ends the game at once, as if the first
+    # three words were picked.
+    minigame poem_game words=wish_words rounds=3 page_words=6 into wish_for
+    if wish_for == "hana":
+        hana "Don't show me! A wish is secret. But I think the river will like that one."
+    elif wish_for == "daichi":
+        daichi grin "Fireworks and friends, I bet. That's my kind of wish."
+    else:
+        thought "Three plain words. Nobody leaned over to read them, which was a relief."
+    # {i} is italic. Tags can go inside each other: close the inner one first.
+    "We set the lantern on the water together. It turned once, as if to look back at us,
+        and its little flame burned {i}{color=#1e4a9c}blue{/color}{/i}."
+    # The river has the lantern now, so it leaves the codex.
+    lock item lantern
+    # {{ shows a {. Only { needs doubling; a } on its own shows as it is.
+    daichi "Make a wish. The shrine writes them as {{name}: {{wish}. They're free on this side of the stall."
+    # {next} at the very end cuts the line off: the next line follows by itself.
+    daichi "I wished for a quiet ye-{next}"
+    hana "Don't say it out loud, or it won't come true!"
+    return

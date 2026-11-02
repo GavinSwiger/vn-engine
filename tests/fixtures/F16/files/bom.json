@@ -1,0 +1,9 @@
+﻿{
+  "format": 2,
+  "values": {
+    "music_volume": 40,
+    "reduce_motion": true,
+    "text_size_pct": 130,
+    "window_size": [1280, 720]
+  }
+}

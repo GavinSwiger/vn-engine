@@ -1,0 +1,7 @@
+label start:
+    "The market was crowded."
+    jump shop
+label shop:
+    jump street
+label street:
+    jump shop

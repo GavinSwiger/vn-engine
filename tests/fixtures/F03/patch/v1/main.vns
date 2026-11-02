@@ -1,0 +1,12 @@
+define hana = Character("Hana", color="#e8a0b4")
+default met = False
+label start:
+    "One."
+    $ met = True
+    hana "Two."
+    call chat
+    "Four."
+    hana "Five."
+label chat:
+    "Three."
+    return

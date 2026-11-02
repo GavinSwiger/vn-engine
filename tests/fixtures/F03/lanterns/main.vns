@@ -1,0 +1,20 @@
+include "chapter1.vns"
+include "routes/daichi.vns"
+
+define hana = Character(name_from="hana_name", color="#e8a0b4")
+define daichi = Character("Daichi", color="#8fb3d9")
+define fortunes = ["great luck", "small luck", "bad luck"]
+
+# Story variables. A default keeps old saves working when you add one later.
+default trust = 0
+default hana_name = "???"
+default fortune = ""
+
+label start:
+    "The festival lanterns were already lit when I reached the river."
+    hana "You came! I didn't think you would."
+    hana "Oh, sorry. I'm Hana. Daichi's cousin."
+    # From the next line on, the name plate reads "Hana".
+    $ hana_name = "Hana"
+    hana happy "He said you'd get lost at least twice."
+    jump fortune_stall

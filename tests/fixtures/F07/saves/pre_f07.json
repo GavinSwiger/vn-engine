@@ -1,0 +1,27 @@
+{
+ "format": 1,
+ "identity_scheme": 1,
+ "position": {
+  "sid": "start/26021b18b2ed",
+  "at": [
+   "start",
+   [
+    0
+   ]
+  ]
+ },
+ "call_stack": [],
+ "variables": {
+  "coins": 2,
+  "lantern": "none"
+ },
+ "dice": "977afd8015414a94",
+ "stage": {
+  "background": null,
+  "sprites": []
+ },
+ "audio": {
+  "music": [],
+  "sounds": []
+ }
+}

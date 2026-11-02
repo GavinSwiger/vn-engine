@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vn-engine"
+dynamic = ["version"]
+description = "A Python engine for making visual novels."
+readme = "README.md"
+requires-python = ">=3.12"
+# A range for development installs only. CI and builds install the exact, hashed
+# versions in requirements-ci.txt (SEC-F01-22).
+dependencies = ["pygame-ce>=2.5.2,<2.6"]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-xdist"]
+
+[tool.setuptools.dynamic]
+version = { attr = "engine.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["engine*"]
+
+[tool.setuptools.package-data]
+engine = ["data/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "display: needs pygame with SDL_VIDEODRIVER=dummy (set in tests/conftest.py)",
+    "perf: needs a real display and hardware; never runs in CI",
+    "manual: a human checks the result; never runs in CI",
+    "slow: long-running (fuzz, large inputs); skipped unless VN_SLOW=1 or -m slow",
+    "tk: builds a Tk window (the scene editor); skipped when Tk or a display is missing",
+    "mixer: the real pygame mixer on SDL's dummy or disk audio driver (F08 06 §0.2; the CI mixer job)",
+]

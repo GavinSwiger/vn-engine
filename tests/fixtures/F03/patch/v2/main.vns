@@ -1,0 +1,26 @@
+define hana = Character("Hana", color="#e8a0b4")
+default met = False
+label start:
+    "One."
+    $ met = True
+    hana "Two."
+    call chat
+    "Four."
+    hana "Five."
+    jump extras
+label chat:
+    "Three."
+    return
+default gift = "lantern"
+default petals = 3
+default route = ["river", "bridge"]
+default notes = {"seen": False}
+default luck = 0.5
+label extras:
+    $ petals += len(route)
+    $ notes["seen"] = met
+    if gift == "lantern" and petals == 5 and luck == 0.5 and notes["seen"]:
+        hana "Six."
+    else:
+        "Wrong."
+    return

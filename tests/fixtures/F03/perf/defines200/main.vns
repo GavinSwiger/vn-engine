@@ -1,0 +1,389 @@
+# AC-F03-79 (06-acceptance §5.7): 200 typical defines. 150 Character(...) defines (120
+# with a fixed name and a color, 30 taking their name from a story variable) and 50
+# list or number defines. Each character speaks one line, so the launch's speaker
+# check sees all 150.
+
+define c000 = Character("Hana 0", color="#4a6980")
+define c001 = Character("Daichi 1", color="#e0006d")
+define c002 = Character("Aiko 2", color="#b2f323")
+define c003 = Character("Ren 3", color="#536c53")
+define c004 = Character("Yuki 4", color="#7b589d")
+define c005 = Character("Sora 5", color="#7de5b6")
+define c006 = Character("Mei 6", color="#fd2afe")
+define c007 = Character("Kenji 7", color="#4f5ede")
+define c008 = Character("Riko 8", color="#21df83")
+define c009 = Character("Taro 9", color="#b3aba5")
+define c010 = Character("Hana 10", color="#0f3980")
+define c011 = Character("Daichi 11", color="#66adc0")
+define c012 = Character("Aiko 12", color="#384456")
+define c013 = Character("Ren 13", color="#fb6e48")
+define c014 = Character("Yuki 14", color="#9e3c88")
+define c015 = Character("Sora 15", color="#586d81")
+define c016 = Character("Mei 16", color="#d1e8ab")
+define c017 = Character("Kenji 17", color="#f66230")
+define c018 = Character("Riko 18", color="#bc5368")
+define c019 = Character("Taro 19", color="#2f16d2")
+define c020 = Character("Hana 20", color="#c3a600")
+define c021 = Character("Daichi 21", color="#3670fa")
+define c022 = Character("Aiko 22", color="#84f94c")
+define c023 = Character("Ren 23", color="#f8dab5")
+define c024 = Character("Yuki 24", color="#150384")
+define c025 = Character("Sora 25", color="#a9e921")
+define c026 = Character("Mei 26", color="#e9403b")
+define c027 = Character("Kenji 27", color="#2857d0")
+define c028 = Character("Riko 28", color="#1f59f6")
+define c029 = Character("Taro 29", color="#ea4df5")
+define c030 = Character("Hana 30", color="#31fa01")
+define c031 = Character("Daichi 31", color="#3a8754")
+define c032 = Character("Aiko 32", color="#7aff87")
+define c033 = Character("Ren 33", color="#5f0a97")
+define c034 = Character("Yuki 34", color="#cddedd")
+define c035 = Character("Sora 35", color="#8adfc8")
+define c036 = Character("Mei 36", color="#b10ba5")
+define c037 = Character("Kenji 37", color="#70286b")
+define c038 = Character("Riko 38", color="#a3ae9e")
+define c039 = Character("Taro 39", color="#eed08f")
+define c040 = Character("Hana 40", color="#89053c")
+define c041 = Character("Daichi 41", color="#5a0995")
+define c042 = Character("Aiko 42", color="#208749")
+define c043 = Character("Ren 43", color="#10df6e")
+define c044 = Character("Yuki 44", color="#bab3eb")
+define c045 = Character("Sora 45", color="#1883f6")
+define c046 = Character("Mei 46", color="#4b803b")
+define c047 = Character("Kenji 47", color="#a14f41")
+define c048 = Character("Riko 48", color="#6a8e76")
+define c049 = Character("Taro 49", color="#8b9cd0")
+define c050 = Character("Hana 50", color="#af2de4")
+define c051 = Character("Daichi 51", color="#0b921c")
+define c052 = Character("Aiko 52", color="#50d46a")
+define c053 = Character("Ren 53", color="#0b161a")
+define c054 = Character("Yuki 54", color="#b991f8")
+define c055 = Character("Sora 55", color="#088ce3")
+define c056 = Character("Mei 56", color="#dae21b")
+define c057 = Character("Kenji 57", color="#3ec484")
+define c058 = Character("Riko 58", color="#060bce")
+define c059 = Character("Taro 59", color="#03caca")
+define c060 = Character("Hana 60", color="#75b3e0")
+define c061 = Character("Daichi 61", color="#cdf677")
+define c062 = Character("Aiko 62", color="#e084f5")
+define c063 = Character("Ren 63", color="#fbf9ff")
+define c064 = Character("Yuki 64", color="#75ea80")
+define c065 = Character("Sora 65", color="#683ff0")
+define c066 = Character("Mei 66", color="#bc341a")
+define c067 = Character("Kenji 67", color="#7f0657")
+define c068 = Character("Riko 68", color="#6a36b1")
+define c069 = Character("Taro 69", color="#4893bc")
+define c070 = Character("Hana 70", color="#f2436a")
+define c071 = Character("Daichi 71", color="#2d3f91")
+define c072 = Character("Aiko 72", color="#1a7164")
+define c073 = Character("Ren 73", color="#b8a6ab")
+define c074 = Character("Yuki 74", color="#4b2a51")
+define c075 = Character("Sora 75", color="#facf4b")
+define c076 = Character("Mei 76", color="#23f284")
+define c077 = Character("Kenji 77", color="#58bb2d")
+define c078 = Character("Riko 78", color="#f07d47")
+define c079 = Character("Taro 79", color="#64cc24")
+define c080 = Character("Hana 80", color="#3f6dd6")
+define c081 = Character("Daichi 81", color="#40d08c")
+define c082 = Character("Aiko 82", color="#90fcd6")
+define c083 = Character("Ren 83", color="#dcb68b")
+define c084 = Character("Yuki 84", color="#86ac8f")
+define c085 = Character("Sora 85", color="#e75cee")
+define c086 = Character("Mei 86", color="#7b6ba2")
+define c087 = Character("Kenji 87", color="#606a1a")
+define c088 = Character("Riko 88", color="#822627")
+define c089 = Character("Taro 89", color="#809f3d")
+define c090 = Character("Hana 90", color="#78e89b")
+define c091 = Character("Daichi 91", color="#5adb5d")
+define c092 = Character("Aiko 92", color="#376424")
+define c093 = Character("Ren 93", color="#17e4d3")
+define c094 = Character("Yuki 94", color="#87bb92")
+define c095 = Character("Sora 95", color="#fe3b6a")
+define c096 = Character("Mei 96", color="#01549e")
+define c097 = Character("Kenji 97", color="#3b1f9e")
+define c098 = Character("Riko 98", color="#029f23")
+define c099 = Character("Taro 99", color="#c84069")
+define c100 = Character("Hana 100", color="#9e65ca")
+define c101 = Character("Daichi 101", color="#b626ce")
+define c102 = Character("Aiko 102", color="#a4311d")
+define c103 = Character("Ren 103", color="#c082b2")
+define c104 = Character("Yuki 104", color="#8cb26a")
+define c105 = Character("Sora 105", color="#9e443c")
+define c106 = Character("Mei 106", color="#94b7fb")
+define c107 = Character("Kenji 107", color="#9a72d5")
+define c108 = Character("Riko 108", color="#409513")
+define c109 = Character("Taro 109", color="#a8fa34")
+define c110 = Character("Hana 110", color="#88fad1")
+define c111 = Character("Daichi 111", color="#4d9231")
+define c112 = Character("Aiko 112", color="#4d3679")
+define c113 = Character("Ren 113", color="#721dc3")
+define c114 = Character("Yuki 114", color="#33c3f3")
+define c115 = Character("Sora 115", color="#c06554")
+define c116 = Character("Mei 116", color="#b29ac1")
+define c117 = Character("Kenji 117", color="#473238")
+define c118 = Character("Riko 118", color="#f44733")
+define c119 = Character("Taro 119", color="#e80c10")
+define c120 = Character(name_from="c120_name", color="#22f42b")
+define c121 = Character(name_from="c121_name", color="#f74a37")
+define c122 = Character(name_from="c122_name", color="#edc195")
+define c123 = Character(name_from="c123_name", color="#4d67fa")
+define c124 = Character(name_from="c124_name", color="#fb8eae")
+define c125 = Character(name_from="c125_name", color="#e0178b")
+define c126 = Character(name_from="c126_name", color="#c892d7")
+define c127 = Character(name_from="c127_name", color="#9df333")
+define c128 = Character(name_from="c128_name", color="#2ed0a5")
+define c129 = Character(name_from="c129_name", color="#473a65")
+define c130 = Character(name_from="c130_name", color="#23753e")
+define c131 = Character(name_from="c131_name", color="#de53f1")
+define c132 = Character(name_from="c132_name", color="#4c3d6c")
+define c133 = Character(name_from="c133_name", color="#bcbc81")
+define c134 = Character(name_from="c134_name", color="#63c7b6")
+define c135 = Character(name_from="c135_name", color="#7dcda3")
+define c136 = Character(name_from="c136_name", color="#9268b1")
+define c137 = Character(name_from="c137_name", color="#ee643b")
+define c138 = Character(name_from="c138_name", color="#26b95c")
+define c139 = Character(name_from="c139_name", color="#9e5431")
+define c140 = Character(name_from="c140_name", color="#f0af08")
+define c141 = Character(name_from="c141_name", color="#663a67")
+define c142 = Character(name_from="c142_name", color="#1f5b85")
+define c143 = Character(name_from="c143_name", color="#acd249")
+define c144 = Character(name_from="c144_name", color="#cb0ebd")
+define c145 = Character(name_from="c145_name", color="#9fa79c")
+define c146 = Character(name_from="c146_name", color="#ac1786")
+define c147 = Character(name_from="c147_name", color="#2712d1")
+define c148 = Character(name_from="c148_name", color="#6cd758")
+define c149 = Character(name_from="c149_name", color="#733687")
+define list00 = ["school", "bridge", "shrine", "garden"]
+define limit01 = 65
+define list02 = ["school", "harbor", "market", "shrine"]
+define limit03 = 83
+define list04 = ["bridge", "harbor", "market", "station"]
+define limit05 = 77
+define list06 = ["market", "school", "bridge", "river"]
+define limit07 = 47
+define list08 = ["market", "garden", "shrine", "bridge"]
+define limit09 = 53
+define list10 = ["shrine", "station", "river", "harbor"]
+define limit11 = 8
+define list12 = ["garden", "shrine", "river", "school"]
+define limit13 = 44
+define list14 = ["school", "harbor", "station", "shrine"]
+define limit15 = 25
+define list16 = ["harbor", "garden", "bridge", "shrine"]
+define limit17 = 22
+define list18 = ["garden", "market", "school", "station"]
+define limit19 = 80
+define list20 = ["garden", "school", "market", "harbor"]
+define limit21 = 42
+define list22 = ["station", "school", "bridge", "river"]
+define limit23 = 51
+define list24 = ["shrine", "station", "school", "river"]
+define limit25 = 61
+define list26 = ["shrine", "garden", "harbor", "bridge"]
+define limit27 = 76
+define list28 = ["shrine", "harbor", "market", "river"]
+define limit29 = 29
+define list30 = ["school", "harbor", "garden", "station"]
+define limit31 = 8
+define list32 = ["market", "harbor", "shrine", "bridge"]
+define limit33 = 36
+define list34 = ["harbor", "bridge", "school", "garden"]
+define limit35 = 89
+define list36 = ["bridge", "shrine", "river", "station"]
+define limit37 = 38
+define list38 = ["harbor", "station", "shrine", "garden"]
+define limit39 = 85
+define list40 = ["harbor", "shrine", "market", "river"]
+define limit41 = 34
+define list42 = ["garden", "school", "shrine", "bridge"]
+define limit43 = 94
+define list44 = ["school", "river", "harbor", "station"]
+define limit45 = 74
+define list46 = ["shrine", "station", "river", "harbor"]
+define limit47 = 77
+define list48 = ["harbor", "school", "garden", "market"]
+define limit49 = 55
+
+default c120_name = "???"
+default c121_name = "???"
+default c122_name = "???"
+default c123_name = "???"
+default c124_name = "???"
+default c125_name = "???"
+default c126_name = "???"
+default c127_name = "???"
+default c128_name = "???"
+default c129_name = "???"
+default c130_name = "???"
+default c131_name = "???"
+default c132_name = "???"
+default c133_name = "???"
+default c134_name = "???"
+default c135_name = "???"
+default c136_name = "???"
+default c137_name = "???"
+default c138_name = "???"
+default c139_name = "???"
+default c140_name = "???"
+default c141_name = "???"
+default c142_name = "???"
+default c143_name = "???"
+default c144_name = "???"
+default c145_name = "???"
+default c146_name = "???"
+default c147_name = "???"
+default c148_name = "???"
+default c149_name = "???"
+
+label start:
+    c000 "Line 1."
+    c001 "Line 2."
+    c002 "Line 3."
+    c003 "Line 4."
+    c004 "Line 5."
+    c005 "Line 6."
+    c006 "Line 7."
+    c007 "Line 8."
+    c008 "Line 9."
+    c009 "Line 10."
+    c010 "Line 11."
+    c011 "Line 12."
+    c012 "Line 13."
+    c013 "Line 14."
+    c014 "Line 15."
+    c015 "Line 16."
+    c016 "Line 17."
+    c017 "Line 18."
+    c018 "Line 19."
+    c019 "Line 20."
+    c020 "Line 21."
+    c021 "Line 22."
+    c022 "Line 23."
+    c023 "Line 24."
+    c024 "Line 25."
+    c025 "Line 26."
+    c026 "Line 27."
+    c027 "Line 28."
+    c028 "Line 29."
+    c029 "Line 30."
+    c030 "Line 31."
+    c031 "Line 32."
+    c032 "Line 33."
+    c033 "Line 34."
+    c034 "Line 35."
+    c035 "Line 36."
+    c036 "Line 37."
+    c037 "Line 38."
+    c038 "Line 39."
+    c039 "Line 40."
+    c040 "Line 41."
+    c041 "Line 42."
+    c042 "Line 43."
+    c043 "Line 44."
+    c044 "Line 45."
+    c045 "Line 46."
+    c046 "Line 47."
+    c047 "Line 48."
+    c048 "Line 49."
+    c049 "Line 50."
+    c050 "Line 51."
+    c051 "Line 52."
+    c052 "Line 53."
+    c053 "Line 54."
+    c054 "Line 55."
+    c055 "Line 56."
+    c056 "Line 57."
+    c057 "Line 58."
+    c058 "Line 59."
+    c059 "Line 60."
+    c060 "Line 61."
+    c061 "Line 62."
+    c062 "Line 63."
+    c063 "Line 64."
+    c064 "Line 65."
+    c065 "Line 66."
+    c066 "Line 67."
+    c067 "Line 68."
+    c068 "Line 69."
+    c069 "Line 70."
+    c070 "Line 71."
+    c071 "Line 72."
+    c072 "Line 73."
+    c073 "Line 74."
+    c074 "Line 75."
+    c075 "Line 76."
+    c076 "Line 77."
+    c077 "Line 78."
+    c078 "Line 79."
+    c079 "Line 80."
+    c080 "Line 81."
+    c081 "Line 82."
+    c082 "Line 83."
+    c083 "Line 84."
+    c084 "Line 85."
+    c085 "Line 86."
+    c086 "Line 87."
+    c087 "Line 88."
+    c088 "Line 89."
+    c089 "Line 90."
+    c090 "Line 91."
+    c091 "Line 92."
+    c092 "Line 93."
+    c093 "Line 94."
+    c094 "Line 95."
+    c095 "Line 96."
+    c096 "Line 97."
+    c097 "Line 98."
+    c098 "Line 99."
+    c099 "Line 100."
+    c100 "Line 101."
+    c101 "Line 102."
+    c102 "Line 103."
+    c103 "Line 104."
+    c104 "Line 105."
+    c105 "Line 106."
+    c106 "Line 107."
+    c107 "Line 108."
+    c108 "Line 109."
+    c109 "Line 110."
+    c110 "Line 111."
+    c111 "Line 112."
+    c112 "Line 113."
+    c113 "Line 114."
+    c114 "Line 115."
+    c115 "Line 116."
+    c116 "Line 117."
+    c117 "Line 118."
+    c118 "Line 119."
+    c119 "Line 120."
+    c120 "Line 121."
+    c121 "Line 122."
+    c122 "Line 123."
+    c123 "Line 124."
+    c124 "Line 125."
+    c125 "Line 126."
+    c126 "Line 127."
+    c127 "Line 128."
+    c128 "Line 129."
+    c129 "Line 130."
+    c130 "Line 131."
+    c131 "Line 132."
+    c132 "Line 133."
+    c133 "Line 134."
+    c134 "Line 135."
+    c135 "Line 136."
+    c136 "Line 137."
+    c137 "Line 138."
+    c138 "Line 139."
+    c139 "Line 140."
+    c140 "Line 141."
+    c141 "Line 142."
+    c142 "Line 143."
+    c143 "Line 144."
+    c144 "Line 145."
+    c145 "Line 146."
+    c146 "Line 147."
+    c147 "Line 148."
+    c148 "Line 149."
+    c149 "Line 150."
+    return

@@ -1,0 +1,16 @@
+define hana = Character("Hana")
+lock route promise "Hana's Promise" until sad, good
+lock route festival_night "Festival Night"
+default trust = 0
+label start:
+    hana "Start."
+    <S>
+    "Before."
+    ending sad "Sad End" "Paper Ashes"
+label festival_night:
+    "Fest."
+    ending good "Good End" "The Lantern Festival"
+label promise:
+    "Promise."
+    ending true "True End" "Hana's Promise"
+<T>
