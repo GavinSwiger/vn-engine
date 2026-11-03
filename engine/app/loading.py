@@ -32,7 +32,8 @@ and quitting as usual. When the load is done, the result is logged once
   check (W21, W22, W25, W31) gets ``audio_files`` and is logged in the ``script`` area,
   F04's image warnings in ``stage``, F12's W56 in ``persist``. Otherwise
   ``install_story`` wires an ``Interpreter`` into the App; it starts where ``app.start``
-  says (F44 C1: ``--start``/``--set``). The launch's ``Watchdog`` (F03 step 12,
+  says (F44 C1: ``--start``/``--set``), and F31's ``install_metafiles`` gives it the disk
+  files port when the story has ``file`` lines. The launch's ``Watchdog`` (F03 step 12,
   ``story.start_watchdog``) starts before the first define and guards the launch job and
   the interpreter. Before ``install_story``, F12's ``install_persistence`` sets
   ``App.persist``, whose encoder is then warmed in the following slices (``warm``) before
@@ -72,6 +73,7 @@ from types import MappingProxyType, SimpleNamespace
 from typing import TYPE_CHECKING
 
 from engine.app.flowchart import open_flow_listing
+from engine.app.metafiles import install_metafiles
 from engine.app.persistence import PersistentLaunch, install_persistence, open_for_launch
 from engine.app.story import install_story, start_watchdog
 from engine.app.text_check import TextLaunchCheck, text_launch_check
@@ -327,6 +329,7 @@ class StoryLoadScreen(Screen):
                              minigames=self.minigames or MappingProxyType({}))   # F23 I-12
         install_story(app, interp, fixed_seed=app.seed,        # F03 step 13: --seed
                       images=result.images)
+        install_metafiles(app, interp)                         # F31 s4: the disk port
         # F05 §7.8: the dev text check runs in the next frames' slices.
         self.text_check = text_launch_check(app, program, result.namespace)
         return True

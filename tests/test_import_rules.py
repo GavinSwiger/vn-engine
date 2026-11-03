@@ -663,3 +663,28 @@ def test_ac_f23_60_minigame_modules_import_only_their_rows():
     assert not {n.split(".")[0] for _, n, _ in runtime} & {"pygame", "time", "random",
                                                           "threading"}
     assert scan(REPO / "engine") == []
+
+
+def test_ac_f31_26_meta_files_import_rows():
+    """AC-F31-26 (import half; the privacy half is in ``test_privacy_ast.py``):
+    ``engine.meta.files`` is imported only by ``app/metafiles.py`` and imports only the
+    standard library and ``engine.core`` (never ``engine.meta.username``);
+    ``runtime/metafiles.py`` imports no ``engine.meta``, ``engine.app``, ``engine.persist``,
+    or ``pygame``; ``app/metafiles.py`` imports ``engine.script`` only for type checking."""
+    users = set()
+    for path in sorted((REPO / "engine").rglob("*.py")):
+        rel = path.relative_to(REPO).as_posix()
+        if any(n == "engine.meta.files" or n.startswith("engine.meta.files.")
+               for _, n, _ in _runtime_imports(rel)):
+            users.add(rel)
+    assert users == {"engine/app/metafiles.py"}
+    for _, name, _ in _runtime_imports("engine/meta/files.py"):
+        parts = name.split(".")
+        assert parts[0] != "engine" or parts[1] == "core", name
+        assert parts[0] != "pygame", name
+    runtime = [n for _, n, _ in _runtime_imports("engine/runtime/metafiles.py")]
+    assert not [n for n in runtime if n.split(".")[0] == "pygame" or n.split(".")[:2] in (
+        ["engine", "meta"], ["engine", "app"], ["engine", "persist"])], runtime
+    app = _runtime_imports("engine/app/metafiles.py")
+    assert all(typing for _, n, typing in app if n.split(".")[:2] == ["engine", "script"])
+    assert scan(REPO / "engine") == []

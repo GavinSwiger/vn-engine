@@ -13,7 +13,8 @@ through the screen stack, the story driver and command router, quit guards, and 
 hooks (``add_shutdown``: run once in reverse order after the loop ends, each on its own, so
 one failure never skips the rest; F04's prefetcher stop, F08's audio shutdown); they never
 change the loop. Before the hooks, ``_close_writers`` gives every file writer owner one
-quit deadline (F16's ``settings.submit_final``, F12's ``persist.close``, then F16's
+quit deadline (F31's ``metafiles.drop_queued`` first, so unstarted meta file jobs never
+delay the quit save; F16's ``settings.submit_final``, F12's ``persist.close``, then F16's
 ``settings.wait_final``; F11's ``saves.submit_final`` after F16's submit and
 ``saves.wait_final`` after F16's wait; F20's ``flow.submit_final`` after F12's close and
 ``flow.wait_final`` after F11's wait), then stops ``App.writer``. The story is pumped
@@ -66,6 +67,7 @@ if TYPE_CHECKING:
     from engine.persist.sync import PersistentSync
     from engine.app.settings import SettingsService
     from engine.app.flowchart import FlowService
+    from engine.app.metafiles import DiskFolder
     from engine.app.saves import SaveService
     from engine.minigames.registry import Registry
     from engine.ui.shell import GameShell
@@ -152,6 +154,10 @@ class App:
         # F20 s8: the Flowchart page's records and layout cache and its prewarm
         # (``app/flowchart_ui.py``: ``FlowPages``), set by ``install_flowchart_page``.
         self.flow_pages: object | None = None
+        # F31 s4: the disk files port over ``<game>/characters/`` (``app/metafiles.py``:
+        # ``DiskFolder``), set by ``install_metafiles`` when the story has ``file`` lines;
+        # None otherwise (the story keeps its memory port).
+        self.metafiles: "DiskFolder | None" = None
         # F44: set with ``--report-to-editor``; reports "started" and fatal errors.
         self.editor_link = editor_link
         self.time = assets.time
@@ -343,6 +349,13 @@ class App:
         the writer stops (abandoned past the deadline; it can leave only a temp file)."""
         writer = self.writer
         until = writer.quit_deadline()
+        metafiles = getattr(self, "metafiles", None)  # Apps wired by hand may lack it
+        if metafiles is not None:                    # F31 (SEC-F31-08): before F11's quit save
+            try:
+                metafiles.drop_queued()
+            except Exception:
+                _app_log.warning("A shutdown step failed: %s", "metafiles.drop_queued",
+                                 exc_info=True)
         settings = self.settings
         if settings is not None:                     # F16: submit first, never waits
             try:
