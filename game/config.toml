@@ -121,6 +121,7 @@ music = "bgm/lantern_walk.wav"
 # Without a logo, the game's title from [game] is shown as text.
 background_image = "gui/title_bg.png"
 logo_image = "gui/logo.png"
+button_width = 560
 
 # Every button (title, game menu, dialogs) is drawn from this picture: its corners stay
 # the same size and its edges and middle stretch to fit the button.
@@ -160,3 +161,9 @@ border_color = "#5A3848"
 # confirm_quit_autosave = "Quit the game?"   # asked instead when quitting auto-saves
 # The Settings page's words are listed in docs/script-language.md, "The Settings page":
 # reduce_motion = "Reduce motion and flashing"
+
+[theme.flowchart.chapter]
+frame_image = "gui/button.png"
+
+[theme.flowchart.scene]
+frame_image = "gui/title_bg.png"
