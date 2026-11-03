@@ -67,6 +67,9 @@ def test_narrow_window_category_drop_down_lists_every_category(studio, tmp_path)
     ed.root.update()
     assert not pane.showing and db.category == "gallery"
     assert db.cat_choice.var.get() == "Gallery" and db.cat_choice.widget.winfo_ismapped()
+    ed.root.update()                                # the empty state's words fit the list
+    assert db.empty.shown and 0 < int(str(db.empty.hint.cget("wraplength"))) \
+        < db.empty.frame.winfo_width()
 
     sized(ed, 1300)                                 # wide again: the side bar, no drop-downs
     assert not db.compact and not db.cat_choice.widget.winfo_ismapped()

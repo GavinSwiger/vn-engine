@@ -321,6 +321,10 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, MetaFiles
         self.empty = EmptyState(self.list_body, icon="add", title="", hint=db.EMPTY_HINT,
                                 button=NEW_BUTTON, command=self.new_entry, scale=self.scale)
         self.empty.hint.configure(wraplength=px(LIST_WIDTH - 40))   # fits the list column
+        self.empty.title.configure(justify="center")
+        self.empty.frame.bind("<Configure>", lambda e: [label.configure(   # a narrower column
+            wraplength=max(px(60), min(px(LIST_WIDTH - 40), e.width - px(24))))
+            for label in (self.empty.title, self.empty.hint)], add="+")
 
         # The form.
         self.form_frame = ttk.Frame(self.paned)
