@@ -48,7 +48,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import dialogs, forms, forms_more, formtools
+from engine.tools.editor import dialogs, forms, forms_files_ui, forms_more, formtools
 from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
 from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, scale_of
@@ -98,6 +98,7 @@ SWITCHED: Mapping[str, tuple[str, Mapping[str, tuple[str, ...]]]] = {
     "window_title": ("action", {"set": ("title",), "off": ()}),
     "voice": ("action", {"play": ("file",), "stop": ("fade",)}),
     "if": ("keyword", {"if": ("condition",), "elif": ("condition",), "else": ()}),
+    **forms_files_ui.SWITCHED,                  # W9: Meta file, Game UI
 }
 
 
@@ -132,6 +133,8 @@ def new_values(form: CommandForm, doc: StatementDoc | None = None) -> dict[str, 
               for f in form.fields}
     if form.key == "music" and doc is not None and doc.key == "stop":
         values["action"] = "stop"
+    if doc is not None:                         # W9: Insert's "Read a meta file" reads
+        values.update(forms_files_ui.new_values(form.key, doc.syntax) or {})
     return values
 
 
@@ -214,9 +217,6 @@ class FormAssets:
         if self.on_change is not None:
             self.on_change()
 
-
-class _NameBox:
-    """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
     def can_try(self) -> bool:
         """Whether ``try_line`` can play a line (F47 P2-F): a Studio window's assets can."""
         return getattr(self, "win", None) is not None
@@ -228,6 +228,9 @@ class _NameBox:
 
         trywiring.try_form_line(getattr(self, "win"), line, on_problem)
 
+
+class _NameBox:
+    """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
     while its text is a name it doesn't offer (``new``: the hint for a name kind where a new
     name is normal; ``quiet``: no hint while it offers nothing)."""
 
@@ -340,10 +343,10 @@ class FormDialog:
         self.card.pack(anchor="w", fill="x")
         self.card.configure(width=max(28, math.ceil(400 * scale / max(
             1, dialog.code_font.measure("0")))))   # type: ignore[attr-defined]
+        self.try_button, self.try_note = add_try_it(self, body)    # F47 P2-F
         self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
         dialog.bind("<Escape>", lambda _e: self._pick(1))
         dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
-        self.try_button, self.try_note = add_try_it(self, body)    # F47 P2-F
         for widget in self.widgets.values():
             if isinstance(widget, (ttk.Entry, ttk.Combobox)):
                 for key in ("<Return>", "<KP_Enter>"):
@@ -594,6 +597,7 @@ class FormDialog:
                 else:
                     part.grid()
         # The builder says why under its rows; OK waits.
+        self._show_problem()
         self.buttons[0].state(["disabled"] if self.problem() else ["!disabled"])
 
     def hidden(self) -> set[str]:
@@ -608,10 +612,39 @@ class FormDialog:
         return every - set(shown)
 
     def problem(self) -> str | None:
-        """Why OK can't write the line yet (the condition builder's rows), or None."""
+        """Why OK can't write the line yet (the condition builder's rows; W9: a meta file
+        name or a reason the form's rule refuses), or None."""
         if self.builder is not None and "condition" not in self.hidden():
             return self.builder.problem()
-        return None
+        rule = forms_files_ui.PROBLEMS.get(self.form.key)
+        return rule(self.values()) if rule is not None else None
+
+    def _show_problem(self) -> None:
+        """W9: a form rule's problem, under the line card (the builder shows its own)."""
+        rule = forms_files_ui.PROBLEMS.get(self.form.key)
+        if rule is None:
+            return
+        label = getattr(self, "problem_label", None)
+        if label is None:
+            label = self.problem_label = ttk.Label(
+                self.card.master, text="", style="Dialog.Hint.TLabel", justify="left",
+                wraplength=round(400 * self.scale))
+        text = rule(self.values()) or ""
+        label.configure(text=text)
+        if text:
+            label.pack(anchor="w", pady=(round(4 * self.scale), 0), after=self.card)
+        else:
+            label.pack_forget()
+
+    def confirmed(self) -> bool:
+        """W9: a pick that asks first (Delete all saves) is asked about; True to go on."""
+        rule = forms_files_ui.CONFIRM.get(self.form.key)
+        if rule is None:
+            return True
+        key, pick, message, buttons = rule
+        if self.values().get(key) != pick:
+            return True
+        return dialogs.ask(self.dialog, message, buttons, escape=1, default=1) == 0
 
     def _name_chapter(self) -> None:
         """A new Chapter: its name made from the title, unique among the game's chapters."""
@@ -636,7 +669,7 @@ class FormDialog:
 
     def _pick(self, index: int) -> None:
         if index == 0:
-            if self.problem() is not None:
+            if self.problem() is not None or not self.confirmed():
                 return
             self.result = self.values()
         self._close_assets()
@@ -649,39 +682,6 @@ class FormDialog:
         return self.result
 
 
-def edit_form(parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
-              names: Mapping[str, Sequence[str]], ok: str = OK,
-              assets: FormAssets | None = None) -> dict[str, str] | None:
-    """``form``'s modal dialog: its values after OK, or None (Cancel, Esc, the close box).
-    ``assets``: thumbnails, ▶/■ and colour dots (``FormAssets``)."""
-    return FormDialog(parent, form, values, names=names, ok=ok, assets=assets).run(parent)
-
-
-# --- The Choice form ----------------------------------------------------------------------------
-
-class ChoiceDialog:
-    """The Choice form (§6.7.4): the question (speaker, look, text) and up to six options,
-    each with its text, an "only show when" condition and where it goes (a scene or
-    ``forms.CONTINUES``; a choice whose lines the form can't hold reads ``forms.IN_TEXT`` and
-    keeps them). Add, Remove, Up and Down act on the chosen option. "Only show when" is a
-    button with the condition in words; it opens the condition builder
-    (``formtools.ask_condition``). ``assets``: the Database's names for the builder.
-    ``result``: the ``ChoiceValues`` after OK."""
-
-    def __init__(self, parent: tk.Misc, values: ChoiceValues, *,
-                 names: Mapping[str, Sequence[str]], ok: str = OK,
-                 assets: FormAssets | None = None) -> None:
-        self.result: ChoiceValues | None = None
-        self.condition_names = {
-            kind: sorted({*names.get(kind, ()), *(assets.names(kind) if assets else ())},
-                         key=str.casefold)
-            for kind in formtools.NAME_KINDS.values()}
-        self.scenes = list(names.get("label", ()))
-        self.characters = list(names.get("character", ()))
-        dialog = self.dialog = dialogs._dialog(parent)
-        dialog.title(forms.CHOICE.title)
-        body, scale = dialogs._body(dialog)
-        self.scale = scale
 # --- Try it (F47 P2-F, PR-F47-20) -------------------------------------------------------------
 
 TRY_IT = "Try it"
@@ -719,6 +719,39 @@ def add_try_it(form_dialog: FormDialog, body: ttk.Frame
     return button, note
 
 
+def edit_form(parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
+              names: Mapping[str, Sequence[str]], ok: str = OK,
+              assets: FormAssets | None = None) -> dict[str, str] | None:
+    """``form``'s modal dialog: its values after OK, or None (Cancel, Esc, the close box).
+    ``assets``: thumbnails, ▶/■ and colour dots (``FormAssets``)."""
+    return FormDialog(parent, form, values, names=names, ok=ok, assets=assets).run(parent)
+
+
+# --- The Choice form ----------------------------------------------------------------------------
+
+class ChoiceDialog:
+    """The Choice form (§6.7.4): the question (speaker, look, text) and up to six options,
+    each with its text, an "only show when" condition and where it goes (a scene or
+    ``forms.CONTINUES``; a choice whose lines the form can't hold reads ``forms.IN_TEXT`` and
+    keeps them). Add, Remove, Up and Down act on the chosen option. "Only show when" is a
+    button with the condition in words; it opens the condition builder
+    (``formtools.ask_condition``). ``assets``: the Database's names for the builder.
+    ``result``: the ``ChoiceValues`` after OK."""
+
+    def __init__(self, parent: tk.Misc, values: ChoiceValues, *,
+                 names: Mapping[str, Sequence[str]], ok: str = OK,
+                 assets: FormAssets | None = None) -> None:
+        self.result: ChoiceValues | None = None
+        self.condition_names = {
+            kind: sorted({*names.get(kind, ()), *(assets.names(kind) if assets else ())},
+                         key=str.casefold)
+            for kind in formtools.NAME_KINDS.values()}
+        self.scenes = list(names.get("label", ()))
+        self.characters = list(names.get("character", ()))
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(forms.CHOICE.title)
+        body, scale = dialogs._body(dialog)
+        self.scale = scale
         gap = round(GAP * scale)
         self.gap = gap
         # The question
