@@ -35,6 +35,7 @@ DOCS_PENDING = {
     "minigame": "F23 s6",            # registered by minigame.register_words() (F19 07 I-5)
     "effect": "F28 s6",              # registered by glitch.register_words() until F28 s3
     "ui": "F32 s6",                  # ui.HEADING; registered by ui.register_words() from F32 s3
+    "file": "F31 s5",                # "Meta files"; metafiles.register_words() from F31 s3
 }
 
 _FENCE = re.compile(r"^\s*(```|~~~)")

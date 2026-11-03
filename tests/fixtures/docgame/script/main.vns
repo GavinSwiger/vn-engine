@@ -1,10 +1,12 @@
 # F45 TR-F45-01's test game: each StatementDoc example is placed in this file, top-level
 # examples above the first line, the others right after "label start:". turns is the
-# minigame example's into target (F23).
+# minigame example's into target (F23); hana_here and answer are the file examples' (F31).
 include "chapter2.vns"
 define hana = Character("Hana")
 default coins = 0
 default turns = 0
+default hana_here = True
+default answer = None
 points friendship 0 to 10
 lock route river "By the River"
 lock tip lanterns "Paper Lanterns"

@@ -47,6 +47,13 @@ restore does (TR-F20-06) and reaches no node (PR-F20-07).
 
 F32 (its ``04`` §2.2; 07 G1): a ``DeleteSaves`` (``ui delete saves``) deletes nothing here; each
 one logs ``runtime.ui.DELETE_PREVIEW_TEXT`` once at INFO (the run's ``runtime`` logger).
+
+F31 (its ``04`` §6.6, AC-F31-11, AC-F31-16): ``files`` is the run's meta files folder (a
+``MemoryFolder``; None: a fresh empty one), never the disk. At a line or a menu the input may be
+``player deletes <name>`` or ``player restores <name>`` (a ``META_NAME_RE`` name): it counts as
+an input, doesn't advance, and changes the folder at once (a restore copies the original, or
+``b""``). A name no ``file`` line uses is a ``HeadlessInputError`` (``H-input`` form
+``meta_name``); any other text after ``player`` is H-input's usual form.
 """
 
 import re
@@ -56,6 +63,7 @@ from types import MappingProxyType
 
 from engine.core.errors import UserFacingError
 from engine.core.minigame_types import CodexChange, MeterChange, MinigameSig, Outcome
+from engine.core.paths import META_NAME_RE
 from engine.core.startvalues import StartOptions, parse_literal
 from engine.runtime import flowchart as flowchart_mod
 from engine.runtime import minigame as minigame_mod
@@ -66,6 +74,7 @@ from engine.runtime.flowchart import FlowStates
 from engine.runtime.images import ImageSource
 from engine.runtime.interpreter import Interpreter, RestoreResult, Status
 from engine.runtime.launch import run_launch
+from engine.runtime.metafiles import MemoryFolder, MetaFiles, attach
 from engine.runtime.persistent import PersistentStore
 from engine.runtime.points import UnknownMeter
 from engine.runtime.rollback import DEFAULT_DEPTH, DEPTH_MAX
@@ -95,6 +104,8 @@ _LOCK_RE = re.compile(r"lock[ \t]+item[ \t]+" + _NAME, re.ASCII)
 # F20 (04 §7.6, SEC-F20-13): ``jump <node id>``; the id is any text, length-checked first.
 JUMP_ID_MAX = 1_200
 _JUMP_RE = re.compile(r"jump(?: (.*))?", re.DOTALL)
+# F31 (04 §6.6): the player changes a meta file.
+_PLAYER_RE = re.compile(r"player (deletes|restores) (" + META_NAME_RE.pattern + ")", re.ASCII)
 
 
 class HeadlessInputError(UserFacingError):
@@ -126,7 +137,8 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
                  persistent: PersistentStore | None = None,
                  rollback_steps: int = DEFAULT_DEPTH,
                  minigames: Mapping[str, MinigameSig] | None = None,
-                 flow: FlowStates | None = None) -> list[Command]:
+                 flow: FlowStates | None = None,
+                 files: MemoryFolder | None = None) -> list[Command]:
     """Launch (launch errors → one ``StoryFailed`` holding a ``ScriptErrorGroup``),
     ``new_game(seed)``, then ``run(10_000)`` in a loop. At each line the next input is used
     (``"advance"``; F07: ``"choose N"`` at a menu); once inputs run out, every line is
@@ -142,7 +154,8 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
     ``rollback_steps`` is ``[rollback] steps`` (0 to 1,000). F23: ``minigames`` are the
     plugins' signatures (None: none); see the module docstring for the inputs at a
     minigame. F20: ``flow`` is the node-state holder (None: a fresh one); ``jump <id>`` at a
-    line or menu (module docstring)."""
+    line or menu (module docstring). F31: ``files`` is the meta files folder (None: a fresh
+    empty one); ``player deletes|restores <name>`` at a line or menu (module docstring)."""
     if persistent is None:
         persistent = PersistentStore(identity_scheme=program.identity_scheme)
     launch = run_launch(program, dev=dev, images=ImageSource.from_files(image_files),
@@ -154,6 +167,8 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
                          rollback_steps=rollback_steps,
                          minigames=MappingProxyType({}) if minigames is None else minigames)
     flowchart_mod.register(interp, states=FlowStates() if flow is None else flow)   # F20
+    folder = MemoryFolder() if files is None else files                             # F31
+    attach(interp, MetaFiles(folder))
     interp.new_game(seed)
     commands: list[Command] = []
     pending = _Inputs(inputs)
@@ -193,6 +208,10 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
                 if type(answer) is str and _JUMP_RE.fullmatch(answer) is not None:
                     _jump(interp, answer, number, commands)  # F20 (04 §7.6)
                     continue
+                player = _PLAYER_RE.fullmatch(answer) if type(answer) is str else None
+                if player is not None:                      # F31 (04 §6.6)
+                    _player(interp, folder, player, number, commands)
+                    continue
             interp.post(_event(interp, current, at_menu, answer, number, commands))
         else:
             break
@@ -207,6 +226,20 @@ def _take(interp: Interpreter, commands: list[Command]) -> None:
         if type(cmd) is DeleteSaves:
             interp.log.info("%s", DELETE_PREVIEW_TEXT)
     commands.extend(taken)
+
+
+def _player(interp: Interpreter, folder: MemoryFolder, match: re.Match[str], number: int,
+            commands: list[Command]) -> None:
+    """F31's ``player deletes|restores <name>`` (04 §6.6): the folder changes at once; a name
+    no ``file`` line uses is ``HeadlessInputError`` (H-input ``meta_name``)."""
+    verb, name = match.group(1), match.group(2)
+    if name not in interp.program.meta_files:
+        raise HeadlessInputError(format_message("H-input", (number, match.group(0), "meta_name")),
+                                 list(commands))
+    if verb == "deletes":
+        folder.player_deletes(name)
+    else:
+        folder.player_restores(name)
 
 
 class _Inputs:

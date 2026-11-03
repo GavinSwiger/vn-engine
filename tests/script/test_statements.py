@@ -178,7 +178,7 @@ def test_how_a_line_is_read(row, expected):
 # F04: scene, show, hide, image; F08: play, stop, queue, voice; F07: menu; F09: pause, shake,
 # flash, and with, which now starts no line: E32b; F18: chapter; F22: points; F17: nvl; F19:
 # ending, lock, unlock; F23: minigame).
-UNBUILT = "window file cg".split()          # F28 s3 built effect; F32 s4 registered ui
+UNBUILT = "window cg".split()               # F28 s3 built effect; F32 s4 ui; F31 s3 file
 
 
 @pytest.mark.parametrize("row,where,message", [
@@ -205,7 +205,7 @@ def test_statement_word_errors(row, where, message):
 
 @pytest.mark.parametrize("word", UNBUILT)
 def test_unbuilt_words_are_e32(word):
-    assert len(UNBUILT) == 3
+    assert len(UNBUILT) == 2
     parsed = parse_text(template(S=f"{word} hana"))
     assert [message_at(e) for e in parsed.errors] == [(
         "5", f'"{word}" is not available yet in this engine version. Remove the line or '
@@ -312,11 +312,11 @@ def test_f02_registry():
     # queue, stop, voice (F08 step 1), menu (F07 step 1), shake, flash, pause (F09 step 1), and
     # chapter (F18 step 1), points (F22 step 1), rollback (F14 step 1), nvl (F17 step 1), and
     # ending, lock, unlock (F19 step 3), minigame (F23 s2), flowchart (F20 s1), effect
-    # (F28 s3), and ui (F32 s4).
+    # (F28 s3), ui (F32 s4), and file (F31 s3).
     assert registered_words() == frozenset(
         "label define include jump call return if elif else default scene show hide image "
         "play queue stop voice menu shake flash pause chapter points rollback nvl ending lock "
-        "unlock minigame flowchart effect ui".split())
+        "unlock minigame flowchart effect ui file".split())
 
 
 class Window(Statement):            # an unbuilt word (nvl until F17 built it)

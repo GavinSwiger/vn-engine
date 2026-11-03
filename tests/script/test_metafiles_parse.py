@@ -1,7 +1,7 @@
 """F31 step 2: the ``file`` statement's parse and load messages (06 AC-F31-08, AC-F31-09).
 
-``file`` registers at import only from F31 s3, so every test here calls
-``metafiles.register_words()`` inside ``statements.scoped_registry()`` (06 §9 step 2). The
+``file`` registers at import since F31 s3; the tests still call ``metafiles.register_words()``
+inside ``statements.scoped_registry()`` (06 §9 step 2), where a repeat changes nothing. The
 message rows themselves are in ``tests/fixtures/F02/messages/cases.toml`` (``feature =
 "F31"``) and run with every other row in ``test_messages.py``; AC-F31-09's test checks that
 they cover every form and that the run-time rows match ``messages.py``.
@@ -21,6 +21,7 @@ from engine.script.loader import LoadOptions, load_story
 from engine.script.messages import format_message
 from engine.script.metafiles import MetaFile, name_problem
 from engine.script.statement_docs import all_docs
+from engine.script import statements
 from engine.script.statements import get_spec, register, registered_words, scoped_registry
 from tests.script import message_cases
 from tests.script.helpers import parse_text
@@ -51,7 +52,7 @@ def _load(tmp_path: Path, main: str, more: str | None = None):
 
 
 def test_ac08_the_four_forms_parse(tmp_path):
-    assert get_spec("file") is None                       # not registered at import (s2)
+    assert get_spec("file") is metafiles.SPEC             # registered at import (F31 s3)
     with scoped_registry():
         metafiles.register_words()
         words, docs = registered_words(), all_docs()
@@ -207,6 +208,7 @@ def test_ac09_load_errors_e309_to_e312_and_e315():
         return metafiles.parse_file(raw, ctx)
 
     with scoped_registry():
+        statements._REGISTRY.pop("file")                  # restored when the scope ends
         register(dataclasses.replace(metafiles.SPEC, parse=poisoned))
         parsed = _parse('file write "read_me.txt" "x"')
     assert parsed.codes == ["E311"]

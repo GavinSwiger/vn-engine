@@ -68,7 +68,8 @@ rows (``time = "run" | "launch"``) are data; ``tests/script/test_ui_parse.py`` c
 F31 rows (``feature = "F31"``; F31 ``06-acceptance.md`` AC-F31-09) edit F31's template (S is line
 6, T is line 8); the game folder gets its ``files/hana.chr`` (``setup = "no original"``: none;
 ``"large original"``: a 5,452,595-byte one). They run inside ``scoped_registry()`` with
-``metafiles.register_words()`` (``file`` registers at import from F31 s3). Their W196–W200 rows
+``metafiles.register_words()`` (since F31 s3 ``file`` registers at import, so the call changes
+nothing). Their W196–W200 rows
 (``time = "run"``) are data; ``tests/script/test_metafiles_parse.py`` checks their texts.
 
 Regenerate the golden file only with the reviewed command::

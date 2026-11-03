@@ -373,6 +373,25 @@ class DeleteSaves(Command):
     nothing); headless logs one INFO line and deletes nothing."""
 
 
+# --- F31 meta files (F31 04-technical.md §3, §4.2; 07 §3(b)) ---------------------------------
+
+@dataclass(frozen=True, slots=True)
+class MetaWrite(Command):
+    """F31: a ``file write`` ran live (never on F14's quiet forward re-run, never in a restore
+    burst): a record, like ``ChapterStarted`` (PR-F31-18). ``name`` is the listed file name
+    only, never a path or the text. Handler: ``app/metafiles.py`` (F31 s4: ``pump()``)."""
+
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class MetaDelete(Command):
+    """F31: a ``file delete`` ran live (as ``MetaWrite``). ``name`` is the listed file name
+    only. Handler: ``app/metafiles.py`` (F31 s4: ``pump()``)."""
+
+    name: str
+
+
 @dataclass(frozen=True, slots=True)
 class ChapterStarted(Command):
     """F18: a ``chapter`` ran (held in run order, card or not, before its ``ShowStage``).
@@ -570,7 +589,7 @@ class RollbackView:
 
 __all__ = ["Advance", "AudioRestore", "BASE_STYLE", "BlipSpec", "Change", "ChapterStarted",
            "Choose", "CodexAdded", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
-           "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MeterChange", "MeterView", "MinigameBase",
+           "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MetaDelete", "MetaWrite", "MeterChange", "MeterView", "MinigameBase",
            "MinigameDone", "MinigameUsed", "NameMark", "NvlLine", "NvlPage", "PauseMark", "PlayMusic", "PlaySound", "PlayVoice", "PrefetchImages", "QueueMusic",
            "RollbackView", "Say", "Shake", "ShowMenu", "ShowStage", "ShownChoice", "Span",
            "StartMinigame", "StepBack", "StepForward", "StopMusic", "StoryNames",

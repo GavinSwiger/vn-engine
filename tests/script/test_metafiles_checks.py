@@ -1,8 +1,9 @@
 """F31 step 2: the whole-game checks for ``file`` lines (06 AC-F31-10; ``04`` §5.2).
 
 Fixture ``checks/`` is ``tests/fixtures/F31/walk/`` copied to ``tmp_path/aiko/game`` with an
-``include "more.vns"`` (06 §5); each row changes it. ``file`` registers at import only from
-F31 s3, so the loads run inside ``scoped_registry()`` with ``metafiles.register_words()``.
+``include "more.vns"`` (06 §5); each row changes it. ``file`` registers at import since F31 s3;
+the loads still run inside ``scoped_registry()`` with ``metafiles.register_words()`` (a repeat
+changes nothing).
 """
 
 import builtins
@@ -97,7 +98,7 @@ def test_ac10_whole_game_checks_e312_e313_e314(tmp_path, monkeypatch):
     assert not [p for p in opened if "files" in Path(p).parts]
 
     # E312: no default (did-you-mean), a define, an engine name.
-    target = "file exists \"hana.chr\" into hana_here\n    hana"
+    target = '{{"\n    file exists "hana.chr" into hana_here'      # walk line 8
     for row, new, args in (("her", "hana_her", ("no_default", "hana_her", "hana_here")),
                            ("define", "hana", ("define", "hana")),
                            ("engine", "dice", ("engine", "dice"))):
@@ -162,8 +163,8 @@ def test_ac10_whole_game_checks_e312_e313_e314(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_file_word_outside():
-    """``file`` stays unregistered outside each load (F31 s2)."""
+    """``file`` is registered at import, before and after each load (F31 s3)."""
     from engine.script.statements import get_spec
-    assert get_spec("file") is None
+    assert get_spec("file") is metafiles.SPEC
     yield
-    assert get_spec("file") is None
+    assert get_spec("file") is metafiles.SPEC

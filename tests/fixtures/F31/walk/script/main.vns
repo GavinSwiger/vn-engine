@@ -6,20 +6,26 @@ label start:
     file write "hana.chr"
     file write "read_me.txt" "Line one\nNoteMark7 {b}x{/b} {{"
     file exists "hana.chr" into hana_here
-    hana "W1 {var=hana_here}"
+    $ shown = str(hana_here)
+    hana "W1 {var=shown}"
     file read "read_me.txt" into answer
     "W2 {var=answer}"
     file delete "hana.chr"
     file delete "gone.chr"
     file exists "hana.chr" into hana_here
-    "W3 {var=hana_here}"
+    $ shown = str(hana_here)
+    "W3 {var=shown}"
     file read "answer.txt" into answer
     if answer == "yes":
         "W4 yes"
     else:
-        "W4 other {var=answer}"
+        $ shown = str(answer)
+        "W4 other {var=shown}"
     file exists "hana.chr" into hana_here
     if hana_here:
         hana "W5 back"
     else:
         "W5 gone"
+
+# W1, W3, and W4 show bools and None through shown ({var=} shows only text and numbers).
+default shown = ""

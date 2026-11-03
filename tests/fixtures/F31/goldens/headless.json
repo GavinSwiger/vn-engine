@@ -1,0 +1,170 @@
+{
+ "commands": [
+  {
+   "reason": "new_game",
+   "state": {
+    "music": [],
+    "sounds": []
+   },
+   "type": "AudioRestore"
+  },
+  {
+   "stage": {
+    "background": null,
+    "sprites": []
+   },
+   "type": "ShowStage"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W0",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/1b04675a5b18",
+   "speaker": null,
+   "text": "W0",
+   "type": "Say"
+  },
+  {
+   "name": "hana.chr",
+   "type": "MetaWrite"
+  },
+  {
+   "name": "read_me.txt",
+   "type": "MetaWrite"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W1 True",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/e0ab1289e7ba",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "W1 {var=shown}",
+   "type": "Say"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W2 Line one NoteMark7 {b}x{/b} {{",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/c8fc23f7e3d2",
+   "speaker": null,
+   "text": "W2 {var=answer}",
+   "type": "Say"
+  },
+  {
+   "name": "hana.chr",
+   "type": "MetaDelete"
+  },
+  {
+   "name": "gone.chr",
+   "type": "MetaDelete"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W3 False",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/ee3c633d606d",
+   "speaker": null,
+   "text": "W3 {var=shown}",
+   "type": "Say"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W4 other None",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/d5653c431125",
+   "speaker": null,
+   "text": "W4 other {var=shown}",
+   "type": "Say"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "W5 gone",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/7e6909681405",
+   "speaker": null,
+   "text": "W5 gone",
+   "type": "Say"
+  },
+  {
+   "type": "StoryEnded"
+  }
+ ],
+ "fixture": "walk",
+ "originals": [
+  "hana.chr"
+ ],
+ "seed": 42
+}

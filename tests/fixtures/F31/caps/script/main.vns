@@ -1,0 +1,13 @@
+default i = 0
+default n = 300
+label start:
+    "C0"
+    jump again
+
+label again:
+    $ i += 1
+    file write "a.txt" "x"
+    if i < n:
+        jump again
+    file delete "a.txt"
+    "End"

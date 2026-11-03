@@ -30,9 +30,9 @@ the sid. Each line is one step (E45). ``MetaFile`` is ``VOICE_TRANSPARENT``
 whole-game checks (E312's target forms, E313, E314) are ``checks.py``'s step 12.
 
 **Registration (04 §5.3; F19 07 I-5).** ``register_words()`` adds the ``StatementSpec`` and
-the four ``StatementDoc``s; calling it again does nothing. F31 s2 defines it without calling
-it at import, so a real game keeps F02's E32 for ``file`` until F31 s3 registers the
-executor (``runtime/metafiles.run_file``) and adds the import-time call.
+the four ``StatementDoc``s; calling it again does nothing. F31 s2 defined it without calling
+it at import (a real game kept F02's E32 for ``file``); since F31 s3 it is called at import,
+with the executor (``runtime/metafiles.run_file``) registered by the interpreter.
 """
 
 import unicodedata
@@ -195,41 +195,46 @@ SPEC: Final = StatementSpec(word=WORD_FILE, placement="story", takes_block=False
                             tail=TAIL_SCRIPT, parse=parse_file)
 
 # Four Insert entries in "Files". ``docs`` is None until F31 s5 writes the "Meta files"
-# section; ``meta_file`` is the name kind F31 s5 adds to tools/check.py's NAME_SOURCES. The
-# examples load in tests/fixtures/docgame/ once F31 s5 adds files/hana.chr and the two
-# defaults (06 §5).
+# section. ``_NAMES`` is empty until F31 s5 adds the ``meta_file`` name kind to tools/check.py's
+# NAME_SOURCES and sets it to ("meta_file",) (``file`` registers at import since F31 s3, and
+# every listed kind must have a source, AC-F45-07). The examples load in tests/fixtures/docgame/
+# (files/hana.chr and the two defaults, added at F31 s3; 06 §5).
+_NAMES: Final[tuple[str, ...]] = ()
 DOCS: Final = (
     StatementDoc(
         WORD_FILE, "Write a meta file", "Files", 'file write "<name>" ["<text>"]',
         "Puts a file in the game's characters folder, where the player can see it: the "
         "text given, or a copy of files/<name>.",
-        'file write "hana.chr"', None, "F31", fields=("hana.chr",), names=("meta_file",)),
+        'file write "hana.chr"', None, "F31", fields=("hana.chr",), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Delete a meta file", "Files", 'file delete "<name>"',
         "Deletes a file the story wrote in the game's characters folder.",
-        'file delete "hana.chr"', None, "F31", fields=("hana.chr",), names=("meta_file",)),
+        'file delete "hana.chr"', None, "F31", fields=("hana.chr",), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Check a meta file", "Files", 'file exists "<name>" into <variable>',
         "Sets a variable to True if the file is in the characters folder, else False.",
         'file exists "hana.chr" into hana_here', None, "F31",
-        fields=("hana.chr", "hana_here"), names=("meta_file",)),
+        fields=("hana.chr", "hana_here"), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Read a meta file", "Files", 'file read "<name>" into <variable>',
         "Reads a .txt file the player may have changed into a variable: its text, or None.",
         'file read "answer.txt" into answer', None, "F31",
-        fields=("answer.txt", "answer"), names=("meta_file",)),
+        fields=("answer.txt", "answer"), names=_NAMES),
 )
 
 
 def register_words() -> None:
-    """Register ``file`` (spec and docs). Not called at import until F31 s3 (module
-    docstring); tests call it inside ``statements.scoped_registry()``. Calling it again
-    while it is registered does nothing (F19's rule)."""
+    """Register ``file`` (spec and docs). Called at import since F31 s3 (module docstring);
+    tests may call it inside ``statements.scoped_registry()``. Calling it again while it is
+    registered does nothing (F19's rule)."""
     if get_spec(WORD_FILE) is SPEC:
         return
     register(SPEC)
     for doc in DOCS:
         register_doc(doc)
+
+
+register_words()                            # F31 s3 (F19 07 I-5)
 
 
 __all__ = ["DELETE", "DOCS", "EXISTS", "MetaFile", "NAME_BASE_MAX", "READ", "SPEC", "VERBS",

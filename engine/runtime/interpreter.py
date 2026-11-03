@@ -188,6 +188,7 @@ from engine.runtime import flowchart as flowchart_mod
 from engine.runtime import fourthwall as fourthwall_mod
 from engine.runtime import glitch as glitch_mod
 from engine.runtime import menu as menu_mod
+from engine.runtime import metafiles as metafiles_mod
 from engine.runtime import minigame as minigame_mod
 from engine.runtime import nvl as nvl_mod
 from engine.runtime import points as points_mod
@@ -235,6 +236,7 @@ from engine.script.fourthwall import CrashEffect, TitleEffect
 from engine.script.glitch import Effect
 from engine.script import effects as effect_nodes
 from engine.script.menu import Menu
+from engine.script.metafiles import MetaFile
 from engine.script.minigame import Minigame
 from engine.script.nvl import Nvl
 from engine.script.program import Program
@@ -499,6 +501,9 @@ class Interpreter:
         # and, runtime-only, the state last held (never reset by a restore's commit).
         self.ui: UiState = EMPTY_UI
         self._ui_sent: UiState = EMPTY_UI
+        # F31 (04 §4.2, 07 §3(b)): the files port (runtime-only, never saved or snapshotted);
+        # an in-memory folder until ``metafiles.attach`` (headless ``files=``, the app's disk).
+        self.files = metafiles_mod.MetaFiles(metafiles_mod.MemoryFolder())
 
     # --- Commands (I-3: the one place to hold and the one place to release) ------------
 
@@ -1658,6 +1663,9 @@ register_executor(TitleEffect, fourthwall_mod.run_title)
 register_executor(CrashEffect, fourthwall_mod.run_crash)
 # F32 (04 §5.2): ``ui`` lines (runtime/ui.py). Not a checkpoint type; each line is one step.
 register_executor(UiStatement, ui_mod.run_ui)
+# F31 (04 §5.4): ``file`` lines (runtime/metafiles.py). Not a checkpoint type; a write or
+# delete sets the wall at the next checkpoint.
+register_executor(MetaFile, metafiles_mod.run_file)
 
 
 # --- Event handlers -----------------------------------------------------------------------
