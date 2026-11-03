@@ -32,7 +32,7 @@ LANGUAGE_DOC = Path(__file__).resolve().parents[2] / "docs" / "script-language.m
 
 # 07 I-4: keys whose docs/script-language.md heading is still to come.
 DOCS_PENDING = {
-    "effect": "F28 s6",              # registered by glitch.register_words() until F28 s3
+    "effect": "F30 s6",              # F28's two entries have "Glitch effects"; F30's are next
     "ui": "F32 s6",                  # ui.HEADING; registered by ui.register_words() from F32 s3
 }
 

@@ -17,7 +17,7 @@ from engine.app.dispatch import CommandRouter
 from engine.runtime import interpreter as interp_mod
 from engine.runtime.audio import EMPTY_AUDIO
 from engine.runtime.commands import (Advance, AudioRestore, ChapterStarted, CodexAdded,
-                                     Command, Event, Flash, MetaDelete, MetaWrite, NvlPage, PlayVoice, PrefetchImages, Say, Shake, ShowMenu,
+                                     Command, Event, Flash, Glitch, MetaDelete, MetaWrite, NvlPage, PlayVoice, PrefetchImages, Say, Shake, ShowMenu,
                                      ShowStage, StartMinigame, StoryEnded, StoryFailed,
                                      StoryWait)
 from engine.runtime.interpreter import (CHECKPOINT_TYPES, RestoreResult, Status, Step,
@@ -106,6 +106,7 @@ def test_i_9_a_retained_snapshot_is_unchanged_after_a_full_run():
     router.register(StartMinigame, shown.append)            # F24-4 (the example's poem)
     for kind in (MetaWrite, MetaDelete):                    # F31 s5 (the bonus scene)
         router.register(kind, shown.append)
+    router.register(Glitch, shown.append)                   # F28 s6 (the bonus scene)
     end_waits(interp)                                       # F18: the prologue's card
     retained = []
     while interp.status is Status.WAITING:
@@ -259,7 +260,8 @@ def test_ac_f03_84_bursts_with_f04s_stage(tmp_path):
             continue
         burst = [c for c in take_all(interp)
                  if type(c) not in (PrefetchImages, StoryWait, Shake, Flash, ChapterStarted,
-                                    CodexAdded, MetaWrite, MetaDelete)]     # F31 s5
+                                    CodexAdded, MetaWrite, MetaDelete,      # F31 s5
+                                    Glitch)]                                # F28 s6
         if first:
             assert burst[0] == AudioRestore(EMPTY_AUDIO, "new_game")
             first = False
@@ -290,6 +292,9 @@ def test_ac_f03_84_bursts_with_f04s_stage(tmp_path):
         assert fresh.restore(round_trip(state)).result is RestoreResult.OK
         burst = [c for c in take_all(fresh) if type(c) is not PrefetchImages]
         restored = [dataclasses.replace(c, restored=True) for c in voice]
+        glitch = [Glitch(state.glitch, restored=True)] if state.glitch.on else []   # F28 s6
+        assert burst[3:3 + len(glitch)] == glitch
+        del burst[3:3 + len(glitch)]
         assert [type(c) for c in burst] == [AudioRestore, NvlPage, ShowStage,
                                             *map(type, voice), Say, *menu]
         assert burst[0] == AudioRestore(state.audio, "restore")                  # F08

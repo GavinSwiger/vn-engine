@@ -413,6 +413,10 @@ See [Rollback](#18-rollback): `rollback block`, `rollback off`, `rollback on`, a
 See [section 23](#23-meta-files): `file write`, `file delete`, `file exists`, and
 `file read`.
 
+### Glitch effects
+See [section 24](#24-glitch-effects): `effect tear`, `effect colorshift`, `effect static`,
+`effect jitter`, `effect off`, and `with glitch`.
+
 ### chapter
 ```
     scene bg festival
@@ -2091,7 +2095,7 @@ blends, `with fade` goes through black. Two **effects** act on the picture for a
 `shake` and `flash`. `pause` holds the story for a beat. They only change what the player
 sees: lines, choices, variables, and saves are the same whether they play in full, are
 clicked through, or are turned down. The example game uses each one, with a comment above
-its first use.
+its first use. Glitches (`effect`) have their own section: [Glitch effects](#24-glitch-effects).
 
 ### with
 ```
@@ -2110,6 +2114,7 @@ its first use.
 | `cut` | The new picture at once, as with no `with` | 0 |
 | `dissolve` | Blends the old picture into the new one | 0.5 seconds |
 | `fade` | The old picture fades to black, then the new one fades in | 1.0 second, half each way |
+| `glitch` | Tears the old picture, cuts to the new one, and calms; see [Glitch effects](#24-glitch-effects) | 0.5 seconds |
 | a name you `define` | See [Your own transitions](#your-own-transitions) | its own |
 
 After the name, in any order and each at most once:
@@ -2688,12 +2693,14 @@ reserved so your script keeps working when they arrive.
 | `cg` | coming: gallery |
 | `ending` `lock` `unlock` | available |
 | `minigame` | available |
-| `effect` | coming: glitch effects |
+| `effect` | available |
 | `file` | available |
 | `rollback` | available |
 | `flowchart` | available |
 | `python` | not supported; use `$` lines |
 
+`tear`, `colorshift`, `static`, and `jitter`, the glitches, aren't reserved: like `on` and
+`off`, they mean something only right after `effect`, so `default static = 0` still works.
 `tip` and `item` aren't reserved: they mean something only right after `lock` or `unlock`,
 so `default item = None` still works. `codex`, like `dice` and `points`, is an engine name,
 so it can't be a variable, a label, or a character.
@@ -2816,7 +2823,8 @@ Warnings let the game start; the rest stop the launch.
 ### Transitions and effects
 Every message for `with`, `shake`, `flash`, `pause`, and transition `define`s is in
 [When something is wrong](#when-something-is-wrong-1), at the end of Transitions and
-effects.
+effects. Every message for `effect` and `with glitch` is in
+[When something is wrong](#when-something-is-wrong-5), at the end of Glitch effects.
 
 ### Rollback
 Every message for `rollback` lines is in
@@ -3066,6 +3074,138 @@ W196–W200 are warnings in the log while the game runs; the story goes on.
 
 ---
 
+## 24. Glitch effects
+
+Glitch effects make the stage picture look broken, for a moment or for as long as you like:
+bands of it slide sideways, its colors split apart, static covers it, or one sprite twitches.
+They act on the stage only; the text box, choices, and menus never glitch. To glitch a
+line's text instead, write [`{glitch}…{/glitch}`](#text-tags) inside it. The example game's
+bonus scene, `game/script/bonus.vns`, uses each one with a comment above its first use.
+
+```
+label start:
+    scene bg river
+    show hana happy
+    effect tear
+    "The picture tears for half a second."
+    effect tear large 0.3
+    effect jitter hana 1.0
+    hana "Did you see that?"
+    effect static small on
+    effect colorshift on
+    effect jitter hana large on
+    hana "It's getting worse."
+    effect static off
+    effect jitter hana off
+    "The static stops, but the colors stay split."
+    effect off
+    "Everything is back to normal."
+```
+
+**An `effect` line** is `effect`, then the glitch: `tear`, `colorshift`, `static`, or
+`jitter` and a sprite's tag (`effect jitter hana`; only `jitter` takes one). After it, in
+any order and each at most once:
+- a size: `small`, `medium` (the default), or `large`;
+- a length in seconds from 0.1 to 30, with no unit, or `on`, or `off`.
+
+`effect` goes inside a label, like other story lines.
+
+**Bursts and lasting glitches.**
+- With a length, or with none, a glitch is a **burst**: `effect tear 0.3` tears the
+  picture for 0.3 seconds, then stops by itself. With no length it lasts as long as
+  `[effects] glitch` says (0.5 seconds).
+- With `on` it **lasts** until you stop it: `effect static on`, later `effect static off`.
+  `effect jitter hana off` stops only Hana's jitter. `off` takes no size or length.
+- `effect off` on its own stops every glitch, lasting ones and bursts.
+- Different glitches run together. For one glitch (one sprite, for `jitter`), the newest
+  line wins. A burst over a lasting glitch of the same kind shows its own size for its
+  length; then the lasting one comes back.
+
+**When it starts.** Like `shake`, an `effect` line starts with whatever is shown next: a
+line, a choice, a `with`, or a `pause`. It never holds up the text, and a burst still
+running at the next line plays to its end. Glitches act on the stage after a `shake` and
+under a `flash`, keep going behind choices and chapter cards, and stand still while a menu
+is open.
+
+| Glitch | What it does | small / medium / large | Changes |
+|---|---|---|---|
+| `tear` | 2 to 6 bands of the picture slide sideways and wrap around, so no gap shows | slides up to 16 / 40 / 96 units | new bands every 0.1 seconds |
+| `colorshift` | A red copy of the picture moves left and a blue copy right; green stays | 2 / 6 / 12 units | still |
+| `static` | Gray noise over the stage, with the same average brightness on every frame | 15% / 30% / 50% strength | new noise every 0.1 seconds |
+| `jitter <tag>` | The sprite's picture jumps to small offsets around its place | up to 4 / 10 / 24 units | a new offset every 0.08 seconds |
+
+Sizes are in canvas units (the 1280×720 picture), so a glitch looks the same at every
+window size. Glitches start and stop at once: they are glitches.
+
+**Jitter and sprites.** A jitter follows its sprite when the sprite changes expression or
+position. It ends when the sprite leaves (`hide`, or a `scene`), and showing the sprite
+again doesn't bring it back. A tag with no sprite on the stage does nothing; a `--dev` run
+logs W184.
+
+**`with glitch`.**
+```
+    scene bg room with glitch
+    show hana sad with glitch 0.8
+```
+A built-in transition, used like `dissolve`: an optional length from 0 to 30 seconds (0.5
+when left out) and no color. The old picture tears harder and harder up to the middle, cuts
+to the new one, and the tear calms to nothing. A click finishes it at once, like any
+transition. `glitch` is a built-in name, so `define glitch = …` is an error (E198).
+
+**Words.** `effect` is a reserved word. `tear`, `colorshift`, `static`, `jitter`, `on`, and
+`off` mean something only right after `effect`, so `default static = 0` still works.
+
+**Flashing.** Glitches never fill the stage with a color and never flash red on their own.
+Their patterns change at most 10 times a second (12 for a jitter), and they change the
+stage's average brightness only when they start or stop. They share the limit of
+[3 flashes a second](#flash) with `flash` and short fades. Counted: a burst shorter than 1
+second (never a `jitter`), a `with glitch` shorter than 1 second, and starting, resizing, or
+stopping a lasting `static` or `colorshift`. Glitches that start on the same line count
+once. An extra burst isn't shown and an extra `with glitch` plays as a dissolve; the story
+goes on the same, and the log says so (W182). A lasting glitch over the limit starts a
+moment later.
+
+**Reduced effects.** With **Reduce motion and flashing** on in Settings, or `[effects]
+reduce = true` for everyone, `tear` and `jitter` draw nothing; `static` is one still frame
+at the `small` strength, fading in and out over 0.3 seconds; `colorshift` stays as
+written but fades in and out over 0.3 seconds; and `with glitch` plays as a dissolve.
+Turning the setting on or off mid-glitch changes the look at once. The story is the same
+either way.
+
+**Give each glitch a line or a sound that carries its meaning.** Some players turn effects
+down, and some can't see them well, so don't let a glitch tell the story on its own. In the
+example game, Hana asks "Did I just disappear from your folder?" while she glitches.
+
+**Don't stack `static` with a `Mask` transition.** Static over a running `Mask` is the
+heaviest thing the stage draws, and it can stutter at 1920×1080 on slower computers. Turn
+the static off before the `with`, or use `dissolve` there.
+
+**Saves and rollback.** Lasting glitches are part of the story: a save stores them, and
+loading or rolling back shows them at once. Bursts are never saved or replayed, and
+skipping drops them; lasting glitches stay. A new game or a return to the title clears
+every glitch. Glitches never change lines, choices, or variables, and their randomness
+never touches the story's `dice`.
+
+**Settings in `config.toml`.** The length and size used when a line gives none:
+```toml
+[effects]
+glitch = 0.5              # a burst's length in seconds, 0.1 to 30
+glitch_size = "medium"    # small, medium, or large
+```
+
+### When something is wrong
+E294 stops the launch with the file and line. W182–W184 are warnings in the log while the
+game runs; the story goes on.
+
+| Code | Message | Fix |
+|---|---|---|
+| E294 | `there is no glitch effect "tare". Did you mean "tear"?` / `there is no glitch effect "wobble". The effects are tear, colorshift, static, and jitter.` / `there is no glitch effect "corrupt". To corrupt a line's text, write {glitch}…{/glitch} inside it.` / `effect needs a glitch: tear, colorshift, static, or jitter, or off to stop them all.` / `effect jitter needs the sprite to jitter, e.g. effect jitter hana.` / `effect static doesn't take a sprite; only jitter does, but this has "hana".` / `effect tear takes a length from 0.1 to 30 seconds, but this has 45.` / `lengths have no units: write 0.5, not 0.5s.` / `write 0.5, not .5.` / `effect tear has two sizes; give one.` / `effect static has both on and a length. on lasts until effect static off, so give one.` / `effect static has both on and off; give one.` / `effect tear off takes no size or length.` / `this line has "slowly" left over after effect tear. effect takes a glitch, then a size and a length, on, or off.` / `this line has "now" left over after effect off. effect off takes nothing after it.` | Write `effect`, a glitch, then a size and a length, `on`, or `off`. For a line's text, use `{glitch}…{/glitch}`. |
+| W182 | `the glitch from this line wasn't shown, because the game shows at most 3 flashes a second to protect players who are sensitive to flashing.` / `the glitch transition from this line played as a dissolve, because the game shows at most 3 flashes a second to protect players who are sensitive to flashing.` (warning, while playing) | Space the glitches out, or make bursts 1 second or longer. |
+| W183 | `the glitch effect "static" couldn't be drawn (MemoryError), so it is off for the rest of this run.` (warning, while playing) | Nothing to fix in the script: the story goes on. If it keeps happening, close other programs; report it with the log. |
+| W184 | `effect jitter daichi: no sprite tagged daichi is on the stage, so nothing jitters. On the stage: hana, monika.` / `effect jitter daichi: no sprite tagged daichi is on the stage, so nothing jitters. On the stage: no sprites.` (warning, `--dev` runs) | Show the sprite before its `effect jitter`, or fix the tag. |
+
+---
+
 ## Changelog
 - 2026-11-01: Created with the F02 proposal.
 - 2026-11-01: Shortened to one short section and example per statement (rules stay in
@@ -3219,3 +3359,7 @@ W196–W200 are warnings in the log while the game runs; the story goes on.
   `files/`, each change once and blocking rollback, the new-game pattern, read-only installs
   and locked files, hot reload, what to tell players, and E309–E315 and W196–W200.
   Rollback's table has a meta files row; `file` is available in Reserved words.
+- 2026-11-02: F28 step 6: "Glitch effects" (section 24): `effect` with `tear`,
+  `colorshift`, `static`, and `jitter`, sizes, bursts and `on`/`off`, `effect off`, `with glitch`,
+  the flash limit and reduced effects, saves, `[effects] glitch` and `glitch_size`, and E294,
+  W182–W184. `effect` is available in Reserved words; `glitch` is in the `with` table.

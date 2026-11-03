@@ -132,6 +132,7 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana pout",
       "daichi smile",
       "daichi"
@@ -662,7 +663,45 @@
        }
       ]
      },
+     "transition": {
+      "calm": false,
+      "color": null,
+      "direction": null,
+      "flashes": true,
+      "kind": "glitch",
+      "mask": null,
+      "name": "glitch",
+      "reverse": false,
+      "seconds": null,
+      "sid": "hana_file/cc33289ac54c",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
      "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/cc33289ac54c",
+     "type": "StoryWait",
+     "wait_id": 5
+    },
+    {
+     "bursts": [
+      {
+       "kind": "jitter",
+       "seconds": 0.8,
+       "sid": "hana_file/efc27832eefe",
+       "size": null,
+       "tag": "hana",
+       "type": "GlitchBurst"
+      }
+     ],
+     "lasting": {
+      "on": []
+     },
+     "type": "Glitch"
     },
     {
      "attributes": [
@@ -701,6 +740,23 @@
      "type": "PrefetchImages"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "tear",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -728,6 +784,35 @@
      "type": "Say"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "colorshift",
+        "size": "small"
+       },
+       {
+        "kind": "static",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -750,6 +835,30 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "lasting": {
+      "on": []
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ],
+      [
+       "jitter",
+       null
+      ]
+     ],
+     "type": "Glitch"
     },
     {
      "attributes": [],
@@ -823,7 +932,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 5
+     "wait_id": 6
     },
     {
      "for_stage": false,
@@ -831,7 +940,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "stage": {
@@ -867,7 +976,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "attributes": [],
@@ -970,7 +1079,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -1076,7 +1185,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "fadein": null,
@@ -1591,7 +1700,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "attributes": [],
@@ -1681,7 +1790,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "for_stage": false,
@@ -1689,7 +1798,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "stage": {
@@ -1716,7 +1825,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "attributes": [],
@@ -1785,7 +1894,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -1858,7 +1967,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -2793,7 +2902,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -3168,7 +3277,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [
@@ -3482,7 +3591,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [],
@@ -3673,7 +3782,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "for_stage": false,
@@ -3681,7 +3790,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "type": "StoryEnded"
@@ -4418,6 +4527,7 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana pout",
       "daichi smile",
       "daichi"
@@ -4948,7 +5058,45 @@
        }
       ]
      },
+     "transition": {
+      "calm": false,
+      "color": null,
+      "direction": null,
+      "flashes": true,
+      "kind": "glitch",
+      "mask": null,
+      "name": "glitch",
+      "reverse": false,
+      "seconds": null,
+      "sid": "hana_file/cc33289ac54c",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
      "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/cc33289ac54c",
+     "type": "StoryWait",
+     "wait_id": 5
+    },
+    {
+     "bursts": [
+      {
+       "kind": "jitter",
+       "seconds": 0.8,
+       "sid": "hana_file/efc27832eefe",
+       "size": null,
+       "tag": "hana",
+       "type": "GlitchBurst"
+      }
+     ],
+     "lasting": {
+      "on": []
+     },
+     "type": "Glitch"
     },
     {
      "attributes": [
@@ -4987,6 +5135,23 @@
      "type": "PrefetchImages"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "tear",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -5014,6 +5179,35 @@
      "type": "Say"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "colorshift",
+        "size": "small"
+       },
+       {
+        "kind": "static",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -5036,6 +5230,30 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "lasting": {
+      "on": []
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ],
+      [
+       "jitter",
+       null
+      ]
+     ],
+     "type": "Glitch"
     },
     {
      "attributes": [],
@@ -5109,7 +5327,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 5
+     "wait_id": 6
     },
     {
      "for_stage": false,
@@ -5117,7 +5335,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "stage": {
@@ -5153,7 +5371,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "attributes": [],
@@ -5277,7 +5495,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -5400,7 +5618,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "fadein": null,
@@ -5868,7 +6086,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "stage": {
@@ -5976,7 +6194,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "for_stage": false,
@@ -5984,7 +6202,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "stage": {
@@ -6011,7 +6229,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "attributes": [],
@@ -6080,7 +6298,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -6153,7 +6371,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -7087,7 +7305,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -7461,7 +7679,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [
@@ -7747,7 +7965,7 @@
      "seconds": null,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "for_stage": false,
@@ -7755,7 +7973,7 @@
      "seconds": 3.0,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "type": "StoryEnded"
@@ -8470,6 +8688,7 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana pout",
       "daichi smile",
       "daichi"
@@ -9000,7 +9219,45 @@
        }
       ]
      },
+     "transition": {
+      "calm": false,
+      "color": null,
+      "direction": null,
+      "flashes": true,
+      "kind": "glitch",
+      "mask": null,
+      "name": "glitch",
+      "reverse": false,
+      "seconds": null,
+      "sid": "hana_file/cc33289ac54c",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
      "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/cc33289ac54c",
+     "type": "StoryWait",
+     "wait_id": 5
+    },
+    {
+     "bursts": [
+      {
+       "kind": "jitter",
+       "seconds": 0.8,
+       "sid": "hana_file/efc27832eefe",
+       "size": null,
+       "tag": "hana",
+       "type": "GlitchBurst"
+      }
+     ],
+     "lasting": {
+      "on": []
+     },
+     "type": "Glitch"
     },
     {
      "attributes": [
@@ -9039,6 +9296,23 @@
      "type": "PrefetchImages"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "tear",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -9066,6 +9340,35 @@
      "type": "Say"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "colorshift",
+        "size": "small"
+       },
+       {
+        "kind": "static",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -9088,6 +9391,30 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "lasting": {
+      "on": []
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ],
+      [
+       "jitter",
+       null
+      ]
+     ],
+     "type": "Glitch"
     },
     {
      "attributes": [],
@@ -9161,7 +9488,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 5
+     "wait_id": 6
     },
     {
      "for_stage": false,
@@ -9169,7 +9496,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "stage": {
@@ -9205,7 +9532,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "attributes": [],
@@ -9329,7 +9656,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -9452,7 +9779,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "fadein": null,
@@ -9982,7 +10309,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "stage": {
@@ -10090,7 +10417,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "for_stage": false,
@@ -10098,7 +10425,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "stage": {
@@ -10125,7 +10452,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "attributes": [],
@@ -10194,7 +10521,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -10267,7 +10594,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -11201,7 +11528,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -11575,7 +11902,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [
@@ -11889,7 +12216,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [],
@@ -12079,7 +12406,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "for_stage": false,
@@ -12087,7 +12414,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "type": "StoryEnded"
@@ -12829,6 +13156,7 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana pout",
       "daichi smile",
       "daichi"
@@ -13359,7 +13687,45 @@
        }
       ]
      },
+     "transition": {
+      "calm": false,
+      "color": null,
+      "direction": null,
+      "flashes": true,
+      "kind": "glitch",
+      "mask": null,
+      "name": "glitch",
+      "reverse": false,
+      "seconds": null,
+      "sid": "hana_file/cc33289ac54c",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
      "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/cc33289ac54c",
+     "type": "StoryWait",
+     "wait_id": 5
+    },
+    {
+     "bursts": [
+      {
+       "kind": "jitter",
+       "seconds": 0.8,
+       "sid": "hana_file/efc27832eefe",
+       "size": null,
+       "tag": "hana",
+       "type": "GlitchBurst"
+      }
+     ],
+     "lasting": {
+      "on": []
+     },
+     "type": "Glitch"
     },
     {
      "attributes": [
@@ -13398,6 +13764,23 @@
      "type": "PrefetchImages"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "tear",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -13425,6 +13808,35 @@
      "type": "Say"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "colorshift",
+        "size": "small"
+       },
+       {
+        "kind": "static",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -13447,6 +13859,30 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "lasting": {
+      "on": []
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ],
+      [
+       "jitter",
+       null
+      ]
+     ],
+     "type": "Glitch"
     },
     {
      "attributes": [],
@@ -13520,7 +13956,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 5
+     "wait_id": 6
     },
     {
      "for_stage": false,
@@ -13528,7 +13964,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "stage": {
@@ -13564,7 +14000,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "attributes": [],
@@ -13667,7 +14103,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -13790,7 +14226,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "fadein": null,
@@ -14236,7 +14672,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "stage": {
@@ -14372,7 +14808,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "for_stage": false,
@@ -14380,7 +14816,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "stage": {
@@ -14407,7 +14843,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "attributes": [],
@@ -14476,7 +14912,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -14549,7 +14985,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -15165,7 +15601,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [
@@ -15479,7 +15915,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [],
@@ -15669,7 +16105,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "for_stage": false,
@@ -15677,7 +16113,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "type": "StoryEnded"
@@ -16306,6 +16742,7 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana pout",
       "daichi smile",
       "daichi"
@@ -16836,7 +17273,45 @@
        }
       ]
      },
+     "transition": {
+      "calm": false,
+      "color": null,
+      "direction": null,
+      "flashes": true,
+      "kind": "glitch",
+      "mask": null,
+      "name": "glitch",
+      "reverse": false,
+      "seconds": null,
+      "sid": "hana_file/cc33289ac54c",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
      "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/cc33289ac54c",
+     "type": "StoryWait",
+     "wait_id": 5
+    },
+    {
+     "bursts": [
+      {
+       "kind": "jitter",
+       "seconds": 0.8,
+       "sid": "hana_file/efc27832eefe",
+       "size": null,
+       "tag": "hana",
+       "type": "GlitchBurst"
+      }
+     ],
+     "lasting": {
+      "on": []
+     },
+     "type": "Glitch"
     },
     {
      "attributes": [
@@ -16875,6 +17350,23 @@
      "type": "PrefetchImages"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "tear",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -16902,6 +17394,35 @@
      "type": "Say"
     },
     {
+     "lasting": {
+      "on": [
+       {
+        "kind": "colorshift",
+        "size": "small"
+       },
+       {
+        "kind": "static",
+        "size": "small"
+       }
+      ]
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ]
+     ],
+     "type": "Glitch"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -16924,6 +17445,30 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "lasting": {
+      "on": []
+     },
+     "stops": [
+      [
+       "tear",
+       null
+      ],
+      [
+       "colorshift",
+       null
+      ],
+      [
+       "static",
+       null
+      ],
+      [
+       "jitter",
+       null
+      ]
+     ],
+     "type": "Glitch"
     },
     {
      "attributes": [],
@@ -16997,7 +17542,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 5
+     "wait_id": 6
     },
     {
      "for_stage": false,
@@ -17005,7 +17550,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "stage": {
@@ -17041,7 +17586,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "attributes": [],
@@ -17165,7 +17710,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -17288,7 +17833,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "fadein": null,
@@ -17803,7 +18348,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "attributes": [],
@@ -17893,7 +18438,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "for_stage": false,
@@ -17901,7 +18446,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "stage": {
@@ -17928,7 +18473,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "attributes": [],
@@ -17997,7 +18542,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -18070,7 +18615,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -18812,7 +19357,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -19186,7 +19731,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [
@@ -19500,7 +20045,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [],
@@ -19690,7 +20235,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "for_stage": false,
@@ -19698,7 +20243,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "type": "StoryEnded"

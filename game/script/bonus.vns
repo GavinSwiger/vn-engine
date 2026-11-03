@@ -20,12 +20,33 @@ label hana_file:
     # "file delete" deletes a file the story wrote. Like a write, it can't be undone. The
     # original in files/ stays, so a new game writes the file again.
     file delete "hana.chr"
+    # Glitch effects: the picture seems to break while Hana's file is gone. The lines say
+    # what happens too, so players who turn effects down miss nothing. Every rule is in
+    # docs/script-language.md, "Glitch effects".
+    # "with glitch" is a transition: the old picture tears, cuts to the new one, and
+    # settles.
+    show hana surprised with glitch
+    # "effect" glitches the stage picture; the text box never glitches. "effect jitter"
+    # and a sprite's tag make that sprite twitch. A length in seconds makes a short burst.
+    effect jitter hana 0.8
     hana surprised "...Huh. Did I just disappear from your folder?"
+    # "on" keeps a glitch going until an "off". "effect tear" slides thin bands of the
+    # picture sideways; small keeps it gentle.
+    effect tear small on
     hana "There's a copy of me in the files folder. You could put me back, if you like."
+    # "off" after a glitch's name stops that one glitch.
+    effect tear off
+    # "effect colorshift" pulls the picture's red and blue apart.
+    effect colorshift small on
+    # "effect static" lays gray noise over the picture. Glitches that start on the same
+    # line count once toward the game's limit of 3 flashes a second.
+    effect static small on
     thought "I wasn't sure what she meant. I let her go on anyway."
     # "file exists" sets a story variable to True when the file is in the characters
     # folder, and to False when it isn't. hana_here has a default in main.vns.
     file exists "hana.chr" into hana_here
+    # "effect off" stops every glitch at once.
+    effect off
     if hana_here:
         hana happy "You put me back! I knew you would."
     else:

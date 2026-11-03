@@ -1787,3 +1787,90 @@ def test_ac_f31_28_meta_files_docs(tmp_path):
     assert {d.docs for d in all_docs() if d.key == "file"} == {"Meta files"}
     guide = (REPO / "docs" / "meta-files.md").read_text(encoding="utf-8")
     assert "script-language.md#23-meta-files" in guide and "W198" in guide
+
+
+# --- AC-F28-28: "Glitch effects" and the UI system's glitch rows -------------------------------
+
+# Each F28 code → the forms the reference shows (``format_message`` arguments), in order.
+F28_MESSAGES: dict[str, list[tuple]] = {
+    "E294": [(), ("kind", "wobble", None), ("hint", "corrupt"), ("empty",), ("tag",),
+             ("notag", "static", "hana"), ("length", "tear", "45"), ("units", "0.5", "0.5s"),
+             ("dot", ".5"), ("twice", "tear", "sizes"), ("both", "static"),
+             ("onoff", "static"), ("off_args", "tear"), ("left", "slowly", "tear"),
+             ("left", "now", None)],
+    "W182": [(), ("transition",)],
+    "W183": [()],
+    "W184": [(), ("daichi", ())],
+}
+
+
+def test_ac_f28_28_glitch_effects_docs(tmp_path):
+    """``script-language.md``'s "Glitch effects" (not proposed) covers SR-F28-01..06, the
+    sizes, bursts against ``on``/``off``, ``with glitch``, F29's ``{glitch}`` tag, the flash
+    limit and ``reduce``, the meaning and Mask advice; E294 and W182-W184 rows as
+    ``messages.py`` words them; each story block loads and launches in a copy of the doc game
+    with no error or warning. Reserved words lists ``effect`` and its glitch words; the two
+    Help entries point at the heading. ``ui-system.md``: layer 2's glitches, the timing rows,
+    and the reduced-motion rows."""
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.glitch import DOCS, HEADING
+    from engine.script.messages import format_message
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _section(text, "Glitch effects")
+    assert "proposed" not in section
+    flat = " ".join(section.split())
+    for words in ("{glitch}…{/glitch}", "flash", "reduce", "`effect off` on its own",
+                  "only `jitter` takes one", "in any order and each at most once",
+                  "`small`, `medium` (the default), or `large`", "starts with whatever is shown",
+                  "16 / 40 / 96", "2 / 6 / 12", "15% / 30% / 50%", "4 / 10 / 24",
+                  "**burst**", "**lasts**", "`define glitch = …` is an error (E198)",
+                  "`default static = 0` still works", "a line or a sound that carries its meaning",
+                  "Don't stack `static` with a `Mask` transition", "Reduce motion and flashing",
+                  "3 flashes a second", "glitch = 0.5", 'glitch_size = "medium"'):
+        assert words in flat, words
+    assert re.findall(r"^\| ([EW]\d+) \|", section, re.M) == list(F28_MESSAGES)
+    for code, forms in F28_MESSAGES.items():
+        row = re.search(rf"^\| {code} \|.*$", section, re.M).group(0)
+        for args in forms:
+            assert f"`{format_message(code, args)}`" in row, (code, args)
+
+    blocks = re.findall(r"^```\n(.*?)^```", section, re.M | re.S)       # the story blocks
+    assert len(blocks) == 2 and "effect jitter hana large on" in blocks[0]
+    docgame = REPO / "tests" / "fixtures" / "docgame"
+    for number, body in enumerate(blocks):
+        game = tmp_path / f"game{number}"
+        shutil.copytree(docgame, game)
+        story = 'define hana = Character("Hana")\n'
+        story += body if "label start:" in body else "label start:\n" + body
+        (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+        (game / "script" / "chapter2.vns").unlink()              # included only by main.vns
+        result = load_story(GamePaths.for_game(game))
+        assert result.errors == () and result.warnings == (), (body, result.errors,
+                                                               result.warnings)
+        launch = run_launch(result.program)
+        assert launch.namespace is not None and launch.warnings == (), body
+
+    words = _section(text, "Reserved words")
+    assert "| `effect` | available |" in words
+    assert all(f"`{kind}`" in words for kind in ("tear", "colorshift", "static", "jitter"))
+    assert "#24-glitch-effects" in _section(text, "Transitions and effects")
+    assert "at the end of Glitch effects" in _section(text, "Common errors")
+    assert f"### {HEADING}" in text and {doc.docs for doc in DOCS} == {HEADING}
+
+    ui = UI.read_text(encoding="utf-8")
+    layer = next(line for line in ui.splitlines() if line.startswith("| 2 | Stage effects |"))
+    assert "F28 (reserved)" not in layer and "**Glitches** (F28)" in layer
+    timings = _section(ui, "Standard timings")
+    for name in ("`tear`", "`colorshift`", "`static`", "`jitter`", "Glitch burst",
+                 "`with glitch`", "Reduced `static`", "Reduced `colorshift`"):
+        assert re.search(rf"^\| {re.escape(name)} \(F28\) \|", timings, re.M), name
+    reduced = " ".join(timings[timings.index("### Reduced motion and flashing"):].split())
+    for words in ("**Glitch effects (F28).**", "red never flashes", "W182",
+                  "tear and jitter draw nothing", "one still noise frame",
+                  "`with glitch` plays as a dissolve"):
+        assert words in reduced, words

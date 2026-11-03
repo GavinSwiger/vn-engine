@@ -12,7 +12,7 @@ from engine.app.text_check import contrast_ratio
 from engine.core.config import load_config
 from engine.core.paths import GamePaths
 from engine.runtime.character import Character
-from engine.runtime.commands import (AudioRestore, NvlPage, PlayVoice, PrefetchImages, Say,
+from engine.runtime.commands import (AudioRestore, Glitch, NvlPage, PlayVoice, PrefetchImages, Say,
                                      ShowMenu,
                                      ShowStage, StartMinigame, StoryEnded, StoryWait)
 from engine.runtime.headless import run_headless
@@ -208,13 +208,15 @@ def test_ac_f04_50_ac_f03_56_continuing_from_every_round_tripped_line():
             got += fresh.take_commands(1 << 30)
         first = next(i for i, c in enumerate(got) if type(c) is Say)
         # The restore burst: the saved audio (F08), the saved text mode (F17 I-3), the saved
-        # stage (F04 07 I-1), then the line, both restored; a voiced line's voice (F08 step
-        # 12) comes just before it.
+        # stage (F04 07 I-1), its lasting glitches when there are any (F28: the example's
+        # bonus scene), then the line, both restored; a voiced line's voice (F08 step 12)
+        # comes just before it.
         say = got[first]
         voice = [PlayVoice(say.sid, say.voice, True)] if say.voice else []
         assert [c for c in got[:first] if type(c) is not PrefetchImages] == [
             AudioRestore(state.audio, "restore"), NvlPage(state.nvl.on, state.nvl.page),
-            ShowStage(state.stage, restored=True), *voice]
+            ShowStage(state.stage, restored=True),
+            *([Glitch(state.glitch, restored=True)] if state.glitch.on else []), *voice]
         assert got[first].restored
         got[first] = dataclasses.replace(got[first], restored=False)
         # F07: at a menu the question is followed by its restored ShowMenu.

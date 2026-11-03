@@ -218,21 +218,22 @@ def parse_effect(raw: RawStatement, ctx: ParseContext) -> Statement | None:
 SPEC: Final = StatementSpec(word=WORD_EFFECT, placement="story", takes_block=False,
                             tail=TAIL_SCRIPT, parse=parse_effect)
 
-# 07 I-16: two Insert entries in "Effects". ``docs`` is None until F28 s6 writes the
-# "Glitch effects" section. ``glitch`` names the kind words (tools/check.py's NAME_SOURCES);
-# ``jitter <sprite>`` is a slot (assist's SLOT_KINDS), so tags complete after it.
+# 07 I-16: two Insert entries in "Effects", documented under HEADING (F28 s6). ``glitch``
+# names the kind words (tools/check.py's NAME_SOURCES); ``jitter <sprite>`` is a slot
+# (assist's SLOT_KINDS), so tags complete after it.
+HEADING: Final = "Glitch effects"           # docs/script-language.md
 DOCS: Final = (
     StatementDoc(
         WORD_EFFECT, "Glitch effect", "Effects",
         "effect <glitch> [small|medium|large] [<seconds>|on|off]",
         "Glitches the stage: tear, colorshift, static, or jitter. With a length (or none) it "
         "is a short burst; on keeps it until off. effect off stops them all.",
-        "effect tear large 0.3", None, "F28", fields=("tear",), names=("glitch",)),
+        "effect tear large 0.3", HEADING, "F28", fields=("tear",), names=("glitch",)),
     StatementDoc(
         WORD_EFFECT, "Jitter a sprite", "Effects",
         "effect jitter <sprite> [small|medium|large] [<seconds>|on|off]",
         "Makes one sprite twitch: a short burst, or on until effect jitter <sprite> off.",
-        "show hana happy\neffect jitter hana 1.0", None, "F28", fields=("hana",)),
+        "show hana happy\neffect jitter hana 1.0", HEADING, "F28", fields=("hana",)),
 )
 
 

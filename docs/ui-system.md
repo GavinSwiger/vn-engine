@@ -125,7 +125,7 @@ textbox).
 | # | Layer | Owner | Contents |
 |---|---|---|---|
 | 1 | Stage | F04 | Background, then sprites by layer number (−100 to 100) and stage order. Paints every canvas pixel. |
-| 2 | Stage effects | F09; F28 (reserved) | Effects that act on the stage picture. **Shake** (proposed, F09): the whole stage picture drawn offset in whole canvas units; the uncovered edge band, at most the shake's size wide (≤ 24 units), shows `stage.empty_color`. **Flash** (proposed, F09): a color over the whole stage area, never over layers 3–6. Glitch and tint: F28 (reserved). A transition (proposed, F09) isn't a layer: it replaces layer 1's picture while it runs, and layers 3–6 never move or fade with it. |
+| 2 | Stage effects | F09; F28 | Effects that act on the stage picture. **Shake** (proposed, F09): the whole stage picture drawn offset in whole canvas units; the uncovered edge band, at most the shake's size wide (≤ 24 units), shows `stage.empty_color`. **Flash** (proposed, F09): a color over the whole stage area, never over layers 3–6. **Glitches** (F28), in this order over the shaken picture: color shift (the stage picture itself filtered, transitions included: a red copy offset left and a blue copy right, green in place), jitter (one sprite's picture drawn again at a small offset over itself, clipped to the stage), tear (2–6 bands of the picture slide sideways and wrap within the canvas width), and static (gray noise over the stage area); flash goes on top. Glitches never draw over layers 3–6; they keep running behind choices, menus, and the hidden textbox, and their clock freezes with the effect clock. Tint: reserved. A transition (proposed, F09) isn't a layer: it replaces layer 1's picture while it runs, and layers 3–6 never move or fade with it. |
 | 3 | Say window | F05, F17 | Textbox, name tab, continue indicator; or, in full-screen text (F17), the NVL panel: `nvl.fill_color` at `nvl.fill_opacity` over the whole canvas, with the page's lines in the text column. Never both in one frame. The quick menu, choices, and cues draw over the panel. |
 | 4 | In-game overlays | F10, F14; F15 (proposed) | Quick menu (F10); skip/auto indicator (F15); rewind tag (F14). |
 | 5 | Choices | F07 | The open menu's buttons, one stack centered at x 640 in the choice area (y 16 to 16 above the name tab's top; with no text box, to the quick-menu floor, 686 at 100%), over the say window. Hidden with layers 3 and 4 in hidden mode (any input then only shows them). Picks are ignored for 250 ms after the buttons appear. |
@@ -645,6 +645,14 @@ usable thumbnail shows F11's themed placeholder, never the checkerboard.
 | `shake` (proposed, F09) | Whole picture offset in whole canvas units; sides alternate every 50 ms; amplitude falls linearly to 0; uncovered edges show `stage.empty_color`; 500 ms, 12 units | `shake` |
 | `flash` (proposed, F09) | Color over the stage at full strength for one frame, then fades out, `linear`; 300 ms, `effects.flash_color` | `flash` |
 | Reduced flash (proposed, F09) | Rises to 50% then falls, `ease_in_out`; 300 ms up + 300 ms down | `flash` under reduced motion |
+| `tear` (F28) | 2–6 bands, 8–80 units tall, together ≤ 40% of the height, each sliding ±(¼ to 1) × the size and wrapping; new bands every 100 ms; size 16 / 40 / 96 units (small / medium / large) | `effect tear` |
+| `colorshift` (F28) | Red copy left, blue copy right, green in place; still; 2 / 6 / 12 units | `effect colorshift` |
+| `static` (F28) | Gray noise, 2-unit grain, 50% average brightness on every frame; a new frame every 100 ms; 15% / 30% / 50% strength | `effect static` |
+| `jitter` (F28) | The sprite's picture at a random offset over the sprite in place; a new offset every 80 ms; up to 4 / 10 / 24 units | `effect jitter <tag>` |
+| Glitch burst (F28) | Starts and stops abruptly; `[effects] glitch` 500 ms (0.1–30 s); size `[effects] glitch_size` `medium` | `effect <glitch>` with a length or none |
+| `with glitch` (F28) | `tear large` rising on the old picture over the first half, a cut at p = 0.5, then falling on the new one; 500 ms (0–30 s) | `with glitch` |
+| Reduced `static` (F28) | Always `small`; one still frame, `ease_in_out` 300 ms in and out | `static` under reduced motion |
+| Reduced `colorshift` (F28) | As written; still, `ease_in_out` 300 ms in and out | `colorshift` under reduced motion |
 
 ### Easings
 
@@ -685,7 +693,7 @@ length; the story is unchanged and W61 is logged. Under the setting (`[effects] 
 OR the player's, PR-F09-15): shake draws no movement; a flash rises to at most 50% and
 falls, `ease_in_out`, at least 300 ms each way, at most one per second; moving and
 non-calm transitions draw as a dissolve of the same length; `cut`, `dissolve`, `fade`, and
-`Mask` are unchanged. The story is unchanged.
+`Mask` are unchanged. The story is unchanged. **Glitch effects (F28).** Never a flash, with or without the setting: no glitch fills the stage with a color, red never flashes on its own, patterns change at most 10 times a second (12 for one sprite's jitter), and glitches change the stage's average brightness only when they start or stop. A burst shorter than 1 s (not jitter), every `with glitch` shorter than 1 s, and each start, resize, or end of a lasting static or colorshift count as one flash at their start in the same 3-per-second limit; glitches starting together count once. A refused burst isn't drawn and a refused `with glitch` plays as a dissolve; the story is unchanged and W182 is logged once per line. Under the setting: tear and jitter draw nothing; static is one still noise frame at the `small` strength, fading in and out over 300 ms; color shift stays as written but fades in and out over 300 ms; `with glitch` plays as a dissolve. Switching the setting mid-glitch changes the look the next frame. The story is unchanged.
 
 ## 6. Input
 
@@ -1004,3 +1012,6 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - 2026-11-02: F23 built (steps 4–6): the minigame regions, screen, thumbnail rule, `minigame`
   and `plugin` areas, plugin tokens, frame, dissolves, Shift+F8, and minigame keys are no
   longer marked proposed.
+- 2026-11-02: F28 built (step 6): layer 2's glitch contents replace "F28 (reserved)"; the
+  glitch looks, bursts, and `with glitch` under "Standard timings"; the glitch flash rules and
+  reduced looks under "Reduced motion and flashing".
