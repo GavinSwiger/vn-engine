@@ -54,6 +54,13 @@ F31 (its ``04`` §6.6, AC-F31-11, AC-F31-16): ``files`` is the run's meta files 
 an input, doesn't advance, and changes the folder at once (a restore copies the original, or
 ``b""``). A name no ``file`` line uses is a ``HeadlessInputError`` (``H-input`` form
 ``meta_name``); any other text after ``player`` is H-input's usual form.
+
+F36 (its ``04`` §7.3; PR-F36-04): a declared scene unlocks in ``persistent`` the first time the
+run enters its label, as in the window. ``replay`` plays a scene replay instead of a new game:
+a ``ReplayRun``, or a label (``replay.run_for``: a ``lock replay`` of it gives its ``to`` and
+starting values). The store is sandboxed from the start; whatever way the run stops (the
+replay's end, a failure, the inputs running out, ``max_lines``, an input error), the store is
+put back before it returns, as the window's quit does.
 """
 
 import re
@@ -77,6 +84,8 @@ from engine.runtime.launch import run_launch
 from engine.runtime.metafiles import MemoryFolder, MetaFiles, attach
 from engine.runtime.persistent import PersistentStore
 from engine.runtime.points import UnknownMeter
+from engine.runtime import replay as replay_mod
+from engine.runtime.replay import ReplayRun
 from engine.runtime.rollback import DEFAULT_DEPTH, DEPTH_MAX
 from engine.runtime.ui import DELETE_PREVIEW_TEXT
 from engine.runtime.values import freeze
@@ -138,7 +147,8 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
                  rollback_steps: int = DEFAULT_DEPTH,
                  minigames: Mapping[str, MinigameSig] | None = None,
                  flow: FlowStates | None = None,
-                 files: MemoryFolder | None = None) -> list[Command]:
+                 files: MemoryFolder | None = None,
+                 replay: ReplayRun | str | None = None) -> list[Command]:
     """Launch (launch errors → one ``StoryFailed`` holding a ``ScriptErrorGroup``),
     ``new_game(seed)``, then ``run(10_000)`` in a loop. At each line the next input is used
     (``"advance"``; F07: ``"choose N"`` at a menu); once inputs run out, every line is
@@ -155,7 +165,8 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
     plugins' signatures (None: none); see the module docstring for the inputs at a
     minigame. F20: ``flow`` is the node-state holder (None: a fresh one); ``jump <id>`` at a
     line or menu (module docstring). F31: ``files`` is the meta files folder (None: a fresh
-    empty one); ``player deletes|restores <name>`` at a line or menu (module docstring)."""
+    empty one); ``player deletes|restores <name>`` at a line or menu (module docstring).
+    F36: ``replay`` (module docstring)."""
     if persistent is None:
         persistent = PersistentStore(identity_scheme=program.identity_scheme)
     launch = run_launch(program, dev=dev, images=ImageSource.from_files(image_files),
@@ -169,7 +180,19 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
     flowchart_mod.register(interp, states=FlowStates() if flow is None else flow)   # F20
     folder = MemoryFolder() if files is None else files                             # F31
     attach(interp, MetaFiles(folder))
-    interp.new_game(seed)
+    run = replay_mod.run_for(program, replay) if type(replay) is str else replay   # F36
+    interp.new_game(seed, replay=run)
+    try:
+        return _play(interp, folder, inputs, max_lines)
+    finally:
+        if run is not None:                 # F36: a run stopping mid-replay quits it
+            replay_mod.leave(interp)
+
+
+def _play(interp: Interpreter, folder: MemoryFolder, inputs: Iterable[str],
+          max_lines: int) -> list[Command]:
+    """``run_headless``'s loop, from the new game to the end, a failure, the inputs running
+    out at a menu, or ``max_lines``."""
     commands: list[Command] = []
     pending = _Inputs(inputs)
     number = 0

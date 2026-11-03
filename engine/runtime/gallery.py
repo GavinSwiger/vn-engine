@@ -46,10 +46,11 @@ def register(interp: "Interpreter") -> None:
 
 def seen(interp: "Interpreter", image: str | None) -> bool:
     """A ``scene``/``show``/dialogue look put ``image`` on stage: unlock it when it is a
-    gallery picture. True if that was new. Never during F14's quiet forward re-run."""
+    gallery picture. True if that was new. Never during F14's quiet forward re-run, nor in an
+    F36 replay (PR-F36-13: shows unlock nothing there)."""
     if image is None or interp.timeline.replaying:
         return False
-    if image not in interp.program.gallery_pictures:
+    if image not in interp.program.gallery_pictures or interp.replay is not None:
         return False
     return interp.persistent.unlock(GALLERY_KIND, image)
 

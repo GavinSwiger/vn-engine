@@ -13,7 +13,8 @@ and only says what changed:
   reason as shown), so a state that never used ``ui`` writes what it wrote before F32.
 - **The commands**: ``run_ui`` holds ``UiStyle`` or ``UiBlocks`` (the whole new block state)
   where the line runs, and ``DeleteSaves`` unless F14's quiet forward re-run is running (rolling
-  forward never deletes, 04 D5). Never a checkpoint: the next one stores the value.
+  forward never deletes, 04 D5) or a replay (F36: nothing held, W229 in dev runs,
+  ``runtime/replay.skipped``). Never a checkpoint: the next one stores the value.
 - **The restore burst** (07 I-1): ``hold_restored`` holds ``UiStyle`` iff the restored or the
   shown style isn't None, and ``UiBlocks`` iff either has a block, right after F30's
   ``WindowTitle``. "Shown" is ``interp._ui_sent`` (runtime-only: the state last held outside a
@@ -27,6 +28,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Final
 
 from engine.core.constants import STYLE_NAME_RE
+from engine.runtime import replay as replay_mod
 from engine.runtime.commands import DeleteSaves, UiBlocks, UiStyle
 from engine.script.messages import format_message
 from engine.script.program import Program
@@ -128,6 +130,8 @@ def run_ui(interp: "Interpreter", stmt: UiStatement) -> "Step":
     from engine.runtime.interpreter import Step         # below the interpreter
     form = stmt.form
     if form == DELETE:
+        if replay_mod.skipped(interp, stmt, "saves"):    # F36: W229, the saves stay
+            return Step.CONTINUE
         if not interp.timeline.replaying:               # 04 D5: forward never deletes
             interp._hold(DeleteSaves())
         return Step.CONTINUE

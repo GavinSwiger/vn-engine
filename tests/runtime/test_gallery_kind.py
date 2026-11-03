@@ -26,7 +26,7 @@ PROGRAM = SimpleNamespace(gallery=(RIVER, FESTIVAL), gallery_pictures={
 
 def _interp(store: PersistentStore, *, replaying: bool = False) -> SimpleNamespace:
     """What ``runtime/gallery.py`` reads of an interpreter."""
-    interp = SimpleNamespace(program=PROGRAM, persistent=store,
+    interp = SimpleNamespace(program=PROGRAM, persistent=store, replay=None,
                              timeline=SimpleNamespace(replaying=replaying))
     gallery.register(interp)
     return interp

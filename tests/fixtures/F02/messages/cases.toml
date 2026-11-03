@@ -8593,3 +8593,37 @@ each = [['lock replay bridge "The Bridge":⏎[4]coins = 3', '10', '''coins isn't
 edit = { T = '<x>' }
 where = "<y>"
 expect = { exact = '''<z>''' }
+
+# --- W229 (run, runtime/replay.py, F36 W2; dev, area story, once per line): data. Its id
+# --- names the form (W229-<form>); tests/runtime/test_replay_runtime.py formats each with
+# --- (form, name) and compares, and plays them.
+
+[[case]]
+id = "F36-22-W229-write"
+ac = "AC-F36-22"
+feature = "F36"
+time = "run"
+code = "W229"
+needs = "load"
+where = "game"
+expect = { exact = '''file write "hana.chr" doesn't run during a replay, so the player's files stay as they are.''' }
+
+[[case]]
+id = "F36-22-W229-delete"
+ac = "AC-F36-22"
+feature = "F36"
+time = "run"
+code = "W229"
+needs = "load"
+where = "game"
+expect = { exact = '''file delete "hana.chr" doesn't run during a replay, so the player's files stay as they are.''' }
+
+[[case]]
+id = "F36-22-W229-saves"
+ac = "AC-F36-22"
+feature = "F36"
+time = "run"
+code = "W229"
+needs = "load"
+where = "game"
+expect = { exact = '''ui delete saves doesn't run during a replay, so the player's saves stay as they are.''' }

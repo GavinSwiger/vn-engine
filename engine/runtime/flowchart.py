@@ -416,10 +416,11 @@ def register_kinds(store: "PersistentStore", graph: FlowGraph) -> None:
 
 def run_flowchart(interp: "Interpreter", stmt: Flowchart) -> "Step":
     """The ``Flowchart`` executor: CONTINUE, releasing nothing. ``scene``, mark, and ``omit``
-    do nothing (the anchor lookup sees arrivals); ``forget`` forgets (§7.4)."""
+    do nothing (the anchor lookup sees arrivals); ``forget`` forgets (§7.4), except in an F36
+    replay, which records nothing and keeps every node state."""
     from engine.runtime.interpreter import Step     # the interpreter imports this module
 
-    if stmt.form == "forget":
+    if stmt.form == "forget" and interp.replay is None:    # F36: a replay keeps node states
         interp.flowchart.forget(stmt.target)
     return Step.CONTINUE
 

@@ -162,6 +162,18 @@ saved one, a style the config no longer has dropped with W205, new game sets ``E
 and ``UiBlocks`` by 04 §4.3's rule. ``_hold_restored`` holds them right after F30's
 ``WindowTitle``. The ``UiStatement`` executor is ``runtime/ui.py``'s, registered here.
 
+F36's (its ``04`` §7.3; 07 I-9, I-10): ``interp.replays`` is the replay index and the store's
+"replay" kind (``runtime/replay.register``); ``interp.replay`` the running replay
+(``ReplayRun``, runtime-only like ``files``: never saved or snapshotted, untouched by
+``_reset_runtime``, so F14's restores keep it). ``new_game(seed, replay=run)`` opens F12's
+sandbox before anything else and starts at ``StartOptions(run.scene, run.values)``. ``_enter``
+first ends a replay the label ends (``replay.ends_at``), then unlocks a declared scene on
+arrival (``replay.arrive``: not in a replay, nor in F14's quiet re-run); the scene's lines
+ending is ``_return``'s ordinary end. ``_end``, ``_fail`` and ``stop_replay`` call
+``replay.leave`` (the store put back; always, even with no replay), ``_fail`` before it
+releases ``StoryFailed``. In a replay ``run`` skips F20's anchor lookup, so nothing is
+recorded.
+
 ``restore`` (§7.5) is a transaction: it checks the state and fills missing defaults
 before it changes anything, so every result but ``OK`` leaves the interpreter as it was.
 ``restore(..., check_only=True)`` (F11 C10) runs only its scheme and position checks.
@@ -193,6 +205,7 @@ from engine.runtime import metafiles as metafiles_mod
 from engine.runtime import minigame as minigame_mod
 from engine.runtime import nvl as nvl_mod
 from engine.runtime import points as points_mod
+from engine.runtime import replay as replay_mod
 from engine.runtime import rollback as rollback_mod
 from engine.runtime import stage as stage_mod
 from engine.runtime import ui as ui_mod
@@ -468,6 +481,13 @@ class Interpreter:
         # tips are the store's), the store's "tip" and "codex_read" kinds, G's reader bound.
         self.codex: Codex = codex_mod.install(self)
         gallery_mod.register(self)          # F34 (04 §3): the store's "gallery" kind
+        # F36 (04 §7.3): the replay index and the store's "replay" kind (``register``); the
+        # running replay (runtime-only: never saved or snapshotted, and not reset by a
+        # restore, so F14's rollback keeps it); W229's once-per-line set (never reset).
+        self.replays: replay_mod.ReplayIndex
+        self.replay: replay_mod.ReplayRun | None = None
+        self.replay_warned: set[str | None] = set()
+        replay_mod.register(self)
         # F23 (04 §3, 07 I-12): the launch's plugin signatures (loaded before the runtime
         # starts; no plugin object), the story's declared names (F24 A2, built once), and,
         # runtime-only, the minigame waited at, its start count (only counts up), whether
@@ -551,9 +571,19 @@ class Interpreter:
 
     # --- New game (§7.5) ---------------------------------------------------------------
 
-    def new_game(self, seed: int) -> None:
+    def new_game(self, seed: int, *, replay: replay_mod.ReplayRun | None = None) -> None:
         """Start the story from its first line with fresh variables. A failing default ends
-        as FAILED with ``StoryFailed`` released."""
+        as FAILED with ``StoryFailed`` released.
+
+        F36 (04 §7.3 step 2): any replay still open ends first (its sandbox put back). With
+        ``replay``, the store's sandbox opens before anything else (so a default writing
+        ``persistent.*`` is put back too), and the start options are the replay's
+        (``StartOptions(run.scene, run.values)``) instead of ``self.start``; the timeline is
+        emptied as for any new game, so rollback stops at the replay's first line."""
+        replay_mod.leave(self)
+        if replay is not None:
+            self.persistent.begin_sandbox()
+            self.replay = replay
         G = self.G
         for key in [k for k in G if k not in self.reserved]:
             del G[key]
@@ -599,24 +629,28 @@ class Interpreter:
             except BaseException as e:
                 self._fail(self._map(e, default, prefix=default))
                 return
-        start = self.start
+        start = (self.start if replay is None                # F36: the replay's options
+                 else StartOptions(replay.scene, replay.values))
         if start is not None:                               # F44 C1 step 3b
             for name, value in start.values:
                 G[name] = freeze(value)
         label = (start.label if start is not None else None) or "start"
         self.status = Status.RUNNING
-        self.log.info("%s", self._new_game_line(seed, label))
+        self.log.info("%s", self._new_game_line(seed, label, start))
         self._enter(label, count=False)
 
-    def _new_game_line(self, seed: int, label: str) -> str:
+    def _new_game_line(self, seed: int, label: str, start: StartOptions | None) -> str:
         """SR-F03-28 (PR-F03-32): ``New game: seed 42, 2 defaults.``, the seed in dev runs
         only; with start options (F44 C1) ``, starting at "<label>", <n> start values``.
-        A count of 1 takes the singular: ``1 default``, ``1 start value``."""
+        A count of 1 takes the singular: ``1 default``, ``1 start value``. F36: a replay
+        gives its own start options (scene and starting values), and ``, a replay``."""
         parts = [f"seed {seed}"] if self.dev else []
         parts.append(_count(len(self.program.defaults), "default"))
-        if self.start is not None:
-            values = _count(len(self.start.values), "start value")
+        if start is not None:
+            values = _count(len(start.values), "start value")
             parts.append(f'starting at "{label}", {values}')
+        if self.replay is not None:
+            parts.append("a replay")
         return "New game: " + ", ".join(parts) + "."
 
     # --- Running (§7.2) ----------------------------------------------------------------
@@ -656,9 +690,10 @@ class Interpreter:
                     if step is None or step is Step.CONTINUE:
                         self._next_after(stmt)
                 else:
-                    ids = self.flow_anchors.get(stmt.sid)   # F20 (04 §7.2): one per step
-                    if ids is not None:
-                        self.flowchart.anchor(self, ids)
+                    if self.replay is None:                 # F36: a replay records nothing
+                        ids = self.flow_anchors.get(stmt.sid)   # F20 (04 §7.2): one per step
+                        if ids is not None:
+                            self.flowchart.anchor(self, ids)
                     if EXECUTORS[type(stmt)](self, stmt) is Step.CONTINUE:
                         self._next_after(stmt)
             except KeyboardInterrupt as e:
@@ -818,7 +853,9 @@ class Interpreter:
 
     def _fail(self, error: StoryError) -> None:
         """Drop the burst so far, log the error once (ERROR, ``runtime``, §7.11), and
-        release only ``StoryFailed`` (PR-F03-22)."""
+        release only ``StoryFailed`` (PR-F03-22). F36 (04 §7.3 step 6): a replay ends first,
+        so the store is put back before the error screen's ``flush_now``."""
+        replay_mod.leave(self)
         self._drop_held()
         self._end_chain()                                   # F14: a re-run fails as live
         if isinstance(error, StoryError) and not error.logged:
@@ -897,6 +934,13 @@ class Interpreter:
             self.current = nxt  # type: ignore[assignment]
 
     def _enter(self, label: str, *, count: bool = True) -> None:
+        """Run ``label`` from its first statement (a jump, a call, new game). F36 (04 §7.3
+        step 3): a running replay that ends at ``label`` ends the story here; else a
+        declared scene unlocks on arrival (one lookup)."""
+        if self.replay is not None and replay_mod.ends_at(self, label):
+            self._end()
+            return
+        replay_mod.arrive(self, label)
         if count:
             self.entered.append((self.steps, label))
         block = self.program.labels[label].block
@@ -924,16 +968,23 @@ class Interpreter:
     def _end(self) -> None:
         """The story ends: F12 I-3 checks in-place persistent changes first (a failure is an
         ordinary ``StoryFailed``), then ``StoryEnded``. F14 (04 §7.4): a quiet re-run that
-        ends drops what it held first, so ``StoryEnded`` comes alone."""
+        ends drops what it held first, so ``StoryEnded`` comes alone.
+
+        Order (F36 07 I-9): F37's ``check_pending`` slot (skipped while ``timeline.replaying``),
+        F12's in-place check, F14's dropped holds, F36's ``leave`` (a replay's store put back),
+        then ``StoryEnded``."""
+        # 1. F37 (07 I-9, I-14): ``if not self.timeline.replaying: check_pending(self)`` goes
+        #    here, before the in-place check sees what its ``when`` code changed.
         at = self.current
-        if at is not None:
+        if at is not None:                                  # 2. F12 I-3
             error = self._check_persistent(at)
             if error is not None:
                 self._fail(error)
                 return
-        if self.timeline.replaying:
+        if self.timeline.replaying:                         # 3. F14 (04 §7.4)
             self._drop_held()
             self._end_chain()
+        replay_mod.leave(self)                              # 4. F36 (04 §7.3 step 5)
         self.status = Status.ENDED
         self.current = None
         self._hold(StoryEnded())
@@ -945,6 +996,18 @@ class Interpreter:
         ``StoryEnded``, ENDED, ``current`` None). Returns JUMPED: there is no successor."""
         self._end()
         return Step.JUMPED
+
+    def stop_replay(self) -> None:
+        """F36 (04 §7.3 step 7): End Replay, or the way back to the title. The store's
+        sandbox is put back (always, even with no replay running, 07 I-10), what was held or
+        released and not yet taken is dropped, and the story is ENDED with no current
+        statement; nothing is released (the shell already knows where to go)."""
+        replay_mod.leave(self)
+        self._drop_held()
+        self._released.clear()
+        self._end_chain()
+        self.status = Status.ENDED
+        self.current = None
 
     # --- Checkpoints (§7.4) -----------------------------------------------------------
 

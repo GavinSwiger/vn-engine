@@ -14,7 +14,9 @@ Studio's check child); ``app/metafiles.py`` (F31 s4) attaches the disk port.
   PR-F31-15). ``write`` and ``delete`` always set ``timeline.block_pending`` first (C1: the
   next checkpoint is a wall, so back never crosses a change and no forward chain repeats one;
   the ``replaying`` test is a defence only), then, under the cap, call the port and hold
-  ``MetaWrite``/``MetaDelete`` (records; the windowed handler pumps the disk port).
+  ``MetaWrite``/``MetaDelete`` (records; the windowed handler pumps the disk port). F36: in a
+  replay a write or delete does nothing at all (no wall, no count, no command; W229 in dev
+  runs, ``runtime/replay.skipped``); ``exists`` and ``read`` work as usual.
 - **``decode_note``** (04 §6.5, SEC-F31-05(a)): strict UTF-8, one BOM dropped, line ends and
   U+2028/9 to ``\\n``, NFC, Cc (but ``\\n``, ``\\t``), Cf, and Cs removed, cut to
   ``META_READ_MAX_CHARS`` code points. The value only ever goes to ``G[target]``: never to a
@@ -31,6 +33,7 @@ from typing import TYPE_CHECKING, NamedTuple, Protocol
 
 from engine.core.constants import META_CHANGES_MAX, META_READ_MAX_BYTES, META_READ_MAX_CHARS
 from engine.core.paths import is_meta_name
+from engine.runtime import replay as replay_mod
 from engine.runtime.commands import MetaDelete, MetaWrite
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
@@ -175,6 +178,8 @@ def _read(interp: "Interpreter", files: MetaFiles, stmt: MetaFile) -> str | None
 
 
 def _change(interp: "Interpreter", files: MetaFiles, stmt: MetaFile) -> None:
+    if replay_mod.skipped(interp, stmt, stmt.verb, stmt.name):   # F36: W229, no wall
+        return
     timeline = interp.timeline
     timeline.block_pending = True                         # C1: always, capped or not
     if timeline.replaying:                                # unreachable (04 §8); a defence

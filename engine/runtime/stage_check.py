@@ -21,7 +21,8 @@ as it needs (``SuggestPool.iter_suggest``: a few ms each; F04 step 9):
    checked as a ``show`` name but with no tag form, since the page shows that one picture
    (W12 at the declaration's line); then (F34, PR-F34-06) each picture of each gallery entry
    (``Program.gallery``: the entry picture, then its versions), likewise, once per picture
-   at the entry's line; when the pass ends, W60 for each ``Mask`` file ``locate`` can't
+   at the entry's line; then (F36, PR-F36-07) each scene replay's declared ``image``
+   (``Program.replays``), likewise; when the pass ends, W60 for each ``Mask`` file ``locate`` can't
    find.
 
 Record order (§7.2, AC-F04-41): the scan stop line W10b (F04 07 I-10: its own record,
@@ -53,6 +54,7 @@ from engine.script.diagnostics import ScriptError, ScriptWarning
 from engine.script.gallery import GalleryEntry
 from engine.script.messages import format_message, w10_text
 from engine.script.nodes import Say
+from engine.script.replay import ReplayEntry
 from engine.script.stage import Scene, Show
 from engine.script.suggest import SuggestPool, suggest
 
@@ -95,10 +97,11 @@ class StageCheck:
         if self._pass == _COLLECT:
             if self._each_statement(self._collect):
                 self._pass = _CHECK
-                self._statements = chain(  # F21, F34: codex and gallery pictures, last
+                self._statements = chain(  # F21, F34, F36: codex, gallery, replay pictures
                     self.program.iter_statements(),  # type: ignore[attr-defined]
                     getattr(self.program, "codex", ()),
-                    getattr(self.program, "gallery", ()))
+                    getattr(self.program, "gallery", ()),
+                    getattr(self.program, "replays", ()))
             return False
         if self._pass == _CHECK:
             if self._each_statement(self._check):
@@ -187,6 +190,10 @@ class StageCheck:
             for name in stmt.pictures:
                 if name not in self.index.names:
                     self._add("W12", stmt, name)
+            return
+        elif isinstance(stmt, ReplayEntry):              # F36: the Scenes tile's picture
+            if stmt.image is not None and stmt.image not in self.index.names:
+                self._add("W12", stmt, stmt.image)
             return
         self._transitions.visit(stmt)                    # F09: E190, E191, E194
 
