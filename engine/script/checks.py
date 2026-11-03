@@ -105,6 +105,12 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    ``GamePaths.list_dir``, a did-you-mean over that folder's files) and W221 for a
    default-rule track whose file no ``play music``/``queue music`` line plays.
    ``Program.tracks`` is built by ``program.py``.
+15. F36 (``04-technical.md`` §3, ``_iter_replays``): E349 at a scene's second replay (include
+   order, then line), naming the first, and (whole game) past ``REPLAYS_MAX`` replays; then,
+   skipped when a file couldn't be read, E351 for a replay whose scene or ``to`` is no label
+   (did-you-mean over the labels) and for a ``lock``/``unlock replay`` line naming no declared
+   replay (did-you-mean over them), and E352 for a starting value whose name no ``default``
+   makes (a ``define`` too). ``Program.replays`` is built by ``program.py``.
 
 Steps 3–5 are skipped when a file couldn't be read (``checks_skipped``, SR-F02-69); after a
 story limit (``limit_hit``) only step 1 runs. Errors go to the sink; did-you-mean
@@ -146,6 +152,7 @@ from engine.script.musicroom import TRACKS_MAX, TrackDecl
 from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
                                  ScriptFile)
 from engine.script.points import METERS_MAX
+from engine.script.replay import REPLAYS_MAX, WORD_REPLAY, ReplayDecl
 from engine.script.rollback import iter_attach_fixed
 from engine.script.routes import (ENDINGS_MAX, PERSISTENT_VIEWS, ROUTES_MAX, Ending, Lock,
                                   RouteDecl)
@@ -1280,6 +1287,57 @@ def _iter_tracks(inp: CheckInput, labels: "_Labels | None"
     return warnings
 
 
+# --- Step 15: scene replays (F36) --------------------------------------------------------------
+
+def _iter_replays(inp: CheckInput, labels: "_Labels | None") -> Generator[None, None, None]:
+    """Step 15 (module docstring). ``labels`` is None when a file couldn't be read: E351 and
+    E352 are skipped then, like F19's E243."""
+    sink = inp.sink
+    decls = [node for node in inp.nodes if isinstance(node, ReplayDecl)]
+    locks: list[Lock] = []
+    count = 0
+    for node in inp.nodes:
+        if not isinstance(node, Label):
+            continue
+        for stmt, _ in walk_block(node.block):
+            if isinstance(stmt, Lock) and stmt.kind == WORD_REPLAY:
+                locks.append(stmt)
+            count += 1
+            if count % IDENTITY_YIELD_ITEMS == 0:
+                yield
+    if not decls and not locks:
+        return
+    first: dict[str, ReplayDecl] = {}
+    for decl in sorted(decls, key=lambda d: (d.file.order, d.line)):
+        other = first.setdefault(decl.label, decl)
+        if other is not decl:
+            sink.add(Diagnostic("E349", decl.file, decl.line, None,
+                                ("twice", decl.label, (other.file.ref, other.line))))
+    if len(decls) > REPLAYS_MAX:
+        sink.add(Diagnostic("E349", args=("many", len(decls), REPLAYS_MAX)))
+    yield
+    if labels is None:
+        return
+    yield from labels.names.iter_index()
+    defaults = inp.collected.default_defs
+    for decl in decls:
+        missing = next((name for name in (decl.label, decl.to)
+                        if name is not None and name not in labels), None)
+        if missing is not None:
+            sink.add(LazyDiagnostic(
+                "E351", decl.file, decl.line, None,
+                build=lambda name=missing: ("scene", name, labels.names.suggest(name))))
+        for (name, _), line in zip(decl.values, decl.value_lines):
+            if name not in defaults:
+                sink.add(Diagnostic("E352", decl.file, line, None, ("variable", name)))
+    names = _Names(first)
+    for lock in locks:
+        if lock.name not in first:
+            sink.add(LazyDiagnostic(
+                "E351", lock.file, lock.line, None,
+                build=lambda lock=lock: ("replay", lock.name, names.suggest(lock.name))))
+
+
 # --- The checks ---------------------------------------------------------------------------
 
 def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
@@ -1345,6 +1403,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += yield from _iter_gallery(inp, labels)             # F34
     yield
     out.warnings += yield from _iter_tracks(inp, labels)              # F35
+    yield
+    yield from _iter_replays(inp, labels)                             # F36
     return out
 
 

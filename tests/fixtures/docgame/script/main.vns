@@ -26,3 +26,7 @@ label bridge:
     scene cg river
     call lantern_stall
     jump river
+
+# lantern_stall is the scene replay examples' scene (F36): its declaration is here so the
+# unlock replay and lock replay examples name a replay.
+lock replay lantern_stall "The Stall"

@@ -837,6 +837,69 @@ play.", each changed under `[words]`. The page uses the `list.*`, `button.*`, `p
 | `track festival plays "music/festval.ogg", but there is no such file in audio/. Did you mean "music/festival.ogg"?` (warning, dev runs) | Fix the file name, or add the file. |
 | `track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.` (warning, dev runs) | Play the file somewhere in the story, or add `open` or `until`. |
 
+### lock replay (scene replays)
+```
+default coins = 0
+default player_name = "Aiko"
+
+lock replay festival "The Festival"
+lock replay river "By the River" image cg river to fireworks:
+    coins = 3
+    player_name = "Aiko"
+```
+```
+label letter:
+    "Hana's letter said she still went to the river every summer."
+    unlock replay river
+
+label start_over:
+    lock replay festival
+```
+
+**Scenes** is a page of **Extras**, on the title screen, where players watch a scene again.
+A **replay** plays the scene as a throwaway game and then goes back to Extras: it never
+changes the player's saves or progress. Nothing can be saved or loaded during it, and
+endings, tips, gallery pictures, seen lines and `persistent` values reached in it are put
+back afterwards.
+
+**Declare** each replay once at the top level of any file: **`lock replay scene "Title"`**,
+then optionally `image` and `to`, in that order.
+- **Scene**: the label the replay starts at. Each scene has one replay; up to 500.
+- **Title**: plain text, 1–60 characters, shown under the scene's square. No `{b}` or
+  `{var}` (write `{{` for a `{`).
+- **`image picture`**: the picture on the square, named as for `show`. Without it, the
+  square shows the first picture a `scene` line shows in the label's own lines.
+- **`to scene`**: where the replay stops. Without it, the replay ends when the story leaves
+  the scene: a `jump` to another label, or the scene's own lines end or `return` (a `call`
+  from it comes back and goes on). With it, the replay ends when the story reaches that
+  scene. It always ends after an `ending`'s card or at the story's end.
+- **Starting values**, indented under the declaration (end the line with `:`), one per line,
+  up to 32: `name = value` for a variable made with `default` (not `persistent.`), with a
+  number, text in quotes, `True`, `False`, or `None`. A replay starts with every variable at
+  its `default` value, then sets these.
+
+The Scenes page lists the replays in the order of their lines (files in `include` order).
+**A replay unlocks when the player first reaches its scene** in a normal game, by a `jump`,
+a `call`, a choice, or New Game; there is nothing else to write. Loading a save, rolling
+back, and jumping from the Flowchart page unlock nothing. **Unlocks are kept across
+playthroughs**; players reset them with "delete persistent data" in Settings.
+
+**Inside a label**, **`unlock replay scene`** unlocks a replay without playing the scene,
+and **`lock replay scene`** (no title) makes the game forget it, so its square is locked
+again. Neither line waits.
+
+`replay` and `to` are still free as names: they mean something only right after `lock
+replay` or `unlock replay`.
+
+| Message | Fix |
+|---|---|
+| `lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".` / `this line has "slowly" left over. lock replay takes a scene name, a title in quotes, then image and to, in that order.` / `to needs a scene name, e.g. to fireworks.` / `only starting values can go under a replay, one per line, e.g. coins = 3.` | Write the line in that order, with only starting values indented under it. |
+| `lock replay festival "The Festival" declares a scene replay, so it goes at the top level. To make the game forget it during the story, write lock replay festival with no title.` / `unlock replay goes inside a label, because it runs when the story reaches it.` | Declare at the top level; put `unlock replay` and `lock replay` lines in a label. |
+| `the scene "festival" has two replays: here and at extras.vns, line 4. Give each scene one replay.` / `this story has 520 replays; the engine allows 500.` | One replay per scene; up to 500. |
+| `the replay title is empty.` / `the replay title has 75 characters; keep it to 60.` / `replay titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".` / `this replay has 40 starting values; keep it to 32.` | Plain titles of 1–60 characters; up to 32 starting values. |
+| `there is no scene "festivl". Did you mean "festival"?` / `to festival names the replay's own scene. Name the scene where the replay should stop, or leave out to.` / `there is no replay of "festivl". Did you mean "festival"? Declare it at the top level, e.g. lock replay festivl "Title".` | Use the name of a label, and a declared replay in `unlock replay` and `lock replay` lines. |
+| `coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.` / `a starting value is a number, text in quotes, True, False, or None, but this has "coins + 1".` / `coins has two starting values here; keep one.` | Give each `default` variable at most one plain value. |
+
 ### flowchart (the story map)
 ```
 lock route promise "Hana's Promise" until sad, good
@@ -3941,3 +4004,6 @@ story goes on after a warning.
   unlock on show, `unlock gallery` and `lock gallery` in a label, the Extras button,
   `run --extras`, `[gallery] show_locked`, the `[theme.gallery]` tokens and words, E342 to
   E345 and W226), and a Reserved words note on `gallery` and `cg`.
+- 2026-11-03: F36 W1: section 7's "lock replay (scene replays)" (the declaration with
+  `image`, `to` and starting values, unlock on arrival, `unlock replay` and `lock replay` in
+  a label, E348 to E352).

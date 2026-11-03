@@ -2942,7 +2942,8 @@ def _e243(form: str = "need", *args: object) -> str:
 
 
 # E244's ``top`` form names what each row declares; a row's word unless listed here.
-_TOP_NOUNS: dict[str, str] = {"gallery": "gallery picture", "track": "music-room track"}
+_TOP_NOUNS: dict[str, str] = {"gallery": "gallery picture", "track": "music-room track",
+                               "replay": "scene replay"}
 # Rows with no in-label form (F35's ``track``: E336), left out of E244's ``need`` list.
 _TOP_ONLY: frozenset[str] = frozenset({"track"})
 
@@ -3312,6 +3313,106 @@ def _w221(name: str = "festival", file: str = "music/festival.ogg") -> str:
     return (f'track {show_name(str(name))} opens when the story plays "{show(str(file))}", but '
             "no play music or queue music line plays it, so players never get it. Add open or "
             "until, or play it in the story.")
+
+
+# --- F36 Ending list & scene replay (F36 01 §5.3) -----------------------------------------------
+# Load E348, E350, E351's own form, E352's value, twice and dotted forms (engine/script/replay.py);
+# E349, E351, E352's variable form (checks.py). Run W229 (runtime/replay.py, F36-W2; area story,
+# once per line per session). E353, E354, W230, W231 are claimed and spare. Scene and variable
+# names go through ``show_name``, titles, values, files and leftovers through ``show``.
+
+_REPLAY_EXAMPLE = 'lock replay festival "The Festival"'
+
+
+def _e348(form: str = "need", *args: object) -> str:
+    """``need``; ``left`` (written); ``to``; ``body``; ``declare`` (scene, title as written);
+    ``top``."""
+    if form == "left":
+        written = str(args[0]) if args else "slowly"
+        return (f'this line has "{show(written)}" left over. lock replay takes a scene name, a '
+                "title in quotes, then image and to, in that order.")
+    if form == "to":
+        return "to needs a scene name, e.g. to fireworks."
+    if form == "body":
+        return "only starting values can go under a replay, one per line, e.g. coins = 3."
+    if form == "declare":
+        scene, title = (args + ("festival", '"The Festival"')[len(args):])[:2]
+        scene = show_name(str(scene))
+        return (f"lock replay {scene} {show(str(title))} declares a scene replay, so it goes at "
+                "the top level. To make the game forget it during the story, write lock replay "
+                f"{scene} with no title.")
+    if form == "top":
+        return "unlock replay goes inside a label, because it runs when the story reaches it."
+    return f"lock replay needs a scene name and a title in quotes, e.g. {_REPLAY_EXAMPLE}."
+
+
+def _e349(form: str = "twice", *args: object) -> str:
+    """``twice`` (scene, first place); ``many`` (count, limit)."""
+    if form == "many":
+        count, limit = (args + (520, 500)[len(args):])[:2]
+        return f"this story has {int(count):,} replays; the engine allows {int(limit):,}."
+    scene, first = (args + ("festival", ("extras.vns", 4))[len(args):])[:2]
+    return (f'the scene "{show_name(str(scene))}" has two replays: here and at '
+            f"{_place(first)}. Give each scene one replay.")  # type: ignore[arg-type]
+
+
+def _e350(form: str = "long", *args: object) -> str:
+    """``empty``; ``long`` (count, limit); ``tags``; ``values`` (count, limit)."""
+    if form == "empty":
+        return "the replay title is empty."
+    if form == "tags":
+        return ("replay titles are shown as written, so they can't use text tags such as {b}. "
+                'Write {{ for a "{".')
+    if form == "values":
+        count, limit = (args + (40, 32)[len(args):])[:2]
+        return f"this replay has {int(count):,} starting values; keep it to {int(limit):,}."
+    count, limit = (args + (75, 60)[len(args):])[:2]
+    return f"the replay title has {int(count):,} characters; keep it to {int(limit):,}."
+
+
+def _e351(form: str = "scene", *args: object) -> str:
+    """``scene`` (name, suggestion); ``own`` (name); ``replay`` (name, suggestion)."""
+    if form == "own":
+        name = show_name(str(args[0])) if args else "festival"
+        return (f"to {name} names the replay's own scene. Name the scene where the replay "
+                "should stop, or leave out to.")
+    name, suggestion = (args + ("festivl", "festival")[len(args):])[:2]
+    shown = show_name(str(name))
+    if form == "replay":
+        text = f'there is no replay of "{shown}".'
+        if suggestion is not None:
+            text += " " + _did_you_mean(str(suggestion), str(name))
+        return text + f' Declare it at the top level, e.g. lock replay {shown} "Title".'
+    text = f'there is no scene "{shown}".'
+    if suggestion is not None:
+        return text + " " + _did_you_mean(str(suggestion), str(name))
+    return text + " Use the name of a label."
+
+
+def _e352(form: str = "variable", *args: object) -> str:
+    """``variable`` (name as written, maybe dotted); ``value`` (the value as written);
+    ``twice`` (name)."""
+    if form == "value":
+        written = str(args[0]) if args else "coins + 1"
+        return ("a starting value is a number, text in quotes, True, False, or None, but this "
+                f'has "{show(written)}".')
+    if form == "twice":
+        name = show_name(str(args[0])) if args else "coins"
+        return f"{name} has two starting values here; keep one."
+    written = str(args[0]) if args else "coins"
+    plain = written.rpartition(".")[2] or "coins"
+    return (f"{show_name(written)} isn't a story variable. Starting values are for names made "
+            f"with default, e.g. default {show_name(plain)} = 0.")
+
+
+def _w229(form: str = "delete", name: str = "hana.chr") -> str:
+    """``write``/``delete`` (the file as written in the script); ``saves``."""
+    if form == "saves":
+        return ("ui delete saves doesn't run during a replay, so the player's saves stay as "
+                "they are.")
+    verb = "write" if form == "write" else "delete"
+    return (f'file {verb} "{show(str(name))}" ' "doesn't run during a replay, so the player's "
+            "files stay as they are.")
 
 
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
@@ -4314,6 +4415,14 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E338": _e338,
     "W220": _w220,
     "W221": _w221,
+    # F36 ending list & scene replay (01 §5.3): load E348, E350, E351, E352 (replay.py,
+    # checks.py), E349 (checks.py); run W229 (runtime/replay.py).
+    "E348": _e348,
+    "E349": _e349,
+    "E350": _e350,
+    "E351": _e351,
+    "E352": _e352,
+    "W229": _w229,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

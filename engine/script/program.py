@@ -31,6 +31,7 @@ restored ``ui style`` must be one of, W205; None when the load had no config). F
 F34 added ``gallery`` (every ``lock gallery`` declaration as a ``GalleryEntry``, include order,
 then line) and ``gallery_pictures`` (every entry picture and version → its entry's picture).
 F35 added ``tracks`` (every ``lock track`` declaration as a ``Track``, reading order).
+F36 added ``replays`` (every ``lock replay`` declaration as a ``ReplayEntry``, reading order).
 """
 
 import time
@@ -48,6 +49,7 @@ from engine.script.musicroom import Track, TrackDecl, build_tracks
 from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
                                  ScriptFile, Statement)
 from engine.script.points import MeterSpec, PointsDecl
+from engine.script.replay import ReplayDecl, ReplayEntry, build_replays
 from engine.script.routes import Ending, RouteDecl
 from engine.script.stage import ImageDecl
 
@@ -125,7 +127,10 @@ class Program:
     (read-only; a picture is in the gallery once, E343).
 
     F35: ``tracks`` holds every music-room track in reading order (names and files unique,
-    E337; at most 200, E337)."""
+    E337; at most 200, E337).
+
+    F36: ``replays`` holds every scene replay in reading order (one per scene, at most 500,
+    E349), each with its tile picture (PR-F36-07)."""
 
     files: tuple[ScriptFile, ...]                 # reading order
     labels: Mapping[str, Label]                   # read-only, reading order
@@ -156,6 +161,7 @@ class Program:
     gallery_pictures: Mapping[str, str] = field(               # F34, see above
         default_factory=lambda: MappingProxyType({}))
     tracks: tuple[Track, ...] = ()                             # F35, see above
+    replays: tuple[ReplayEntry, ...] = ()                      # F36, see above
     define_names: frozenset[str] = field(default=frozenset(), init=False)
     default_names: frozenset[str] = field(default=frozenset(), init=False)
     persistent_default_names: frozenset[str] = field(default=frozenset(), init=False)
@@ -187,6 +193,7 @@ class Program:
         object.__setattr__(self, "codex_categories", tuple(self.codex_categories))
         object.__setattr__(self, "gallery", tuple(self.gallery))
         object.__setattr__(self, "tracks", tuple(self.tracks))
+        object.__setattr__(self, "replays", tuple(self.replays))
         if not isinstance(self.gallery_pictures, MappingProxyType):
             object.__setattr__(self, "gallery_pictures",
                                MappingProxyType(dict(self.gallery_pictures)))
@@ -304,6 +311,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     decls: list[CodexEntryDecl] = []
     gallery_decls: list[GalleryDecl] = []
     track_decls: list[TrackDecl] = []
+    replay_decls: list[ReplayDecl] = []
     for node in nodes:
         if isinstance(node, Label):
             labels.setdefault(node.name, node)
@@ -321,6 +329,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
             gallery_decls.append(node)
         elif isinstance(node, TrackDecl):                   # F35: reading order
             track_decls.append(node)
+        elif isinstance(node, ReplayDecl):                  # F36: reading order
+            replay_decls.append(node)
     if defines is None:
         defines = [node for node in nodes if isinstance(node, Define)]
     if defaults is None:
@@ -350,6 +360,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     codex, codex_categories = build_entries(decls)        # F21: after the sids
     gallery, gallery_pictures = build_gallery(gallery_decls)    # F34: after the sids
     tracks = build_tracks(track_decls)                          # F35: after the sids
+    replays = build_replays(replay_decls, labels)               # F36: after the sids
     marks = {_mark_sid(target): mark for target, mark in flow_marks}    # F20: after the sids
     seconds = 0.0 if started is None else max(0.0, clock() - started)
     stats = LoadStats(files=len(files), labels=len(labels), statements=statements,
@@ -365,7 +376,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                    username_fallback=username_fallback, window_titles=frozenset(titles),
                    style_names=style_names, meta_files=frozenset(meta_files),
                    gallery=gallery, gallery_pictures=gallery_pictures, tracks=tracks,
-                   _index=index)
+                   replays=replays, _index=index)
 
 
 def _mark_sid(target: Node) -> str:

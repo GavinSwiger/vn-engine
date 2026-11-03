@@ -108,7 +108,7 @@ def test_i5_words_are_registered_at_import():
     fixture) changes nothing, and ``scoped_registry()`` keeps them."""
     specs = {w: get_spec(w) for w in ("ending", "lock", "unlock")}
     assert all(spec is not None and spec.placement == "either" for spec in specs.values())
-    rows = ["route", "ending", "tip", "item", "gallery", "track"]   # F21 (07 I-4), F34, F35
+    rows = ["route", "ending", "tip", "item", "gallery", "track", "replay"]  # F21, F34-F36
     assert list(LOCK_TARGETS) == rows
     with scoped_registry():
         register_words()

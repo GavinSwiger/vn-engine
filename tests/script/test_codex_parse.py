@@ -105,7 +105,8 @@ def test_i4_rows_are_registered_at_import():
     """07 I-4, since step 2: importing ``engine.script`` registers F21's rows once, after F19's;
     ``register_words()`` again (the ``words`` fixture) changes nothing, and
     ``scoped_registry()`` keeps them."""
-    assert list(LOCK_TARGETS) == ["route", "ending", "tip", "item", "gallery", "track"]  # F35
+    assert list(LOCK_TARGETS) == ["route", "ending", "tip", "item", "gallery", "track",
+                                 "replay"]                                        # F36
     rows = dict(LOCK_TARGETS)
     with scoped_registry():
         routes.register_words()

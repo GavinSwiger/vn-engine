@@ -6246,8 +6246,8 @@ ac = "AC-F19-04"
 feature = "F19"
 code = "E244"
 needs = "load"
-each = [['unlock promise', '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.'''],
-        ['lock route promise now', '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.'''],
+each = [['unlock promise', '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.'''],
+        ['lock route promise now', '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.'''],
         ['unlock route promis', '''there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".'''],
         ['lock ending god', '''there is no ending "god". Did you mean "good"?'''],
         ['unlock ending sad', '''unlock ending can't be used: an ending is recorded when the story reaches its ending line.'''],
@@ -6265,7 +6265,7 @@ needs = "load"
 each = ['unlock route promise', 'lock ending sad']
 edit = { T = '<x>' }
 where = "16"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F19-05-E241-ending"
@@ -6498,7 +6498,7 @@ needs = "load"
 each = ['unlock lanterns', 'unlock tip lanterns now']
 edit = { S = '<x>' }
 where = "10"
-expect = { exact = '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F21-02-E244-top"
@@ -6508,7 +6508,7 @@ code = "E244"
 needs = "load"
 edit = { T = 'lock ending sad' }
 where = "12"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F21-03-E252"
@@ -8291,7 +8291,7 @@ needs = "load"
 each = ['unlock gallery', 'unlock gallery cg festival "Festival Night"']
 edit = { S = '<x>', T = 'lock gallery cg festival "Festival Night"' }
 where = "5"
-expect = { exact = '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F34-03-E343"
@@ -8448,3 +8448,148 @@ needs = "load"
 edit = { T = 'lock track festival "Festival Night" file "music/festival.ogg"' }
 where = "9"
 expect = { exact = '''track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.''' }
+
+# --- F36 rows (01 §5.3; AC-F36-02 to 06): template T (S line 5, T line 9). The replay row
+# --- registers at import; the load is a release load. E349's over-500 form and the parsed
+# --- values are tests/script/test_replay_script.py's.
+
+[[case]]
+id = "F36-02-E348-need"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+each = ['lock replay bridge', 'lock replay "The Bridge"', 'lock replay', 'lock replay bridge start "The Bridge"']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".''' }
+
+[[case]]
+id = "F36-02-E348-left"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+each = ['lock replay bridge "The Bridge" slowly', 'lock replay bridge "The Bridge" image cg bridge to start slowly', 'lock replay bridge "The Bridge" to start slowly']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''this line has "slowly" left over. lock replay takes a scene name, a title in quotes, then image and to, in that order.''' }
+
+[[case]]
+id = "F36-02-E348-to"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+each = ['lock replay bridge "The Bridge" to', 'lock replay bridge "The Bridge" to "start"', 'lock replay bridge "The Bridge" image cg bridge to']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''to needs a scene name, e.g. to fireworks.''' }
+
+[[case]]
+id = "F36-02-E348-body"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+each = [['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]"Smile."', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins + 1', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]$ coins = 1', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]show hana', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = 1:', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins =', '11'],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = 1⏎[8]coins = 2', '12']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''only starting values can go under a replay, one per line, e.g. coins = 3.''' }
+
+[[case]]
+id = "F36-02-E348-declare"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+edit = { S = 'lock replay bridge "The Bridge"', T = 'lock replay bridge "The Bridge"' }
+where = "5"
+expect = { exact = '''lock replay bridge "The Bridge" declares a scene replay, so it goes at the top level. To make the game forget it during the story, write lock replay bridge with no title.''' }
+
+[[case]]
+id = "F36-02-E348-top"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E348"
+needs = "load"
+each = ['unlock replay bridge', 'unlock replay bridge "The Bridge"']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''unlock replay goes inside a label, because it runs when the story reaches it.''' }
+
+[[case]]
+id = "F36-02-E244"
+ac = "AC-F36-02"
+feature = "F36"
+code = "E244"
+needs = "load"
+each = ['unlock replay', 'unlock replay bridge "The Bridge"', 'lock replay bridge start']
+edit = { S = '<x>', T = 'lock replay bridge "The Bridge"' }
+where = "5"
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
+
+[[case]]
+id = "F36-03-E349"
+ac = "AC-F36-03"
+feature = "F36"
+code = "E349"
+needs = "load"
+edit = { T = 'lock replay bridge "The Bridge"⏎lock replay bridge "The Bridge Again" to start' }
+where = "10"
+expect = { exact = '''the scene "bridge" has two replays: here and at script/main.vns, line 9. Give each scene one replay.''' }
+
+[[case]]
+id = "F36-04-E350"
+ac = "AC-F36-04"
+feature = "F36"
+code = "E350"
+needs = "load"
+each = [['lock replay bridge ""', '9', '''the replay title is empty.'''],
+        ['lock replay bridge "   "', '9', '''the replay title is empty.'''],
+        ['lock replay bridge "<<紙*61>>"', '9', '''the replay title has 61 characters; keep it to 60.'''],
+        ['lock replay bridge "{b}Night{/b}"', '9', '''replay titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".'''],
+        ['default v1 = 0⏎default v2 = 0⏎default v3 = 0⏎default v4 = 0⏎default v5 = 0⏎default v6 = 0⏎default v7 = 0⏎default v8 = 0⏎default v9 = 0⏎default v10 = 0⏎default v11 = 0⏎default v12 = 0⏎default v13 = 0⏎default v14 = 0⏎default v15 = 0⏎default v16 = 0⏎default v17 = 0⏎default v18 = 0⏎default v19 = 0⏎default v20 = 0⏎default v21 = 0⏎default v22 = 0⏎default v23 = 0⏎default v24 = 0⏎default v25 = 0⏎default v26 = 0⏎default v27 = 0⏎default v28 = 0⏎default v29 = 0⏎default v30 = 0⏎default v31 = 0⏎default v32 = 0⏎default v33 = 0⏎lock replay bridge "The Bridge":⏎[4]v1 = 1⏎[4]v2 = 2⏎[4]v3 = 3⏎[4]v4 = 4⏎[4]v5 = 5⏎[4]v6 = 6⏎[4]v7 = 7⏎[4]v8 = 8⏎[4]v9 = 9⏎[4]v10 = 10⏎[4]v11 = 11⏎[4]v12 = 12⏎[4]v13 = 13⏎[4]v14 = 14⏎[4]v15 = 15⏎[4]v16 = 16⏎[4]v17 = 17⏎[4]v18 = 18⏎[4]v19 = 19⏎[4]v20 = 20⏎[4]v21 = 21⏎[4]v22 = 22⏎[4]v23 = 23⏎[4]v24 = 24⏎[4]v25 = 25⏎[4]v26 = 26⏎[4]v27 = 27⏎[4]v28 = 28⏎[4]v29 = 29⏎[4]v30 = 30⏎[4]v31 = 31⏎[4]v32 = 32⏎[4]v33 = 33', '75', '''this replay has 33 starting values; keep it to 32.''']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''<z>''' }
+
+[[case]]
+id = "F36-05-E351"
+ac = "AC-F36-05"
+feature = "F36"
+code = "E351"
+needs = "load"
+each = [['lock replay brige "The Bridge"', '9', '''there is no scene "brige". Did you mean "bridge"?'''],
+        ['lock replay qqqq "The Bridge"', '9', '''there is no scene "qqqq". Use the name of a label.'''],
+        ['lock replay start "Start" to brige', '9', '''there is no scene "brige". Did you mean "bridge"?'''],
+        ['lock replay bridge "The Bridge" to bridge', '9', '''to bridge names the replay's own scene. Name the scene where the replay should stop, or leave out to.'''],
+        ['lock replay bridge "The Bridge"⏎label later:⏎[4]unlock replay brige', '11', '''there is no replay of "brige". Did you mean "bridge"? Declare it at the top level, e.g. lock replay brige "Title".'''],
+        ['lock replay bridge "The Bridge"⏎label later:⏎[4]lock replay start', '11', '''there is no replay of "start". Declare it at the top level, e.g. lock replay start "Title".'''],
+        ['label later:⏎[4]unlock replay qqqq', '10', '''there is no replay of "qqqq". Declare it at the top level, e.g. lock replay qqqq "Title".''']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''<z>''' }
+
+[[case]]
+id = "F36-06-E352"
+ac = "AC-F36-06"
+feature = "F36"
+code = "E352"
+needs = "load"
+each = [['lock replay bridge "The Bridge":⏎[4]coins = 3', '10', '''coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.'''],
+        ['define coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = 3', '11', '''coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.'''],
+        ['default persistent.coins = 0⏎lock replay bridge "The Bridge":⏎[4]persistent.coins = 3', '11', '''persistent.coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.'''],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = coins + 1', '11', '''a starting value is a number, text in quotes, True, False, or None, but this has "coins + 1".'''],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = [1, 2]', '11', '''a starting value is a number, text in quotes, True, False, or None, but this has "[1, 2]".'''],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = Aiko', '11', '''a starting value is a number, text in quotes, True, False, or None, but this has "Aiko".'''],
+        ['default coins = 0⏎lock replay bridge "The Bridge":⏎[4]coins = 3⏎[4]coins = 4', '12', '''coins has two starting values here; keep one.''']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''<z>''' }

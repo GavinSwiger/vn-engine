@@ -19,6 +19,7 @@ from engine.script import routes  # noqa: F401,E402  F19: ending, lock, unlock
 from engine.script import codex  # noqa: F401,E402  F21: lock/unlock tip|item rows
 from engine.script import gallery  # noqa: F401,E402  F34: lock/unlock gallery row
 from engine.script import musicroom  # noqa: F401,E402  F35: lock track row
+from engine.script import replay  # noqa: F401,E402  F36: lock/unlock replay row
 from engine.script import minigame  # noqa: F401,E402  F23: minigame
 from engine.script import flowchart  # noqa: F401,E402  F20: flowchart
 from engine.script import glitch  # noqa: F401,E402  F28: effect (registered from F28 s3)

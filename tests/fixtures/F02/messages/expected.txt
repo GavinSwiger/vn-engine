@@ -2457,10 +2457,10 @@ script/main.vns, line 16: until lists 33 endings; the most is 32.
 script/main.vns, line 16: until needs at least one ending name, e.g. until sad, good.
 
 [F19-04-E244-1]
-script/main.vns, line 7: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F19-04-E244-2]
-script/main.vns, line 7: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F19-04-E244-3]
 script/main.vns, line 7: there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".
@@ -2475,10 +2475,10 @@ script/main.vns, line 7: unlock ending can't be used: an ending is recorded when
 script/main.vns, line 7: lock route promise declares a route, so it goes at the top level. To lock it again during the story, write lock route promise with no title.
 
 [F19-04-E244-top-1]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-04-E244-top-2]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-05-E241-ending]
 script/main.vns, line 9: there are two endings named "sad": here and at script/main.vns, line 7. Give each ending its own name.
@@ -2644,13 +2644,13 @@ script/main.vns, line 12: unlock goes inside a label, because it runs when the s
 script/main.vns, line 12: unlock goes inside a label, because it runs when the story reaches it.
 
 [F21-02-E244-1]
-script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F21-02-E244-2]
-script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F21-02-E244-top]
-script/main.vns, line 12: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 12: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F21-03-E252-1]
 script/main.vns, line 12: the tip name has 65 characters; keep it to 64.
@@ -3857,10 +3857,10 @@ script/main.vns, line 5: lock gallery cg festival "Festival Night" adds a pictur
 script/main.vns, line 9: unlock gallery goes inside a label, because it runs when the story reaches it.
 
 [F34-02-E244-1]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F34-02-E244-2]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
 
 [F34-03-E343-1]
 script/main.vns, line 11: the picture "cg river_smile" is in the gallery twice: here and at script/main.vns, line 10. Give each picture one place in the gallery.
@@ -3976,3 +3976,132 @@ script/main.vns, line 10: tracks festival and night_walk both play "music/festiv
 [F35-02-W221]
 script/main.vns, line 9: track festival plays "music/festival.ogg", but there is no such file in audio/.
 script/main.vns, line 9: track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.
+
+[F36-02-E348-need-1]
+script/main.vns, line 9: lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".
+
+[F36-02-E348-need-2]
+script/main.vns, line 9: lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".
+
+[F36-02-E348-need-3]
+script/main.vns, line 9: lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".
+
+[F36-02-E348-need-4]
+script/main.vns, line 9: lock replay needs a scene name and a title in quotes, e.g. lock replay festival "The Festival".
+
+[F36-02-E348-left-1]
+script/main.vns, line 9: this line has "slowly" left over. lock replay takes a scene name, a title in quotes, then image and to, in that order.
+
+[F36-02-E348-left-2]
+script/main.vns, line 9: this line has "slowly" left over. lock replay takes a scene name, a title in quotes, then image and to, in that order.
+
+[F36-02-E348-left-3]
+script/main.vns, line 9: this line has "slowly" left over. lock replay takes a scene name, a title in quotes, then image and to, in that order.
+
+[F36-02-E348-to-1]
+script/main.vns, line 9: to needs a scene name, e.g. to fireworks.
+
+[F36-02-E348-to-2]
+script/main.vns, line 9: to needs a scene name, e.g. to fireworks.
+
+[F36-02-E348-to-3]
+script/main.vns, line 9: to needs a scene name, e.g. to fireworks.
+
+[F36-02-E348-body-1]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-2]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-3]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-4]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-5]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-6]
+script/main.vns, line 11: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-body-7]
+script/main.vns, line 12: only starting values can go under a replay, one per line, e.g. coins = 3.
+
+[F36-02-E348-declare]
+script/main.vns, line 5: lock replay bridge "The Bridge" declares a scene replay, so it goes at the top level. To make the game forget it during the story, write lock replay bridge with no title.
+
+[F36-02-E348-top-1]
+script/main.vns, line 9: unlock replay goes inside a label, because it runs when the story reaches it.
+
+[F36-02-E348-top-2]
+script/main.vns, line 9: unlock replay goes inside a label, because it runs when the story reaches it.
+
+[F36-02-E244-1]
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+
+[F36-02-E244-2]
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+
+[F36-02-E244-3]
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+
+[F36-03-E349]
+script/main.vns, line 10: the scene "bridge" has two replays: here and at script/main.vns, line 9. Give each scene one replay.
+
+[F36-04-E350-1]
+script/main.vns, line 9: the replay title is empty.
+
+[F36-04-E350-2]
+script/main.vns, line 9: the replay title is empty.
+
+[F36-04-E350-3]
+script/main.vns, line 9: the replay title has 61 characters; keep it to 60.
+
+[F36-04-E350-4]
+script/main.vns, line 9: replay titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F36-04-E350-5]
+script/main.vns, line 75: this replay has 33 starting values; keep it to 32.
+
+[F36-05-E351-1]
+script/main.vns, line 9: there is no scene "brige". Did you mean "bridge"?
+
+[F36-05-E351-2]
+script/main.vns, line 9: there is no scene "qqqq". Use the name of a label.
+
+[F36-05-E351-3]
+script/main.vns, line 9: there is no scene "brige". Did you mean "bridge"?
+
+[F36-05-E351-4]
+script/main.vns, line 9: to bridge names the replay's own scene. Name the scene where the replay should stop, or leave out to.
+
+[F36-05-E351-5]
+script/main.vns, line 11: there is no replay of "brige". Did you mean "bridge"? Declare it at the top level, e.g. lock replay brige "Title".
+
+[F36-05-E351-6]
+script/main.vns, line 11: there is no replay of "start". Declare it at the top level, e.g. lock replay start "Title".
+
+[F36-05-E351-7]
+script/main.vns, line 10: there is no replay of "qqqq". Declare it at the top level, e.g. lock replay qqqq "Title".
+
+[F36-06-E352-1]
+script/main.vns, line 10: coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.
+
+[F36-06-E352-2]
+script/main.vns, line 11: coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.
+
+[F36-06-E352-3]
+script/main.vns, line 11: persistent.coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.
+
+[F36-06-E352-4]
+script/main.vns, line 11: a starting value is a number, text in quotes, True, False, or None, but this has "coins + 1".
+
+[F36-06-E352-5]
+script/main.vns, line 11: a starting value is a number, text in quotes, True, False, or None, but this has "[1, 2]".
+
+[F36-06-E352-6]
+script/main.vns, line 11: a starting value is a number, text in quotes, True, False, or None, but this has "Aiko".
+
+[F36-06-E352-7]
+script/main.vns, line 12: coins has two starting values here; keep one.
