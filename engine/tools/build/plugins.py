@@ -17,7 +17,8 @@ and returns a ``PluginScan``:
   is added only when it exists as a file in the standard library, checked without importing).
 - ``foreign``: the first import, in file then line order, that a build can't include, as
   ``PluginImport(ref, module, line)`` for ``B_PLUGIN_IMPORT`` ("minigames/<ref> uses
-  <module>"). Not foreign (I-4): relative imports, ``engine`` and ``engine.*``,
+  <module>"). Not foreign (I-4): relative imports, ``engine`` and ``engine.*``, ``pygame`` and
+  ``pygame.*`` (every build ships pygame-ce; main session 2026-11-02),
   ``_vn_minigames.*`` (the loader's package), and the plugins' own top-level names (a
   sibling ``minigames/foo.py`` or ``minigames/foo/``).
 - ``skipped``: refs not scanned because they are over F23's 1 MiB file cap, aren't UTF-8 or
@@ -46,8 +47,8 @@ MAX_FILE_BYTES: Final = 1 << 20          # F23's per-file cap (minigames/loader.
 MAX_TOTAL_BYTES: Final = 8 << 20         # F23's source total
 MAX_DEPTH: Final = 32                    # the build's folder depth cap (B_TOO_BIG)
 
-# Always allowed top-level names besides the plugins' own (07 I-4).
-ALLOWED_TOP: Final = frozenset({"engine", "_vn_minigames"})
+# Always allowed top-level names besides the plugins' own (07 I-4); pygame ships in every build.
+ALLOWED_TOP: Final = frozenset({"engine", "_vn_minigames", "pygame"})
 
 # In the standard library but not in a build (the spec excludes tkinter; the rest are
 # installers, IDLE and the test suite, which builds never bundle).
