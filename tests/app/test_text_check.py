@@ -552,3 +552,35 @@ def test_ac_f30_35_w190_identity_in_dollar_code(tmp_path, monkeypatch, caplog):
     assert w190[1] == ("script", "…and 2 more lines read identity.")
     assert not [m for _, m in _f30_logs(tmp_path, monkeypatch, caplog, script, offer=True,
                                         dev=False) if "identity" in m or "user name" in m]
+
+
+def test_ac_f30_34_35_the_scan_runs_in_the_check_slices(tmp_path, monkeypatch):
+    """AC-F02-63 with F30: W189/W190's scan walks nothing when the check is made (a
+    1,000,000-word story took a 0.5 s frame), runs in ``TextLaunchCheck.step``s after the
+    line walk, and finds what the one-go scan finds, in the same order."""
+    from engine.app import text_check
+    from engine.script.program import Program
+    root = tmp_path / "g"
+    (root / "script").mkdir(parents=True)
+    (root / "script" / "main.vns").write_text(
+        'define hana = Character("Hana")\ndefault env = "LOGNAME"\nlabel start:\n'
+        '    hana "Hi, {username}."\n    $ me = "getpass"\n    "Plain."\n'
+        '    "{username}!"\n    $ k = "USERNAME"\n', encoding="utf-8")
+    check = launched_check(root)
+    program = check.program
+    walks = []
+    real_walk = Program.iter_statements
+    monkeypatch.setattr(Program, "iter_statements",
+                        lambda self: walks.append(1) or real_walk(self))
+    monkeypatch.setattr(text_check, "FOURTHWALL_CHUNK", 1)
+    check.wall = text_check.FourthWallScan(program, offered=False, fallback="friend")
+    assert walks == [] and check.fourthwall == ()
+    steps = 0
+    while not check.step():
+        steps += 1
+    assert steps > 10 and check.wall is None
+    assert check.fourthwall == text_check.fourthwall_warnings(program, offered=False,
+                                                              fallback="friend")
+    assert [(area, m.split(": ")[0]) for area, m in check.fourthwall] == [
+        ("text", "script/main.vns, line 4"), ("text", "…and 1 more lines use {username}."),
+        ("script", "script/main.vns, line 2"), ("script", "…and 2 more lines read identity.")]

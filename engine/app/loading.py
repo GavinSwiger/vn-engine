@@ -37,9 +37,14 @@ and quitting as usual. When the load is done, the result is logged once
   ``story.start_watchdog``) starts before the first define and guards the launch job and
   the interpreter. Before ``install_story``, F12's ``install_persistence`` sets
   ``App.persist``, whose encoder is then warmed in the following slices (``warm``) before
-  the hand-over;
-- in dev runs, F05's ``TextLaunchCheck`` (W40, W40b, W41; ``app/text_check.py``) then runs
-  in the same slices, still with ``app.loading`` True, and logs its warnings when done;
+  the hand-over. The ``Interpreter`` and ``install_story`` with the rest are two stages
+  (``_install_slice``): each walks the whole story (25–35 ms at 1,000,000 words), so the
+  second waits for a frame of its own when the slice has less left than the first took,
+  and the first when it has less left than ``INSTALL_S_PER_STATEMENT`` per statement
+  (AC-F02-63); a small story does both in the frame that finished the launch;
+- in dev runs, F05's ``TextLaunchCheck`` (W40, W40b, W41, then F30's W189 and W190 scan;
+  ``app/text_check.py``) then runs in the same slices, still with ``app.loading`` True, and
+  logs its warnings when done;
 - then the stack is replaced by ``on_ready(app)``, which bootstrap passes as
   ``build_initial_screens``: the one "what shows at launch" seam stays in bootstrap (I-2).
 
@@ -107,6 +112,9 @@ BACKGROUND = (0, 0, 0)                   # #000000 while loading (04 §5.3)
 # The loading indicator (F10 03 "Title screen", UI-F10-08).
 # Its drawing is ``ui/loading_indicator.py``'s, shared with F11's large loads (F11 I-5).
 LOADING_SHOW_S = 1.0                     # shown only once loading passes 1,000 ms
+# An install stage's first estimate (_install_slice): one whole-story walk measured about
+# 0.25–0.35 µs per statement (101,082 statements at 1,000,000 words), with room to spare.
+INSTALL_S_PER_STATEMENT = 0.4e-6
 
 OnReady = Callable[["App"], Sequence[Screen]]
 Signatures = Mapping[str, MinigameSig]
@@ -141,6 +149,10 @@ class StoryLoadScreen(Screen):
         self.on_ready = on_ready
         self.finished = False
         self.job: LaunchJob | None = None          # F03: set once the load is clean
+        self.launched: LaunchResult | None = None  # F03: done, the story's installs to do
+        self.interp: Interpreter | None = None     # F03: made, not yet installed
+        self._stage_s = 0.0                        # an install stage's cost (estimated, then
+                                                   # the last one measured)
         self.text_check: TextLaunchCheck | None = None  # F05: dev, after the launch phase
         self.persistent: PersistentLaunch | None = None  # F12: the launch read (§7.4)
         self.warming = False                       # F12: App.persist's encoder warm-up
@@ -169,7 +181,7 @@ class StoryLoadScreen(Screen):
             self._first_update = False
             return
         started = self._clock()
-        if self.warming or self.text_check is not None:
+        if self.launched is not None or self.warming or self.text_check is not None:
             self._after_launch(started)
             return
         # The frame that finished the load goes on only with what is left of its slice; a
@@ -295,8 +307,9 @@ class StoryLoadScreen(Screen):
         return True
 
     def _launched(self, result: LaunchResult) -> bool:
-        """The launch phase is done: show its errors (False), or install persistent data
-        and the story (True; ``_after_launch`` then warms, checks, and hands over)."""
+        """The launch phase is done: show its errors (False), or log its warnings and
+        install persistent data (True; ``_after_launch`` then installs the story, warms,
+        checks, and hands over)."""
         app = self.app
         log = get_logger("runtime")
         if result.namespace is None:
@@ -314,31 +327,66 @@ class StoryLoadScreen(Screen):
             log_to = (persist_log if warning.code == "W56" else
                       script_log if warning.code in AUDIO_CHECK_CODES else stage_log)
             log_to.warning("%s", warning.format())
-        program = self._program
-        assert program is not None and self.persistent is not None
+        assert self._program is not None and self.persistent is not None
         # F12 §7.4 step 9: App.persist, before the story's installs (their notices).
         install_persistence(app, self.persistent)
         self.persistent = None                     # the sync owns the store now
-        self.warming = True
-        # F44 C1: --start/--set reach the new game (the load checked the label, E26b).
-        # F12 step 3a: marks and step 3b on the same store the launch used.
-        interp = Interpreter(program, result.namespace, guard=start_watchdog(app),
-                             dev=app.dev, start=app.start,
-                             show_locked=app.config.choice.show_locked,      # F07
-                             persistent=app.persist.store,
-                             rollback_steps=app.config.rollback.steps,       # F14 (I-15)
-                             minigames=self.minigames or MappingProxyType({}))   # F23 I-12
+        self.launched = result                     # the installs follow (_install_slice)
+        self._stage_s = self._program.stats.statements * INSTALL_S_PER_STATEMENT
+        return True
+
+    def _install_slice(self, deadline: float, *, at_least_one: bool) -> bool:
+        """The story's installs after the launch phase in two stages: the ``Interpreter``,
+        then ``install_story`` and the rest. Each walks the whole story once (chapters,
+        styles: about 25–35 ms each at 1,000,000 words), so a stage shares a frame with
+        other work only when the slice has as much left as the last stage took (before the
+        first: ``INSTALL_S_PER_STATEMENT`` per statement); a frame of its own does at least
+        one (AC-F02-63). A small story does both at once. True once all are done."""
+        result = self.launched
+        program = self._program
+        assert result is not None and result.namespace is not None and program is not None
+        app = self.app
+        if self.interp is None:
+            began = self._clock()
+            if not at_least_one and began + self._stage_s >= deadline:
+                return False
+            # F44 C1: --start/--set reach the new game (the load checked the label, E26b).
+            # F12 step 3a: marks and step 3b on the same store the launch used.
+            persist = app.persist
+            assert persist is not None
+            self.interp = Interpreter(
+                program, result.namespace, guard=start_watchdog(app), dev=app.dev,
+                start=app.start, show_locked=app.config.choice.show_locked,       # F07
+                persistent=persist.store,
+                rollback_steps=app.config.rollback.steps,                      # F14 (I-15)
+                minigames=self.minigames or MappingProxyType({}))              # F23 I-12
+            now = self._clock()
+            self._stage_s = now - began
+            if now + self._stage_s >= deadline:
+                return False
+        elif not at_least_one and self._clock() + self._stage_s >= deadline:
+            return False
+        interp = self.interp
         install_story(app, interp, fixed_seed=app.seed,        # F03 step 13: --seed
                       images=result.images)
         install_metafiles(app, interp)                         # F31 s4: the disk port
         # F05 §7.8: the dev text check runs in the next frames' slices.
         self.text_check = text_launch_check(app, program, result.namespace)
+        self.launched = None
+        self.interp = None
+        self.warming = True
         return True
 
     def _after_launch(self, started: float, *, at_least_one: bool = True) -> None:
-        """F12's encoder warm-up (``PersistentSync.warm``: a big store would otherwise take
-        thousands of frames before its first write), then F05's text check, then the
-        hand-over, in this frame's slice. A frame of its own does at least one unit."""
+        """The story's installs (``_install_slice``), F12's encoder warm-up
+        (``PersistentSync.warm``: a big store would otherwise take thousands of frames
+        before its first write), then F05's text check, then the hand-over, in this frame's
+        slice. A frame of its own does at least one unit."""
+        if self.launched is not None:
+            if not self._install_slice(started + SCRIPT_LOAD_SLICE_S,
+                                       at_least_one=at_least_one):
+                return
+            at_least_one = False
         if self.warming:
             persist = self.app.persist
             left = started + SCRIPT_LOAD_SLICE_S - self._clock()
@@ -357,14 +405,19 @@ class StoryLoadScreen(Screen):
 
     def _text_slice(self, started: float, *, at_least_one: bool = True) -> None:
         """One slice of the text check; hands over when it is done. A frame of its own does
-        at least one step; the frame that finished the launch only what fits its slice."""
+        at least one step; the frame that finished the launch only what fits its slice. A
+        step starts only when the slice has as much left as the last step took (a line step
+        of a 1,000,000-word story takes up to about 40 ms; AC-F02-63)."""
         check = self.text_check
         assert check is not None
         deadline = started + SCRIPT_LOAD_SLICE_S
-        while at_least_one or self._clock() < deadline:
+        last = 0.0                                 # a step starts only if one more fits
+        while at_least_one or self._clock() + last < deadline:
             at_least_one = False
+            began = self._clock()
             if check.step():
                 break
+            last = self._clock() - began
         else:
             return
         check.log()

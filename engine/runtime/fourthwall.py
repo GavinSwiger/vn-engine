@@ -20,8 +20,10 @@ shows, but only the title is story state. So the runtime keeps:
   ``begin_wait(make=partial(FakeCrash, body=...))`` (07 I-4). A quiet F14 re-run holds no
   ``FakeCrash`` (``begin_wait``'s rule).
 
-``uses_crash`` and ``name_lines`` are read-only program scans for the presentation (the
-Settings row rule, W189). Pure: no file, clock, randomness, pygame, or ``engine.meta``.
+``uses_crash``, ``name_lines``, and ``identity_lines`` are read-only program scans for the
+presentation (the Settings row rule, W189, W190); ``name_nodes``/``name_line`` and
+``identity_nodes``/``identity_hits`` are the same scans node by node, for the launch's text
+check, which runs them in slices. Pure: no file, clock, randomness, pygame, or ``engine.meta``.
 """
 
 import dataclasses
@@ -117,16 +119,25 @@ def uses_crash(program: Program) -> bool:
 def name_lines(program: Program) -> list[tuple[str, int]]:
     """``(file ref, line)`` of each statement whose text holds ``{username}`` (W189), in
     reading order."""
-    out: list[tuple[str, int]] = []
-    for stmt in _statements(program):
-        body: TaggedText | None = None
-        if type(stmt) is Say:
-            body = stmt.body
-        elif type(stmt) is CrashEffect:
-            body = stmt.body
-        if body is not None and any(type(p) is NameMark for p in body.pieces):
-            out.append((stmt.file.ref, stmt.line))
-    return out
+    return [hit for stmt in name_nodes(program) if (hit := name_line(stmt)) is not None]
+
+
+def name_nodes(program: Program) -> Iterator[Statement]:
+    """The statements ``name_lines`` reads, in its order (for a scan in slices)."""
+    return _statements(program)
+
+
+def name_line(stmt: Statement) -> tuple[str, int] | None:
+    """``(file ref, line)`` of ``stmt`` when its text holds ``{username}`` (W189), else
+    None."""
+    body: TaggedText | None = None
+    if type(stmt) is Say:
+        body = stmt.body
+    elif type(stmt) is CrashEffect:
+        body = stmt.body
+    if body is not None and any(type(p) is NameMark for p in body.pieces):
+        return (stmt.file.ref, stmt.line)
+    return None
 
 
 # W190 (SEC-F30-13): words in author Python that read OS identity (a lexical scan).
@@ -153,16 +164,28 @@ def identity_lines(program: Program) -> list[tuple[str, int]]:
     """``(file ref, line)`` of each piece of author Python (``$`` lines, ``define``,
     ``default``, conditions) naming ``getpass``, ``getlogin``, ``USERNAME``, ``LOGNAME``, or
     ``os.environ`` (W190, SEC-F30-13), comments left out, in reading order."""
+    return [hit for node in identity_nodes(program) for hit in identity_hits(node)]
+
+
+def identity_nodes(program: Program) -> Iterator[object]:
+    """The nodes ``identity_lines`` reads, in its order (for a scan in slices)."""
+    yield from program.defines
+    yield from program.defaults
+    yield from getattr(program, "persistent_defaults", ())
+    yield from _statements(program)
+
+
+def identity_hits(node: object) -> list[tuple[str, int]]:
+    """``(file ref, line)`` of each piece of author Python held by ``node`` that reads OS
+    identity (W190), in field order."""
     out: list[tuple[str, int]] = []
-    nodes = (*program.defines, *program.defaults,
-             *getattr(program, "persistent_defaults", ()), *_statements(program))
-    for node in nodes:
-        for code in _codes(node):
-            if _IDENTITY.search(code.without_comments()):
-                file = getattr(node, "file", None)
-                out.append((getattr(file, "ref", ""), code.line))
+    for code in _codes(node):
+        if _IDENTITY.search(code.without_comments()):
+            file = getattr(node, "file", None)
+            out.append((getattr(file, "ref", ""), code.line))
     return out
 
 
-__all__ = ["clear_title", "hold_restored", "identity_lines", "name_lines", "restored_title", "run_crash",
-           "run_title", "title_ok", "uses_crash"]
+__all__ = ["clear_title", "hold_restored", "identity_hits", "identity_lines", "identity_nodes",
+           "name_line", "name_lines", "name_nodes", "restored_title", "run_crash", "run_title",
+           "title_ok", "uses_crash"]

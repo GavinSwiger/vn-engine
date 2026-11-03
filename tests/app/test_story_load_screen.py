@@ -338,9 +338,9 @@ def _responsive_load(corpus: Path) -> None:
     """AC-63: every frame interval while loading ``corpus`` is ≤ 0.1 s (real clock).
 
     A wall-clock max on a shared machine (``pytest -n``) can catch the OS taking the CPU
-    away: the frame that finishes the launch phase already takes 70–90 ms alone (what is
-    left of its 50 ms slice, then the story's installs and the dev checks' set-up), so a
-    few ms of preemption put it over. A run over 0.1 s is run again from scratch, up to
+    away: a slice ends a step past its 50 ms (the story's installs and F30's scan are sliced
+    since, so no frame does a whole-story walk on top of a full slice), and a step slowed by
+    preemption puts a frame over. A run over 0.1 s is run again from scratch, up to
     ``AC63_RUNS`` in all, and every run is held to the same 0.1 s; a real overrun (a slice
     that ignores its budget, unsliced work in a frame) fails every run."""
     worst: list[float] = []

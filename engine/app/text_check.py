@@ -67,8 +67,9 @@ F17 (``04`` §7.6, SR-F17-06, 07 I-8, I-11), dev runs too:
 Records are logged in this order when the check ends: W41, W100 (theme, then characters),
 W40, W40b, W101, W101s in area ``text``, then W47 in area ``choice``.
 
-F30 (``04`` §6.8; SEC-F30-13), dev runs too, worked out at once when the check is made
-(``fourthwall_warnings``) and logged after the rest: **W189** at the first line using
+F30 (``04`` §6.8; SEC-F30-13), dev runs too, worked out in the same slices after the walk
+(``FourthWallScan``, ``FOURTHWALL_CHUNK`` nodes per step: one pass over a 1,000,000-word
+story takes about 0.4 s, AC-F02-63) and logged after the rest: **W189** at the first line using
 ``{username}`` while ``[meta] username`` is off, then ``…and N more lines use {username}.``
 (area ``text``); **W190** at the first piece of author Python naming ``getpass``,
 ``getlogin``, ``USERNAME``, ``LOGNAME``, or ``os.environ``, then ``…and N more lines read
@@ -96,7 +97,8 @@ from engine.runtime.character import Character
 from engine.runtime.commands import NameMark, NvlPage, Say, Span, Style, TaggedText, VarMark
 # Through runtime: only loading.py of engine.app imports engine.script (AC-F02-66).
 from engine.runtime.errors import format_message
-from engine.runtime.fourthwall import identity_lines, name_lines   # F30 W189, W190
+from engine.runtime.fourthwall import (identity_hits, identity_nodes,   # F30 W189, W190
+                                       name_line, name_nodes)
 from engine.runtime.nvl import Nvl                 # F17 07 I-8: the statement, through runtime
 from engine.runtime.text import format_value
 from engine.ui.blips import BlipPlayer
@@ -113,11 +115,14 @@ WHITE: RGB = (255, 255, 255)
 
 NAME_MIN_RATIO: Final = 3.0               # SR-F05-24: names (24 units and up)
 TEXT_MIN_RATIO: Final = 4.5               # SR-F05-24, 27: body text
-TEXT_CHECK_CHUNK: Final = 200             # defines or statements per step (§7.8)
+# Defines or statements per step (§7.8): about 2 ms of lines (AC-F02-63: a slice ends at most
+# one step late, and a busy machine can make one step several times slower).
+TEXT_CHECK_CHUNK: Final = 50
 TEXT_CHECK_CHARS: Final = 10_000          # and at most about this much line text per step
 W40_MAX_LINES: Final = 20                 # W40 records, then one W40b (SR-F05-28)
 W47_MAX_CHOICES: Final = 20               # W47 records, then one summary line (as W40)
 W101_MAX_LINES: Final = 20                # F17: W101 records, then one W101s (as W40)
+FOURTHWALL_CHUNK: Final = 1_000           # F30: nodes per step of the W189/W190 scan (~2 ms)
 
 _log = get_logger("text")
 _choice_log = get_logger("choice")        # F07 W47 (07 I-11)
@@ -410,7 +415,7 @@ def character_warnings(who: str, c: Character, theme: "TextboxTheme") -> list[st
     return out
 
 
-_DEFINES, _LINES, _DONE = range(3)
+_DEFINES, _LINES, _WALL, _DONE = range(4)
 _UNSET = object()
 
 
@@ -418,8 +423,9 @@ class TextLaunchCheck:
     """W41, W40, and W40b of one launch (§7.8), with F17's W100 character form and W101. ``step()`` does at most
     ``TEXT_CHECK_CHUNK`` defines or statements, ending early once it has measured
     ``TEXT_CHECK_CHARS`` characters of line text (one 10,000-character line takes 10 to
-    25 ms), and returns True when done; ``warnings``
-    (the log texts, places included) are then final. Results don't depend on the slicing.
+    25 ms), then ``wall``'s F30 steps (when set), and returns True when done; ``warnings``
+    (the log texts, places included) and ``fourthwall`` are then final. Results don't depend
+    on the slicing.
 
     ``program`` is the loaded story (its ``defines``, ``defaults``, ``define_names``, and
     ``iter_statements()``), ``G`` the launch namespace; ``assets`` and ``faces`` measure as
@@ -454,8 +460,10 @@ class TextLaunchCheck:
         self.nvl_ctx = {named: line_context(assets, faces, self.nvl, metrics, named)
                         for named in (False, True)}
         self.warnings: tuple[str, ...] = ()
-        # F30 W189/W190 as (area, text), logged after the rest (fourthwall_warnings).
+        # F30 W189/W190 as (area, text), logged after the rest: ``wall``'s scan, stepped
+        # after the walk (``text_launch_check`` sets it; None: no F30 scan).
         self.fourthwall: tuple[tuple[str, str], ...] = ()
+        self.wall: FourthWallScan | None = None
         self._found: list[str] = []
         self._w100: list[str] = []            # F17 character form, kept until the walk ends
         self._w101: list[str] = []
@@ -514,6 +522,14 @@ class TextLaunchCheck:
             self._text_count = len(out)
             w47 = self._w47 + ([w47_more(self._w47_more)] if self._w47_more else [])
             self.warnings = tuple(out + w47)
+            self._phase = _WALL
+        if self._phase == _WALL:                         # F30, in the same slices
+            wall = self.wall
+            if wall is not None:
+                if not wall.step():
+                    return False
+                self.fourthwall = wall.warnings
+                self.wall = None
             self._phase = _DONE
         return True
 
@@ -761,31 +777,77 @@ def text_launch_check(app: "App", program: object, G: Mapping[str, object]
                             choice_faces=getattr(choices, "faces", None),
                             nvl=nvl_look(app.config.theme))
     meta = app.config.meta
-    check.fourthwall = fourthwall_warnings(program, offered=meta.username,
-                                           fallback=meta.username_fallback)
+    # F30: scanned in the check's slices after its walk (AC-F02-63), not here.
+    check.wall = FourthWallScan(program, offered=meta.username,
+                                fallback=meta.username_fallback)
     return check
+
+
+class FourthWallScan:
+    """F30's dev warnings (module docstring) over a loaded story, ``FOURTHWALL_CHUNK`` nodes
+    per ``step()``: W189's scan (only when ``offered`` is False), then W190's. ``step()``
+    returns True when done; ``warnings`` (``(area, text)``: W189 and its summary, then W190
+    and its summary) is then final. Making one does no work (the scans are lazy)."""
+
+    def __init__(self, program: object, *, offered: bool, fallback: str) -> None:
+        self.fallback = fallback
+        self.warnings: tuple[tuple[str, str], ...] = ()
+        self._names: list[tuple[str, int]] = []
+        self._identity: list[tuple[str, int]] = []
+        self._name_nodes: Iterator | None = (
+            None if offered else name_nodes(program))                   # type: ignore[arg-type]
+        self._identity_nodes: Iterator | None = identity_nodes(program)  # type: ignore[arg-type]
+
+    def step(self) -> bool:
+        if self._name_nodes is not None:
+            seen = 0
+            for stmt in islice(self._name_nodes, FOURTHWALL_CHUNK):
+                hit = name_line(stmt)
+                if hit is not None:
+                    self._names.append(hit)
+                seen += 1
+            if seen < FOURTHWALL_CHUNK:
+                self._name_nodes = None
+            return False
+        if self._identity_nodes is not None:
+            seen = 0
+            for node in islice(self._identity_nodes, FOURTHWALL_CHUNK):
+                self._identity += identity_hits(node)
+                seen += 1
+            if seen == FOURTHWALL_CHUNK:
+                return False
+            self._identity_nodes = None
+            out: list[tuple[str, str]] = []
+            for area, lines, code, summary in (("text", self._names, "W189", "W189s"),
+                                               ("script", self._identity, "W190", "W190s")):
+                if not lines:
+                    continue
+                ref, line = lines[0]
+                args = (self.fallback,) if code == "W189" else ()
+                out.append((area, UserFacingError(format_message(code, args),
+                                                  file=ref or None, line=line).format()))
+                if len(lines) > 1:
+                    out.append((area, format_message(summary, (len(lines) - 1,))))
+            self.warnings = tuple(out)
+        return True
+
+    def run(self) -> tuple[tuple[str, str], ...]:
+        """The scan to the end in one go (tests and tools)."""
+        while not self.step():
+            pass
+        return self.warnings
 
 
 def fourthwall_warnings(program: object, *, offered: bool, fallback: str
                         ) -> tuple[tuple[str, str], ...]:
-    """F30's dev warnings as ``(area, text)`` (module docstring): W189 and its summary when
-    ``offered`` is False, then W190 and its summary. ``program`` is a loaded story."""
-    out: list[tuple[str, str]] = []
-    for area, lines, code, summary in (
-            ("text", [] if offered else name_lines(program), "W189", "W189s"),   # type: ignore
-            ("script", identity_lines(program), "W190", "W190s")):              # type: ignore
-        if not lines:
-            continue
-        ref, line = lines[0]
-        args = (fallback,) if code == "W189" else ()
-        out.append((area, UserFacingError(format_message(code, args), file=ref or None,
-                                          line=line).format()))
-        if len(lines) > 1:
-            out.append((area, format_message(summary, (len(lines) - 1,))))
-    return tuple(out)
+    """F30's dev warnings as ``(area, text)`` in one go (``FourthWallScan``): W189 and its
+    summary when ``offered`` is False, then W190 and its summary. ``program`` is a loaded
+    story."""
+    return FourthWallScan(program, offered=offered, fallback=fallback).run()
 
 
-__all__ = ["NAME_MIN_RATIO", "TEXT_CHECK_CHARS", "TEXT_CHECK_CHUNK", "TEXT_MIN_RATIO", "W40_MAX_LINES",
+__all__ = ["FOURTHWALL_CHUNK", "FourthWallScan",
+           "NAME_MIN_RATIO", "TEXT_CHECK_CHARS", "TEXT_CHECK_CHUNK", "TEXT_MIN_RATIO", "W40_MAX_LINES",
            "W47_MAX_CHOICES", "W101_MAX_LINES", "TextLaunchCheck", "box_colors_warning", "box_contrast",
            "character_warnings", "composite", "contrast_ratio", "fourthwall_warnings", "install_blips", "install_nvl", "install_sprite_anim", "install_textbox",
            "faces_from", "nvl_character_warning", "nvl_colors_warnings", "relative_luminance",
