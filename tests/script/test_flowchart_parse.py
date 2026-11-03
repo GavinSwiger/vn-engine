@@ -110,8 +110,8 @@ def test_ac_f20_02_parse_messages():
 # --- AC-F20-04 — the reserved word ---------------------------------------------------------------
 
 def test_ac_f20_04_the_reserved_word(tmp_path, caplog):
-    assert len(STATEMENT_WORDS) == 41 and "flowchart" in STATEMENT_WORDS      # F32: ui
-    assert "flowchart" not in STATEMENT_WORDS_F02 and len(STATEMENT_WORDS_F02) == 38
+    assert len(STATEMENT_WORDS) == 40 and "flowchart" in STATEMENT_WORDS      # F32 ui, F34 cg
+    assert "flowchart" not in STATEMENT_WORDS_F02 and len(STATEMENT_WORDS_F02) == 37
     for edit in ({"T": 'define flowchart = Character("F")'}, {"T": "label flowchart:⏎[4]return"},
                  {"T": "default flowchart = 1"}):
         parsed = parse_text(template(**edit))

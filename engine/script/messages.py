@@ -2941,6 +2941,10 @@ def _e243(form: str = "need", *args: object) -> str:
             '"Hana\'s Promise".')
 
 
+# E244's ``top`` form names what each row declares; a row's word unless listed here.
+_TOP_NOUNS: dict[str, str] = {"gallery": "gallery picture"}
+
+
 def _e244(form: str = "need", *args: object) -> str:
     """``need`` (the target words, table order); ``route``/``ending`` (name, suggestion);
     ``unlock_ending``; ``top`` (the words of the rows with a top-level form, F21 07 I-14);
@@ -2959,7 +2963,9 @@ def _e244(form: str = "need", *args: object) -> str:
                 "ending line.")
     if form == "top":
         # F21 07 I-14: the words of the rows with a top-level form, table order.
-        words = [str(w) for w in args[0]] if args and args[0] else ["route"]
+        # F34: the gallery row declares a picture ("a route, tip, item, or gallery picture").
+        words = [_TOP_NOUNS.get(str(w), str(w)) for w in args[0]] if args and args[0] \
+            else ["route"]
         return (f'at the top level, lock only declares a {_join_or(words)}, e.g. lock route '
                 'promise "Hana\'s Promise". Put unlock and lock ending inside a label.')
     if form == "declare":
@@ -3159,6 +3165,73 @@ def _w142(name: str = "river_god") -> str:
     name = show_name(name)
     return (f"tip {name} is declared, but no unlock tip {name} line names it, so players get "
             "it only if code unlocks it.")
+
+
+# --- F34 CG gallery (F34 01 §5.3; 04 §3) ---------------------------------------------------------
+# Load E342, E344 (engine/script/gallery.py); E343, E345, W226 (checks.py; W226 dev only, area
+# script). E346, E347, W227, W228 are claimed and spare. Picture names go through
+# ``show_name``, titles and leftovers through ``show``.
+
+_GALLERY_EXAMPLE = 'lock gallery cg festival "Festival Night"'
+
+
+def _e342(form: str = "need", *args: object) -> str:
+    """``need``; ``left`` (written); ``body``; ``declare`` (picture, title as written);
+    ``top``."""
+    if form == "left":
+        written = str(args[0]) if args else "slowly"
+        return (f'this line has "{show(written)}" left over after the title. lock gallery '
+                "takes a picture name, then a title in quotes.")
+    if form == "body":
+        return ("only picture names can go under a gallery picture, one per line, e.g. "
+                "cg festival_smile.")
+    if form == "declare":
+        picture, title = (args + ("cg festival", '"Festival Night"')[len(args):])[:2]
+        picture = show_name(str(picture))
+        return (f"lock gallery {picture} {show(str(title))} adds a picture to the gallery, so it "
+                "goes at the top level. To make the game forget it during the story, write "
+                f"lock gallery {picture} with no title.")
+    if form == "top":
+        return "unlock gallery goes inside a label, because it runs when the story reaches it."
+    return f"lock gallery needs a picture name and a title in quotes, e.g. {_GALLERY_EXAMPLE}."
+
+
+def _e343(form: str = "twice", *args: object) -> str:
+    """``twice`` (picture, first place); ``many`` (count, limit)."""
+    if form == "many":
+        count, limit = (args + (520, 500)[len(args):])[:2]
+        return f"this story has {int(count):,} gallery pictures; the engine allows {int(limit):,}."
+    picture, first = (args + ("cg festival", ("script/gallery.vns", 4))[len(args):])[:2]
+    return (f'the picture "{show_name(str(picture))}" is in the gallery twice: here and at '
+            f"{_place(first)}. Give each picture one place in the gallery.")  # type: ignore[arg-type]
+
+
+def _e344(form: str = "long", *args: object) -> str:
+    """``empty``; ``long`` (count, limit); ``tags``; ``versions`` (count, limit)."""
+    if form == "empty":
+        return "the gallery title is empty."
+    if form == "tags":
+        return ("gallery titles are shown as written, so they can't use text tags such as {b}. "
+                'Write {{ for a "{".')
+    if form == "versions":
+        count, limit = (args + (11, 8)[len(args):])[:2]
+        return f"this gallery picture has {int(count):,} versions; keep it to {int(limit):,}."
+    count, limit = (args + (75, 60)[len(args):])[:2]
+    return f"the gallery title has {int(count):,} characters; keep it to {int(limit):,}."
+
+
+def _e345(picture: str = "cg festivl", suggestion: str | None = None) -> str:
+    shown = show_name(str(picture))
+    text = f'there is no gallery picture "{shown}".'
+    if suggestion is not None:
+        text += " " + _did_you_mean(str(suggestion), str(picture))
+    return (text + " Add pictures to the gallery at the top level, e.g. lock gallery "
+            f'{shown} "Title".')
+
+
+def _w226(picture: str = "cg storm") -> str:
+    return (f'the gallery picture "{show_name(str(picture))}" never shows in the story and no '
+            "unlock gallery line names it, so players can't get it.")
 
 
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
@@ -4149,6 +4222,12 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W140": _w140,
     "W141": _w141,
     "W142": _w142,
+    # F34 CG gallery (01 §5.3): load E342, E344 (gallery.py); E343, E345, W226 (checks.py).
+    "E342": _e342,
+    "E343": _e343,
+    "E344": _e344,
+    "E345": _e345,
+    "W226": _w226,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

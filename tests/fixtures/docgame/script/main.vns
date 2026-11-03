@@ -1,6 +1,8 @@
 # F45 TR-F45-01's test game: each StatementDoc example is placed in this file, top-level
 # examples above the first line, the others right after "label start:". turns is the
 # minigame example's into target (F23); hana_here and answer are the file examples' (F31).
+# cg festival is the gallery examples' picture, and cg river the declaration example's
+# (F34; the scene keeps its dev load free of W226).
 include "chapter2.vns"
 define hana = Character("Hana")
 default coins = 0
@@ -11,6 +13,7 @@ points friendship 0 to 10
 lock route river "By the River"
 lock tip lanterns "Paper Lanterns"
 lock item brass_key "Brass Key"
+lock gallery cg festival "Festival Night"
 
 label start:
     "Start."
@@ -19,5 +22,7 @@ label start:
 label bridge:
     "The bridge."
     unlock tip lanterns
+    unlock gallery cg festival
+    scene cg river
     call lantern_stall
     jump river

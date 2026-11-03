@@ -1,7 +1,7 @@
 """Reserved words, engine names, and the name rules of the script language.
 
-``STATEMENT_WORDS`` is the set of reserved statement words: the 38 of SR-F02-38 (PR-F02-26,
-27; ``STATEMENT_WORDS_F02``), F14's ``rollback``, F20's ``flowchart``, and F32's ``ui``. A line that starts with one is that
+``STATEMENT_WORDS`` is the set of reserved statement words: the 37 of SR-F02-38 (PR-F02-26,
+27; ``STATEMENT_WORDS_F02``; 38 until F34 freed ``cg``), F14's ``rollback``, F20's ``flowchart``, and F32's ``ui``. A line that starts with one is that
 statement, never dialogue, and no name may be one of them in any case. ``check_name`` gives the E60–E64 verdict for a name an author defines (SR-F02-34–36);
 ``canonical_name`` is the NFKC form names are compared and stored in (§7.3.3). F04 adds
 ``SHOW_MODIFIER_WORDS`` and ``is_image_word`` (the words of image names and sprite tags).

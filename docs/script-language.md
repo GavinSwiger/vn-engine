@@ -2794,7 +2794,6 @@ reserved so your script keeps working when they arrive.
 | `chapter` | available |
 | `points` | available |
 | `nvl` | available |
-| `cg` | coming: gallery |
 | `ending` `lock` `unlock` | available |
 | `minigame` | available |
 | `effect` | available |

@@ -90,6 +90,13 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    file in the game (``missing``) or is over ``META_ORIGINAL_MAX_BYTES`` (``large``), by
    ``GamePaths.file_size`` (a stat: no content is read); E314 (whole game) at the first name
    past ``META_NAMES_MAX`` distinct names. ``Program.meta_files`` is built by ``program.py``.
+13. F34 (``04-technical.md`` §3, §7.1, ``_iter_gallery``): E343 at a picture's second place in
+   the gallery (entry or version, include order, then line), naming the first, and (whole
+   game) past ``GALLERY_MAX`` entries; E345 for a ``lock``/``unlock gallery`` picture that is
+   no gallery picture (did-you-mean over them; skipped when a file couldn't be read); W226
+   (dev load) once per gallery picture that no ``scene``/``show`` names, no dialogue line's
+   speaker tag and words build, and no ``unlock gallery`` line names. ``Program.gallery`` is
+   built by ``program.py``.
 
 Steps 3–5 are skipped when a file couldn't be read (``checks_skipped``, SR-F02-69); after a
 story limit (``limit_hit``) only step 1 runs. Errors go to the sink; did-you-mean
@@ -123,14 +130,17 @@ from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.limits import IDENTITY_YIELD_ITEMS
 from engine.script.messages import MINIGAME_LIST_ITEMS, format_message, mixed_script
 from engine.script.flowchart import MarkTargets, iter_attach_marks
+from engine.script.gallery import GALLERY_MAX, WORD_GALLERY, GalleryDecl
 from engine.script.metafiles import WRITE, MetaFile
 from engine.script.minigame import Minigame
-from engine.script.nodes import Default, Define, Label, Node, PersistentDefault, ScriptFile
+from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
+                                 ScriptFile)
 from engine.script.points import METERS_MAX
 from engine.script.rollback import iter_attach_fixed
 from engine.script.routes import (ENDINGS_MAX, PERSISTENT_VIEWS, ROUTES_MAX, Ending, Lock,
                                   RouteDecl)
 from engine.script.source import decode_script
+from engine.script.stage import Scene, Show
 from engine.script.startcheck import START_LABEL, check_start
 from engine.script.statements import Collected, Uses, resolve_no_text
 from engine.script.suggest import max_distance, suggest
@@ -825,8 +835,8 @@ def _iter_routes(inp: CheckInput, labels: "_Labels | None"
         for stmt, _ in walk_block(node.block):
             if isinstance(stmt, Ending):
                 endings.setdefault(stmt.name, []).append(stmt)
-            elif isinstance(stmt, Lock):
-                locks.append(stmt)
+            elif isinstance(stmt, Lock) and stmt.kind in ("route", "ending"):  # F34: rows of
+                locks.append(stmt)                       # their own (gallery) are checked there
             count += 1
             if count % IDENTITY_YIELD_ITEMS == 0:
                 yield
@@ -1108,6 +1118,69 @@ def _iter_meta_files(inp: CheckInput) -> Generator[None, None, None]:
         inp.sink.add(Diagnostic("E314", args=(len(names), *first_over)))
 
 
+# --- Step 13: the gallery (F34) ----------------------------------------------------------------
+
+def _iter_gallery(inp: CheckInput, labels: "_Labels | None"
+                  ) -> Generator[None, None, list[ScriptWarning]]:
+    """Step 13 (module docstring). ``labels`` is None when a file couldn't be read: E345 is
+    skipped then, like F21's E253."""
+    sink = inp.sink
+    decls = [node for node in inp.nodes if isinstance(node, GalleryDecl)]
+    locks: list[Lock] = []
+    shown: set[str] = set()                         # names a scene, show, or dialogue look puts up
+    looks: list[Say] = []
+    count = 0
+    for node in inp.nodes:
+        if not isinstance(node, Label):
+            continue
+        for stmt, _ in walk_block(node.block):
+            if isinstance(stmt, Lock) and stmt.kind == WORD_GALLERY:
+                locks.append(stmt)
+            elif isinstance(stmt, (Scene, Show)) and stmt.image is not None:
+                shown.add(stmt.image)
+            elif isinstance(stmt, Say) and stmt.speaker is not None and stmt.attributes:
+                looks.append(stmt)
+            count += 1
+            if count % IDENTITY_YIELD_ITEMS == 0:
+                yield
+    if not decls and not locks:
+        return []
+    first: dict[str, tuple[ScriptFile, int]] = {}
+    for decl in sorted(decls, key=lambda d: (d.file.order, d.line)):
+        for picture, line in decl.places():
+            place = first.setdefault(picture, (decl.file, line))
+            if place != (decl.file, line):
+                sink.add(Diagnostic("E343", decl.file, line, None,
+                                    ("twice", picture, (place[0].ref, place[1]))))
+    if len(decls) > GALLERY_MAX:
+        sink.add(Diagnostic("E343", args=("many", len(decls), GALLERY_MAX)))
+    yield
+    if labels is not None:
+        names = _Names(first)
+        for lock in locks:
+            if lock.name not in first:
+                sink.add(LazyDiagnostic(
+                    "E345", lock.file, lock.line, None,
+                    build=lambda lock=lock: (lock.name, names.suggest(lock.name))))
+    if not inp.dev:
+        return []
+    defines = {node.name: node for node in inp.nodes if isinstance(node, Define)}
+    tags: dict[str, str] = {}
+    for say in looks:
+        speaker = say.speaker
+        if speaker not in tags:                     # an unknown tag: the speaker's own name
+            tags[speaker] = character_tag(defines.get(speaker)) or speaker
+        shown.add(" ".join((tags[speaker], *say.attributes)))
+    shown.update(lock.name for lock in locks if lock.unlock)
+    warnings: list[ScriptWarning] = []
+    for decl in sorted(decls, key=lambda d: (d.file.order, d.line)):
+        for picture, line in decl.places():
+            if picture not in shown and first.get(picture) == (decl.file, line):
+                warnings.append(ScriptWarning(format_message("W226", (picture,)), code="W226",
+                                              file=decl.file.ref, line=line))
+    return warnings
+
+
 # --- The checks ---------------------------------------------------------------------------
 
 def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
@@ -1169,6 +1242,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     yield from _iter_minigames(inp)                                   # F23
     yield
     yield from _iter_meta_files(inp)                                  # F31
+    yield
+    out.warnings += yield from _iter_gallery(inp, labels)             # F34
     return out
 
 

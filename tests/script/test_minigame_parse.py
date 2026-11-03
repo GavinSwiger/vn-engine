@@ -95,7 +95,7 @@ def test_ac01_the_statement_parses(words, tmp_path):
         assert result.errors == (), result.errors
     result = _load(tmp_path / "dollar", template_g(S="$ skippable = True"))
     assert result.errors == (), result.errors
-    assert "minigame" in STATEMENT_WORDS and len(STATEMENT_WORDS) == 41     # F20, F32: ui
+    assert "minigame" in STATEMENT_WORDS and len(STATEMENT_WORDS) == 40     # F20, F32 ui, F34 cg
 
     # Placements: if/elif/else branches, a choice block, a called label.
     for number, s in enumerate((

@@ -71,7 +71,7 @@ def test_ac_f32_05_ui_parses(ui_word, tmp_path):
     assert ui.reason_ok("é" * 200) and not ui.reason_ok("") and not ui.reason_ok("a" * 201)
 
     # The 41st reserved word (07 I-7: membership and count, not order); F14's older-saves rule.
-    assert "ui" in STATEMENT_WORDS - STATEMENT_WORDS_F02 and len(STATEMENT_WORDS) == 41
+    assert "ui" in STATEMENT_WORDS - STATEMENT_WORDS_F02 and len(STATEMENT_WORDS) == 40
     assert reserved_since_save("ui") and reserved_since_save("UI")
     reserved = _load(tmp_path, template_f32(T="default ui = 1"))
     assert [e.code for e in reserved.errors] == ["E60"]

@@ -429,7 +429,7 @@ def _run_case(case: Case) -> Outcome:
         elif case.feature == "F20":
             options = LoadOptions(dev=case.code.startswith("W") or case.setup == "dev",
                                   flowchart=FlowOptions())
-        elif case.feature in ("F28", "F29", "F30"):
+        elif case.feature in ("F28", "F29", "F30", "F34"):
             options = LoadOptions(dev=case.code.startswith("W"))
         elif case.feature == "F32":
             styles = (frozenset() if case.setup == "no styles"

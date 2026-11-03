@@ -1059,8 +1059,8 @@ needs = "parse"
 # F17 built it (F17 step 1); "ending", "lock", and "unlock" when F19 registered them at import
 # (F19 step 3, 07 I-5); "minigame" when F23 registered it at import (F23 s2); "effect" when
 # F28 registered it at import (F28 s3); "ui" when F32 registered it at import (F32 s4); "file"
-# when F31 registered it at import (F31 s3).
-each = ["window", "cg"]
+# when F31 registered it at import (F31 s3). "cg" left when F34 freed it (lock gallery).
+each = ["window"]
 edit = { S = '<x> hana' }
 where = "5"
 expect = { exact = '"<x>" is not available yet in this engine version. Remove the line or comment it out with # for now.' }
@@ -6246,8 +6246,8 @@ ac = "AC-F19-04"
 feature = "F19"
 code = "E244"
 needs = "load"
-each = [['unlock promise', '''lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.'''],
-        ['lock route promise now', '''lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.'''],
+each = [['unlock promise', '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.'''],
+        ['lock route promise now', '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.'''],
         ['unlock route promis', '''there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".'''],
         ['lock ending god', '''there is no ending "god". Did you mean "good"?'''],
         ['unlock ending sad', '''unlock ending can't be used: an ending is recorded when the story reaches its ending line.'''],
@@ -6265,7 +6265,7 @@ needs = "load"
 each = ['unlock route promise', 'lock ending sad']
 edit = { T = '<x>' }
 where = "16"
-expect = { exact = '''at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F19-05-E241-ending"
@@ -6498,7 +6498,7 @@ needs = "load"
 each = ['unlock lanterns', 'unlock tip lanterns now']
 edit = { S = '<x>' }
 where = "10"
-expect = { exact = '''lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F21-02-E244-top"
@@ -6508,7 +6508,7 @@ code = "E244"
 needs = "load"
 edit = { T = 'lock ending sad' }
 where = "12"
-expect = { exact = '''at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F21-03-E252"
@@ -8221,3 +8221,124 @@ code = "W200"
 needs = "load"
 where = "game"
 expect = { exact = '''file read "answer.txt" found no text: it has another name elsewhere (a hard link).''' }
+
+# --- F34 rows (F34 01 §5.3; AC-F34-02 to 05, 15): template T (S line 5, T line 9). The gallery
+# --- row registers at import; the load is a release load except for warning rows (W226, dev).
+# --- E343's over-500 form and the parsed values are tests/script/test_gallery_script.py's. ---
+
+[[case]]
+id = "F34-02-E342-need"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E342"
+needs = "load"
+each = ['lock gallery cg festival', 'lock gallery "Festival Night"', 'lock gallery']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''lock gallery needs a picture name and a title in quotes, e.g. lock gallery cg festival "Festival Night".''' }
+
+[[case]]
+id = "F34-02-E342-left"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E342"
+needs = "load"
+edit = { T = 'lock gallery cg festival "Festival Night" slowly' }
+where = "9"
+expect = { exact = '''this line has "slowly" left over after the title. lock gallery takes a picture name, then a title in quotes.''' }
+
+[[case]]
+id = "F34-02-E342-body"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E342"
+needs = "load"
+each = [['lock gallery cg river "By the River":⏎[4]"Smile."', '10'],
+        ['lock gallery cg river "By the River":⏎[4]cg river_smile:', '10'],
+        ['lock gallery cg river "By the River":⏎[4]show cg river_smile', '10'],
+        ['lock gallery cg river "By the River":⏎[4]$ x = 1', '10'],
+        ['lock gallery cg river "By the River":⏎[4]cg river_smile⏎[8]cg river_close', '11']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.''' }
+
+[[case]]
+id = "F34-02-E342-declare"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E342"
+needs = "load"
+edit = { S = 'lock gallery cg festival "Festival Night"' }
+where = "5"
+expect = { exact = '''lock gallery cg festival "Festival Night" adds a picture to the gallery, so it goes at the top level. To make the game forget it during the story, write lock gallery cg festival with no title.''' }
+
+[[case]]
+id = "F34-02-E342-top"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E342"
+needs = "load"
+edit = { T = 'unlock gallery cg festival' }
+where = "9"
+expect = { exact = '''unlock gallery goes inside a label, because it runs when the story reaches it.''' }
+
+[[case]]
+id = "F34-02-E244"
+ac = "AC-F34-02"
+feature = "F34"
+code = "E244"
+needs = "load"
+each = ['unlock gallery', 'unlock gallery cg festival "Festival Night"']
+edit = { S = '<x>', T = 'lock gallery cg festival "Festival Night"' }
+where = "5"
+expect = { exact = '''lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.''' }
+
+[[case]]
+id = "F34-03-E343"
+ac = "AC-F34-03"
+feature = "F34"
+code = "E343"
+needs = "load"
+each = [['lock gallery cg river "By the River":⏎[4]cg river_smile⏎lock gallery cg river_smile "Smile"', '11', 'cg river_smile', '10'],
+        ['lock gallery cg river "By the River":⏎[4]cg smile⏎[4]cg smile', '11', 'cg smile', '10']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''the picture "<z>" is in the gallery twice: here and at script/main.vns, line <v>. Give each picture one place in the gallery.''' }
+
+[[case]]
+id = "F34-04-E344"
+ac = "AC-F34-04"
+feature = "F34"
+code = "E344"
+needs = "load"
+each = [['lock gallery cg festival ""', '9', '''the gallery title is empty.'''],
+        ['lock gallery cg festival "   "', '9', '''the gallery title is empty.'''],
+        ['lock gallery cg festival "<<紙*61>>"', '9', '''the gallery title has 61 characters; keep it to 60.'''],
+        ['lock gallery cg festival "{b}Night{/b}"', '9', '''gallery titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".'''],
+        ['lock gallery cg river "R":⏎[4]cg v1⏎[4]cg v2⏎[4]cg v3⏎[4]cg v4⏎[4]cg v5⏎[4]cg v6⏎[4]cg v7⏎[4]cg v8⏎[4]cg v9', '18', '''this gallery picture has 9 versions; keep it to 8.''']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''<z>''' }
+
+[[case]]
+id = "F34-05-E345"
+ac = "AC-F34-05"
+feature = "F34"
+code = "E345"
+needs = "load"
+each = [['unlock gallery cg festivl', '''there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".'''],
+        ['lock gallery cg festivl', '''there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".'''],
+        ['unlock gallery cg qqqq', '''there is no gallery picture "cg qqqq". Add pictures to the gallery at the top level, e.g. lock gallery cg qqqq "Title".''']]
+edit = { S = '<x>', T = 'lock gallery cg festival "Festival Night"' }
+where = "5"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F34-15-W226"
+ac = "AC-F34-15"
+feature = "F34"
+code = "W226"
+needs = "load"
+edit = { T = 'lock gallery cg storm "Storm"' }
+where = "9"
+expect = { exact = '''the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.''' }

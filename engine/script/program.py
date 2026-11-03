@@ -28,6 +28,8 @@ through ``LoadOptions``: what ``{username}`` holds in the story) and ``window_ti
 ``style_names`` (``LoadOptions.style_names``: the config's ``[style.<name>]`` names, which a
 restored ``ui style`` must be one of, W205; None when the load had no config). F31 added
 ``meta_files`` (every ``file`` line's name; the runtime's executor asserts its name is one).
+F34 added ``gallery`` (every ``lock gallery`` declaration as a ``GalleryEntry``, include order,
+then line) and ``gallery_pictures`` (every entry picture and version → its entry's picture).
 """
 
 import time
@@ -38,6 +40,7 @@ from typing import TYPE_CHECKING
 
 from engine.script.codex import CodexCategory, CodexEntry, CodexEntryDecl, build_entries
 from engine.script.fourthwall import TitleEffect
+from engine.script.gallery import GalleryDecl, GalleryEntry, build_gallery
 from engine.script.identity import IDENTITY_SCHEME, IDENTITY_YIELD_ITEMS, iter_assign, walk_block
 from engine.script.metafiles import MetaFile
 from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
@@ -113,7 +116,11 @@ class Program:
     every ``effect window_title "…"``, so a restore uses a saved title only if this script
     writes it (SEC-F30-09, ``07`` I-7).
 
-    F31: ``meta_files`` holds the name of every ``file`` line (at most 32, E314)."""
+    F31: ``meta_files`` holds the name of every ``file`` line (at most 32, E314).
+
+    F34: ``gallery`` holds every gallery entry in include order, then line (at most 500,
+    E343); ``gallery_pictures`` maps every entry picture and version to its entry's picture
+    (read-only; a picture is in the gallery once, E343)."""
 
     files: tuple[ScriptFile, ...]                 # reading order
     labels: Mapping[str, Label]                   # read-only, reading order
@@ -140,6 +147,9 @@ class Program:
     window_titles: frozenset[str] = frozenset()                # F30, see above
     style_names: frozenset[str] | None = None                  # F32, see the module
     meta_files: frozenset[str] = frozenset()                   # F31, see above
+    gallery: tuple[GalleryEntry, ...] = ()                     # F34, see above
+    gallery_pictures: Mapping[str, str] = field(               # F34, see above
+        default_factory=lambda: MappingProxyType({}))
     define_names: frozenset[str] = field(default=frozenset(), init=False)
     default_names: frozenset[str] = field(default=frozenset(), init=False)
     persistent_default_names: frozenset[str] = field(default=frozenset(), init=False)
@@ -169,6 +179,10 @@ class Program:
         object.__setattr__(self, "routes", tuple(self.routes))
         object.__setattr__(self, "codex", tuple(self.codex))
         object.__setattr__(self, "codex_categories", tuple(self.codex_categories))
+        object.__setattr__(self, "gallery", tuple(self.gallery))
+        if not isinstance(self.gallery_pictures, MappingProxyType):
+            object.__setattr__(self, "gallery_pictures",
+                               MappingProxyType(dict(self.gallery_pictures)))
         if not isinstance(self.flow_marks, MappingProxyType):
             object.__setattr__(self, "flow_marks", MappingProxyType(dict(self.flow_marks)))
         speakers = self.speakers
@@ -281,6 +295,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     routes: list[RouteDecl] = []
     endings: list[Ending] = []
     decls: list[CodexEntryDecl] = []
+    gallery_decls: list[GalleryDecl] = []
     for node in nodes:
         if isinstance(node, Label):
             labels.setdefault(node.name, node)
@@ -294,6 +309,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
             routes.append(node)
         elif isinstance(node, CodexEntryDecl):              # F21: reading order
             decls.append(node)
+        elif isinstance(node, GalleryDecl):                 # F34: reading order
+            gallery_decls.append(node)
     if defines is None:
         defines = [node for node in nodes if isinstance(node, Define)]
     if defaults is None:
@@ -321,6 +338,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
             if statements % IDENTITY_YIELD_ITEMS == 0:
                 yield
     codex, codex_categories = build_entries(decls)        # F21: after the sids
+    gallery, gallery_pictures = build_gallery(gallery_decls)    # F34: after the sids
     marks = {_mark_sid(target): mark for target, mark in flow_marks}    # F20: after the sids
     seconds = 0.0 if started is None else max(0.0, clock() - started)
     stats = LoadStats(files=len(files), labels=len(labels), statements=statements,
@@ -334,7 +352,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                    endings=tuple(endings), routes=tuple(routes), codex=codex,
                    codex_categories=codex_categories, flow_marks=MappingProxyType(marks),
                    username_fallback=username_fallback, window_titles=frozenset(titles),
-                   style_names=style_names, meta_files=frozenset(meta_files), _index=index)
+                   style_names=style_names, meta_files=frozenset(meta_files),
+                   gallery=gallery, gallery_pictures=gallery_pictures, _index=index)
 
 
 def _mark_sid(target: Node) -> str:

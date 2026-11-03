@@ -99,12 +99,12 @@ def test_misplaced_is_a_keyword_field_after_parse_and_required_for_top_statement
     assert spec.misplaced is None
     with scoped_registry():
         with pytest.raises(ValueError, match="misplaced"):
-            register(StatementSpec(word="cg", placement="top", takes_block=False,
+            register(StatementSpec(word="window", placement="top", takes_block=False,
                                    tail=TAIL_SCRIPT, parse=parse))
-        register(StatementSpec(word="cg", placement="top", takes_block=False,
+        register(StatementSpec(word="window", placement="top", takes_block=False,
                                tail=TAIL_SCRIPT, parse=parse, misplaced="E46"))
-        assert get_spec("cg").misplaced == "E46"
-    assert get_spec("cg") is None
+        assert get_spec("window").misplaced == "E46"
+    assert get_spec("window") is None
 
 
 def test_the_node_has_the_define_shape():

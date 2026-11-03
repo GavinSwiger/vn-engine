@@ -586,9 +586,6 @@ script/main.vns, line 5: "Jump" is not a statement. Statement words are lower ca
 [25-E32-1]
 script/main.vns, line 5: "window" is not available yet in this engine version. Remove the line or comment it out with # for now.
 
-[25-E32-2]
-script/main.vns, line 5: "cg" is not available yet in this engine version. Remove the line or comment it out with # for now.
-
 [25-E32-only-1]
 script/main.vns, line 9: "window" is not available yet in this engine version. Remove the line or comment it out with # for now.
 
@@ -2460,10 +2457,10 @@ script/main.vns, line 16: until lists 33 endings; the most is 32.
 script/main.vns, line 16: until needs at least one ending name, e.g. until sad, good.
 
 [F19-04-E244-1]
-script/main.vns, line 7: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
 
 [F19-04-E244-2]
-script/main.vns, line 7: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
 
 [F19-04-E244-3]
 script/main.vns, line 7: there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".
@@ -2478,10 +2475,10 @@ script/main.vns, line 7: unlock ending can't be used: an ending is recorded when
 script/main.vns, line 7: lock route promise declares a route, so it goes at the top level. To lock it again during the story, write lock route promise with no title.
 
 [F19-04-E244-top-1]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-04-E244-top-2]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-05-E241-ending]
 script/main.vns, line 9: there are two endings named "sad": here and at script/main.vns, line 7. Give each ending its own name.
@@ -2647,13 +2644,13 @@ script/main.vns, line 12: unlock goes inside a label, because it runs when the s
 script/main.vns, line 12: unlock goes inside a label, because it runs when the story reaches it.
 
 [F21-02-E244-1]
-script/main.vns, line 10: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
 
 [F21-02-E244-2]
-script/main.vns, line 10: lock and unlock take route, ending, tip, or item, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
 
 [F21-02-E244-top]
-script/main.vns, line 12: at the top level, lock only declares a route, tip, or item, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 12: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F21-03-E252-1]
 script/main.vns, line 12: the tip name has 65 characters; keep it to 64.
@@ -3825,3 +3822,75 @@ This game uses 33 meta file names, but at most 32 are allowed. The first one ove
 
 [F31-09-E315]
 script/main.vns, line 6: file read reads text, so it works only on .txt files, not "hana.chr". To see whether hana.chr is there, use file exists.
+
+[F34-02-E342-need-1]
+script/main.vns, line 9: lock gallery needs a picture name and a title in quotes, e.g. lock gallery cg festival "Festival Night".
+
+[F34-02-E342-need-2]
+script/main.vns, line 9: lock gallery needs a picture name and a title in quotes, e.g. lock gallery cg festival "Festival Night".
+
+[F34-02-E342-need-3]
+script/main.vns, line 9: lock gallery needs a picture name and a title in quotes, e.g. lock gallery cg festival "Festival Night".
+
+[F34-02-E342-left]
+script/main.vns, line 9: this line has "slowly" left over after the title. lock gallery takes a picture name, then a title in quotes.
+
+[F34-02-E342-body-1]
+script/main.vns, line 10: only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.
+
+[F34-02-E342-body-2]
+script/main.vns, line 10: only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.
+
+[F34-02-E342-body-3]
+script/main.vns, line 10: only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.
+
+[F34-02-E342-body-4]
+script/main.vns, line 10: only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.
+
+[F34-02-E342-body-5]
+script/main.vns, line 11: only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.
+
+[F34-02-E342-declare]
+script/main.vns, line 5: lock gallery cg festival "Festival Night" adds a picture to the gallery, so it goes at the top level. To make the game forget it during the story, write lock gallery cg festival with no title.
+
+[F34-02-E342-top]
+script/main.vns, line 9: unlock gallery goes inside a label, because it runs when the story reaches it.
+
+[F34-02-E244-1]
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+
+[F34-02-E244-2]
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
+
+[F34-03-E343-1]
+script/main.vns, line 11: the picture "cg river_smile" is in the gallery twice: here and at script/main.vns, line 10. Give each picture one place in the gallery.
+
+[F34-03-E343-2]
+script/main.vns, line 11: the picture "cg smile" is in the gallery twice: here and at script/main.vns, line 10. Give each picture one place in the gallery.
+
+[F34-04-E344-1]
+script/main.vns, line 9: the gallery title is empty.
+
+[F34-04-E344-2]
+script/main.vns, line 9: the gallery title is empty.
+
+[F34-04-E344-3]
+script/main.vns, line 9: the gallery title has 61 characters; keep it to 60.
+
+[F34-04-E344-4]
+script/main.vns, line 9: gallery titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F34-04-E344-5]
+script/main.vns, line 18: this gallery picture has 9 versions; keep it to 8.
+
+[F34-05-E345-1]
+script/main.vns, line 5: there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".
+
+[F34-05-E345-2]
+script/main.vns, line 5: there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".
+
+[F34-05-E345-3]
+script/main.vns, line 5: there is no gallery picture "cg qqqq". Add pictures to the gallery at the top level, e.g. lock gallery cg qqqq "Title".
+
+[F34-15-W226]
+script/main.vns, line 9: the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.

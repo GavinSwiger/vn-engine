@@ -118,9 +118,11 @@ META_SHOWN = f"<game>/{META_DIRNAME}/"   # the only path form a warning names
 # Defined here because config validation (core) checks [stage.positions] names against
 # them; ``script/words.py`` re-exports the same objects.
 
-# SR-F02-38, in the order of 02-script.md §3.7: the 38 words fixed at F02. Saved data never
-# reads the live set (F14 07 I-1): ``StageState.from_json`` checks image words, tags and
-# positions against these, so a word reserved later never makes an older save unreadable.
+# SR-F02-38, in the order of 02-script.md §3.7: the words fixed at F02, 37 since F34 freed
+# ``cg`` (its gallery is ``lock gallery``, a row of F19's lock table; F34 07 I-1: loosen-only,
+# so every older save still loads). Saved data never reads the live set (F14 07 I-1):
+# ``StageState.from_json`` checks image words, tags and positions against these, so a word
+# reserved later never makes an older save unreadable.
 STATEMENT_WORDS_F02: frozenset[str] = frozenset((
     # F02 (available)
     "label", "jump", "call", "return", "if", "elif", "else", "define", "include",
@@ -137,16 +139,15 @@ STATEMENT_WORDS_F02: frozenset[str] = frozenset((
     "minigame",                                                  # F23–F27
     "effect",                                                    # F28/F30
     "file",                                                      # F31
-    "cg",                                                        # F34
     "python",                                                    # never (E33)
 ))
-# Every reserved statement word: F02's 38 and the words added since (F14 04 §18 A1:
+# Every reserved statement word: F02's 37 and the words added since (F14 04 §18 A1:
 # ``rollback``, the 39th; F20 04 §18 A1: ``flowchart``, the 40th). Restore drops a saved
 # variable named after an added word, in any case (``runtime/state.reserved_since_save``).
 STATEMENT_WORDS: frozenset[str] = STATEMENT_WORDS_F02 | frozenset((
     "rollback",                                                  # F14
     "flowchart",                                                 # F20
-    "ui",                                                        # F32 (the 41st)
+    "ui",                                                        # F32 (40 in all since F34)
 ))
 
 # F04 stage words: not reserved (they only follow ``show``), but never part of an image

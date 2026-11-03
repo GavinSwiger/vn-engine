@@ -178,7 +178,8 @@ def test_how_a_line_is_read(row, expected):
 # F04: scene, show, hide, image; F08: play, stop, queue, voice; F07: menu; F09: pause, shake,
 # flash, and with, which now starts no line: E32b; F18: chapter; F22: points; F17: nvl; F19:
 # ending, lock, unlock; F23: minigame).
-UNBUILT = "window cg".split()               # F28 s3 built effect; F32 s4 ui; F31 s3 file
+UNBUILT = "window".split()                  # F28 s3 built effect; F32 s4 ui; F31 s3 file;
+                                            # F34 freed cg (lock gallery)
 
 
 @pytest.mark.parametrize("row,where,message", [
@@ -205,7 +206,7 @@ def test_statement_word_errors(row, where, message):
 
 @pytest.mark.parametrize("word", UNBUILT)
 def test_unbuilt_words_are_e32(word):
-    assert len(UNBUILT) == 2
+    assert len(UNBUILT) == 1
     parsed = parse_text(template(S=f"{word} hana"))
     assert [message_at(e) for e in parsed.errors] == [(
         "5", f'"{word}" is not available yet in this engine version. Remove the line or '
@@ -284,13 +285,14 @@ def test_e95_text():
 
 SR_F02_38 = ("label jump call return if elif else define include default scene show hide at "
              "behind as image window pause menu play stop queue voice with shake flash nvl "
-             "chapter ending lock unlock points minigame effect file cg python").split()
+             "chapter ending lock unlock points minigame effect file python").split()
 
 
-def test_statement_words_are_exactly_the_38():
+def test_statement_words_are_exactly_the_37():
     """F02's 38, frozen (F14 07 I-1), F14's ``rollback`` as the 39th (04 §18 A1), F20's
-    ``flowchart`` as the 40th (F20 07 A1), and F32's ``ui`` as the 41st (F32 C1)."""
-    assert len(SR_F02_38) == 38
+    ``flowchart`` as the 40th (F20 07 A1), and F32's ``ui`` as the 41st (F32 C1); F34 freed
+    ``cg`` (F34 07 I-1), so 37 and 40."""
+    assert len(SR_F02_38) == 37
     assert STATEMENT_WORDS_F02 == frozenset(SR_F02_38)
     assert STATEMENT_WORDS == frozenset(SR_F02_38) | {"rollback", "flowchart", "ui"}
 
