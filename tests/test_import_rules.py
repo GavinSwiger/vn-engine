@@ -79,6 +79,9 @@ EXTERNAL_BANNED: dict[str, tuple[str, ...]] = {"engine.tools.build": ("PyInstall
 BUILD_PACKAGE = "engine.tools.build"
 SHARED_BUILD = frozenset({"names", "texts", "rules", "tree", "procs"})
 SHARED_BUILD_USERS = {"engine.tools.editor"}
+# F41 (04 §3; F43 07 I-9): tools/lint.py, the linter's rules, has tools/check.py's row; it
+# never imports tools.check (check imports lint).
+SUBPACKAGES[("tools", "lint")] = {"core", "script", "runtime"}
 
 
 def _module_name(path: Path, engine_dir: Path) -> list[str]:
