@@ -4,9 +4,10 @@ Why this module exists: a non-programmer edits ``config.toml`` through friendly 
 TOML. Everything here is read from ``core.config_schema``, so a key a later feature adds
 shows up in **All settings** with no change here (the "Settings key coverage" rule):
 
-- ``PAGES``: the hand-picked pages (P1: Game, Title screen, Text box, Content warning) as
-  rows of section paths and keys, then **All settings**, generated from every section.
-  P2 pages are new ``PageDef`` rows.
+- ``PAGES``: the hand-picked pages (P1: Game, Title screen, Text box, Content warning; P2,
+  ``P2_PAGES``: Choices, Saves & going back, Sound volumes, Effects & comfort, Chapters &
+  codex, Flowchart, Fourth wall, Button words) as rows of section paths and keys, then
+  **All settings**, generated from every section.
 - ``page(key)`` → a ``Page`` of ``Section``s of ``Field``s (key, label, widget, default,
   help). ``all_settings()`` is the generated page; ``search(query)`` filters it.
 - ``widget_for(found)`` → ``WidgetSpec``: the widget kind follows the key's validator
@@ -246,11 +247,14 @@ class Page:
 @dataclass(frozen=True, slots=True)
 class Row:
     """A hand-picked section of a page: the keys of ``path`` (all of its own keys, without
-    nested tables, when ``keys`` is empty), under ``title``."""
+    nested tables, when ``keys`` is empty), under ``title``. ``rest``: instead, the keys of
+    ``path`` that no earlier row of the page shows (so a key a later feature adds to a split
+    section, such as ``[words]``, still lands on the page); no section when there are none."""
 
     path: str
     title: str
     keys: tuple[str, ...] = ()
+    rest: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -276,10 +280,112 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.textbox", "Text box"),
         Row("theme.textbox.name_tab", "Name tab"),
         Row("theme.textbox.indicator", "Click-to-continue mark")), preview="textbox"),
+    # P2 (PR-F47-17, AC-F47-49). Styles and playthrough looks need + New style in the view,
+    # so they stay text only (LOOK_REASON); Choices and Chapters have no preview still yet.
+    PageDef("choices", "Choices", (
+        Row("choice", "Choices"),
+        Row("theme.choice", "Look"),
+        Row("theme.choice.focused", "Under the mouse"),
+        Row("theme.choice.marker", "Marker"),
+        Row("theme.choice.locked", "Locked choices"))),
+    PageDef("saves", "Saves & going back", (
+        Row("saves", "Saves"),
+        Row("chapter", "Chapter saves"),
+        Row("theme.save", "Save and Load pages"),
+        Row("theme.save.badge", "Tags on a save"),
+        Row("theme.save.newest", "Newest tag"),
+        Row("theme.save.placeholder", "Empty, loading, and damaged slots"),
+        Row("rollback", "Going back"),
+        Row("theme.rollback", "When the player can't go back further"),
+        Row("theme.rollback.mark", "Its mark"))),
+    PageDef("sound", "Sound volumes", (
+        Row("audio", "Starting volumes",
+            ("master_volume", "music_volume", "sound_volume", "voice_volume")),
+        Row("audio", "Fades", ("music_fadein", "music_fadeout", "sound_fadein",
+                               "sound_fadeout", "restore_fadeout", "restore_fadein")),
+        Row("audio", "In the background", ("play_unfocused", "play_minimized")),
+        Row("audio", "Music loops", rest=True))),
+    PageDef("effects", "Effects & comfort", (
+        Row("effects", "Comfort", ("reduce",)),
+        Row("effects", "Effect lengths and sizes", rest=True),
+        Row("theme.effects", "Effect colors"),
+        Row("auto", "Auto-advance"),
+        Row("skip", "Skipping"))),
+    PageDef("chapters", "Chapters & codex", (
+        Row("theme.chapter", "Chapter title card"),
+        Row("theme.chapter.heading", "Card heading"),
+        Row("theme.chapter.title", "Card title"),
+        Row("codex", "Codex"),
+        Row("theme.codex", "Codex page"),
+        Row("theme.codex.new", "New entry mark"),
+        Row("theme.codex.locked", "Locked entries"))),
+    PageDef("flowchart", "Flowchart", (
+        Row("flowchart", "Flowchart page"),
+        Row("theme.flowchart", "Look"),
+        Row("theme.flowchart.node", "Boxes the player has seen"),
+        Row("theme.flowchart.start", "Start box"),
+        Row("theme.flowchart.chapter", "Chapter boxes"),
+        Row("theme.flowchart.choice", "Choice boxes"),
+        Row("theme.flowchart.scene", "Scene boxes"),
+        Row("theme.flowchart.ending", "Ending boxes"),
+        Row("theme.flowchart.gate", "Locked route gates"),
+        Row("theme.flowchart.unknown", "Boxes not seen yet"),
+        Row("theme.flowchart.edge", "Lines between boxes"),
+        Row("theme.flowchart.path", "This playthrough's path"),
+        Row("theme.flowchart.here", "“You are here” tab"))),
     PageDef("content_warning", "Content warning", (
         Row("content_warning", "Content warning"),)),
+    PageDef("fourth_wall", "Fourth wall", (
+        Row("meta", "Player's user name"),
+        Row("words", "Asking the player", ("ask_username", "ask_username_yes",
+                                           "ask_username_no", "settings_username")),
+        Row("words", "Fake crash screen", ("fake_crash_message", "fake_crash_hint",
+                                           "fake_crash_label", "settings_crash_label")))),
+    PageDef("words", "Button words", (
+        Row("words", "Title screen and game menu", (
+            "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
+            "flowchart", "main_menu", "quit", "return", "skip_minigame")),
+        Row("words", "Quick menu", ("hide", "menu", "q_save", "q_load", "skip", "auto",
+                                    "back")),
+        Row("words", "Questions", (
+            "yes", "no", "confirm_main_menu", "confirm_main_menu_autosave", "confirm_quit",
+            "confirm_quit_autosave", "confirm_overwrite", "confirm_delete", "confirm_load",
+            "confirm_nearest", "confirm_reset_settings", "confirm_delete_progress",
+            "confirm_skip_minigame", "flowchart_confirm", "flowchart_confirm_autosave")),
+        Row("words", "Notices", (
+            "notice_quick_saved", "notice_no_quick_save", "notice_cant_save",
+            "notice_save_failed", "save_reason_disk_full", "save_reason_folder",
+            "save_reason_slots", "save_reason_other", "notice_too_large",
+            "notice_load_damaged", "notice_load_no_fit", "notice_load_failed",
+            "notice_delete_failed", "notice_persistent", "notice_settings_default")),
+        Row("words", "Save and Load pages", (
+            "save_page_auto", "save_page_quick", "save_slot", "save_newest", "save_empty",
+            "save_loading", "save_no_picture", "save_none", "save_damaged", "save_newer",
+            "save_other_game", "saving_off", "loading_off")),
+        Row("words", "Player's Settings page", (
+            "settings_display", "settings_text", "settings_sound", "settings_data",
+            "fullscreen", "reduce_motion", "text_speed", "text_instant", "text_size",
+            "auto_wait", "auto_voice", "skip_unread", "master_volume", "music_volume",
+            "sound_volume", "voice_volume", "text_blips", "voice_sustain", "audio_unfocused",
+            "audio_minimized", "mono", "settings_username", "settings_crash_label",
+            "reset_settings", "delete_progress")),
+        Row("words", "Switches and empty pages", ("on", "off", "loading", "list_empty")),
+        Row("words", "Codex", ("codex_tips", "codex_items", "codex_new_tip",
+                               "codex_new_item", "codex_locked", "codex_empty")),
+        Row("words", "Flowchart", (
+            "flowchart_jump", "flowchart_start", "flowchart_chapter", "flowchart_choice",
+            "flowchart_scene", "flowchart_ending", "flowchart_route", "flowchart_unknown",
+            "flowchart_var", "flowchart_here", "flowchart_changed", "flowchart_no_state",
+            "flowchart_no_jump", "flowchart_endings", "flowchart_nodes")),
+        Row("words", "Content warning", ("warning_heading", "warning_continue")),
+        Row("words", "Fake crash and user name", (
+            "fake_crash_message", "fake_crash_hint", "fake_crash_label", "ask_username",
+            "ask_username_yes", "ask_username_no")),
+        Row("words", "Other words", rest=True))),
     PageDef(ALL_SETTINGS, "All settings", ()),          # generated: all_settings()
 )
+P2_PAGES: Final = ("choices", "saves", "sound", "effects", "chapters", "flowchart",
+                   "fourth_wall", "words")
 
 # Labels a key's name doesn't say well, by dotted path, then by key name.
 LABELS: Final[Mapping[str, str]] = MappingProxyType({
@@ -293,9 +399,31 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "content_warning.version": "Warning version",
     "content_warning.min_seconds": "Wait before continuing (seconds)",
     "engine.fps": "Frames per second", "engine.cache_mb": "Image memory (MB)",
+    # P2 pages (AC-F47-49)
+    "choice.show_locked": "Show locked choices",
+    "saves.pages": "Save pages", "saves.autosave_interval": "Auto-save every (seconds)",
+    "saves.autosave_choices": "Auto-save before choices",
+    "saves.autosave_quit": "Auto-save when quitting",
+    "chapter.autosave": "Auto-save at each chapter",
+    "chapter.name_saves": "Name saves after chapters",
+    "rollback.steps": "Steps back", "rollback.marker": "Show the rewind marker",
+    "audio.play_unfocused": "Play in the background",
+    "audio.play_minimized": "Play while minimized", "audio.loop_start": "Loop points",
+    "effects.reduce": "Reduce motion and flashing",
+    "auto.delay": "Wait after a line (seconds)",
+    "auto.per_char": "Extra wait per character (seconds)",
+    "skip.all": "Skip unread text too",
+    "codex.notify": "Notice for new entries", "codex.show_locked": "Show locked tips",
+    "flowchart.enabled": "Show the Flowchart", "flowchart.menus": "Choice menus shown",
+    "flowchart.unvisited": "Scenes not seen yet", "flowchart.jump": "Let players jump",
+    "meta.username": "Offer the player's user name",
+    "meta.username_fallback": "Name shown otherwise",
+    "words.plugin": "Minigames' own words", "theme.plugin": "Minigames' own look",
 })
 _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "id": "ID",
-                 "fps": "frames per second"}
+                 "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",
+                 "autosave": "auto-save", "cant": "can't", "char": "character",
+                 "var": "variable", "q": "quick"}
 
 
 def label_for(section: str, key: str) -> str:
@@ -393,9 +521,18 @@ def page(key: str) -> Page:
         return all_settings()
     for found in PAGES:
         if found.key == key:
-            return Page(found.key, found.title,
-                        tuple(_section(row.path, row.title, row.keys) for row in found.rows),
-                        found.preview)
+            sections: list[Section] = []
+            for row in found.rows:
+                if not row.rest:
+                    sections.append(_section(row.path, row.title, row.keys))
+                    continue
+                shown = {f.key for s in sections if s.path == row.path for f in s.fields}
+                rest = tuple(k for k, f in config_fields(section_class(row.path)).items()
+                             if k not in shown and not isinstance(f.metadata["validator"],
+                                                                  Table))
+                if rest:
+                    sections.append(_section(row.path, row.title, rest))
+            return Page(found.key, found.title, tuple(sections), found.preview)
     raise KeyError(key)
 
 
@@ -503,7 +640,8 @@ def values(text: str) -> Mapping[str, object] | None:
 
 
 __all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Field", "KINDS",
-           "LABELS", "LOOK_REASON", "NOT_SET", "PAGES", "Page", "PageDef", "Row", "Section",
+           "LABELS", "LOOK_REASON", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row",
+           "Section",
            "TABLE_REASON", "TEXT_ONLY", "WidgetKind", "WidgetSpec", "all_keys",
            "all_settings", "broken", "broken_message", "default_caption", "fields_by_path",
            "label_for", "page", "pages", "raw_default", "search", "section_title",

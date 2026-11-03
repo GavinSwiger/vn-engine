@@ -3,6 +3,8 @@
 row for its name) fails here, as does a description row that no key uses. F32's look tables
 (``[style.<name>]``, ``[playthrough.N]``) are walked under a sample name."""
 
+import re
+
 from engine.core import config_schema as cs
 
 
@@ -29,3 +31,28 @@ def test_ac63_every_config_key_and_section_has_a_description():
         | {f"{s}.{k}" for s, k in keys if s.startswith("theme")}
     assert set(cs.THEME_DOCS) - theme_names == set()          # no stale rows
     assert set(cs.WORD_DOCS) - {k for s, k in keys if s == "words"} == set()
+
+
+# Studio's Game settings shows each description as a field's hint, so it must read as plain
+# author-facing English (2026-11-02, the user: "Studio must not take a programmer to use"):
+# no Python or TOML words, no section paths or key syntax, nothing but ``{username}`` in braces.
+# The pattern of tests/tools/editor/test_scriptedit.py's AC-F46-34 test, for config words.
+JARGON = re.compile(
+    r"(?<!\w)(true|false|none|null|dict|list|lists|regex|tuple|graphemes?|toml|tokens?|"
+    r"strings?|bool|boolean|int|float|unset|cps|ms|ui|nvl|sprites?|nine-slice|opaque|"
+    r"rollback|gradient|textbox|per-character|thumbnail|keys?)(?!\w)|[\[\]<>=_]",
+    re.IGNORECASE)
+
+
+def test_descriptions_use_plain_words():
+    keys = list(_keys(cs.SECTIONS))
+    looks = list(_keys({f"{name}.x": cls for name, cls in cs.LOOK_SECTIONS.items()}))
+    texts = {f"[{s}] {k}": cs.key_doc(s, k) for s, k in keys + looks}
+    texts |= {f"[{s}]": cs.key_doc(s, "") for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS]}
+    texts |= {f"THEME_DOCS {k}": v for k, v in cs.THEME_DOCS.items()}
+    texts |= {f"WORD_DOCS {k}": v for k, v in cs.WORD_DOCS.items()}
+    assert len(texts) > 400
+    bad = {where: text for where, text in texts.items()
+           if JARGON.search(text.replace("{username}", "")) or "{" in
+           text.replace("{username}", "")}
+    assert bad == {}

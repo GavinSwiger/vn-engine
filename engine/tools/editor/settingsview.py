@@ -70,11 +70,22 @@ OFF_RANGE = "0 (off), or {lo} to {hi}"
 NONE_FILE = "None"
 COMPLEX_BUTTONS = (EDIT_AS_SCRIPT, "Cancel")
 CANT_EDIT = "{reason} Open it in the Editor to change it there."
+# Beside a section's caption, muted: where its settings live, for authors who also open the
+# file (a bare "[textbox]" read as jargon, 2026-11-02).
+SECTION_PATH = "In config.toml: [{path}]"
 INTRO: Mapping[str, str] = {
     "game": "Your game's name and version, and its window.",
     "title": "The first screen players see.",
     "textbox": "Where the story's lines appear.",
     "content_warning": "A message shown before the title screen, if your game needs one.",
+    "choices": "The choices players pick from in a menu.",
+    "saves": "Saving, loading, and how far players can go back.",
+    "sound": "How loud the game starts, and how music and sounds fade.",
+    "effects": "Screen effects, and comfort for players who need less motion.",
+    "chapters": "The chapter title card and the Codex of tips and items.",
+    "flowchart": "The players' map of the story, from the game menu.",
+    "fourth_wall": "Moments where the game reaches outside itself.",
+    "words": "Every word the game shows. Change one to rename or translate it.",
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
 }
 
@@ -120,7 +131,7 @@ def field_hint(field: sm.Field) -> str:
         words = OFF_RANGE if spec.off else RANGE
         parts.append(sentence(words.format(lo=number_text(spec.lo), hi=number_text(spec.hi))))
     if spec.kind != "table":
-        parts.append(field.default_text + ".")
+        parts.append(sentence(field.default_text))     # no "Allow it?." after a question
     return " ".join(part for part in parts if part)
 
 
@@ -575,7 +586,8 @@ class SettingsPane:
         grid.caption(section.title)
         line = grid.frame.grid_slaves(row=grid.next_row - 1, column=1)
         if line:
-            ttk.Label(line[0], text=f"[{section.path}]", style="Hint.TLabel").pack(
+            ttk.Label(line[0], text=SECTION_PATH.format(path=section.path),
+                      style="Hint.TLabel").pack(
                 side="left", padx=(self._px(8), 0))
         for found in section.fields:
             self._build_field(grid, found)
@@ -907,5 +919,6 @@ class SettingsPane:
 
 
 __all__ = ["COMPLEX_BUTTONS", "LongTextField", "NOT_AVAILABLE", "OPEN_IN_EDITOR",
-           "PREVIEW_DELAY_MS", "SettingsPane", "UPDATING", "field_hint", "section_line",
+           "PREVIEW_DELAY_MS", "SECTION_PATH", "SettingsPane", "UPDATING", "field_hint",
+           "section_line",
            "sentence"]

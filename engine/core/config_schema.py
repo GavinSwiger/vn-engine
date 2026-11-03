@@ -489,7 +489,8 @@ class GameConfig:
     version: str = field(default="0.0.0", metadata=spec(Text(),
         "the game's version, shown on the title screen and kept in saves"))
     id: str | None = field(default=None, metadata=spec(AppId(),
-        "the folder name for saves and settings; set it once and never change it"))        # ADR-0003 §4, SEC-F01-16
+        "the name of the folder that keeps players' saves and settings; set it once and "
+        "never change it"))        # ADR-0003 §4, SEC-F01-16
 
 
 @dataclass(frozen=True)
@@ -499,39 +500,43 @@ class WindowConfig:
     height: int = field(default=DEFAULT_WINDOW_SIZE[1], metadata=spec(IntRange(360, 4320),
         "the window's starting height in pixels"))
     fullscreen: bool = field(default=False, metadata=spec(Bool(),
-        "start in fullscreen (the player's setting wins)"))
+        "start the game in fullscreen (a player's own choice in Settings wins)"))
     resizable: bool = field(default=True, metadata=spec(Bool(), "let the player resize the window"))
     icon: str | None = field(default=None, metadata=spec(IconRef(),
         "the window icon, a .png in the game folder"))   # type check only (PR-F01-16)
     letterbox_color: RGB = field(default=(0, 0, 0), metadata=spec(HexColor(),
-        "the color of the bars around the game when the window's shape differs"))
+        "the color of the bars beside or above the game when the window is a different "
+        "shape"))
     scale_filter: Literal["smooth", "pixel"] = field(default="smooth",
                                                      metadata=spec(Choice("smooth", "pixel"),
-        '"smooth" for painted art, "pixel" for crisp pixel art'))
-    integer_scale: bool = field(default=False, metadata=spec(Bool(),
-        "scale only by whole numbers (sharp pixel art, wider bars)"))  # PR-F01-26
+        "how art is stretched to fit the window: smooth suits painted art, pixel keeps "
+        "pixel art crisp"))
+    integer_scale: bool = field(default=False, metadata=spec(Bool(),             # PR-F01-26
+        "only grow the game by whole steps (2×, 3×…): sharper pixel art, wider bars"))
 
 
 @dataclass(frozen=True)
 class EngineConfig:
-    fps: int = field(default=60, metadata=spec(IntRange(30, 240), "frames drawn per second"))
+    fps: int = field(default=60, metadata=spec(IntRange(30, 240),
+        "how many times a second the screen is drawn"))
     cache_mb: int = field(default=512, metadata=spec(IntRange(64, 8192),
-        "megabytes of images kept in memory"))   # budget = cache_mb * MB
+        "how many megabytes of pictures the game keeps ready in memory"))   # budget = cache_mb * MB
     log_level: Literal["debug", "info", "warning", "error"] = field(
         default="info", metadata=spec(Choice("debug", "info", "warning", "error"),
-        "how much the log file records"))
+        "how much detail the game writes to its log file"))
 
 
 @dataclass(frozen=True)
 class StageConfig:
     art_height: int = field(default=CANVAS_SIZE[1], metadata=spec(IntRange(*ART_HEIGHT_RANGE),
-        "the height the art is drawn for; sprites are scaled from it"))
+        "the screen height your art is drawn for; pictures on the stage are scaled from it"))
     # Built-ins plus the author's entries (which may redefine left, center, right).
     positions: Mapping[str, Point] = field(
         default=BUILTIN_POSITIONS,
         metadata=spec(EntryMap(PositionName(), Position(), STAGE_POSITIONS_MAX,
                                base=BUILTIN_POSITIONS),
-        "named stage positions for show … at: name = x or [x, y]"))
+        "your own named spots on the stage for show … at, each set by how far across "
+        "(and, if you like, how far down) it is"))
 
 
 @dataclass(frozen=True)
@@ -545,7 +550,8 @@ class TextboxConfig:
     """``[textbox]``: textbox behavior (PR-F05-07). Look settings are ``[theme.textbox]``."""
     cps: int = field(default=DEFAULT_TEXTBOX_CPS, metadata=spec(
         IntRange(*TEXTBOX_CPS_RANGE, note="0 shows text instantly"),
-        "graphemes typed per second; 0 shows text instantly"))
+        "how many characters appear each second as a line types out; 0 shows each line at "
+        "once"))
 
 
 # F05 02 §5.3: textbox colors say only 'a color "#RRGGBB"'.
@@ -557,7 +563,7 @@ class NameTabTheme:
     """``[theme.textbox.name_tab]`` (F05 03-ui "Theme tokens"). ``text_color`` is F05
     §13's key; F10 opened the rest with F05 03-ui's ranges (PR-F10-16)."""
     text_color: RGB = field(default=(0xA0, 0x28, 0x60), metadata=spec(
-        _TEXTBOX_COLOR, "name color for characters with no color of their own"))
+        _TEXTBOX_COLOR, "the name color for characters who have no color of their own"))
     text_font: str | None = field(default=None, metadata=spec(FontRef()))  # None: textbox bold
     text_size: int = field(default=DEFAULT_TEXT_SIZE, metadata=spec(IntRange(*TEXT_SIZE_RANGE)))
     fill_color: RGB = field(default=(0xFF, 0xE6, 0xF0), metadata=spec(_TEXTBOX_COLOR))
@@ -1141,7 +1147,7 @@ class CodexTheme:
 class FlowchartNodeTheme:
     """``[theme.flowchart.node]``: a visited box (``width`` in layout units)."""
     width: int = field(default=240, metadata=spec(IntRange(200, 360),
-                                                  "a chart box's width, in layout units"))
+                                                  "how wide each box on the Flowchart is"))
     fill_color: RGB = _color((0xFF, 0xE6, 0xF0))
     border_color: RGB = _color(_TRACK)
     text_color: RGB | None = _follow_color()
@@ -1223,15 +1229,18 @@ class MinigameTheme:
     ``title.fill_top_color`` / ``title.fill_bottom_color``."""
     fade_ms: int = field(default=300, metadata=spec(
         IntRange(0, 1000, note="0 = cut"),
-        "how long a minigame dissolves in and out, in milliseconds; 0 cuts"))
+        "how long a minigame takes to fade in and out, in milliseconds; 0 switches at once"))
     background_image: str | None = field(default=None, metadata=spec(
-        GuiImageRef(), "a picture behind full-screen minigames; none: the gradient"))
+        GuiImageRef(), "a picture behind full-screen minigames; when not set, the color "
+                       "blend below is shown"))
     fill_top_color: RGB | None = field(default=None, metadata=spec(
-        _UI_COLOR, "the top color of the minigame gradient; none: the title's"))
+        _UI_COLOR, "the top color of the blend behind minigames; when not set, the title "
+                   "screen's"))
     fill_bottom_color: RGB | None = field(default=None, metadata=spec(
-        _UI_COLOR, "the bottom color of the minigame gradient; none: the title's"))
+        _UI_COLOR, "the bottom color of the blend behind minigames; when not set, the title "
+                   "screen's"))
     stage_dim_opacity: float = field(default=0.30, metadata=spec(
-        Opacity(high=0.8), "how much the stage behind an over-the-stage minigame is dimmed"))
+        Opacity(high=0.8), "how much the scene is darkened behind a minigame played over it"))
     hint: MinigameHintTheme = field(default_factory=MinigameHintTheme, metadata=spec(
         Table(MinigameHintTheme), "the hint bar under a minigame"))
 
@@ -1312,8 +1321,8 @@ class ThemeConfig:
         Table(MinigameTheme), "the frame around every minigame"))
     plugin: Mapping[str, RawPluginTable] = field(                       # F23 (raw, §7.9)
         default_factory=_no_plugin_tables, metadata=spec(
-            RawPluginTables(), "a minigame's own tokens: [theme.plugin.<minigame>.<element>] "
-                               "<property> = value, checked when the minigames load"))
+            RawPluginTables(), "colors and sizes for a minigame's own parts, named as that "
+                               "minigame says; checked when the minigames load"))
 
 
 # --- [words], [title], [quick_menu] (F10 04 §13, 03-ui "Words") ---------------------------
@@ -1453,28 +1462,32 @@ class WordsConfig:
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
     # heading), the box and panel words, the reasons, and the jump questions. Drafted by the
     # F20 designers, for vn-narrative-designer.
-    flowchart: str = _word("Flowchart", doc="menu button and Flowchart page heading")
-    flowchart_jump: str = _word("Jump", doc="the Flowchart panel's Jump button")
+    flowchart: str = _word("Flowchart", doc="the menu button and heading of the Flowchart page")
+    flowchart_jump: str = _word("Jump", doc="the Jump button in the Flowchart's side panel")
     flowchart_start: str = _word("Start", doc="the Flowchart's start box")
-    flowchart_chapter: str = _word("Chapter", doc="a chapter box's kind, in the panel")
+    flowchart_chapter: str = _word("Chapter", doc="what a chapter box is called in the side "
+                                                  "panel")
     flowchart_choice: str = _word("Choice", doc="a choice box with no title or question")
-    flowchart_scene: str = _word("Scene", doc="a scene box's kind, in the panel")
-    flowchart_ending: str = _word("Ending", doc="an ending box's kind, in the panel")
-    flowchart_route: str = _word("Locked route", doc="a locked route's gate, in the panel")
-    flowchart_unknown: str = _word("???", doc="an unseen box, choice, or ending")
-    flowchart_var: str = _word("…", doc="a {var} in a choice or question on the chart")
+    flowchart_scene: str = _word("Scene", doc="what a scene box is called in the side panel")
+    flowchart_ending: str = _word("Ending", doc="what an ending box is called in the side "
+                                                "panel")
+    flowchart_route: str = _word("Locked route", doc="a locked route's gate, in the side panel")
+    flowchart_unknown: str = _word("???", doc="a box, choice, or ending not seen yet")
+    flowchart_var: str = _word("…", doc="what stands in for a variable in a choice or "
+                                        "question on the Flowchart")
     flowchart_here: str = _word("You are here", doc="the tab over the box reached last")
     flowchart_changed: str = _word("This part of the story has changed.",
                                    doc="why a box can't be jumped to: the story changed")
     flowchart_no_state: str = _word("Reach this point again to jump here.",
-                                    doc="why a box can't be jumped to: nothing kept")
+                                    doc="why a box can't be jumped to: nothing was kept "
+                                        "from it")
     flowchart_no_jump: str = _word("You can't jump to this point.",
                                    doc="why a box marked no jump has no Jump button")
     flowchart_confirm: str = field(
         default="Jump to this point? Unsaved progress will be lost.", metadata=spec(
-            _MESSAGE_WORD, "question before a jump"))
+            _MESSAGE_WORD, "the question before a jump"))
     flowchart_confirm_autosave: str = field(default="Jump to this point?", metadata=spec(
-        _MESSAGE_WORD, "question before a jump, with auto-save on"))
+        _MESSAGE_WORD, "the question before a jump, when auto-save is on"))
     flowchart_endings: str = _word("Endings", doc="the Flowchart's count of endings")
     flowchart_nodes: str = _word("Nodes", doc="the Flowchart's count of boxes")
     # F33 (SPEC §3): the content warning's heading and its Continue button; its Quit button
@@ -1486,7 +1499,7 @@ class WordsConfig:
     # F23 (03-ui "Words", UI-F23-12): the game menu's Skip Game, shown only while a skippable
     # minigame runs, and its question. Drafted by the F23 designer, for vn-narrative-designer.
     skip_minigame: str = _word(
-        "Skip Game", doc="the game-menu button that skips a skippable minigame")
+        "Skip Game", doc="the game menu's button that skips a minigame you let players skip")
     confirm_skip_minigame: str = field(
         default="Skip this game and go on with the story?", metadata=spec(
             _MESSAGE_WORD, "the question Skip Game asks before it skips the minigame"))
@@ -1516,8 +1529,8 @@ class WordsConfig:
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
         default_factory=_no_plugin_tables, metadata=spec(
-            RawPluginTables(), "a minigame's own words: [words.plugin.<minigame>] <key> = "
-                               "text; title renames the minigame"))
+            RawPluginTables(), "a minigame's own words, named as that minigame says; its "
+                               "title word renames the minigame"))
 
 
 @dataclass(frozen=True)
@@ -1525,20 +1538,20 @@ class TitleConfig:
     """``[title]``. ``entries`` ``None``: F10's default order; names that no feature
     registered for the title are W66 at install time."""
     enabled: bool = field(default=True, metadata=spec(Bool(),
-        "show the title screen (false starts the story at once)"))     # False: no title screen
+        "show the title screen (when off, the story starts at once)"))   # False: no title screen
     show_version: bool = field(default=True, metadata=spec(Bool(),
         "show the game's version on the title screen"))
     entries: tuple[str, ...] | None = field(default=None, metadata=spec(NameList(),
-        "the title screen's buttons, in order, by name"))
+        "which buttons the title screen shows, in order, by name"))
 
 
 @dataclass(frozen=True)
 class QuickMenuConfig:
     """``[quick_menu]``. ``entries`` as ``[title] entries``."""
     enabled: bool = field(default=True, metadata=spec(Bool(),
-        "show the quick menu under the textbox"))
+        "show the quick menu under the text box"))
     entries: tuple[str, ...] | None = field(default=None, metadata=spec(NameList(),
-        "the quick menu's buttons, in order, by name"))
+        "which buttons the quick menu shows, in order, by name"))
 
 
 @dataclass(frozen=True)
@@ -1546,7 +1559,7 @@ class ChoiceConfig:
     """``[choice]`` (F07 §13, SR-F07-09). ``show_locked``: a choice whose condition is false
     is shown locked (never pickable) instead of hidden."""
     show_locked: bool = field(default=False, metadata=spec(Bool(),
-        "show a choice whose condition is false as locked instead of hiding it"))
+        "show a choice whose condition isn't met as locked, instead of hiding it"))
 
 
 class OffOrRange(Validator):
@@ -1571,14 +1584,15 @@ class SavesConfig:
     """``[saves]`` (F11 ``04`` §13). ``pages``: numbered Save/Load pages of 6 slots;
     ``autosave_interval``: seconds of play between timer auto-saves (0: off)."""
     pages: int = field(default=10, metadata=spec(IntRange(1, 100),
-        "numbered Save/Load pages of 6 slots each"))
+        "how many numbered pages the Save and Load screens have, 6 slots each"))
     autosave_interval: int = field(default=300, metadata=spec(OffOrRange(60, 3600),
-        "seconds of play between auto-saves; 0 turns the timer off"))
+        "how many seconds of play pass between auto-saves; 0 turns timed auto-saves off"))
     autosave_choices: bool = field(default=True, metadata=spec(Bool(),
         "auto-save before every menu choice"))
     autosave_quit: bool = field(default=True, metadata=spec(Bool(),
         "auto-save when the player quits"))
-    confirm_quick_load: bool = field(default=True, metadata=spec(Bool(), "ask before a quick load"))
+    confirm_quick_load: bool = field(default=True, metadata=spec(Bool(),
+        "ask the player before a quick load"))
 
 
 _VOLUME = IntRange(*AUDIO_VOLUME_RANGE)
@@ -1591,23 +1605,23 @@ class AudioConfig:
     """``[audio]`` (F08 §13, 02 §3.6). Volumes are only defaults; F16's settings win
     (PR-F08-08). The mixer rate and buffer are constants, not keys."""
     master_volume: int = field(default=100, metadata=spec(_VOLUME,
-        "the starting master volume (the player's setting wins)"))
+        "the starting overall volume (a player's own choice in Settings wins)"))
     music_volume: int = field(default=70, metadata=spec(_VOLUME, "the starting music volume"))
     sound_volume: int = field(default=80, metadata=spec(_VOLUME,
         "the starting sound effect volume"))
     voice_volume: int = field(default=100, metadata=spec(_VOLUME, "the starting voice volume"))
     music_fadein: float = field(default=0.0, metadata=spec(_FADE,
-        "seconds music fades in when a play music line gives none"))
+        "how many seconds music fades in, when its Play music line doesn't say"))
     music_fadeout: float = field(default=0.5, metadata=spec(_FADE,
-        "seconds music fades out when it stops or changes"))
+        "how many seconds music fades out when it stops or changes"))
     sound_fadein: float = field(default=0.0, metadata=spec(_FADE,
-        "seconds a sound fades in when a play sound line gives none"))
+        "how many seconds a sound fades in, when its Play sound line doesn't say"))
     sound_fadeout: float = field(default=0.0, metadata=spec(_FADE,
-        "seconds a sound fades out when it stops"))
+        "how many seconds a sound fades out when it stops"))
     restore_fadeout: float = field(default=0.5, metadata=spec(_FADE,
-        "seconds the music fades out when a save is loaded"))
+        "how many seconds the music fades out when a save is loaded"))
     restore_fadein: float = field(default=1.0, metadata=spec(_FADE,
-        "seconds the saved music fades in after a load"))
+        "how many seconds the save's music fades in after it is loaded"))
     play_unfocused: bool = field(default=True, metadata=spec(Bool(),
         "keep playing audio while the window is in the background"))
     play_minimized: bool = field(default=True, metadata=spec(Bool(),
@@ -1617,7 +1631,7 @@ class AudioConfig:
         default=_NO_LOOP_STARTS,
         metadata=spec(EntryMap(AudioFileKey(), Seconds(*AUDIO_LOOP_START_RANGE),
                                AUDIO_LOOP_STARTS_MAX, label=quoted_key),
-        'where a music file loops back to: "file.ogg" = seconds'))
+        "where each music file loops back to, in seconds from its start"))
 
 
 def _effect_seconds(default: float, lo: float, hi: float, doc: str = "") -> Any:
@@ -1635,21 +1649,21 @@ class EffectsConfig:
     an ``effect`` burst and of ``with glitch`` (F09's rule: a key named after a built-in
     transition is its default length); ``glitch_size`` the default glitch size."""
     dissolve: float = _effect_seconds(0.5, *TRANSITION_SECONDS_RANGE,
-        doc="seconds of a dissolve when the script gives none")
+        doc="how many seconds a dissolve lasts, when its line in the story doesn't say")
     fade: float = _effect_seconds(1.0, *TRANSITION_SECONDS_RANGE,
-        doc="seconds of a fade when the script gives none")
+        doc="how many seconds a fade lasts, when its line in the story doesn't say")
     shake: float = _effect_seconds(0.5, *SHAKE_SECONDS_RANGE,
-        doc="seconds of a shake when the script gives none")
+        doc="how many seconds a shake lasts, when its line in the story doesn't say")
     shake_size: str = field(default="medium", metadata=spec(Choice(*SHAKE_SIZES),
-        "how far a shake moves when the script gives no size"))
+        "how far a shake moves, when its line in the story doesn't say"))
     flash: float = _effect_seconds(0.3, *FLASH_SECONDS_RANGE,
-        doc="seconds of a flash when the script gives none")
+        doc="how many seconds a flash lasts, when its line in the story doesn't say")
     reduce: bool = field(default=False, metadata=spec(Bool(),
         "reduce motion and flashing for every player"))
     glitch: float = _effect_seconds(0.5, *GLITCH_SECONDS_RANGE,
-        doc="seconds of a glitch when the script gives none")                  # F28
+        doc="how many seconds a glitch lasts, when its line in the story doesn't say")  # F28
     glitch_size: str = field(default="medium", metadata=spec(Choice(*GLITCH_SIZES),
-        "how strong a glitch is when the script gives no size"))
+        "how strong a glitch is, when its line in the story doesn't say"))
 
 
 @dataclass(frozen=True)
@@ -1666,9 +1680,9 @@ class AutoConfig:
     is ``delay + per_char × graphemes`` seconds (× F16's scale); ``wait_for_voice`` also waits
     for the line's voice (F16's setting wins)."""
     delay: float = _effect_seconds(1.0, 0, 10,
-        doc="seconds auto-advance waits after a line, before the per-character time")
+        doc="how many seconds auto-advance waits after a line, plus the time per character")
     per_char: float = _effect_seconds(0.04, 0, 0.5,
-        doc="extra seconds auto-advance waits per character of the line")
+        doc="extra seconds auto-advance waits for each character in the line")
     wait_for_voice: bool = field(default=True, metadata=spec(Bool(),
         "auto-advance also waits for the line's voice to end"))
 
@@ -1691,9 +1705,9 @@ class RollbackConfig:
     the rewind tag while rolled back (UI-F14-09). Read by the app, never by the runtime
     (``Interpreter(rollback_steps=)``)."""
     steps: int = field(default=100, metadata=spec(IntRange(0, 1000),
-        "how many steps back the player can go; 0 turns rollback off"))
+        "how many steps back through the story the player can go; 0 turns going back off"))
     marker: bool = field(default=True, metadata=spec(Bool(),
-        "show the rewind marker while rolled back"))
+        "show the rewind marker while the player has gone back"))
 
 
 @dataclass(frozen=True)
@@ -1703,7 +1717,8 @@ class CodexConfig:
     runtime never reads it (a headless run releases the same ``CodexAdded``)."""
     notify: bool = field(default=True, metadata=spec(Bool(),
         "show a notice for each new tip or item"))
-    show_locked: bool = field(default=False, metadata=spec(Bool(), "list locked tips as ??? rows"))
+    show_locked: bool = field(default=False, metadata=spec(Bool(),
+        "show locked tips as ??? rows instead of hiding them"))
 
 
 @dataclass(frozen=True)
@@ -1714,13 +1729,16 @@ class FlowchartConfig:
     boxes, ``"hidden"`` hides them), ``jump`` (false: a map only, no Jump). The loader builds
     F20 s2's ``FlowOptions`` from it."""
     enabled: bool = field(default=True, metadata=spec(Bool(),
-        "the Flowchart page (marks are still checked when off)"))
+        "show the Flowchart page (story map marks are still checked when it's off)"))
     menus: str = field(default="branching", metadata=spec(Choice("branching", "all", "marked"),
-        'which menus are choice boxes: "branching", "all", or "marked"'))
+        "which choice menus get a box: branching (choices that lead different ways), all, "
+        "or marked (only menus you mark)"))
     unvisited: str = field(default="mystery", metadata=spec(Choice("mystery", "hidden"),
-        '"mystery" shows ??? boxes for unseen scenes, "hidden" hides them'))
+        "scenes the player hasn't seen: mystery shows them as ??? boxes, hidden leaves "
+        "them out"))
     jump: bool = field(default=True, metadata=spec(Bool(),
-        "let the player jump to a seen scene (false: a map only)"))
+        "let the player jump to a scene they've seen (when off, the Flowchart is only a "
+        "map)"))
 
 
 # --- [content_warning] (F33 SPEC §3; 07 I-4, I-8) -------------------------------------------
@@ -1758,14 +1776,17 @@ class ContentWarningConfig:
     player continues (F16's ``warning_seen`` = ``version``); ``"always"`` every launch.
     ``text`` must be set unless ``show`` is ``"never"`` (``config.py``)."""
     show: str = field(default="never", metadata=spec(
-        _warning_show(), 'when the content warning shows before the title: "never", '
-                         '"once" (until the player continues), or "always" (every launch)'))
+        _warning_show(), "when the content warning shows before the title: never, once "
+                         "(until the player continues), or always (every launch)"))
     text: str = field(default="", metadata=spec(
-        WarningText(), "the warning's plain text; a blank line starts a new paragraph"))
+        WarningText(), "the warning's text, with no formatting; a blank line starts a new "
+                       "paragraph"))
     version: int = field(default=1, metadata=spec(
-        IntRange(1, 1000), 'raise it after changing the text to show a "once" warning again'))
+        IntRange(1, 1000), "raise this number after changing the text, so players see a "
+                           "once warning again"))
     min_seconds: float = field(default=2.0, metadata=spec(
-        Seconds(0, 10), 'how long "I understand" waits before it can be pressed; 0 = at once'))
+        Seconds(0, 10), 'how long the "I understand" button waits before it can be pressed; '
+                        "0 lets it be pressed at once"))
 
 
 @dataclass(frozen=True)
@@ -1773,8 +1794,8 @@ class MetaConfig:
     """``[meta]`` (F30 ``04`` §9): the author's offer to show the player's computer user name
     with ``{username}`` (the player still has to allow it), and the word shown otherwise."""
     username: bool = field(default=False, metadata=spec(Bool(),
-        "true offers players to show their computer's user name where the script writes "
-        "{username}; each player is asked first"))
+        "when on, the game offers to show each player's computer user name where your "
+        "story writes {username}; each player is asked first"))
     username_fallback: str = field(default="friend", metadata=spec(PlainText(USERNAME_MAX),
         "what {username} shows when the name is off, not allowed, or can't be read"))
 
@@ -1809,23 +1830,23 @@ class StyleTableKeys:
     """The keys of one ``[style.<name>]`` table: what ``_Walk.looks`` reads and Studio's
     config Help describes. ``Config.style`` holds ``LookTable``s, not this class."""
     theme: ThemeConfig = field(default_factory=ThemeConfig, metadata=spec(Table(ThemeConfig),
-        "the style's look: [style.<name>.theme.<area>] for textbox, choice, nvl, and "
-        "quick_menu, with [theme]'s keys; unset keys keep [theme]'s"))
+        "how the style changes the text box, choices, full-screen text and quick menu; "
+        "anything it doesn't set keeps the main look"))
     words: WordsConfig = field(default_factory=WordsConfig, metadata=spec(Table(WordsConfig),
-        "words shown while the style is on, with [words]' keys; unset keys keep [words]'"))
+        "words shown while the style is on; any it doesn't set keep the main words"))
 
 
 @dataclass(frozen=True)
 class PlaythroughTableKeys:
     """The keys of one ``[playthrough.N]`` table (as ``StyleTableKeys``)."""
     theme: ThemeConfig = field(default_factory=ThemeConfig, metadata=spec(Table(ThemeConfig),
-        "the title look: [playthrough.N.theme.title] with [theme.title]'s keys; unset keys "
-        "keep [theme.title]'s"))
+        "the title screen's look from this playthrough on; anything it doesn't set keeps "
+        "the main title look"))
     words: WordsConfig = field(default_factory=WordsConfig, metadata=spec(Table(WordsConfig),
-        "words shown from this playthrough on, with [words]' keys; unset keys keep [words]'"))
+        "words shown from this playthrough on; any it doesn't set keep the main words"))
     title_entries: tuple[str, ...] | None = field(default=None, metadata=spec(NameList(),
-        "the title screen's buttons for this playthrough look, in order, by name; unset "
-        "keeps [title] entries"))
+        "which buttons the title screen shows from this playthrough on, in order, by name; "
+        "when not set, the main title buttons"))
 
 
 # config.toml section → the keys of each of its named tables (``_validate`` routes these to
@@ -1908,43 +1929,47 @@ SECTIONS: dict[str, type] = {
 # tests/test_config_docs.py fails for a key with no description and for a row no key uses.
 
 SECTION_DOCS: Mapping[str, str] = MappingProxyType({
-    "game": "the game's name, version, and save folder id",
-    "window": "the game window: size, fullscreen, icon, scaling",
-    "engine": "frame rate, image memory, and logging",
-    "stage": "the stage: art height and named positions",
-    "textbox": "how the textbox types text",
-    "theme": "the look: one [theme.<area>] section per part of the screen",
-    "audio": "starting volumes, fades, and music loop points",
+    "game": "the game's name, version, and save folder name",
+    "window": "the game window: size, fullscreen, icon, and how art is stretched",
+    "engine": "how often the screen is drawn, picture memory, and the log file",
+    "stage": "the stage: the height your art is drawn for, and named spots",
+    "textbox": "how the text box types out text",
+    "theme": "the look: colors, fonts, and sizes for each part of the screen",
+    "audio": "starting volumes, fades, and where music loops",
     "words": "every word the game shows, for renaming or translating",
     "title": "the title screen and its buttons",
-    "quick_menu": "the quick menu under the textbox and its buttons",
+    "quick_menu": "the quick menu under the text box and its buttons",
     "choice": "how menu choices are shown",
     "saves": "save pages and auto-saves",
-    "effects": "default lengths and sizes of screen effects",
+    "effects": "how long and how strong screen effects are when the story doesn't say",
     "skip": "what skipping skips",
-    "auto": "auto-advance timing",
+    "auto": "how long auto-advance waits",
     "chapter": "chapter auto-saves and save names",
     "rollback": "going back through the story",
     "codex": "the codex of tips and items",
     "flowchart": "the Flowchart page",
     "content_warning": "a content warning shown before the title",
-    "meta": "the player's computer user name in the story ({username})",
-    "style": "a named in-game look switched by ui style: [style.<name>]",
-    "playthrough": "a title look for players past playthrough N: [playthrough.N]",
+    "meta": "showing the player's computer user name in the story",
+    "style": "a named look the story can switch to while it plays",
+    "playthrough": "a different title screen for players from a given playthrough on",
 })
 
 THEME_DOCS: Mapping[str, str] = MappingProxyType({
     # areas and nested tables
-    "stage": "the stage behind the art", "textbox": "the textbox",
+    "stage": "the stage behind the art", "textbox": "the text box",
     "ui": "fonts, fades, and sounds shared by every menu page",
-    "panel": "panels: sidebar, pages, dialogs", "button": "menu buttons and grid cells",
-    "toggle": "on/off switches", "slider": "sliders", "list": "scrolling lists",
-    "title": "the title, or a title text", "menu": "the game menu",
-    "quick_menu": "the quick menu under the textbox", "confirm": "yes/no questions",
+    "panel": "panels: the side bar, pages, and pop-up boxes",
+    "button": "menu buttons and grid squares",
+    "toggle": "on/off switches", "slider": "sliders",
+    "list": "scrolling panes of rows, like History",
+    "title": "the title screen", "theme.chapter.title": "the chapter's title text",
+    "menu": "the game menu",
+    "quick_menu": "the quick menu under the text box", "confirm": "yes/no questions",
     "save": "the Save and Load pages", "notice": "short notices that fade away",
     "choice": "menu choices", "effects": "screen effect colors",
     "chapter": "the chapter title card", "nvl": "the full-screen text page",
-    "rollback": "the rollback limit cue", "codex": "the codex page",
+    "rollback": "the cue that the player can't go back any further",
+    "codex": "the codex page",
     "flowchart": "the Flowchart page", "theme.flowchart.node": "a visited box",
     "theme.flowchart.start": "the start box", "theme.flowchart.chapter": "chapter boxes",
     "theme.flowchart.choice": "choice boxes", "theme.flowchart.scene": "scene boxes",
@@ -1955,7 +1980,8 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "theme.flowchart.here": 'the "You are here" tab',
     "line_color": "the line color", "line_width": "the line width",
     "name_tab": "the speaker's name tab", "indicator": "the click-to-continue mark",
-    "heading": "headings", "focused": "the look under the mouse or keyboard focus",
+    "heading": "headings",
+    "focused": "the look when the mouse is over it or the keyboard is on it",
     "pressed": "the look while pressed", "selected": "the look when selected",
     "disabled": "the look when it can't be used", "marker": "the marker beside it",
     "on": "the look when switched on", "empty": 'the "nothing here" text',
@@ -1964,13 +1990,15 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "placeholder": "empty, loading, and damaged slots", "name": "the speaker's name",
     "mark": "the limit mark", "new": "a new entry's mark", "locked": "a locked entry",
     # colors and opacity
-    "fill_color": "the fill color", "fill_opacity": "how opaque the fill is",
-    "fill_top_color": "the fill's top color (a gradient)",
-    "fill_bottom_color": "the fill's bottom color (a gradient)",
+    "fill_color": "the fill color",
+    "fill_opacity": "how solid the fill is (0 is see-through, 1 is solid)",
+    "fill_top_color": "the fill's top color, blending into the bottom color",
+    "fill_bottom_color": "the fill's bottom color, blending from the top color",
     "text_color": "the text color", "border_color": "the border color",
     "divider_color": "the color of divider lines", "track_color": "the track color",
-    "knob_color": "the knob color", "thumb_color": "the thumb color",
-    "thumb_border_color": "the thumb's border color", "scrollbar_color": "the scrollbar color",
+    "knob_color": "the knob color", "thumb_color": "the color of the handle you drag",
+    "thumb_border_color": "the border color of the handle you drag",
+    "scrollbar_color": "the scrollbar color",
     "scrollbar_track_color": "the scrollbar track color", "glyph_color": "the symbol's color",
     "dim_color": "the color that dims the game behind",
     "dim_opacity": "how much the game behind is dimmed",
@@ -1983,10 +2011,10 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "min_width": "the smallest width", "max_width": "the largest width",
     "button_width": "the buttons' smallest width", "row_height": "each row's height",
     "image_height": "the picture height; 0 hides pictures",
-    "border_width": "the border width; 0 draws none",
+    "border_width": "the border width; 0 means no border",
     "corner_radius": "how round the corners are",
     "underline_width": "the underline's thickness",
-    "bump_height": "how far it bumps; 0 = no bump",
+    "bump_height": "how far it bumps; 0 means no bump",
     # gaps and padding
     "gap": "the space between items", "line_gap": "the space between lines",
     "left_gap": "the space from the left edge", "top_gap": "the space from the top",
@@ -1995,91 +2023,125 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "top_padding": "the space inside, at the top",
     "bottom_padding": "the space inside, at the bottom",
     # images
-    "frame_image": "a nine-slice frame image in gui/ (a drawn box when unset)",
-    "frame_slice_width": "the frame image's corner size",
-    "background_image": "the background image",
-    "line_image": "the image shown at the end of a line",
-    "page_image": "the image shown at the end of a page",
-    "logo_image": "the logo image", "image": "the image in gui/",
-    "no_picture_image": "the picture for a save with no thumbnail",
+    "frame_image": "a frame picture from gui/ that stretches to fit and keeps its corners "
+                   "(when not set, a plain box is drawn)",
+    "frame_slice_width": "the size of the frame picture's corners, which don't stretch",
+    "background_image": "the background picture",
+    "line_image": "the picture shown at the end of a line",
+    "page_image": "the picture shown at the end of a page",
+    "logo_image": "the logo picture", "image": "a picture from gui/",
+    "no_picture_image": "the picture for a save with no screenshot",
     # timing
-    "fade_ms": "milliseconds it fades in or out", "fade_in_ms": "milliseconds it fades in",
-    "load_fade_ms": "milliseconds a load fades in", "duration_ms": "milliseconds it stays",
+    "fade_ms": "how many milliseconds it takes to fade in or out",
+    "fade_in_ms": "how many milliseconds it takes to fade in",
+    "load_fade_ms": "how many milliseconds the game takes to fade in after a load",
+    "duration_ms": "how many milliseconds it stays on screen",
     # sounds
-    "focus_sound": "the sound when focus moves onto it",
-    "activate_sound": "the sound when it is used", "back_sound": "the sound when going back",
+    "focus_sound": "the sound when the mouse or keyboard moves onto it",
+    "activate_sound": "the sound when it is clicked or pressed",
+    "back_sound": "the sound when going back",
     "pick_sound": "the sound when a choice is picked", "limit_sound": "the sound at the limit",
     "sound": "the sound it plays", "music": "the music file",
     "theme.title.music": "the title screen's music, a file in audio/",
 })
 
 WORD_DOCS: Mapping[str, str] = MappingProxyType({
-    "new_game": "title button", "load": "menu button and page",
-    "settings": "menu button and page", "extras": "menu button", "help": "menu button",
-    "quit": "menu button", "return": "button back to the game",
-    "history": "menu button and page", "save": "menu button and page",
-    "main_menu": "menu button", "yes": "dialog button", "no": "dialog button",
-    "hide": "quick-menu button that hides the textbox", "menu": "quick-menu button",
-    "on": "a switch's on state", "off": "a switch's off state",
-    "loading": "shown while loading", "list_empty": "an empty list",
-    "confirm_main_menu": "question before going to the title",
-    "confirm_quit": "question before quitting",
-    "q_save": "quick-menu Quick Save", "q_load": "quick-menu Quick Load",
-    "save_page_auto": "Save/Load page of auto-saves",
-    "save_page_quick": "Save/Load page of quick saves",
-    "save_slot": "a slot's label before its number", "save_newest": "tag on the newest save",
-    "save_empty": "an empty slot", "save_loading": "a slot still loading",
-    "save_no_picture": "a save with no thumbnail", "save_none": "a page with no saves",
-    "save_damaged": "a damaged save", "save_newer": "a save from a newer version",
+    "new_game": "the title screen's button that starts a new game",
+    "load": "the menu button and page for loading a save",
+    "settings": "the menu button and page for the player's settings",
+    "extras": "the Extras menu button", "help": "the Help menu button",
+    "quit": "the menu button that quits the game",
+    "return": "the button that goes back to the game",
+    "history": "the menu button and page of past lines",
+    "save": "the menu button and page for saving",
+    "main_menu": "the menu button that goes to the title screen",
+    "yes": "the yes button on questions", "no": "the no button on questions",
+    "hide": "the quick menu's button that hides the text box",
+    "menu": "the quick menu's button that opens the game menu",
+    "on": "how an on/off switch reads when on", "off": "how an on/off switch reads when off",
+    "loading": "shown while something loads",
+    "list_empty": "shown on a page with nothing in it yet",
+    "confirm_main_menu": "the question before going to the title screen",
+    "confirm_quit": "the question before quitting",
+    "q_save": "the quick menu's Quick Save button",
+    "q_load": "the quick menu's Quick Load button",
+    "save_page_auto": "the Save and Load page of auto-saves",
+    "save_page_quick": "the Save and Load page of quick saves",
+    "save_slot": "the word before a save slot's number",
+    "save_newest": "the tag on the newest save",
+    "save_empty": "an empty save slot", "save_loading": "a save slot still loading",
+    "save_no_picture": "a save with no screenshot", "save_none": "a page with no saves",
+    "save_damaged": "a damaged save", "save_newer": "a save made by a newer version",
     "save_other_game": "a save from another game",
-    "confirm_overwrite": "question before overwriting a save",
-    "confirm_delete": "question before deleting a save",
-    "confirm_load": "question before loading",
-    "confirm_nearest": "question when the story changed since the save",
-    "confirm_main_menu_autosave": "question before the title, with auto-save on",
-    "confirm_quit_autosave": "question before quitting, with auto-save on",
-    "notice_quick_saved": "notice after a quick save",
-    "notice_no_quick_save": "notice: no quick save yet",
-    "notice_cant_save": "notice: saving not allowed now",
-    "notice_save_failed": "start of the notice when saving fails",
-    "save_reason_disk_full": "why saving failed: disk full",
-    "save_reason_folder": "why saving failed: the folder",
+    "confirm_overwrite": "the question before saving over a save",
+    "confirm_delete": "the question before deleting a save",
+    "confirm_load": "the question before loading",
+    "confirm_nearest": "the question when the story changed since the save was made",
+    "confirm_main_menu_autosave": "the question before the title screen, when auto-save is on",
+    "confirm_quit_autosave": "the question before quitting, when auto-save is on",
+    "notice_quick_saved": "the notice after a quick save",
+    "notice_no_quick_save": "the notice when there is no quick save yet",
+    "notice_cant_save": "the notice when saving isn't allowed right now",
+    "notice_save_failed": "the start of the notice when saving fails",
+    "save_reason_disk_full": "why saving failed: the disk is full",
+    "save_reason_folder": "why saving failed: the save folder",
     "save_reason_other": "why saving failed: anything else",
-    "save_reason_slots": "why saving failed: no slot it may replace",
-    "notice_too_large": "notice: save too large",
-    "notice_load_damaged": "notice: damaged save",
-    "notice_load_no_fit": "notice: save no longer fits the story",
-    "notice_load_failed": "notice: load failed", "notice_delete_failed": "notice: delete failed",
-    "notice_persistent": "notice: persistent data problem",
-    "settings_display": "Settings group heading", "settings_text": "Settings group heading",
-    "settings_sound": "Settings group heading", "settings_data": "Settings group heading",
-    "fullscreen": "Settings row", "reduce_motion": "Settings row", "text_speed": "Settings row",
-    "text_instant": "the fastest text speed's value", "text_size": "Settings row",
-    "auto_wait": "Settings row", "auto_voice": "Settings row", "skip_unread": "Settings row",
-    "master_volume": "Settings row", "music_volume": "Settings row",
-    "sound_volume": "Settings row", "voice_volume": "Settings row",
-    "text_blips": "Settings row", "voice_sustain": "Settings row",
-    "audio_unfocused": "Settings row", "audio_minimized": "Settings row",
-    "mono": "Settings row", "reset_settings": "Settings button",
-    "confirm_reset_settings": "question before resetting settings",
-    "delete_progress": "Settings button",
-    "confirm_delete_progress": "question before deleting progress",
-    "notice_settings_default": "notice: settings unreadable",
-    "skip": "quick-menu Skip and its indicator", "auto": "quick-menu Auto and its indicator",
-    "back": "quick-menu Back (rollback)", "codex": "menu button and Codex page heading",
-    "codex_tips": "default tip category", "codex_items": "default item category",
-    "codex_new_tip": "notice start for a new tip", "codex_new_item": "notice start for a new item",
+    "save_reason_slots": "why saving failed: no slot it may save over",
+    "notice_too_large": "the notice when a save is too large",
+    "notice_load_damaged": "the notice when a save is damaged",
+    "notice_load_no_fit": "the notice when a save no longer fits the story",
+    "notice_load_failed": "the notice when loading fails",
+    "notice_delete_failed": "the notice when deleting a save fails",
+    "notice_persistent": "the notice when progress kept between playthroughs can't be read "
+                         "or saved",
+    "settings_display": "a group heading on the player's Settings page",
+    "settings_text": "a group heading on the player's Settings page",
+    "settings_sound": "a group heading on the player's Settings page",
+    "settings_data": "a group heading on the player's Settings page",
+    "fullscreen": "a row on the player's Settings page",
+    "reduce_motion": "a row on the player's Settings page",
+    "text_speed": "a row on the player's Settings page",
+    "text_instant": "what the fastest text speed is called",
+    "text_size": "a row on the player's Settings page",
+    "auto_wait": "a row on the player's Settings page",
+    "auto_voice": "a row on the player's Settings page",
+    "skip_unread": "a row on the player's Settings page",
+    "master_volume": "a row on the player's Settings page",
+    "music_volume": "a row on the player's Settings page",
+    "sound_volume": "a row on the player's Settings page",
+    "voice_volume": "a row on the player's Settings page",
+    "text_blips": "a row on the player's Settings page",
+    "voice_sustain": "a row on the player's Settings page",
+    "audio_unfocused": "a row on the player's Settings page",
+    "audio_minimized": "a row on the player's Settings page",
+    "mono": "a row on the player's Settings page",
+    "reset_settings": "a button on the player's Settings page",
+    "confirm_reset_settings": "the question before resetting settings",
+    "delete_progress": "a button on the player's Settings page",
+    "confirm_delete_progress": "the question before deleting progress",
+    "notice_settings_default": "the notice when the player's settings can't be read",
+    "skip": "the quick menu's Skip button, and the mark shown while skipping",
+    "auto": "the quick menu's Auto button, and the mark shown during auto-advance",
+    "back": "the quick menu's Back button, which goes back through the story",
+    "codex": "the menu button and heading of the Codex page",
+    "codex_tips": "the Codex tab for tips that name no category of their own",
+    "codex_items": "the Codex tab for items that name no category of their own",
+    "codex_new_tip": "the start of the notice for a new tip",
+    "codex_new_item": "the start of the notice for a new item",
     "codex_locked": "a locked tip's row", "codex_empty": "an empty Codex page",
-    "fake_crash_message": "the fake crash's message when effect crash gives none",
-    "fake_crash_hint": "how to continue, always on the fake crash screen (one line)",
-    "fake_crash_label": "the fake crash's optional label line (one line)",
-    "settings_username": "Settings row: show the computer's user name",
-    "settings_crash_label": "Settings row: label fake error screens",
-    "ask_username": "first-launch question about the user name",
+    "fake_crash_message": "the fake crash's message when its Fake crash line doesn't give "
+                          "one",
+    "fake_crash_hint": "how to continue, always shown on the fake crash screen (one line)",
+    "fake_crash_label": "the fake crash's label line, if players turn it on (one line)",
+    "settings_username": "a row on the player's Settings page: show their computer's user "
+                         "name",
+    "settings_crash_label": "a row on the player's Settings page: label fake error screens",
+    "ask_username": "the question on first launch about the user name",
     "ask_username_yes": "the question's Allow button",
     "ask_username_no": "the question's Don't allow button",
-    "saving_off": "the Save page's message while ui saving off gives no reason",
-    "loading_off": "the Load page's message while ui loading off gives no reason",
+    "saving_off": "the Save page's message when the story turns saving off without a reason",
+    "loading_off": "the Load page's message when the story turns loading off without a "
+                   "reason",
 })
 
 

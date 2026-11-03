@@ -9,8 +9,8 @@ from engine.tools.editor import settingsmodel as sm
 
 def test_ac16_p1_pages_and_all_settings_reach_every_key():
     shown = sm.pages()
-    assert [p.title for p in shown] == ["Game", "Title screen", "Text box", "Content warning",
-                                        "All settings"]
+    assert [p.title for p in shown if p.key not in sm.P2_PAGES] == [
+        "Game", "Title screen", "Text box", "Content warning", "All settings"]
     assert [f.path for f in sm.page("game").fields] == [
         "game.title", "game.version", "window.width", "window.height", "window.fullscreen",
         "window.icon"]
@@ -92,3 +92,28 @@ def test_ac17_widget_by_validator_with_hint_and_use_default(path, kind, spec, ca
     assert sm.values("[game\n") is None
     for every in sm.all_settings().fields:            # every key gets a widget and a hint
         assert every.kind in sm.KINDS and every.help, every.path
+
+
+def test_ac49_p2_pages_exist_and_list_real_keys():
+    titles = {p.key: p.title for p in sm.pages()}
+    assert [titles[key] for key in sm.P2_PAGES] == [
+        "Choices", "Saves & going back", "Sound volumes", "Effects & comfort",
+        "Chapters & codex", "Flowchart", "Fourth wall", "Button words"]
+    for found in sm.PAGES:                     # each listed key is a config_schema key
+        for row in found.rows:
+            assert set(row.keys) <= set(config_fields(section_class(row.path))), row
+    for key in sm.P2_PAGES:
+        page = sm.page(key)
+        assert page.fields and {f.path for f in page.fields} <= set(sm.fields_by_path()), key
+        assert len({f.path for f in page.fields}) == len(page.fields), key   # none twice
+    paths = {key: {f.path for f in sm.page(key).fields} for key in sm.P2_PAGES}
+    assert {"choice.show_locked", "theme.choice.locked.text_color"} <= paths["choices"]
+    assert {"saves.autosave_interval", "rollback.steps", "chapter.autosave"} <= paths["saves"]
+    assert {f"audio.{k}" for k in config_fields(SECTIONS["audio"])} == paths["sound"]
+    assert {"effects.reduce", "effects.glitch_size", "auto.delay"} <= paths["effects"]
+    assert {"codex.notify", "theme.chapter.title.text_size"} <= paths["chapters"]
+    assert {"flowchart.jump", "theme.flowchart.here.fill_color"} <= paths["flowchart"]
+    assert {"meta.username", "words.fake_crash_hint"} <= paths["fourth_wall"]
+    # Button words holds every word, a later one under "Other words".
+    assert paths["words"] == {f"words.{k}" for k in config_fields(SECTIONS["words"])}
+    assert sm.page("words").sections[-1].title == "Other words"
