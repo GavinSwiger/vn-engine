@@ -289,9 +289,12 @@ def start_values_report(paragraphs: Sequence[str]) -> Report:
     return editor_report(*paragraphs, head=start_values_head(len(paragraphs)))
 
 
-def preview_argv(game_dir: Path, label: str | None, set_args: list[str]) -> list[str]:
-    """The child's command line (04 §7.5). No ``--start`` means the game's ``start``."""
+def preview_argv(game_dir: Path, label: str | None, set_args: list[str], *,
+                 fresh: bool = False) -> list[str]:
+    """The child's command line (04 §7.5). No ``--start`` means the game's ``start``.
+    ``fresh`` (F47 Play options, "Play as a new player") adds ``--no-persistent``."""
     return [sys.executable, "-m", "engine", "run", str(game_dir), "--report-to-editor",
+            *(["--no-persistent"] if fresh else []),
             *(["--start", label] if label else []), *set_args]
 
 

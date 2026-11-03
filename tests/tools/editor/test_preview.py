@@ -182,6 +182,20 @@ def test_preview_argv(tmp_path):
         sys.executable, "-m", "engine", "run", str(game), "--report-to-editor"]
 
 
+def test_play_options_argv_ac_f47_03(tmp_path):
+    """AC-F47-03: Play options' start values reach ``--set``; "Play as a new player"
+    (``fresh``) adds ``--no-persistent``, and leaving it off adds nothing."""
+    game = tmp_path / "my_game"
+    args, problems = start_value_args("# start values\nsayo_points = 2\n\nname = 'Hana'")
+    assert problems == []
+    base = [sys.executable, "-m", "engine", "run", str(game), "--report-to-editor"]
+    sets = ["--set", "sayo_points = 2", "--set", "name = 'Hana'"]
+    assert preview_argv(game, "club", args, fresh=True) == [
+        *base, "--no-persistent", "--start", "club", *sets]
+    assert preview_argv(game, None, args) == [*base, *sets]
+    assert "--no-persistent" not in preview_argv(game, None, [], fresh=False)
+
+
 # --- decode_report (04 §3, §6 item 3; AC-F44-11's bad lines) --------------------------------
 
 ITEM = {"text": "script/a.vns, line 14, column 16: boom.\n    x", "file": "script/a.vns",
