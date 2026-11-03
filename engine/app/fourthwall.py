@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING, Final
 
 from engine.core import redact
 from engine.core.constants import WINDOW_TITLE_MAX
-from engine.core.graphemes import graphemes
+from engine.core.graphemes import HIDDEN_CATEGORIES, graphemes
 from engine.core.logsetup import get_logger
 from engine.meta.username import UsernameSource, read_login_name
 from engine.runtime.commands import FakeCrash, WaitDone, WindowTitle
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
 _log = get_logger("app")
 
-_REPLACED: Final = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
+_REPLACED: Final = frozenset(HIDDEN_CATEGORIES)     # F42 I-2: shared with build names
 _REPLACEMENT: Final = "�"
 TERM_MIN_GRAPHEMES: Final = 3          # SEC-F30-04: shorter names add no redaction term
 

@@ -95,6 +95,14 @@ def _check_syntax(ref: str) -> None:
             raise AssetRefError(ref, f'"{base}" is a reserved file name on Windows')
 
 
+def is_device_name(name: str) -> bool:
+    """Whether Windows reads the file or folder name ``name`` as a device (``CON``,
+    ``com¹.png``, ``nul .txt``): ``check_ref``'s reserved-name rule for one name. Public for
+    F42's build names and copy walk (SEC-F42-06 f, -12). No file-system call."""
+    base = name.split(".", 1)[0].rstrip(" .")
+    return base.casefold() in _RESERVED_BASENAMES
+
+
 # --- Meta file names (F31 04 §3, 07 I-1; SR-F31-02, SEC-F31-01) -------------------------
 
 # The device names a meta file's base must not be: the ASCII entries of
@@ -277,11 +285,14 @@ _SUGGESTION_MEMO_MAX = 256           # remembered "did you mean" answers per dir
 # Windows or on file systems that report d_type). Only _LINK entries are ever resolved.
 # _SPECIAL (a FIFO, device, or socket) is listed as a file by ``list_dir`` (as before F23)
 # and left out by ``list_real`` (F23 07 C5, I-5).
-_FILE, _DIR, _LINK, _SPECIAL = 0, 1, 2, 3
+# Public (F42 07 I-3) so walkers outside this module classify entries the same way; the
+# private names stay for this module and the tests that patch them.
+ENTRY_FILE, ENTRY_DIR, ENTRY_LINK, ENTRY_SPECIAL = 0, 1, 2, 3
+_FILE, _DIR, _LINK, _SPECIAL = ENTRY_FILE, ENTRY_DIR, ENTRY_LINK, ENTRY_SPECIAL
 _REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
-def _entry_kind(entry: os.DirEntry) -> int:
+def dir_entry_kind(entry: os.DirEntry) -> int:
     """_LINK for a symlink, a junction, or any other Windows reparse point (and for an entry
     whose type can't be read, so it is resolved and containment-checked like a link);
     otherwise _DIR, _FILE, or _SPECIAL without following anything."""
@@ -298,7 +309,10 @@ def _entry_kind(entry: os.DirEntry) -> int:
         return _LINK
 
 
-def _is_listed_path(path: Path) -> bool:
+_entry_kind = dir_entry_kind        # private alias: this module calls it (tests patch it)
+
+
+def is_listed_path(path: Path) -> bool:
     """The real path of ``path`` (built from listed names under a real folder) is ``path``
     itself (normcase): not a symlink, junction, or link reparse point, wherever it points.
     A reparse point that resolves to itself (a cloud placeholder, dedup) passes."""
@@ -307,6 +321,9 @@ def _is_listed_path(path: Path) -> bool:
     except (OSError, RuntimeError):
         return False
     return os.path.normcase(str(real)) == os.path.normcase(str(path))
+
+
+_is_listed_path = is_listed_path    # private alias: this module calls it
 
 
 @dataclass(frozen=True)

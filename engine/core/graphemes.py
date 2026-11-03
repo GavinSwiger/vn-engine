@@ -20,6 +20,12 @@ from collections.abc import Iterator
 
 MAX_CLUSTER_CODE_POINTS = 32
 
+# Unicode categories a reader can't see or that reorder or break the text around them:
+# controls, format characters (zero-width and bidi marks), lone surrogates, and line and
+# paragraph separators. F30's window title replaces them (``display_title``); F42's file
+# names drop them (``tools/build/names.clean_name``, SEC-F42-12). One set for both (F42 I-2).
+HIDDEN_CATEGORIES = {"Cc", "Cf", "Cs", "Zl", "Zp"}      # a literal (I-14); never mutated
+
 _ZWJ = 0x200D
 _MARK_CATEGORIES = ("Mn", "Me", "Mc")
 _OWN_CLUSTER_CATEGORIES = ("Cc", "Zl", "Zp")      # never extended, never extend

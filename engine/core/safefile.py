@@ -267,6 +267,15 @@ def read_head(path: Path, max_bytes: int) -> ReadResult:
         _close_quietly(fd)
 
 
+def open_regular(path: Path) -> tuple[int, os.stat_result] | ReadResult:
+    """Open ``path`` for reading, whatever its size, with ``read_regular``'s checks (``lstat``
+    regular, a no-follow open, ``fstat`` the same regular file). Returns the open descriptor
+    and its ``fstat`` (the caller reads at most ``st_size`` bytes and closes it), or the
+    refusal as a ``ReadResult``. Never raises ``OSError``. F42's copy walk compares the
+    ``fstat`` ``st_dev``/``st_ino`` with its own listing's (SEC-F42-06 b)."""
+    return _open_regular(path, None)
+
+
 def _open_regular(path: Path, max_bytes: int | None) -> tuple[int, os.stat_result] | ReadResult:
     """Open ``path`` for reading if it is a regular file: ``lstat`` regular (and, with
     ``max_bytes``, not over it), a no-follow open, and ``fstat`` the same regular file.
