@@ -39,15 +39,16 @@ def _snapshot(program: Program) -> list:
 
 
 def _plain(links: tuple[LabelLink, ...]) -> list[tuple]:
-    return [(k.src, k.dst, k.kind, k.file, k.line) for k in links]
+    return [(k.src, k.dst, k.kind, k.file, k.line, k.choice, k.conditional) for k in links]
 
 
 def test_ac_f45_04_label_links(tmp_path):
     program = _load(tmp_path / "s", {"main.vns": S_MAIN, "ch2.vns": S_CH2})
     before = _snapshot(program)
-    expected = [("start", "club", "call", "script/main.vns", 7),
-                ("start", "bridge", "jump", "script/main.vns", 8),
-                ("club", "river", "menu", "script/ch2.vns", 4)]
+    # F46 amendment (06 §2, A-F45-04): choice text and condition flag last.
+    expected = [("start", "club", "call", "script/main.vns", 7, None, False),
+                ("start", "bridge", "jump", "script/main.vns", 8, None, False),
+                ("club", "river", "menu", "script/ch2.vns", 4, "Go to the river", False)]
     links, total = label_links(program, limit=50_000)
     assert (_plain(links), total) == (expected, 3)
     assert label_links(program, limit=50_000) == (links, total)
@@ -58,7 +59,8 @@ def test_ac_f45_04_label_links(tmp_path):
                           "            if trust >= 0:\n                jump river\n")
     links, _ = label_links(_load(tmp_path / "if", {"main.vns": S_MAIN, "ch2.vns": in_if}),
                            limit=50_000)
-    assert _plain(links)[2] == ("club", "river", "menu", "script/ch2.vns", 5)
+    assert _plain(links)[2] == ("club", "river", "menu", "script/ch2.vns", 5,
+                                "Go to the river", False)
 
 
 def test_tr_f45_08_deep_nesting_needs_no_recursion():
@@ -71,7 +73,8 @@ def test_tr_f45_08_deep_nesting_needs_no_recursion():
     program = Program(files=(file,), labels={"start": label}, defines=(),
                       stats=LoadStats(files=1, labels=1, statements=1101, words=0, seconds=0))
     links, total = label_links(program, limit=10)
-    assert (_plain(links), total) == ([("start", "start", "jump", "script/main.vns", 1101)], 1)
+    assert (_plain(links), total) == ([("start", "start", "jump", "script/main.vns", 1101,
+                                        None, False)], 1)
 
 
 @pytest.mark.slow

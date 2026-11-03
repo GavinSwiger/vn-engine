@@ -1,0 +1,17 @@
+label stall:
+    menu:
+        "Buy the red one" if coins > 0:
+            $ coins = max(0, coins - 1)
+            jump river
+        "Just look":
+            $ pass
+    "You walk past the stall."
+    jump river
+
+label river:
+    show hana happy at left
+    hana "You came!"
+    $ stall = "visited"
+    $ notes = [stall]
+    flowchart forget stall
+    return

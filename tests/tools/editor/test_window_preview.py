@@ -77,8 +77,8 @@ def make_editor(monkeypatch):
     runners = Runners()
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window.messagebox, "showerror",
-                        lambda title, message, **kwargs: errors_shown.append(message))
+    monkeypatch.setattr(window, "show_error",
+                        lambda parent, message: errors_shown.append(message))
 
     def build(game: Path, *, children: tuple[str, ...] = ("started_exit0",),
               mapped: bool = False, stubborn: bool = False, kill_after_s: float = 2.0,
@@ -378,11 +378,11 @@ def test_errors_you_cant_click(make_editor, route_game):
     assert ed.text.tag_ranges(window.TAG_JUMP) == ()
 
 
-def test_paragraphs_are_6_px_apart(make_editor, route_game):
+def test_paragraphs_are_8_px_apart(make_editor, route_game):
     ed = make_editor(route_game)
     ed.show_report(LOAD_ERRORS)
     panel = ed.problems
-    assert int(panel.tag_cget(window.TAG_GAP, "spacing1")) == 6
+    assert int(panel.tag_cget(window.TAG_GAP, "spacing1")) == 8     # F45 08 §7 (was 6)
     starts = [panel.tag_ranges(p.tag)[0] for p in ed.paragraphs]
     assert window.TAG_GAP not in panel.tag_names(starts[0])
     assert all(window.TAG_GAP in panel.tag_names(start) for start in starts[1:])
@@ -612,7 +612,8 @@ def test_studio_marker_and_map_colors_are_readable():
     assert markers == ["#F14C4C", "#CCA700"]
     assert min(_contrast(c, window.GUTTER_BACKGROUND) for c in markers) >= 4.5
     assert (views.BOX_FILL, views.BOX_OUTLINE, views.RING_COLOR) == (
-        "#252526", "#3C3C3C", "#007FD4")
+        "#2B2B2B", "#3C3C3C", "#007FD4")                  # F45 08 §8: raised boxes
+    assert _contrast(views.START_COLOR, views.BOX_FILL) >= 3.0
     assert {color for _dash, color in views.EDGE_STYLES.values()} == {"#808080"}
     assert min(_contrast(c, views.BOX_FILL) for c in (views.PLAIN_COLOR, views.MUTED)) >= 4.5
     assert min(_contrast(c, window.BACKGROUND)

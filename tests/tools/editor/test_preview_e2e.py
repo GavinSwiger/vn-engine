@@ -593,8 +593,8 @@ def editors(tmp_path, monkeypatch):
     runners = Runners()
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window.messagebox, "showerror",
-                        lambda title, message, **kwargs: errors_shown.append(message))
+    monkeypatch.setattr(window, "show_error",
+                        lambda parent, message: errors_shown.append(message))
     env = child_env(tmp_path)
 
     def build(game: Path):

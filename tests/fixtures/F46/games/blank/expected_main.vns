@@ -1,0 +1,17 @@
+define hana = Character("Hana")
+
+label start:
+    "The festival begins."
+    menu:
+        "Walk to the river":
+            jump at_the_river
+        "Climb to the shrine":
+            jump shrine
+
+label at_the_river:
+    "(Write what happens in this scene.)"
+    scene bg river with dissolve
+    hana happy "You came!"
+
+label shrine:
+    "(Write what happens in this scene.)"

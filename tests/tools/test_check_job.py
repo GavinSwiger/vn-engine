@@ -20,7 +20,8 @@ from tests.tools.f45_games import edit_line, result_of, run_job, studio
 
 S_LINKS = (LabelLink("start", "club", "call", "script/main.vns", 7),
            LabelLink("start", "bridge", "jump", "script/main.vns", 8),
-           LabelLink("club", "river", "menu", "script/ch2.vns", 4))
+           # F46 (A-F45-04): the menu link carries its choice's text.
+           LabelLink("club", "river", "menu", "script/ch2.vns", 4, "Go to the river", False))
 SOURCES = ["config", "load", "launch"]
 
 

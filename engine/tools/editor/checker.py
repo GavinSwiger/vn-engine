@@ -209,13 +209,13 @@ def _name(item: object) -> NameEntry | None:
 
 
 def _link(item: object) -> LabelLink | None:
-    if not isinstance(item, list) or len(item) != 5:
+    if not isinstance(item, list) or len(item) not in (5, 7):
         return None
-    src, dst, kind, file, line = item
+    src, dst, kind, file, line, choice, cond = item if len(item) == 7 else (*item, None, False)
     if not _text(src) or not _text(dst) or kind not in CHECK_LINK_KINDS or not _text(file) \
-            or type(line) is not int or line < 1:
+            or type(line) is not int or line < 1 or not _place(choice) or type(cond) is not bool:
         return None
-    return LabelLink(src, dst, kind, file, line)
+    return LabelLink(src, dst, kind, file, line, choice, cond)
 
 
 def _all(items: list, check: Callable[[object], object | None]) -> tuple | None:
@@ -254,7 +254,10 @@ def decode_check_line(body: bytes) -> tuple[str, object] | None:
 
     - ``problems``: ``tuple[CheckItem, ...]``;
     - ``names``: ``(kind, tuple[NameEntry, ...])``;
-    - ``graph``: ``tuple[LabelLink, ...]``;
+    - ``graph``: ``tuple[LabelLink, ...]``. A link row is ``[src, dst, kind, file, line,
+      choice, cond]`` (F46 ``04`` §3.5; ``v`` stays 1): ``choice`` a string or null, ``cond``
+      a bool. A 5-item row (before F46) still decodes, as None and False; any other length,
+      or a ``cond`` that isn't a bool, breaks the line;
     - ``done``: ``CheckDone``.
     """
     if not isinstance(body, bytes) or not body.startswith(REPORT_MARKER) \

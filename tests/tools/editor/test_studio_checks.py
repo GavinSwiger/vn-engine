@@ -385,8 +385,8 @@ def test_ac36_the_walkthrough_with_a_real_check(tmp_path, monkeypatch):
 # --- AC-F45-50: the status bar (F45 01 §6.5, amended 2026-11-02, user: VS Code dark) --------
 
 def test_ac50_the_status_bar(studio, studio_game):
-    """A blue strip along the whole bottom edge: the game folder, the check's counts and
-    message, and the preview state on the left; Ln/Col, the indent, the encoding and the line
+    """A neutral strip along the whole bottom edge under a 1 px divider (F45 08 D1): the
+    game folder, the check's counts and message, and the preview state on the left; Ln/Col, the indent, the encoding and the line
     ending on the right. It follows the cursor, the check, and the preview; the check items
     focus Problems; long texts are cut with "…", never wrapped."""
     (studio_game / "script" / "crlf.vns").write_bytes(
@@ -394,8 +394,11 @@ def test_ac50_the_status_bar(studio, studio_game):
     ed = studio(studio_game, mapped=True)
     root, bar = ed.root, ed.status_bar
     frame = bar.frame
-    assert frame.cget("background") == "#007ACC"
-    assert {item.label.cget("foreground") for item in bar.items} == {"#FFFFFF"}
+    assert frame.cget("background") == "#181818"
+    assert {item.label.cget("foreground") for item in bar.items} == {"#CCCCCC"}
+    divider = bar.divider
+    assert divider.cget("background") == "#2B2B2B" and divider.winfo_height() == 1
+    assert divider.winfo_y() + divider.winfo_height() == frame.winfo_y()
     assert frame.winfo_width() == root.winfo_width()
     assert frame.winfo_y() + frame.winfo_height() == root.winfo_height()
     assert frame.winfo_height() >= 22

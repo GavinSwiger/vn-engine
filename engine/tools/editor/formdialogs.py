@@ -1,0 +1,791 @@
+"""Studio's command forms as dialogs, and the Insert… picker (F46 ``04-technical.md`` §6.7;
+design §4 PR-F46-19/20, §6.2).
+
+Why this module exists: an Events row's form edits one line in plain words, and Insert…
+picks a command by name. These are the Tk halves of ``forms``: one dialog per
+``CommandForm``, built from its ``Field``s, the Choice form (up to six options, each with its
+text, an optional condition and where it goes), and the picker grouped like F45's Insert
+menu (``assist.insert_menu``).
+
+- Fields: ``text`` and ``number`` are entries, ``pick`` a read-only combobox, ``flag`` a check
+  box, ``name`` and ``scene`` comboboxes offering the check's names of the field's
+  ``name_kind`` (filtered as you type). A name not offered is allowed, with ``NOT_FOUND``
+  under it.
+- Every form shows the line it will write (``FormDialog.preview``), updated as fields change.
+- They share ``dialogs``' dark look (F45 ``08`` §7): ``overlay`` fill, padding 20, inputs with
+  a 1 px border, a ``raised`` code card for the line, OK primary and right-aligned, Esc and
+  the close box cancel.
+- The window calls ``edit_form``, ``edit_choice`` and ``pick_insert`` through this module, so
+  tests answer them by patching it. The classes build without running, for tests that drive
+  the real widgets.
+
+Imports: ``tkinter``, ``dialogs``, ``forms``, ``theme`` (no pygame; ADR-0008).
+"""
+
+import math
+import tkinter as tk
+from collections.abc import Mapping, Sequence
+from tkinter import font as tkfont
+from tkinter import ttk
+
+from engine.script.statement_docs import StatementDoc
+from engine.tools.editor import dialogs, forms
+from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
+from engine.tools.editor.theme import THEME, TYPE_SCALE, font_families, scale_of
+
+NOT_FOUND = "Not found yet; the check will tell you."
+LINE_CAPTION = "Line"
+LINES_CAPTION = "Lines"
+OK = "OK"
+INSERT = "Insert"
+CANCEL = "Cancel"
+PICKER_TITLE = "Insert"
+PICKER_FILTER = "Type to filter"
+QUESTION = "Question"
+SPEAKER = "Speaker"
+LOOK = "Look"
+TEXT = "Text"
+OPTIONS = "Options"
+OPTION_TEXT = "Text"
+OPTION_WHEN = "Only show when"
+OPTION_GOES = "Goes to"
+ADD = "Add"
+REMOVE = "Remove"
+UP = "Up"
+DOWN = "Down"
+NARRATION = "Narration"
+STOP_MUSIC = "Stop music"
+FIELD_CHARS = 32            # a text field's width in characters
+NUMBER_CHARS = 8
+GAP = 8                     # px between rows and columns (× scale)
+PREVIEW_ROWS = 8            # the Choice form's line preview shows at most this many lines
+
+
+# --- Names and labels -------------------------------------------------------------------------
+
+def entry_title(doc: StatementDoc) -> str:
+    """The picker's plain-words name for ``doc``: its form's title when it has a form
+    (Narration and Stop music by their own words), else the doc's title."""
+    form = forms.form_for_doc(doc)
+    if form is None:
+        return doc.title
+    if doc.key == "narration":
+        return NARRATION
+    if form.key == "music" and doc.key == "stop":
+        return STOP_MUSIC
+    return form.title
+
+
+def new_values(form: CommandForm, doc: StatementDoc | None = None) -> dict[str, str]:
+    """A new row's starting values: every field empty, a pick at its first option (Music:
+    play or stop as the doc says)."""
+    values = {f.key: (f.options[0] if f.kind == "pick" and f.options else "")
+              for f in form.fields}
+    if form.key == "music" and doc is not None and doc.key == "stop":
+        values["action"] = "stop"
+    return values
+
+
+def _code_font(dialog: tk.Misc) -> tkfont.Font:
+    family, weight = font_families(dialog)["mono"]
+    font = tkfont.Font(root=dialog, family=family, weight=weight,
+                       size=-round(TYPE_SCALE["codeSmall"][0] * scale_of(dialog)))
+    dialog.code_font = font             # type: ignore[attr-defined]  (Tk deletes a lost font)
+    return font
+
+
+def _card(parent: tk.Misc, font: tkfont.Font, scale: float, height: int = 1) -> tk.Text:
+    """The line preview: code on a ``raised`` card, read-only."""
+    card = tk.Text(parent, height=height, width=1, wrap="none", font=font,
+                   background=THEME["card.background"], foreground=THEME["editor.foreground"],
+                   borderwidth=0, highlightthickness=0, relief="flat", takefocus=0,
+                   padx=round(10 * scale), pady=round(6 * scale), cursor="arrow",
+                   selectbackground=THEME["editor.selection"],
+                   inactiveselectbackground=THEME["card.background"])
+    card.configure(state="disabled")
+    return card
+
+
+def _set_card(card: tk.Text, text: str, rows: int | None = None) -> None:
+    card.configure(state="normal")
+    card.delete("1.0", "end")
+    card.insert("1.0", text)
+    if rows is not None:
+        card.configure(height=max(1, min(rows, text.count("\n") + 1)))
+    card.configure(state="disabled")
+
+
+class _NameBox:
+    """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
+    while its text is a name it doesn't offer."""
+
+    def __init__(self, parent: tk.Misc, var: tk.StringVar, names: Sequence[str], *,
+                 width: int, hint_parent: tk.Misc | None = None, wrap: int = 300) -> None:
+        self.names = list(names)
+        self.var = var
+        self.box = ttk.Combobox(parent, textvariable=var, values=self.names, width=width,
+                                postcommand=self._filter)
+        self.hint = ttk.Label(hint_parent or parent, text="", style="Dialog.Hint.TLabel",
+                              wraplength=wrap, justify="left")
+
+    def _filter(self) -> None:
+        typed = self.var.get().strip().lower()
+        starts = [n for n in self.names if n.lower().startswith(typed)]
+        inside = [n for n in self.names if typed in n.lower() and n not in starts]
+        self.box.configure(values=starts + inside if typed else self.names)
+
+    def hint_text(self) -> str:
+        value = self.var.get().strip()
+        return NOT_FOUND if value and value not in self.names else ""
+
+
+# --- One command form -------------------------------------------------------------------------
+
+class FormDialog:
+    """``form``'s dialog over ``parent``, filled from ``values``; built hidden, so a test can
+    drive it. ``names``: name kind → the names its pickers offer. ``result`` is the values
+    after OK (every field's key), None after Cancel."""
+
+    def __init__(self, parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
+                 names: Mapping[str, Sequence[str]], ok: str = OK) -> None:
+        self.form = form
+        self.result: dict[str, str] | None = None
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(form.title)
+        body, scale = dialogs._body(dialog)
+        self.scale = scale
+        gap = round(GAP * scale)
+        grid = ttk.Frame(body, style="Dialog.TFrame")
+        grid.pack(anchor="w", fill="x")
+        grid.columnconfigure(1, weight=1)
+        self.vars: dict[str, tk.Variable] = {}
+        self.widgets: dict[str, tk.Widget] = {}
+        self.names: dict[str, _NameBox] = {}
+        row = 0
+        for field in form.fields:
+            value = str(values.get(field.key, ""))
+            ttk.Label(grid, text=field.label, style="Dialog.TLabel").grid(
+                row=row, column=0, sticky="w", padx=(0, round(16 * scale)),
+                pady=(0 if row == 0 else gap, 0))
+            widget, var = self._field(grid, field, value, names)
+            widget.grid(row=row, column=1, sticky="w" if field.kind == "number" else "ew",
+                        pady=(0 if row == 0 else gap, 0))
+            self.vars[field.key], self.widgets[field.key] = var, widget
+            row += 1
+            if field.key in self.names:
+                hint = self.names[field.key].hint
+                hint.grid(row=row, column=1, sticky="w", pady=(round(4 * scale), 0))
+                hint.grid_remove()
+                row += 1
+            var.trace_add("write", lambda *_a: self._changed())
+        caption = ttk.Label(body, text=LINE_CAPTION, style="Dialog.Hint.TLabel")
+        caption.pack(anchor="w", pady=(round(16 * scale), round(4 * scale)))
+        self.card = _card(body, _code_font(dialog), scale)
+        self.card.pack(anchor="w", fill="x")
+        self.card.configure(width=max(28, math.ceil(400 * scale / max(
+            1, dialog.code_font.measure("0")))))   # type: ignore[attr-defined]
+        self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
+        dialog.bind("<Escape>", lambda _e: self._pick(1))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        for widget in self.widgets.values():
+            if isinstance(widget, (ttk.Entry, ttk.Combobox)):
+                for key in ("<Return>", "<KP_Enter>"):
+                    widget.bind(key, lambda _e: self._pick(0))
+        self._changed()
+
+    def _field(self, parent: tk.Misc, field: Field, value: str,
+               names: Mapping[str, Sequence[str]]) -> tuple[tk.Widget, tk.Variable]:
+        if field.kind == "flag":
+            var: tk.Variable = tk.StringVar(parent, value=value)
+            box = ttk.Checkbutton(parent, variable=var, onvalue="True", offvalue="",
+                                  style="Dialog.TCheckbutton")
+            return box, var
+        var = tk.StringVar(parent, value=value)
+        if field.kind == "pick":
+            return ttk.Combobox(parent, textvariable=var, values=field.options,
+                                state="readonly", width=FIELD_CHARS), var
+        if field.kind in ("name", "scene"):
+            offered = names.get(field.name_kind or "label", ())
+            name_box = _NameBox(parent, var, offered, width=FIELD_CHARS,
+                                wrap=round(300 * self.scale))
+            self.names[field.key] = name_box
+            return name_box.box, var
+        width = NUMBER_CHARS if field.kind == "number" else FIELD_CHARS
+        return ttk.Entry(parent, textvariable=var, width=width), var
+
+    def values(self) -> dict[str, str]:
+        """Every field's value as typed (outer blanks dropped)."""
+        return {key: str(var.get()).strip() for key, var in self.vars.items()}
+
+    def preview(self) -> str:
+        """The line the form writes now ("" while it can't write one)."""
+        try:
+            return self.form.write(self.values())
+        except (KeyError, ValueError, TypeError):
+            return ""
+
+    def _changed(self) -> None:
+        _set_card(self.card, self.preview())
+        for name_box in self.names.values():
+            text = name_box.hint_text()
+            name_box.hint.configure(text=text)
+            if text:
+                name_box.hint.grid()
+            else:
+                name_box.hint.grid_remove()
+
+    def hints(self) -> dict[str, str]:
+        """Field key → the hint shown under it (name fields only)."""
+        return {key: str(box.hint.cget("text")) for key, box in self.names.items()}
+
+    def _pick(self, index: int) -> None:
+        if index == 0:
+            self.result = self.values()
+        self.dialog.destroy()
+
+    def run(self, parent: tk.Misc) -> dict[str, str] | None:
+        first = next(iter(self.widgets.values()), self.buttons[0])
+        dialogs._run(parent, self.dialog, first)
+        return self.result
+
+
+def edit_form(parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
+              names: Mapping[str, Sequence[str]], ok: str = OK) -> dict[str, str] | None:
+    """``form``'s modal dialog: its values after OK, or None (Cancel, Esc, the close box)."""
+    return FormDialog(parent, form, values, names=names, ok=ok).run(parent)
+
+
+# --- The Choice form ----------------------------------------------------------------------------
+
+class ChoiceDialog:
+    """The Choice form (§6.7.4): the question (speaker, look, text) and up to six options,
+    each with its text, an "only show when" condition and where it goes (a scene or
+    ``forms.CONTINUES``; a choice whose lines the form can't hold reads ``forms.IN_TEXT`` and
+    keeps them). Add, Remove, Up and Down act on the chosen option. ``result``: the
+    ``ChoiceValues`` after OK."""
+
+    def __init__(self, parent: tk.Misc, values: ChoiceValues, *,
+                 names: Mapping[str, Sequence[str]], ok: str = OK) -> None:
+        self.result: ChoiceValues | None = None
+        self.scenes = list(names.get("label", ()))
+        self.characters = list(names.get("character", ()))
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(forms.CHOICE.title)
+        body, scale = dialogs._body(dialog)
+        self.scale = scale
+        gap = round(GAP * scale)
+        self.gap = gap
+        # The question
+        ttk.Label(body, text=QUESTION, style="Dialog.TLabel",
+                  font=_strong(dialog)).pack(anchor="w")
+        top = ttk.Frame(body, style="Dialog.TFrame")
+        top.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
+        top.columnconfigure(5, weight=1)
+        self.speaker = tk.StringVar(dialog, value=values.speaker)
+        self.look = tk.StringVar(dialog, value=values.look)
+        self.question = tk.StringVar(dialog, value=values.question)
+        ttk.Label(top, text=SPEAKER, style="Dialog.TLabel").grid(row=0, column=0, sticky="w")
+        speaker = _NameBox(top, self.speaker, self.characters, width=12)
+        self.speaker_box = speaker.box
+        speaker.box.grid(row=0, column=1, sticky="w", padx=(gap, round(16 * scale)))
+        ttk.Label(top, text=LOOK, style="Dialog.TLabel").grid(row=0, column=2, sticky="w")
+        ttk.Entry(top, textvariable=self.look, width=10).grid(
+            row=0, column=3, sticky="w", padx=(gap, round(16 * scale)))
+        ttk.Label(top, text=TEXT, style="Dialog.TLabel").grid(row=0, column=4, sticky="w")
+        self.question_entry = ttk.Entry(top, textvariable=self.question, width=30)
+        self.question_entry.grid(row=0, column=5, sticky="ew", padx=(gap, 0))
+        # The options
+        ttk.Label(body, text=OPTIONS, style="Dialog.TLabel",
+                  font=_strong(dialog)).pack(anchor="w", pady=(round(16 * scale), 0))
+        self.table = ttk.Frame(body, style="Dialog.TFrame")
+        self.table.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
+        self.table.columnconfigure(1, weight=1)
+        for column, text in ((1, OPTION_TEXT), (2, OPTION_WHEN), (3, OPTION_GOES)):
+            ttk.Label(self.table, text=text, style="Dialog.Hint.TLabel").grid(
+                row=0, column=column, sticky="w", padx=(0, gap))
+        self.items: list[dict] = []
+        self.chosen = 0
+        for item in values.choices:
+            self._add_row(item)
+        tools = ttk.Frame(body, style="Dialog.TFrame")
+        tools.pack(anchor="w", fill="x", pady=(gap, 0))
+        self.tool_buttons: dict[str, ttk.Button] = {}
+        for label, command in ((ADD, self.add), (REMOVE, self.remove),
+                               (UP, lambda: self.move(-1)), (DOWN, lambda: self.move(1))):
+            button = ttk.Button(tools, text=label, command=command, style="Secondary.TButton")
+            button.pack(side="left", padx=(0, gap))
+            self.tool_buttons[label] = button
+        self.problem = ttk.Label(body, text="", style="Dialog.TLabel")
+        self.lines_caption = ttk.Label(body, text=LINES_CAPTION, style="Dialog.Hint.TLabel")
+        self.lines_caption.pack(anchor="w", pady=(round(16 * scale), round(4 * scale)))
+        self.card = _card(body, _code_font(dialog), scale, height=4)
+        self.card.pack(anchor="w", fill="x")
+        self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
+        dialog.bind("<Escape>", lambda _e: self._pick(1))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        for var in (self.speaker, self.look, self.question):
+            var.trace_add("write", lambda *_a: self._changed())
+        self._changed()
+
+    def _add_row(self, item: ChoiceItem) -> None:
+        dialog = self.dialog
+        text = tk.StringVar(dialog, value=item.text)
+        when = tk.StringVar(dialog, value=item.condition)
+        goes = tk.StringVar(dialog, value=forms.choice_summary(item))
+        mark = ttk.Label(self.table, text="", width=2, style="Dialog.TLabel",
+                         foreground=THEME["focusBorder"])
+        text_entry = ttk.Entry(self.table, textvariable=text, width=24)
+        when_entry = ttk.Entry(self.table, textvariable=when, width=14)
+        if item.in_text:
+            goes_box = ttk.Combobox(self.table, textvariable=goes, values=(forms.IN_TEXT,),
+                                    width=18, state="disabled")
+        else:
+            goes_box = ttk.Combobox(self.table, textvariable=goes, width=18,
+                                    values=[forms.CONTINUES, *self.scenes])
+        row = {"item": item, "text": text, "when": when, "goes": goes,
+               "widgets": (mark, text_entry, when_entry, goes_box)}
+        self.items.append(row)
+        for var in (text, when, goes):
+            var.trace_add("write", lambda *_a: self._changed())
+        for widget in (text_entry, when_entry, goes_box):
+            widget.bind("<FocusIn>", lambda _e, r=row: self._choose(r), add="+")
+        self._grid_rows()
+
+    def _grid_rows(self) -> None:
+        gap = self.gap
+        for n, row in enumerate(self.items):
+            mark, text_entry, when_entry, goes_box = row["widgets"]
+            pad = (gap if n else 0, 0)
+            mark.grid(row=n + 1, column=0, sticky="w", pady=pad)
+            text_entry.grid(row=n + 1, column=1, sticky="ew", padx=(0, gap), pady=pad)
+            when_entry.grid(row=n + 1, column=2, sticky="ew", padx=(0, gap), pady=pad)
+            goes_box.grid(row=n + 1, column=3, sticky="ew", pady=pad)
+        self.chosen = max(0, min(self.chosen, len(self.items) - 1))
+        for n, row in enumerate(self.items):
+            row["widgets"][0].configure(text="▸" if n == self.chosen else "")
+
+    def _choose(self, row: dict) -> None:
+        if row in self.items:
+            self.chosen = self.items.index(row)
+            for n, other in enumerate(self.items):
+                other["widgets"][0].configure(text="▸" if n == self.chosen else "")
+
+    def values(self) -> ChoiceValues:
+        out = []
+        for row in self.items:
+            item: ChoiceItem = row["item"]
+            goes_text = row["goes"].get().strip()
+            if item.in_text:
+                goes, in_text = item.goes, True
+            else:
+                goes = None if goes_text in ("", forms.CONTINUES) else goes_text
+                in_text = False
+            out.append(ChoiceItem(row["text"].get(), row["when"].get().strip(), goes,
+                                  in_text, item.old))
+        return ChoiceValues(self.speaker.get().strip(), self.look.get().strip(),
+                            self.question.get(), tuple(out))
+
+    def preview(self) -> str:
+        try:
+            return "\n".join(forms.choice_lines(self.values(), "", "    "))
+        except (KeyError, ValueError, TypeError):
+            return ""
+
+    def _changed(self) -> None:
+        text = self.preview()
+        lines = text.split("\n")
+        if len(lines) > PREVIEW_ROWS:
+            text = "\n".join(lines[:PREVIEW_ROWS - 1] + ["…"])
+        _set_card(self.card, text, rows=PREVIEW_ROWS)
+        full = len(self.items) >= forms.MENU_MAX_CHOICES
+        self.tool_buttons[ADD].state(["disabled"] if full else ["!disabled"])
+        self.tool_buttons[REMOVE].state(["!disabled"] if self.items else ["disabled"])
+
+    def add(self) -> None:
+        if len(self.items) >= forms.MENU_MAX_CHOICES:
+            self._problem(forms.CHOICE_LIMIT_TEXT)
+            return
+        self._problem("")
+        self._add_row(ChoiceItem(""))
+        self.chosen = len(self.items) - 1
+        self._grid_rows()
+        self._changed()
+        self.items[-1]["widgets"][1].focus_set()
+
+    def _problem(self, text: str) -> None:
+        """The line under the options saying why OK or Add can't (takes no space empty)."""
+        self.problem.configure(text=text)
+        if text and not self.problem.winfo_manager():
+            self.problem.pack(anchor="w", pady=(round(8 * self.scale), 0),
+                              before=self.lines_caption)
+        elif not text and self.problem.winfo_manager():
+            self.problem.pack_forget()
+
+    def remove(self) -> None:
+        if not self.items:
+            return
+        row = self.items.pop(self.chosen)
+        for widget in row["widgets"]:
+            widget.destroy()
+        self._problem("")
+        self._grid_rows()
+        self._changed()
+
+    def move(self, step: int) -> None:
+        there = self.chosen + step
+        if not self.items or not 0 <= there < len(self.items):
+            return
+        self.items[self.chosen], self.items[there] = self.items[there], self.items[self.chosen]
+        self.chosen = there
+        self._grid_rows()
+        self._changed()
+
+    def _pick(self, index: int) -> None:
+        if index == 0:
+            if not self.items:
+                self._problem(forms.CHOICE_EMPTY_TEXT)
+                return
+            self.result = self.values()
+        self.dialog.destroy()
+
+    def run(self, parent: tk.Misc) -> ChoiceValues | None:
+        focus = self.items[0]["widgets"][1] if self.items else self.question_entry
+        dialogs._run(parent, self.dialog, focus)
+        return self.result
+
+
+def _strong(dialog: tk.Misc) -> tkfont.Font:
+    family, weight = font_families(dialog)["semibold"]
+    font = tkfont.Font(root=dialog, family=family, weight=weight,
+                       size=-round(TYPE_SCALE["bodyStrong"][0] * scale_of(dialog)))
+    dialog.strong_font = font           # type: ignore[attr-defined]
+    return font
+
+
+def edit_choice(parent: tk.Misc, values: ChoiceValues, *,
+                names: Mapping[str, Sequence[str]], ok: str = OK) -> ChoiceValues | None:
+    """The Choice form, modal: its values after OK, or None."""
+    return ChoiceDialog(parent, values, names=names, ok=ok).run(parent)
+
+
+# --- The Insert… picker -------------------------------------------------------------------------
+
+class InsertPicker:
+    """Insert…: the commands grouped as F45's Insert menu (``menu``: ``(group, docs)``),
+    one entry per statement doc, filtered as you type. Enter or a double-click picks the
+    chosen entry; ``result`` is its doc."""
+
+    def __init__(self, parent: tk.Misc,
+                 menu: Sequence[tuple[str, Sequence[StatementDoc]]]) -> None:
+        self.menu = tuple((group, tuple(docs)) for group, docs in menu)
+        self.result: StatementDoc | None = None
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(PICKER_TITLE)
+        dialog.resizable(False, True)
+        body, scale = dialogs._body(dialog)
+        self.filter = tk.StringVar(dialog)
+        entry = self.entry = ttk.Entry(body, textvariable=self.filter, width=40)
+        entry.pack(anchor="w", fill="x")
+        self.hint = ttk.Label(body, text=PICKER_FILTER, style="Dialog.Hint.TLabel")
+        self.hint.pack(anchor="w", pady=(round(4 * scale), round(GAP * scale)))
+        style = ttk.Style(dialog)
+        back = THEME["widget.background"]
+        style.configure("Dialog.Treeview", background=back, fieldbackground=back,
+                        foreground=THEME["foreground"], borderwidth=0)
+        frame = ttk.Frame(body, style="Dialog.TFrame")
+        frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        self.tree = ttk.Treeview(frame, show="tree", selectmode="browse", height=14,
+                                 style="Dialog.Treeview")
+        self.tree.column("#0", width=round(320 * scale))
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        bar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
+        bar.grid(row=0, column=1, sticky="ns")
+        self.tree.configure(yscrollcommand=bar.set)
+        self.tree.tag_configure("group", foreground=THEME["muted"])
+        self.docs: dict[str, StatementDoc] = {}
+        self.buttons = dialogs._buttons(dialog, body, (INSERT, CANCEL), self._pick)
+        self.filter.trace_add("write", lambda *_a: self._fill())
+        for widget in (entry, self.tree):
+            for key in ("<Return>", "<KP_Enter>"):
+                widget.bind(key, lambda _e: self._pick(0) or "break")
+        entry.bind("<Down>", lambda _e: self._step(1))
+        entry.bind("<Up>", lambda _e: self._step(-1))
+        self.tree.bind("<Double-Button-1>", self._double)
+        dialog.bind("<Escape>", lambda _e: self._pick(1))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        self._fill()
+
+    def groups(self) -> list[tuple[str, list[str]]]:
+        """(group, entry titles) as shown now."""
+        return [(self.tree.item(g, "text"), [self.tree.item(c, "text")
+                                             for c in self.tree.get_children(g)])
+                for g in self.tree.get_children("")]
+
+    def entries(self) -> list[tuple[str, StatementDoc]]:
+        """(group, doc) per entry shown now, in order."""
+        return [(self.tree.item(g, "text"), self.docs[c])
+                for g in self.tree.get_children("") for c in self.tree.get_children(g)]
+
+    def _fill(self) -> None:
+        typed = self.filter.get().strip().lower()
+        tree = self.tree
+        tree.delete(*tree.get_children(""))
+        self.docs.clear()
+        first = None
+        for group, docs in self.menu:
+            shown = [d for d in docs if not typed or typed in entry_title(d).lower()
+                     or typed in d.title.lower() or typed in group.lower()]
+            if not shown:
+                continue
+            node = tree.insert("", "end", text=group, open=True, tags=("group",))
+            for doc in shown:
+                item = tree.insert(node, "end", text=entry_title(doc))
+                self.docs[item] = doc
+                first = first or item
+        if first is not None:
+            tree.selection_set(first)
+            tree.focus(first)
+            tree.see(first)
+
+    def choose(self, group: str, title: str) -> None:
+        """Select the entry ``title`` under ``group`` (for tests and the keyboard)."""
+        for g in self.tree.get_children(""):
+            if self.tree.item(g, "text") != group:
+                continue
+            for c in self.tree.get_children(g):
+                if self.tree.item(c, "text") == title:
+                    self.tree.selection_set(c)
+                    self.tree.focus(c)
+                    self.tree.see(c)
+                    return
+        raise KeyError((group, title))
+
+    def _step(self, step: int) -> str:
+        items = list(self.docs)
+        if items:
+            now = self.tree.selection()
+            at = items.index(now[0]) if now and now[0] in self.docs else -step
+            pick = items[max(0, min(len(items) - 1, at + step))]
+            self.tree.selection_set(pick)
+            self.tree.focus(pick)
+            self.tree.see(pick)
+        return "break"
+
+    def _double(self, event: tk.Event) -> str:
+        if self.tree.identify_row(event.y) in self.docs:
+            self._pick(0)
+        return "break"
+
+    def _pick(self, index: int) -> None:
+        if index == 0:
+            chosen = self.tree.selection()
+            if not chosen or chosen[0] not in self.docs:
+                return
+            self.result = self.docs[chosen[0]]
+        self.dialog.destroy()
+
+    def run(self, parent: tk.Misc) -> StatementDoc | None:
+        dialogs._run(parent, self.dialog, self.entry)
+        return self.result
+
+
+def pick_insert(parent: tk.Misc, menu: Sequence[tuple[str, Sequence[StatementDoc]]]
+                ) -> StatementDoc | None:
+    """Insert…, modal: the picked doc, or None (Cancel, Esc, the close box)."""
+    return InsertPicker(parent, menu).run(parent)
+
+# --- New scene and the scene picker (F46 step 5, PR-F46-14, Ctrl+J) -------------------------
+
+NEW_SCENE_TITLE = "New scene"
+SCENE_NAME = "Scene name"
+SCENE_FILE = "File"
+SCENE_NAMED = "Its name in the script: {name}"
+SCENE_CREATE = "Add scene"
+PICK_SCENE_TITLE = "Go to scene"
+PICK_SCENE_OK = "Go to"
+NO_SCENES = "No scene matches."
+
+
+def scene_name(text: str) -> str:
+    """F45's name suggestion for a typed scene name: lower case, spaces to ``_``."""
+    return "_".join(text.strip().lower().split())
+
+
+class NewSceneDialog:
+    """New scene: a name (its script name shown as you type, with the problem when it
+    can't be one, or is taken) and the script file it goes in. ``result`` after OK is
+    ``(name, ref)`` with the suggested name; OK stays disabled while there is a problem."""
+
+    def __init__(self, parent: tk.Misc, files: Sequence[str], default: str, *,
+                 taken: Sequence[str] = (), problem: object = None) -> None:
+        self.result: tuple[str, str] | None = None
+        self.taken = frozenset(taken)
+        self.problem = problem              # (name) -> problem text | None (label_problem)
+        self.refs = tuple(files)
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(NEW_SCENE_TITLE)
+        body, scale = dialogs._body(dialog)
+        gap = round(GAP * scale)
+        grid = ttk.Frame(body, style="Dialog.TFrame")
+        grid.pack(anchor="w", fill="x")
+        grid.columnconfigure(1, weight=1)
+        ttk.Label(grid, text=SCENE_NAME, style="Dialog.TLabel").grid(
+            row=0, column=0, sticky="w", padx=(0, round(16 * scale)))
+        self.name = tk.StringVar(dialog)
+        self.entry = ttk.Entry(grid, textvariable=self.name, width=FIELD_CHARS)
+        self.entry.grid(row=0, column=1, sticky="ew")
+        self.hint = ttk.Label(grid, text="", style="Dialog.Hint.TLabel",
+                              wraplength=round(320 * scale), justify="left")
+        self.hint.grid(row=1, column=1, sticky="w", pady=(round(4 * scale), 0))
+        ttk.Label(grid, text=SCENE_FILE, style="Dialog.TLabel").grid(
+            row=2, column=0, sticky="w", padx=(0, round(16 * scale)), pady=(gap, 0))
+        shown = [show_ref(ref) for ref in self.refs]
+        self.file = tk.StringVar(dialog, value=show_ref(default) if default in self.refs
+                                 else (shown[0] if shown else ""))
+        self.files = ttk.Combobox(grid, textvariable=self.file, values=shown,
+                                  state="readonly", width=FIELD_CHARS)
+        self.files.grid(row=2, column=1, sticky="ew", pady=(gap, 0))
+        self.buttons = dialogs._buttons(dialog, body, (SCENE_CREATE, CANCEL), self._pick)
+        dialog.bind("<Escape>", lambda _e: self._pick(1))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        for key in ("<Return>", "<KP_Enter>"):
+            self.entry.bind(key, lambda _e: self._pick(0) or "break")
+        self.name.trace_add("write", lambda *_a: self._changed())
+        self._changed()
+
+    def why_not(self) -> str | None:
+        """Why the typed name can't be added now, or None."""
+        name = scene_name(self.name.get())
+        if not name:
+            return ""
+        if callable(self.problem):
+            found = self.problem(name)
+            if found:
+                return str(found)
+        if name in self.taken:
+            return f"There is already a scene named `{name}`."
+        return None
+
+    def _changed(self) -> None:
+        name = scene_name(self.name.get())
+        why = self.why_not()
+        self.hint.configure(text=why if why else (SCENE_NAMED.format(name=name) if name
+                                                  else ""))
+        self.buttons[0].state(["!disabled"] if why is None else ["disabled"])
+
+    def _pick(self, index: int) -> None:
+        if index == 0:
+            if self.why_not() is not None:
+                return
+            shown = [show_ref(ref) for ref in self.refs]
+            at = shown.index(self.file.get()) if self.file.get() in shown else 0
+            self.result = (scene_name(self.name.get()), self.refs[at])
+        self.dialog.destroy()
+
+    def run(self, parent: tk.Misc) -> tuple[str, str] | None:
+        dialogs._run(parent, self.dialog, self.entry)
+        return self.result
+
+
+def show_ref(ref: str) -> str:
+    """A script file as the dialog lists it (``script/`` left off)."""
+    return ref.removeprefix("script/")
+
+
+def ask_new_scene(parent: tk.Misc, files: Sequence[str], default: str, *,
+                  taken: Sequence[str] = (), problem: object = None
+                  ) -> tuple[str, str] | None:
+    """New scene, modal: ``(name, ref)``, or None (Cancel, Esc, the close box)."""
+    return NewSceneDialog(parent, files, default, taken=taken, problem=problem).run(parent)
+
+
+class ScenePicker:
+    """Go to scene… (Ctrl+J) and Change target…: the scenes, filtered as you type; Enter or
+    a double-click picks one. ``result`` is its name."""
+
+    def __init__(self, parent: tk.Misc, names: Sequence[str], *,
+                 title: str = PICK_SCENE_TITLE, ok: str = PICK_SCENE_OK) -> None:
+        self.names = tuple(names)
+        self.result: str | None = None
+        dialog = self.dialog = dialogs._dialog(parent)
+        dialog.title(title)
+        body, scale = dialogs._body(dialog)
+        self.filter = tk.StringVar(dialog)
+        self.entry = ttk.Entry(body, textvariable=self.filter, width=40)
+        self.entry.pack(anchor="w", fill="x")
+        self.hint = ttk.Label(body, text=PICKER_FILTER, style="Dialog.Hint.TLabel")
+        self.hint.pack(anchor="w", pady=(round(4 * scale), round(GAP * scale)))
+        back = THEME["widget.background"]
+        self.list = tk.Listbox(body, height=10, activestyle="none", exportselection=False,
+                               background=back, foreground=THEME["foreground"],
+                               selectbackground=THEME["list.activeSelection"],
+                               selectforeground=THEME["foreground"], borderwidth=0,
+                               highlightthickness=1, highlightbackground=THEME["border"])
+        self.list.pack(fill="both", expand=True)
+        self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
+        self.filter.trace_add("write", lambda *_a: self._fill())
+        for widget in (self.entry, self.list):
+            for key in ("<Return>", "<KP_Enter>"):
+                widget.bind(key, lambda _e: self._pick(0) or "break")
+        self.entry.bind("<Down>", lambda _e: self._step(1))
+        self.entry.bind("<Up>", lambda _e: self._step(-1))
+        self.list.bind("<Double-Button-1>", lambda _e: self._pick(0))
+        dialog.bind("<Escape>", lambda _e: self._pick(1))
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        self._fill()
+
+    def shown(self) -> list[str]:
+        return list(self.list.get(0, "end"))
+
+    def _fill(self) -> None:
+        typed = self.filter.get().strip().lower()
+        self.list.delete(0, "end")
+        for name in self.names:
+            if not typed or typed in name.lower() or scene_name(typed) in name:
+                self.list.insert("end", name)
+        if self.list.size():
+            self.list.selection_set(0)
+            self.hint.configure(text=PICKER_FILTER)
+        else:
+            self.hint.configure(text=NO_SCENES)
+
+    def _step(self, step: int) -> str:
+        size = self.list.size()
+        if size:
+            now = self.list.curselection()
+            at = max(0, min(size - 1, (now[0] if now else -step) + step))
+            self.list.selection_clear(0, "end")
+            self.list.selection_set(at)
+            self.list.see(at)
+        return "break"
+
+    def choose(self, name: str) -> None:
+        self.filter.set("")
+        at = self.shown().index(name)
+        self.list.selection_clear(0, "end")
+        self.list.selection_set(at)
+
+    def _pick(self, index: int) -> None:
+        if index == 0:
+            now = self.list.curselection()
+            if not now:
+                return
+            self.result = str(self.list.get(now[0]))
+        self.dialog.destroy()
+
+    def run(self, parent: tk.Misc) -> str | None:
+        dialogs._run(parent, self.dialog, self.entry)
+        return self.result
+
+
+def pick_scene(parent: tk.Misc, names: Sequence[str], *, title: str = PICK_SCENE_TITLE,
+               ok: str = PICK_SCENE_OK) -> str | None:
+    """The scene picker, modal: the picked scene's name, or None."""
+    return ScenePicker(parent, names, title=title, ok=ok).run(parent)
+
+
+__all__ = ["ChoiceDialog", "FormDialog", "InsertPicker", "NOT_FOUND", "NewSceneDialog",
+           "ScenePicker", "ask_new_scene", "edit_choice", "edit_form", "entry_title",
+           "new_values", "pick_insert", "pick_scene", "scene_name"]

@@ -1,0 +1,4 @@
+define hana = Character("Hana")
+
+label start:
+    "The festival begins."

@@ -202,8 +202,12 @@ def test_ac43_the_story_map_view(studio, studio_game):
         assert canvas.itemcget(f"name{i}", "text") == name
         assert canvas.itemcget(f"where{i}", "text") == f"{ref}:{number}"
     start = m.index_of("start")
-    assert float(canvas.itemcget(f"rect{start}", "width")) == 2
+    # F45 08 §8: start's accent bar inside its left edge replaces the 2 px border.
+    assert float(canvas.itemcget(f"rect{start}", "width")) == 1
     assert float(canvas.itemcget(f"rect{m.index_of('club')}", "width")) == 1
+    assert canvas.itemcget(f"rect{start}", "fill") == "#2B2B2B"
+    assert canvas.itemcget(f"startbar{start}", "fill") == "#0078D4"
+    assert not canvas.find_withtag(f"startbar{m.index_of('club')}")
     assert "start" in canvas.itemcget(f"marks{start}", "text").split(", ")
     styles = {kind: (canvas.itemcget(item, "arrow"), canvas.itemcget(item, "dash"),
                      canvas.itemcget(item, "fill")) for item, kind in view.edge_items}
@@ -217,6 +221,7 @@ def test_ac43_the_story_map_view(studio, studio_game):
 
     x, y = centre("river")                       # a click opens the label's line beside
     canvas.event_generate("<Button-1>", x=x, y=y)
+    canvas.event_generate("<ButtonRelease-1>", x=x, y=y)     # F46: the release opens it
     ed.root.update()
     assert tab(ed) == "Story map" and ed.current.ref == "script/ch2.vns"
     assert ed.text is ed.side_text and ed.text.index("insert") == "10.0"
@@ -238,12 +243,14 @@ def test_ac43_the_story_map_view(studio, studio_game):
     assert ring == [x0 - 3, y0 - 3, x1 + 3, y1 + 3]
     assert canvas.itemcget(view.ring, "outline") == "#007FD4"
     assert float(canvas.itemcget(view.ring, "width")) == 2
-    view.focus_box(start)                                # Tab follows start's links
-    names = []
+    view.focus_box(start)                                # Tab selects start's arrows (F46
+    names = []                                           # C2); Enter focuses the target
     for _ in range(3):
         ed.press(canvas, "<Tab>")
-        names.append(view.focused_name())
-    assert names == ["club", "bridge", "club"]
+        names.append(view.selected_edge()[1])
+    assert names == ["club", "bridge", "club"] and view.focused == start
+    ed.press(canvas, "<Return>")
+    assert view.focused_name() == "club"
 
     for _ in range(10):
         ed.press(canvas, "<Control-equal>")
@@ -280,6 +287,9 @@ def test_ac70_the_map_opens_the_editor_beside_it(studio, studio_game):
     side, main = ed.side_text, ed.current.widget
     assert tab(ed) == "Story map" and ed.focus() is side and ed.text is side
     assert ed.side_name.cget("text") == "script/ch2.vns" and side.index("insert") == "10.0"
+    # F46 step 2 (06 §2, A-F45-70): the side pane has tabs Events | Script, showing Script.
+    assert ed.side_tabs.words() == ["Events", "Script"]
+    assert ed.side_book.tab(ed.side_book.select(), "text") == "Script"
     assert side.tag_ranges("jump") and ed.side_gutter.find_all()
     assert abs(ed.side_frame.winfo_width() / ed.map_split.winfo_width() - 0.45) < 0.05
     assert side.cget("font") == main.cget("font")
@@ -389,7 +399,7 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         "Editor", "Story map", "Asset", "Outline"]   # Outline: AC-F45-54
     bar = ed.menubar
     assert [bar.entrycget(i, "label") for i in range(bar.index("end") + 1)] == [
-        "File", "Edit", "Insert", "View", "Run", "Help"]
+        "File", "Edit", "Insert", "Story", "View", "Run", "Help"]   # Story: AC-F46-33
     rows = [  # (menu, entry, key widget, key, the handler call both make)
         (ed.file_menu, "New script file", ed.text, "<Control-n>", ("new_script_file",)),
         (ed.file_menu, "Add files…", ed.text, "<Control-Shift-O>", ("add_files",)),

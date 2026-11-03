@@ -7,7 +7,7 @@ Conventions (``06`` §0.2): the window is built on a hidden root; tests that pre
 measure geometry map it off-screen at ``+-3000+-3000`` (a withdrawn root gets no keyboard
 focus on Windows). Text is typed through the ``Text`` widget's own commands, which pass
 through the change hook. Dialogs are answered by patching ``ask`` and
-``messagebox.showerror``, except the rows that drive the real ``ask`` dialog. Every root is
+``show_error``, except the rows that drive the real ``ask`` dialog. Every root is
 destroyed in the fixture's ``finally``. Skipped when Tk or a display is missing.
 """
 
@@ -142,8 +142,8 @@ def make_editor(monkeypatch):
     roots: list = []
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window.messagebox, "showerror",
-                        lambda title, message, **kwargs: errors_shown.append(message))
+    monkeypatch.setattr(window, "show_error",
+                        lambda parent, message: errors_shown.append(message))
 
     def build(game: Path, *, mapped: bool = False) -> Editor:
         root = new_root()
@@ -241,7 +241,8 @@ def answer_dialog(root, action, seen: dict) -> None:
         dialog.update()
         widgets = list(walk(dialog))
         buttons = [w for w in widgets if w.winfo_class() == "TButton"]
-        seen["message"] = [w.cget("text") for w in widgets if w.winfo_class() == "TLabel"][0]
+        seen["message"] = [w.get("1.0", "end-1c") for w in widgets
+                           if w.winfo_class() == "Text"][0]     # F45 08 §7: styled spans
         seen["buttons"] = [str(b.cget("text")) for b in buttons]
         focused = dialog.focus_get()
         seen["focused"] = str(focused.cget("text")) if focused in buttons else None
@@ -425,6 +426,22 @@ def test_no_vns_files_shows_an_empty_script_group(make_editor, tmp_path):
     ed.text.insert("1.0", "typed")
     assert ed.body() == ""
     assert ed.start_label.cget("text") == "the beginning"
+
+
+def test_empty_states_show_and_run_existing_commands(make_editor, tmp_path):
+    """F45 08 §9: with no scripts every tab shows its empty state; the button is the tab's
+    F6 stop, and the story map's runs Check now (the check arms)."""
+    game = tmp_path / "my_game"
+    (game / "script").mkdir(parents=True)
+    ed = make_editor(game, mapped=True)
+    assert ed.editor_empty.shown
+    assert ed.editor_empty.button.cget("text").startswith("New script file (")
+    assert ed.story_map.empty.shown and ed.outline_view.empty.shown and ed.asset_pane.empty.shown
+    ed.show_tab(1)
+    assert ed._tab_widget() is ed.story_map.empty.button
+    assert not ed.armed
+    ed.story_map.empty.button.invoke()
+    assert ed.armed
 
 
 # --- AC-F44-16 (Tk row): a failed save keeps everything ---------------------------------

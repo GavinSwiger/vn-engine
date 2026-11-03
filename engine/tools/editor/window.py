@@ -17,15 +17,21 @@ check heads the problems panel (a summary, then one row per item), sets gutter m
 last good check's name index and label links live in ``check_names``, ``check_links`` and
 ``check_stale``:
 completion (Ctrl+Space, ``views.CompletionPopup``) and the story map
-(``views.StoryMapView``) read them. The Insert menu and the Help pane come from the
+(``views.StoryMapView``) read them. The map also follows typing (F46 ``04`` §6.1): every
+content change raises the file's ``OpenFile.changes`` at once (edit_undo/edit_redo too, as Tk
+replays them through the widget's command), and ``scenes.FOLLOW_MS`` after the last one
+``follow`` re-reads the changed scripts' label chunks (``scenes.reindex``) and swaps them into
+the check's labels and links (``scenes.map_data``). The Insert menu and the Help pane come from the
 statement doc registry (``assist``). Each opened file keeps its own ``tk.Text`` for the
 session, so switching files keeps the text and its undo history. Each editor ``Text``'s Tcl command is wrapped by
 a Tcl proc (the ``rename`` proxy pattern IDLE uses): content commands mark the document
 dirty, and every change or cursor move schedules one coalesced ``refresh`` that colors the
 visible lines, redraws the line-number gutter, moves the current-line highlight, and updates
 the start label and the status bar's cursor items. Word wrap is off (``04`` C3), so every row
-on screen is one F02 line. Colors come from ``theme.THEME`` (VS Code Dark+, amended
-2026-11-02); ``theme.style_ttk`` styles the ttk widgets.
+on screen is one F02 line. Colors and fonts come from ``theme`` (VS Code Dark Modern, F45
+``08``); ``theme.style_ttk`` styles the ttk widgets, and every size below is px at 100 % times
+``scale`` (``theme.scale_of``; Studio declares DPI awareness on Windows, ``08`` §10). Outside
+macOS the menus hang from ``views.MenuBar``, a dark bar inside the window (``08`` D5).
 
 Preview (F5, Shift+F5, the button) saves every unsaved file, checks the start values, and
 hands argv to ``preview.PreviewRunner``, which the window polls every 100 ms. The status
@@ -45,19 +51,22 @@ import threading
 import time
 import tkinter as tk
 from collections.abc import Callable, Sequence
+from typing import Any
 from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import font as tkfont
-from tkinter import messagebox, ttk  # noqa: F401  (tests patch messagebox through here)
+from tkinter import messagebox, ttk  # noqa: F401  (kept: older tests patch it here)
 
 from engine.core.editorreport import CHECK_DEBOUNCE_MS, CHECK_SLOW_S, CHECK_TIMEOUT_S
 from engine.core.errors import UserFacingError
 from engine.core.paths import GamePaths, engine_root
 from engine.script.assetgroups import CONFIG_REF
+from engine.script.labelgraph import LabelLink
 from engine.script.diagnostics import ScriptError
+from engine.script.menu import Menu
 from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import files
+from engine.tools.editor import files, formdialogs, icons, layoutfile, scenes, scriptedit
 from engine.tools.editor.assist import (
     Context,
     auto_open,
@@ -68,7 +77,13 @@ from engine.tools.editor.assist import (
     insert_text,
     tag_help,
 )
-from engine.tools.editor.checker import CheckItem, CheckResult, CheckState, encode_overlay
+from engine.tools.editor.checker import (
+    CheckItem,
+    CheckResult,
+    CheckState,
+    NameEntry,
+    encode_overlay,
+)
 from engine.tools.editor.config_help import (
     CONFIG_KINDS,
     auto_open_config,
@@ -116,17 +131,40 @@ from engine.tools.editor.syntax import (
     indent_unit,
 )
 from engine.tools.editor.outline import outline
-from engine.tools.editor.storymap import Box, label_notes
-from engine.tools.editor.theme import THEME, STATUS_BAR_PX, dark_title_bar, scale_of, style_ttk
+from engine.tools.editor.eventsview import EventsView
+from engine.tools.editor.storyeditor import StoryEditor, apply_edits
+from engine.tools.editor.storymap import (
+    Box,
+    MapHistory,
+    COLUMN_STEP,
+    MapStep,
+    place_free,
+    label_notes,
+    map_undo,
+    undo_blocked_text,
+)
+from engine.tools.editor.appicon import set_app_icon
+from engine.tools.editor.theme import (
+    MENU_BAR_PX,
+    STATUS_BAR_PX,
+    THEME,
+    dark_title_bar,
+    make_fonts,
+    scale_of,
+    style_ttk,
+)
 from engine.tools.editor.views import (
     DIRTY_MARK,
     AssetPane,
     CompletionPopup,
+    EmptyState,
     HelpPane,
+    MenuBar,
     OutlineView,
     ProjectView,
     StatusBar,
     StoryMapView,
+    TabStrip,
     autohide,
     panel_header,
     read_asset,
@@ -142,12 +180,36 @@ TAB_MAP = "Story map"
 TAB_ASSET = "Asset"
 TAB_OUTLINE = "Outline"                 # 2026-11-02, AC-F45-54
 TAB_OUTLINE_INDEX = 3
+EDITOR_EMPTY_TITLE = "No story files yet"                       # 08 §9
+EDITOR_EMPTY_HINT = "Your story is written in script files."
 SIDE_OPEN_TAB = "Open in Editor tab"     # the Story map's side editor (2026-11-02)
 SIDE_CLOSE = "\u2715"
+SIDE_TAB_EVENTS = "Events"              # the side pane's tabs (F46 C1, 04 \u00a76.11)
+SIDE_TAB_SCRIPT = "Script"
+SIDE_PAGES = ("events", "script")       # side_tab values, in tab order
 GO_TO_LABEL_ASK = "Go to label:"
 GO_TO_LABEL_OK = "Go"
 NO_SUCH_LABEL = "There is no label named `{name}` in the last check."
 NO_LABELS_YET = "Labels are listed after the first check."
+# F46 step 5: the Story menu and context menus (design §6.1; plain words, AC-F46-34).
+STORY_NEW_SCENE = "New scene"
+STORY_NEW_SCENE_HERE = "New scene here"
+STORY_GO_TO = "Go to scene…"
+STORY_RENAME = "Rename scene"
+STORY_DELETE_SCENE = "Delete scene"
+STORY_MOVE_BOX = "Move box"
+STORY_DELETE_ARROW = "Delete arrow"
+STORY_CHOICE_TEXT = "Edit choice text"
+STORY_CHANGE_TARGET = "Change target…"
+STORY_TIDY_UP = "Tidy up"
+STORY_INSERT = "Insert command…"
+STORY_EDIT = "Edit command"
+STORY_UP = "Move up"
+STORY_DOWN = "Move down"
+STORY_DELETE_ROW = "Delete command"
+CHOICE_STATUS = "Choice: {text}"
+NO_SCRIPT_FOR_SCENE = "Add a script file first: a scene lives in one."
+CONTEXT_MENUS_POST = True               # tests set False: tk_popup would wait for a click
 PICK_FOLDER = "Select a group or folder in the project panel first."
 NEW_SCRIPT_ASK = "New script file in `{folder}/`:"
 NEW_SCRIPT_OPTION = "Add an include line to main.vns"
@@ -205,13 +267,14 @@ WINDOW_MIN_SIZE = (760, 480)
 LEFT_WIDTH = 240
 LEFT_MIN_WIDTH = 160
 COLUMN_PAD = 8
+PANEL_INSET = 12                        # a panel's text inset (08 §5)
 EDITOR_MIN_HEIGHT = 160
 PROBLEMS_HEIGHT = 160
 PROBLEMS_SHARE = 0.6                    # Problems 60 %, Help 40 % (F45 01 §6.1)
 BOTTOM_MIN_WIDTH = 120
 PROBLEMS_MIN_HEIGHT = 80
 TEXT_PAD = 4
-SASH_WIDTH = 6
+SASH_WIDTH = 4
 SIDE_SHARE = 0.45                       # the Story map's side editor at first (2026-11-02)
 SIDE_MIN_WIDTH = 240
 MAP_MIN_WIDTH = 200
@@ -220,7 +283,7 @@ FONT_PX = 14                            # editor text, zoomable (03 §4, §7)
 FONT_MIN_PX = 10
 FONT_MAX_PX = 32
 FONT_STEP_PX = 2
-START_VALUES_PX = 12
+START_VALUES_PX = 13                    # 08 §4 codeSmall
 START_VALUES_ROWS = 6
 TAB_SPACES = 4
 COMPLETION_PAGE = 10                    # rows Page Up / Page Down move in the list
@@ -229,6 +292,8 @@ COMPLETION_PAGE = 10                    # rows Page Up / Page Down move in the l
 
 BACKGROUND = THEME["editor.background"]
 SIDE_BACKGROUND = THEME["sideBar.background"]
+PANEL_BACKGROUND = THEME["panel.background"]   # Problems and Help
+INPUT_BORDER = THEME["input.border"]
 INPUT_BACKGROUND = THEME["input.background"]
 GUTTER_BACKGROUND = THEME["gutter.background"]
 GUTTER_FOREGROUND = THEME["gutter.foreground"]
@@ -252,11 +317,14 @@ TAG_LINE = "current_line"               # the cursor's line, under jump and sel
 TAG_JUMP = "jump"
 TAG_HINT = "hint"
 TAG_LINK = "link"                       # the location before the first ":" of a link
-TAG_GAP = "gap"                         # 6 px above every paragraph but the first
+TAG_GAP = "gap"                         # 8 px above every paragraph but the first
 TAG_CHOSEN = "chosen"                   # the selected paragraph while the panel has focus
 TAG_CLICK = "clickable"                 # every clickable paragraph: the pointer is a hand
 PARAGRAPH_PREFIX = "para"               # one tag per paragraph: para0, para1, …
-PARAGRAPH_GAP = 6
+TAG_ICON_ROW = "iconrow"                # a row with a severity icon: wrapped lines indent
+SEVERITY_ICON_PX = 14                   # Problems' severity icons (08 §7)
+SEVERITY_ICON_GAP = 8                   # around an icon, half either side
+PARAGRAPH_GAP = 8
 
 HELP_LINE_CHARS = 4_096                 # Help and completion read this much of a line
 OUTSIDE_CHECK_INTERVAL = 1.0            # seconds between disk checks on <FocusIn> (§7.2)
@@ -287,6 +355,32 @@ def window_title(game_name: str, dirty: bool) -> str:
     """``<folder name> — vn-engine editor``, with ``* `` in front while any file is unsaved
     (UI-F44-02). Never a path."""
     return (DIRTY_MARK if dirty else "") + game_name + TITLE_SUFFIX
+
+
+class _UndoFile:
+    """An open file as ``storymap.map_undo`` sees it: its change counter and its text's
+    undo and redo (each counted by the change hook as it happens)."""
+
+    __slots__ = ("record",)
+
+    def __init__(self, record: "OpenFile") -> None:
+        self.record = record
+
+    @property
+    def changes(self) -> int:
+        return self.record.changes
+
+    def edit_undo(self) -> None:
+        try:
+            self.record.widget.edit_undo()
+        except tk.TclError:
+            pass
+
+    def edit_redo(self) -> None:
+        try:
+            self.record.widget.edit_redo()
+        except tk.TclError:
+            pass
 
 
 def close_message(refs: Sequence[str]) -> str:
@@ -397,6 +491,7 @@ class OpenFile:
     error: ScriptError | None = None
     stamp: tuple[int, int] | None = None    # disk stamp of a read-only file
     marks: dict[str, CheckItem] = field(default_factory=dict)   # Tk mark -> its check item
+    changes: int = 0                        # F46: content changes, counted as they happen
 
     @property
     def editable(self) -> bool:
@@ -442,6 +537,18 @@ class EditorWindow:
         self._side_source: tk.Text | None = None
         self._side_open = False
         self._side_width: int | None = None     # the author's width, kept for the session
+        self.side_tab = "script"            # F46 C1: the tab a box opens on, per window (G12)
+        self.story: StoryEditor | None = None
+        self._context_at: tuple[int, int] | None = None   # New scene here's map point
+        self.last_context: tk.Menu | None = None
+        # F46 step 4 (04 §6.8–6.10): the map history, and the layout file (read at the first
+        # draw; written LAYOUT_SAVE_MS after the last place change and on close; a link
+        # found reading or writing stops writes for this window).
+        self.map_history = MapHistory()
+        self._layout_read = False
+        self._layout_writable = True
+        self._layout_dirty = False
+        self._layout_save_id: str | None = None
         self._suppress = False              # loading text: not an author edit
         self._refresh_id: str | None = None
         self._label_line: int | None = None
@@ -482,6 +589,13 @@ class EditorWindow:
         self._check_links: tuple = ()
         self._check_stale = False
         self._map_dirty = True
+        # F46 (04 §6.1): each open script's scene index, the label digests each one counts
+        # as checked, and the digests sent with the newest check request (its serial).
+        self.scene_indexes: dict[str, scenes.SceneIndex] = {}
+        self._checked: dict[str, dict[scenes.Key, bytes]] = {}
+        self._check_snapshot: tuple[int, dict[str, dict[scenes.Key, bytes]]] | None = None
+        self._follow_id: str | None = None
+        self._map_shown: tuple | None = None    # the data the map last drew
         self._help_key: tuple | None = None
         self._help_sash_placed = False
         self._line_shown: tuple[str, int] | None = None     # (widget, line) highlighted
@@ -505,83 +619,131 @@ class EditorWindow:
         self.text.focus_set()
         self._poll_id = root.after(POLL_INTERVAL_MS, self._poll_preview)
         self.request_check()
+        self._icons = set_app_icon(root)
         dark_title_bar(root)
 
     # --- Building ---------------------------------------------------------------------------
 
     def _make_fonts(self) -> None:
-        family = tkfont.nametofont("TkFixedFont", root=self.root).actual("family")
+        """08 §4: the type scale in px times ``scale``; the editor's code font zooms."""
+        self.scale = scale_of(self.root)
+        self.fonts = make_fonts(self.root, self.scale)
         self.font_px = FONT_PX
-        self.font = tkfont.Font(root=self.root, family=family, size=-FONT_PX)
-        self.start_values_font = tkfont.Font(root=self.root, family=family,
-                                             size=-START_VALUES_PX)
+        self.font = self.fonts["code"]
+        self.font.configure(size=-self._px(FONT_PX))
+        self.start_values_font = self.fonts["codeSmall"]
+        self.start_values_font.configure(size=-self._px(START_VALUES_PX))
         self.ui_font = tkfont.nametofont("TkDefaultFont", root=self.root)
+
+    def _px(self, value: float) -> int:
+        """``value`` px at 100 % in screen pixels."""
+        return round(value * self.scale)
 
     def _build_layout(self) -> None:
         root = self.root
-        width, height = WINDOW_SIZE
-        x = max(0, (root.winfo_screenwidth() - width) // 2)
-        y = max(0, (root.winfo_screenheight() - height) // 2)
+        px = self._px
+        screen_w, screen_h = root.winfo_screenwidth(), root.winfo_screenheight()
+        width = min(px(WINDOW_SIZE[0]), screen_w)
+        height = min(px(WINDOW_SIZE[1]), max(px(WINDOW_MIN_SIZE[1]), screen_h - px(48)))
+        x = max(0, (screen_w - width) // 2)
+        y = max(0, (screen_h - height) // 2)
         root.geometry(f"{width}x{height}+{x}+{y}")
-        root.minsize(*WINDOW_MIN_SIZE)
+        root.minsize(*(px(size) for size in WINDOW_MIN_SIZE))
         root.configure(background=BACKGROUND)
-        self._theme_fonts = style_ttk(root)
-        self.scale = scale_of(root)
+        self._theme_fonts = style_ttk(root, self.fonts, self.scale)
 
         # The status bar is packed first, so it keeps its line at the minimum size.
         self._build_status_bar()
-        sash = THEME["sash"]
-        self.hpane = tk.PanedWindow(root, orient="horizontal", sashwidth=SASH_WIDTH,
+        sash, sash_width = THEME["sash"], px(SASH_WIDTH)
+        self.hpane = tk.PanedWindow(root, orient="horizontal", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
         self.hpane.pack(fill="both", expand=True)
-        self.left = ttk.Frame(self.hpane, padding=COLUMN_PAD, width=LEFT_WIDTH,
-                              style="Side.TFrame")
-        self.hpane.add(self.left, width=LEFT_WIDTH, minsize=LEFT_MIN_WIDTH, stretch="never")
-        self.vpane = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=SASH_WIDTH,
+        self.left = ttk.Frame(self.hpane, width=px(LEFT_WIDTH), style="Side.TFrame")
+        self.hpane.add(self.left, width=px(LEFT_WIDTH), minsize=px(LEFT_MIN_WIDTH),
+                       stretch="never")
+        self.vpane = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
-        self.hpane.add(self.vpane, minsize=LEFT_MIN_WIDTH, stretch="always")
+        self.hpane.add(self.vpane, minsize=px(LEFT_MIN_WIDTH), stretch="always")
         self.hpane.bind("<Configure>", self._limit_left_column, add="+")
         self.hpane.bind("<ButtonRelease-1>", self._limit_left_column, add="+")
         self.hpane.bind("<B1-Motion>", self._limit_left_column, add="+")
 
         self._build_left_column()
         # F45 01 §6.1: the right area is a notebook with fixed tabs (no Ctrl+Tab traversal:
-        # Ctrl+1/2/3 switch them).
-        self.notebook = ttk.Notebook(self.vpane, takefocus=0)
+        # Ctrl+1/2/3 switch them). 08 §7: its own tabs are hidden under the tab strip.
+        self.tab_area = ttk.Frame(self.vpane)
+        self.notebook = ttk.Notebook(self.tab_area, takefocus=0, style="Tabless.TNotebook")
         self.editor_frame = ttk.Frame(self.notebook)
         # The Story map tab: the map, and beside it (after a click) the side editor.
         self.map_frame = ttk.Frame(self.notebook)
         self.map_split = tk.PanedWindow(self.map_frame, orient="horizontal",
-                                        sashwidth=SASH_WIDTH, borderwidth=0,
+                                        sashwidth=sash_width, borderwidth=0,
                                         sashrelief="flat", background=sash)
         self.map_split.pack(fill="both", expand=True)
-        map_box = ttk.Frame(self.map_split, padding=8)
-        self.map_split.add(map_box, minsize=MAP_MIN_WIDTH, stretch="always")
+        map_box = ttk.Frame(self.map_split, padding=px(8))
+        self.map_split.add(map_box, minsize=px(MAP_MIN_WIDTH), stretch="always")
         self.story_map = StoryMapView(map_box, background=BACKGROUND,
                                       family=self.ui_font.actual("family"), mod=self.mod,
                                       on_open=self.open_label_beside,
-                                      on_open_tab=self.open_label_box)
+                                      on_open_tab=self.open_label_box, fonts=self.fonts,
+                                      scale=self.scale, on_check=self.check_now,
+                                      on_step=self._map_moved)
         self.story_map.frame.pack(fill="both", expand=True)
         self.map_canvas = self.story_map.canvas
-        self.asset_pane = AssetPane(self.notebook)
+        # F46 04 §6.9: Ctrl+Z / Ctrl+Y on the map are the map history's (only there).
+        for letter in "zZ":
+            self.map_canvas.bind(f"<{self.mod}-{letter}>",
+                                 lambda _e: self._break(self.map_undo, False))
+        for letter in "yY":
+            self.map_canvas.bind(f"<{self.mod}-{letter}>",
+                                 lambda _e: self._break(self.map_undo, True))
+        # F46 step 5 (04 §6.4, §6.6, §6.11): the map's arrows, choices and new scenes.
+        view = self.story_map
+        view.on_new_scene = lambda place: self.new_scene(place)
+        view.on_arrow = lambda src, dst: self.add_arrow(
+            view.layout.boxes[src].name, view.layout.boxes[dst].name)
+        view.on_edge = lambda _index: self._edge_chosen()
+        view.on_choice_text = lambda index, text: self.choice_text(index, text)
+        view.on_delete = lambda: self.map_delete()
+        view.on_edit_choice = lambda: self.edit_choice_text()
+        view.on_rename = lambda: self.rename_scene()
+        view.on_context = lambda kind, what, x, y: self.map_context(kind, what, x, y)
+        canvas = self.map_canvas
+        for key in (f"<{self.mod}-j>", f"<{self.mod}-J>"):
+            canvas.bind(key, lambda _e: self._break(self.go_to_scene))
+        # 07 I-7: Ctrl+Shift+N here, before the bind_all Ctrl+N (New script file) sees it.
+        for key in (f"<{self.mod}-Shift-N>", f"<{self.mod}-Shift-n>", f"<{self.mod}-N>"):
+            canvas.bind(key, lambda _e: self._break(self.new_scene))
+        self.asset_pane = AssetPane(self.notebook, scale=self.scale, on_add=self.add_files,
+                                    add_label=ADD_BUTTON)
         self.notebook.add(self.editor_frame, text=TAB_EDITOR)
         self.notebook.add(self.map_frame, text=TAB_MAP)
         self.notebook.add(self.asset_pane.frame, text=TAB_ASSET)
-        self.outline_view = OutlineView(self.notebook, on_open=self.jump_to)
+        self.outline_view = OutlineView(self.notebook, on_open=self.jump_to, scale=self.scale,
+                                        on_check=self.check_now)
         self.notebook.add(self.outline_view.frame, text=TAB_OUTLINE)
-        self.vpane.add(self.notebook, minsize=EDITOR_MIN_HEIGHT, stretch="always")
+        self.tab_strip = TabStrip(self.tab_area, self.notebook, (
+            (TAB_EDITOR, "editor"), (TAB_MAP, "storymap"), (TAB_ASSET, "image"),
+            (TAB_OUTLINE, "outline")), font=self.fonts["body"], scale=self.scale)
+        self.tab_strip.frame.pack(side="top", fill="x")
+        self.notebook.pack(side="top", fill="both", expand=True)
+        self.vpane.add(self.tab_area, minsize=px(EDITOR_MIN_HEIGHT), stretch="always")
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed, add="+")
-        # Below the notebook: Problems (60 %) and Help (40 %) with a draggable divider.
-        self.bottom = tk.PanedWindow(self.vpane, orient="horizontal", sashwidth=SASH_WIDTH,
-                                     borderwidth=0, sashrelief="flat", background=sash)
-        self.vpane.add(self.bottom, height=PROBLEMS_HEIGHT, minsize=PROBLEMS_MIN_HEIGHT,
-                       stretch="never")
-        self.problems_frame = ttk.Frame(self.bottom)
-        self.bottom.add(self.problems_frame, minsize=BOTTOM_MIN_WIDTH, stretch="always")
-        self.help_pane = HelpPane(self.bottom, font=self.ui_font, code_font=self.font,
-                                  background=BACKGROUND, pad=TEXT_PAD)
+        # Below the notebook: Problems (60 %) and Help (40 %) with a draggable divider (both
+        # on the chrome tone, so their sash is the divider color).
+        self.bottom = tk.PanedWindow(self.vpane, orient="horizontal", sashwidth=sash_width,
+                                     borderwidth=0, sashrelief="flat",
+                                     background=THEME["divider"])
+        self.vpane.add(self.bottom, height=px(PROBLEMS_HEIGHT),
+                       minsize=px(PROBLEMS_MIN_HEIGHT), stretch="never")
+        self.problems_frame = ttk.Frame(self.bottom, style="Side.TFrame")
+        self.bottom.add(self.problems_frame, minsize=px(BOTTOM_MIN_WIDTH), stretch="always")
+        self.help_pane = HelpPane(self.bottom, font=self.ui_font,
+                                  code_font=self.start_values_font,
+                                  title_font=self.fonts["bodyStrong"],
+                                  background=PANEL_BACKGROUND, scale=self.scale)
         self.help_text = self.help_pane.text
-        self.bottom.add(self.help_pane.frame, minsize=BOTTOM_MIN_WIDTH, stretch="always")
+        self.bottom.add(self.help_pane.frame, minsize=px(BOTTOM_MIN_WIDTH), stretch="always")
         self.bottom.bind("<Configure>", self._place_help_sash, add="+")
         self.help_pane.show(None)
         self.popup = CompletionPopup(self.root, font=self.font)
@@ -591,43 +753,44 @@ class EditorWindow:
         self._build_problems_panel()
 
     def _build_left_column(self) -> None:
-        left = self.left
+        """The chrome-toned left column (08 §7): PROJECT's header with "+ Add files…" as a
+        ghost button, the tree, START VALUES, the Preview button and where it starts."""
+        left, px = self.left, self._px
+        inset = px(PANEL_INSET)
         left.columnconfigure(0, weight=1)
         left.rowconfigure(1, weight=1)
         left.grid_propagate(False)
-        head = ttk.Frame(left, style="Side.TFrame")
+        head = panel_header(left, PROJECT_HEADING, self.scale)
         head.grid(row=0, column=0, sticky="ew")
-        head.columnconfigure(0, weight=1)
-        ttk.Label(head, text=PROJECT_HEADING.upper(), style="SideTitle.TLabel").grid(
-            row=0, column=0, sticky="w")
-        self.add_button = ttk.Button(head, text=ADD_BUTTON, command=self.add_files,
-                                     takefocus=0, style="Secondary.TButton")
-        self.add_button.grid(row=0, column=1, sticky="e")
+        self.add_button = ttk.Button(head, text=f"+ {ADD_BUTTON}", command=self.add_files,
+                                     takefocus=0, style="Chrome.Ghost.TButton")
+        self.add_button.pack(side="right", padx=(0, px(4)))
         self.project_view = ProjectView(left, font=self.ui_font, background=BACKGROUND,
-                                        on_select=self._on_tree_select)
-        self.project_view.frame.grid(row=1, column=0, sticky="nsew", pady=(2, 0))
+                                        on_select=self._on_tree_select, scale=self.scale)
+        self.project_view.frame.grid(row=1, column=0, sticky="nsew")
         self.tree = self.project_view.tree
         for key in ("<Return>", "<KP_Enter>"):
             self.tree.bind(key, self._focus_editor)
         self.tree.bind("<F2>", lambda _e: self._break(self.rename_selected))
         self.tree.bind("<Delete>", lambda _e: self._break(self.delete_selected))
 
-        ttk.Label(left, text=START_VALUES_HEADING.upper(), style="SideTitle.TLabel").grid(
-            row=2, column=0, sticky="w", pady=(COLUMN_PAD, 0))
+        panel_header(left, START_VALUES_HEADING, self.scale).grid(
+            row=2, column=0, sticky="ew", pady=(px(COLUMN_PAD), 0))
         self.start_values_hint = ttk.Label(left, text=START_VALUES_HINT,
-                                           foreground=MESSAGE_FOREGROUND, style="Side.TLabel",
-                                           wraplength=LEFT_WIDTH - 2 * COLUMN_PAD)
-        self.start_values_hint.grid(row=3, column=0, sticky="w")
+                                           style="Side.Hint.TLabel",
+                                           wraplength=px(LEFT_WIDTH) - 2 * inset)
+        self.start_values_hint.grid(row=3, column=0, sticky="w", padx=inset)
         box = ttk.Frame(left, style="Side.TFrame")
-        box.grid(row=4, column=0, sticky="ew", pady=(2, 0))
+        box.grid(row=4, column=0, sticky="ew", padx=inset, pady=(px(4), 0))
         box.columnconfigure(0, weight=1)
+        # An input: the input fill in a 1 px border that turns the focus color (08 §7).
         self.start_values = tk.Text(
             box, height=START_VALUES_ROWS, width=1, wrap="none", undo=True, maxundo=-1,
             font=self.start_values_font, background=INPUT_BACKGROUND, foreground=PLAIN_COLOR,
-            insertbackground=CURSOR_COLOR, insertwidth=CURSOR_WIDTH,
+            insertbackground=CURSOR_COLOR, insertwidth=px(CURSOR_WIDTH),
             selectbackground=SELECTION_BACKGROUND, inactiveselectbackground=INACTIVE_SELECTION,
-            padx=TEXT_PAD, pady=TEXT_PAD, highlightthickness=1,
-            highlightbackground=INPUT_BACKGROUND, highlightcolor=FOCUS_BORDER, borderwidth=0,
+            padx=px(8), pady=px(TEXT_PAD), highlightthickness=1,
+            highlightbackground=INPUT_BORDER, highlightcolor=FOCUS_BORDER, borderwidth=0,
             relief="flat")
         self.start_values.tag_configure("sel", foreground=PLAIN_COLOR)
         self.start_values.grid(row=0, column=0, sticky="ew")
@@ -636,16 +799,17 @@ class EditorWindow:
         self.start_values.configure(yscrollcommand=_autohide(values_bar, row=0, column=1,
                                                              sticky="ns"))
 
-        self.preview_button = ttk.Button(left, text=PREVIEW_BUTTON, command=self.preview)
+        self.preview_button = ttk.Button(left, text=PREVIEW_BUTTON, command=self.preview,
+                                         style="Large.TButton")
         for key in ("<Return>", "<KP_Enter>"):          # Space works by itself
             self.preview_button.bind(key, lambda _e: self._break(self.preview))
-        self.preview_button.grid(row=5, column=0, sticky="ew", pady=(COLUMN_PAD, 0))
-        wrap = LEFT_WIDTH - 2 * COLUMN_PAD
-        ttk.Label(left, text=STARTS_AT, style="Side.TLabel").grid(row=6, column=0, sticky="w",
-                                                                  pady=(COLUMN_PAD, 0))
+        self.preview_button.grid(row=5, column=0, sticky="ew", padx=inset, pady=(inset, 0))
+        wrap = px(LEFT_WIDTH) - 2 * inset
+        ttk.Label(left, text=STARTS_AT, style="Side.Hint.TLabel").grid(
+            row=6, column=0, sticky="w", padx=inset, pady=(px(COLUMN_PAD), 0))
         self.start_label = ttk.Label(left, text=BEGINNING, wraplength=wrap, justify="left",
                                      style="Side.TLabel")
-        self.start_label.grid(row=7, column=0, sticky="w")
+        self.start_label.grid(row=7, column=0, sticky="w", padx=inset, pady=(0, inset))
         self._wrapped_labels = (self.start_values_hint, self.start_label)
         left.bind("<Configure>", self._rewrap_left, add="+")
 
@@ -654,20 +818,22 @@ class EditorWindow:
         and the preview state on the left; the cursor's line and column, the indent, the
         encoding and the line ending on the right. The check items focus Problems when
         clicked; the folder name focuses the project panel."""
-        linespace = self.ui_font.metrics("linespace")
-        height = max(round(STATUS_BAR_PX * self.scale), linespace + 4)
-        bar = self.status_bar = StatusBar(self.root, font=self.ui_font, height=height,
+        font = self.fonts["small"]
+        height = max(self._px(STATUS_BAR_PX), font.metrics("linespace") + 4)
+        bar = self.status_bar = StatusBar(self.root, font=font, height=height,
                                           scale=self.scale)
         self.game_item = bar.add(text=self.game_name, shrink=2,
                                  on_click=lambda: self.tree.focus_set())
         self.check_counts = bar.add(on_click=self.focus_problems)
         self.check_status = bar.add(shrink=3, on_click=self.focus_problems)
         self.status_label = bar.add(prefix=PREVIEW_GLYPH, shrink=1, text=STATUS_NOT_RUNNING)
+        self.story_status = bar.add(shrink=4)  # F46: a selected choice arrow's full text
         self.cursor_item = bar.add(side="right")
         self.indent_item = bar.add(side="right")
         self.encoding_item = bar.add(side="right")
         self.eol_item = bar.add(side="right")
         bar.frame.pack(side="bottom", fill="x")
+        bar.divider.pack(side="bottom", fill="x")
 
     def focus_problems(self) -> None:
         """A click on the status bar's check items: the keyboard focus to Problems."""
@@ -676,66 +842,114 @@ class EditorWindow:
 
     def _build_editor_area(self) -> None:
         frame = self.editor_frame
+        key = "Cmd" if self.mod == "Command" else "Ctrl"
+        self.editor_empty = EmptyState(frame, icon="script", title=EDITOR_EMPTY_TITLE,
+                                       hint=EDITOR_EMPTY_HINT,
+                                       button=f"New script file ({key}+N)",
+                                       command=self.new_script_file, scale=self.scale)
         frame.columnconfigure(1, weight=1)
         frame.rowconfigure(0, weight=1)
         self.gutter = tk.Canvas(frame, width=self._gutter_width(1), background=GUTTER_BACKGROUND,
                                 highlightthickness=0, borderwidth=0, takefocus=0)
         self.gutter.grid(row=0, column=0, sticky="ns")
         self.vbar = ttk.Scrollbar(frame, orient="vertical")
-        self.vbar.grid(row=0, column=2, sticky="ns")
+        self._vbar_set = _autohide(self.vbar, row=0, column=2, sticky="ns")
         self.hbar = ttk.Scrollbar(frame, orient="horizontal")
         self._hbar_set = _autohide(self.hbar, row=1, column=1, sticky="ew")
 
     def _build_side_pane(self) -> None:
-        """The Story map's side editor: a header (the file, Open in Editor tab, ✕) over a
-        gutter and the peer text. Added to ``map_split`` only while open."""
+        """The Story map's side pane (F46 C1): a header (the tabs Events | Script, the file,
+        Open in Editor tab, ✕) over a tabless notebook holding the Events page and the
+        Script page (a gutter and the peer text). Added to ``map_split`` only while open."""
+        px = self._px
         side = self.side_frame = ttk.Frame(self.map_split)
-        side.columnconfigure(1, weight=1)
+        side.columnconfigure(0, weight=1)
         side.rowconfigure(1, weight=1)
-        head = ttk.Frame(side, style="Header.TFrame")
-        head.grid(row=0, column=0, columnspan=3, sticky="ew")
-        self.side_name = ttk.Label(head, text="", style="Header.TLabel")
-        self.side_name.pack(side="left", padx=TEXT_PAD * 2)
+        self.side_book = ttk.Notebook(side, takefocus=0, style="Tabless.TNotebook")
+        self.events_view = EventsView(self.side_book, fonts=self.fonts, scale=self.scale)
+        script = self.script_page = ttk.Frame(self.side_book)
+        script.columnconfigure(1, weight=1)
+        script.rowconfigure(0, weight=1)
+        self.side_book.add(self.events_view.frame, text=SIDE_TAB_EVENTS)
+        self.side_book.add(script, text=SIDE_TAB_SCRIPT)
+        self.side_book.select(SIDE_PAGES.index(self.side_tab))
+        self.side_tabs = TabStrip(side, self.side_book, (
+            (SIDE_TAB_EVENTS, "events"), (SIDE_TAB_SCRIPT, "script")),
+            font=self.fonts["body"], scale=self.scale)
+        head = self.side_tabs.frame
+        head.grid(row=0, column=0, sticky="ew")
+        self.side_book.grid(row=1, column=0, sticky="nsew")
+        self.side_book.bind("<<NotebookTabChanged>>", self._on_side_tab_changed, add="+")
         self.side_close_button = ttk.Button(head, text=SIDE_CLOSE, width=3, takefocus=0,
-                                            style="Secondary.TButton",
+                                            style="Chrome.Ghost.TButton",
                                             command=self.close_side)
-        self.side_close_button.pack(side="right", padx=(TEXT_PAD, TEXT_PAD), pady=TEXT_PAD)
+        # ✕ before the tabs; then Open in Editor tab and the file, dropped when narrow.
+        self.side_close_button.pack(side="right", padx=px(4), pady=px(4),
+                                    before=self.side_tabs.cells[0][0])
         self.side_open_button = ttk.Button(head, text=SIDE_OPEN_TAB, takefocus=0,
-                                           style="Secondary.TButton",
+                                           style="Chrome.Ghost.TButton",
                                            command=self.side_to_editor)
-        self.side_open_button.pack(side="right", pady=TEXT_PAD)
-        self.side_gutter = tk.Canvas(side, width=self._gutter_width(1),
+        self.side_open_button.pack(side="right", pady=px(4))
+        self.side_name = ttk.Label(head, text="", style="Side.TLabel",
+                                   foreground=THEME["muted"])
+        self.side_name.pack(side="left", padx=(px(PANEL_INSET), 0))
+        head.bind("<Configure>", self._fit_side_head, add="+")
+        self.story = StoryEditor(self, self.events_view)
+        tree = self.events_view.tree
+        tree.bind("<Button-3>", self.events_context)
+        if self.mod == "Command":
+            tree.bind("<Button-2>", self.events_context)
+        for key in ("<Shift-F10>", "<App>", "<Menu>"):
+            try:
+                tree.bind(key, self.events_context)
+            except tk.TclError:
+                pass
+        for key in (f"<{self.mod}-e>", f"<{self.mod}-E>"):
+            tree.bind(key, lambda _e: self._break(self.toggle_side_tab, True))
+            self.map_canvas.bind(key, lambda _e: self._break(self.toggle_side_tab, False))
+        for key in (f"<{self.mod}-Return>", f"<{self.mod}-KP_Enter>"):
+            tree.bind(key, lambda _e: self._break(self.side_to_editor))
+        self.side_gutter = tk.Canvas(script, width=self._gutter_width(1),
                                      background=GUTTER_BACKGROUND, highlightthickness=0,
                                      borderwidth=0, takefocus=0)
-        self.side_gutter.grid(row=1, column=0, sticky="ns")
-        self.side_vbar = ttk.Scrollbar(side, orient="vertical")
-        self.side_vbar.grid(row=1, column=2, sticky="ns")
-        self.side_hbar = ttk.Scrollbar(side, orient="horizontal")
-        self._side_hbar_set = _autohide(self.side_hbar, row=2, column=1, sticky="ew")
+        self.side_gutter.grid(row=0, column=0, sticky="ns")
+        self.side_vbar = ttk.Scrollbar(script, orient="vertical")
+        self._side_vbar_set = _autohide(self.side_vbar, row=0, column=2, sticky="ns")
+        self.side_hbar = ttk.Scrollbar(script, orient="horizontal")
+        self._side_hbar_set = _autohide(self.side_hbar, row=1, column=1, sticky="ew")
 
     def _build_problems_panel(self) -> None:
         frame = self.problems_frame
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(1, weight=1)
-        panel_header(frame, PROBLEMS_HEADING, TEXT_PAD).grid(row=0, column=0, columnspan=2,
-                                                             sticky="ew")
+        panel_header(frame, PROBLEMS_HEADING, self.scale).grid(row=0, column=0, columnspan=2,
+                                                               sticky="ew")
         self.problems = tk.Text(
-            frame, wrap="word", width=1, height=1, font=self.ui_font, background=BACKGROUND,
-            foreground=PLAIN_COLOR, selectbackground=SELECTION_BACKGROUND,
-            inactiveselectbackground=INACTIVE_SELECTION, padx=2 * TEXT_PAD, pady=TEXT_PAD,
-            highlightthickness=1, highlightbackground=BACKGROUND, highlightcolor=FOCUS_BORDER,
-            borderwidth=0, takefocus=1, cursor="arrow")
+            frame, wrap="word", width=1, height=1, font=self.ui_font,
+            background=PANEL_BACKGROUND, foreground=PLAIN_COLOR,
+            selectbackground=SELECTION_BACKGROUND, inactiveselectbackground=INACTIVE_SELECTION,
+            padx=self._px(PANEL_INSET) - 1, pady=self._px(TEXT_PAD), highlightthickness=1,
+            highlightbackground=PANEL_BACKGROUND, highlightcolor=FOCUS_BORDER, borderwidth=0,
+            takefocus=1, cursor="arrow")
         panel = self.problems
         panel.tag_configure(TAG_HINT, foreground=MESSAGE_FOREGROUND)
+        # Each row starts with its severity's icon; its wrapped lines align after it.
+        size = self._px(SEVERITY_ICON_PX)
+        self._severity_icons = {
+            name: icons.photo(self.root, name, size, THEME[key])
+            for name, key in (("error", "marker.error"), ("warning", "marker.warning"),
+                              ("info", "info"), ("success", "success"))}
+        panel.tag_configure(TAG_ICON_ROW, lmargin2=size + self._px(SEVERITY_ICON_GAP))
         panel.tag_configure(TAG_LINK, foreground=LINK_FOREGROUND, underline=True)
-        panel.tag_configure(TAG_GAP, spacing1=PARAGRAPH_GAP)
+        panel.tag_configure(TAG_GAP, spacing1=self._px(PARAGRAPH_GAP))
         panel.tag_configure(TAG_CHOSEN, background=CHOSEN_BACKGROUND)
         panel.tag_configure("sel", foreground=PLAIN_COLOR)
         panel.tag_bind(TAG_CLICK, "<Enter>", lambda _e: panel.configure(cursor="hand2"))
         panel.tag_bind(TAG_CLICK, "<Leave>", lambda _e: panel.configure(cursor="arrow"))
         panel.tag_raise("sel")
         panel.grid(row=1, column=0, sticky="nsew")
-        bar = ttk.Scrollbar(frame, orient="vertical", command=panel.yview)
+        bar = ttk.Scrollbar(frame, orient="vertical", command=panel.yview,
+                            style="Side.Vertical.TScrollbar")
         panel.configure(yscrollcommand=autohide(bar, row=1, column=1, sticky="ns"))
         self.show_hint(PROBLEMS_HINT)
         # A click focuses the panel even though its text is read-only. A click on a link
@@ -753,7 +967,9 @@ class EditorWindow:
     def _build_menus(self) -> None:
         """F45 01 §6.1's menus: File, Edit, Insert (the doc registry's groups), View, Run,
         Help. File's operations are disabled while the game folder can't be found
-        (AC-F45-26)."""
+        (AC-F45-26). ``menubar`` holds them as cascades; macOS shows it as the native bar,
+        elsewhere ``views.MenuBar`` posts the same menus from a dark bar in the window
+        (``08`` D5)."""
         key = "Cmd" if self.mod == "Command" else "Ctrl"
         bar = tk.Menu(self.root, tearoff=0)
         self.file_menu = menu = tk.Menu(bar, tearoff=0)
@@ -797,6 +1013,18 @@ class EditorWindow:
             self.insert_submenus[group] = sub
         bar.add_cascade(label="Insert", menu=self.insert_menu)
 
+        # F46 (design §6.1, 04 §6.11): one action table builds the Story menu and the
+        # map's and Events list's context menus; entries are enabled for their target.
+        self.story_menu = tk.Menu(bar, tearoff=0, postcommand=self._update_story_menu)
+        for entry in self.story_actions():
+            if entry is None:
+                self.story_menu.add_separator()
+                continue
+            label, accel, run, _when, _kinds = entry
+            self.story_menu.add_command(label=label, accelerator=accel.replace("Ctrl", key),
+                                        command=run)
+        bar.add_cascade(label="Story", menu=self.story_menu)
+
         view = tk.Menu(bar, tearoff=0)
         for index, label in enumerate((TAB_EDITOR, TAB_MAP, TAB_ASSET, TAB_OUTLINE)):
             view.add_command(label=label, accelerator=f"{key}+{index + 1}",
@@ -826,7 +1054,18 @@ class EditorWindow:
         self.edit_menu, self.view_menu, self.run_menu = edit, view, run
         self.help_menu = help_menu
         self.menubar = bar
-        self.root.configure(menu=bar)
+        if self.mod == "Command":
+            self.root.configure(menu=bar)
+            self.menu_bar = None
+            return
+        cascades = [(str(bar.entrycget(i, "label")), self.root.nametowidget(
+            bar.entrycget(i, "menu"))) for i in range(bar.index("end") + 1)]
+        font = self.ui_font
+        self.menu_bar = MenuBar(self.root, cascades, font=font,
+                                height=max(self._px(MENU_BAR_PX),
+                                           font.metrics("linespace") + self._px(8)),
+                                scale=self.scale)
+        self.menu_bar.frame.pack(side="top", fill="x", before=self.hpane)
 
     def _set_file_ops(self, enabled: bool) -> None:
         state = "normal" if enabled else "disabled"
@@ -879,12 +1118,12 @@ class EditorWindow:
         if total <= 1:
             return
         x, y = self.hpane.sash_coord(0)
-        limit = max(LEFT_MIN_WIDTH, total // 2)
+        limit = max(self._px(LEFT_MIN_WIDTH), total // 2)
         if x > limit:
             self.hpane.sash_place(0, limit, y)
 
     def _rewrap_left(self, event: tk.Event) -> None:
-        wrap = max(40, event.width - 2 * COLUMN_PAD)
+        wrap = max(40, event.width - 2 * self._px(PANEL_INSET))
         for label in self._wrapped_labels:
             label.configure(wraplength=wrap)
 
@@ -893,9 +1132,10 @@ class EditorWindow:
     def _text_options(self, *, editable: bool) -> dict[str, object]:
         return dict(
             wrap="none", undo=editable, maxundo=-1, autoseparators=True,
-            width=1, height=1, font=self.font, padx=TEXT_PAD, pady=TEXT_PAD,
-            background=BACKGROUND, foreground=PLAIN_COLOR, insertbackground=CURSOR_COLOR,
-            insertwidth=CURSOR_WIDTH, selectbackground=SELECTION_BACKGROUND,
+            width=1, height=1, font=self.font, padx=self._px(TEXT_PAD),
+            pady=self._px(TEXT_PAD), background=BACKGROUND, foreground=PLAIN_COLOR,
+            insertbackground=CURSOR_COLOR, insertwidth=self._px(CURSOR_WIDTH),
+            selectbackground=SELECTION_BACKGROUND,
             inactiveselectbackground=INACTIVE_SELECTION, highlightthickness=1,
             highlightbackground=BACKGROUND, highlightcolor=FOCUS_BORDER, borderwidth=0,
             tabs=(self._tab_width(),))
@@ -946,6 +1186,7 @@ class EditorWindow:
             result.text = ""
             widget.mark_set("insert", "1.0")
             self._place_marks(record)
+            self._baseline(record)
             return record
         widget = self._make_text(editable=False)
         widget.configure(wrap="word", foreground=MESSAGE_FOREGROUND)
@@ -991,9 +1232,14 @@ class EditorWindow:
                 shown.grid_remove()
             widget.grid(row=0, column=1, sticky="nsew")
             self._shown = widget
+            # No scripts at all: the empty state over the Editor tab (08 §9).
+            if widget is self._empty_widget and not self.refs:
+                self.editor_empty.show(self.editor_frame)
+            else:
+                self.editor_empty.hide()
             self.vbar.configure(command=widget.yview)
             self.hbar.configure(command=widget.xview)
-            self.vbar.set(*widget.yview())
+            self._vbar_set(*widget.yview())
             self._hbar_set(*widget.xview())
             if had_focus:
                 widget.focus_set()
@@ -1001,6 +1247,8 @@ class EditorWindow:
             if self.current is not None and self.current.editable \
                     and widget is self.current.widget:
                 self._make_side_peer(widget)    # the side editor follows the file
+                if self.side_tab == "events":
+                    self.root.after_idle(self._follow_events)
             else:
                 self.close_side(focus_map=False)
         self._label_line = None
@@ -1109,6 +1357,7 @@ class EditorWindow:
         record = self.files.pop(ref, None)
         if record is None:
             return
+        self._forget_index(ref)
         if self.current is record:
             self.current = None
             others = [r for r in self.refs if r != ref]
@@ -1297,8 +1546,10 @@ class EditorWindow:
                     record.widget.destroy()
                     record = None
             if record is not None:
+                self._forget_index(ref)
                 record.ref = result
                 self.files[result] = record
+                self._baseline(record)
             elif self.current is not None and self.current.ref == ref:
                 self.current = None
         self.refresh_project()
@@ -1362,6 +1613,9 @@ class EditorWindow:
         if self.closed:
             return
         self._cancel_debounce()
+        self._reindex()                     # the digests this request's text has (04 §6.1.4)
+        self._check_snapshot = (self.edit_serial, {
+            ref: dict(index.digests) for ref, index in self.scene_indexes.items()})
         overlay, unsaved = self._overlay()
         self._check_unsaved = unsaved
         self._check_serial = self.edit_serial
@@ -1450,6 +1704,11 @@ class EditorWindow:
         self._check_names = names
         if result.links is not None:
             self._check_links = tuple(result.links)
+            snapshot = self._check_snapshot
+            if snapshot is not None and snapshot[0] == result.serial:
+                for ref, digests in snapshot[1].items():   # the checked digests (§6.1.4)
+                    if ref in self.scene_indexes:
+                        self._checked[ref] = digests
         self._check_stale = result.links is None
         self._index_changed()
         for record in self.files.values():
@@ -1585,6 +1844,8 @@ class EditorWindow:
 
     def _index_changed(self) -> None:
         self._map_dirty = True
+        if not self.closed and self._side_open and self.side_tab == "events":
+            self.root.after_idle(self._follow_events)
         if not self.closed and self.notebook.index("current") == 1:
             self.root.after_idle(self.refresh_story_map)
         if not self.closed and self.notebook.index("current") == TAB_OUTLINE_INDEX:
@@ -1598,13 +1859,202 @@ class EditorWindow:
     # --- Story map (PR-F45-18, 19; design §6.2) ---------------------------------------------
 
     def refresh_story_map(self) -> None:
-        """Draw the map from ``check_names["label"]`` and ``check_links`` if they changed."""
+        """Draw the map from ``check_names["label"]`` and ``check_links`` with the open
+        scripts' scenes swapped in (``map_data``, F46 04 §6.1.6), if they changed."""
         if self.closed or not self._map_dirty:
             return
         self._map_dirty = False
+        labels, links, stale = self.map_data()
+        notes = label_notes(labels, self._check_names)
+        data = (tuple(labels), tuple(links), self._check_stale, stale, notes)
+        if data == self._map_shown:
+            return                              # redraw only on change (04 §6.1.6)
+        self._map_shown = data
+        self._read_layout()
+        self.story_map.set_data(labels, links, self._check_stale, notes, out_of_date=stale)
+
+    # --- Places, the layout file and the map history (F46 04 §6.8–6.10) --------------------
+
+    def _read_layout(self) -> None:
+        """The layout file, once, at the first draw: its places, or the automatic layout
+        and the design's status line."""
+        if self._layout_read:
+            return
+        self._layout_read = True
+        found = layoutfile.read_layout(self.paths.root)
+        if isinstance(found, layoutfile.LayoutProblem):
+            self._layout_writable = not found.link
+            self.story_map.message = found.text
+            found = {}
+        self.story_map.places = dict(found)
+
+    def _map_moved(self, title: str, before: dict, after: dict) -> None:
+        """A move or Tidy up on the map: one map step; the layout file is saved soon."""
+        self.map_history.push(MapStep(title, before, after))
+        self._places_changed()
+
+    def map_plan_done(self, plan: object) -> None:
+        """A plan applied from the map or the Events list (``StoryEditor._after``): one map
+        step holding each touched file's edit token and the plan's places."""
+        places = dict(getattr(plan, "places", {}) or {})
+        view = self.story_map
+        before = {name: view.places.get(name) for name in places}
+        tokens = tuple((fp.ref, self.files[fp.ref].changes)
+                       for fp in getattr(plan, "files", ()) if fp.ref in self.files)
+        self.map_history.push(MapStep(str(getattr(plan, "title", "")), before, places,
+                                      tokens))
+        if places:
+            view.apply_places(places)
+            self._places_changed()
+
+    def map_undo(self, redo: bool = False) -> None:
+        """Map Ctrl+Z (Ctrl+Y with ``redo``), 04 §6.9: a step whose files changed since (or
+        closed) is dropped with the "Undo blocked" line; otherwise each file's text undo
+        runs once and the places go back."""
+        view = self.story_map
+        view.cancel_move()
+        step = self.map_history.redo_step() if redo else self.map_history.undo_step()
+        if step is None:
+            return
+        records = {ref: _UndoFile(self.files[ref]) if ref in self.files
+                   and self.files[ref].editable else None for ref, _token in step.files}
+        done = map_undo(self.map_history, records, redo=redo)
+        if done.places is None:
+            text = undo_blocked_text(done.blocked)
+            view.say(text)
+            if self.story is not None:
+                self.story.say(text)
+            return
+        view.say("")
+        if step.files:
+            self.follow()
+            if self.story is not None:
+                self.story.refresh()
+        if done.places:
+            view.apply_places(done.places)
+            self._places_changed()
+
+    def _places_changed(self) -> None:
+        self._layout_dirty = True
+        self._cancel_layout_save()
+        if not self.closed and self._layout_writable:
+            self._layout_save_id = self.root.after(layoutfile.LAYOUT_SAVE_MS, self.save_layout)
+
+    def _cancel_layout_save(self) -> None:
+        if self._layout_save_id is not None:
+            try:
+                self.root.after_cancel(self._layout_save_id)
+            except tk.TclError:
+                pass
+            self._layout_save_id = None
+
+    def save_layout(self) -> None:
+        """Write the layout file (04 §6.10): only labels that exist, in program order, the
+        shown boxes kept first; nothing is marked unsaved. A failure shows one status line
+        and the next move tries again; a link stops writes for this window."""
+        self._layout_save_id = None
+        if not self._layout_dirty or not self._layout_writable:
+            return
+        view = self.story_map
+        places = view.saved_places()
+        names = [_label_row(row)[0] for row in view.labels]
+        ordered = {name: places[name] for name in dict.fromkeys(names) if name in places}
+        shown = [box.name for box in view.layout.boxes] if view.layout is not None else []
+        problem = layoutfile.write_layout(self.paths.root,
+                                          layoutfile.encode_layout(ordered, shown))
+        if problem is None:
+            self._layout_dirty = False
+            return
+        if problem.link:
+            self._layout_writable = False
+        if not self.closed:
+            view.say(problem.text)
+
+    def map_data(self) -> tuple[list, list, frozenset[str]]:
+        """The map's labels and links: the last good check's, with each open script's
+        parsed scenes swapped in once a check has listed labels; and the scenes that read
+        "out of date" (their text doesn't parse now)."""
         labels = self._check_names.get("label", ())
-        self.story_map.set_data(labels, self._check_links, self._check_stale,
-                                label_notes(labels, self._check_names))
+        if not labels or not self.scene_indexes:
+            return list(labels), list(self._check_links), frozenset()
+        entries = [row if isinstance(row, NameEntry) else NameEntry(*_label_row(row))
+                   for row in labels]
+        links = [row if isinstance(row, LabelLink) else LabelLink(*tuple(row)[:7])
+                 for row in self._check_links]
+        out_labels, out_links = scenes.map_data(entries, links, self.scene_indexes)
+        return out_labels, out_links, frozenset(scenes.out_of_date(
+            self.scene_indexes.values()))
+
+    # --- Following the text (F46 04 §6.1) ---------------------------------------------------
+
+    def _is_script(self, record: OpenFile) -> bool:
+        return (record.editable and record.ref.startswith("script/")
+                and record.ref.endswith(".vns"))
+
+    def _positions(self) -> frozenset[str]:
+        return frozenset(_label_row(row)[0] for row in self._check_names.get("position", ()))
+
+    def _baseline(self, record: OpenFile) -> None:
+        """Index a script as loaded: its digests count as checked until a check that saw
+        them lands (07 I-1), so nothing is parsed now."""
+        if not self._is_script(record):
+            return
+        index = scenes.reindex(None, record.ref, record.widget.get("1.0", "end-1c"),
+                               record.changes, checked=None, positions=self._positions())
+        self.scene_indexes[record.ref] = index
+        self._checked[record.ref] = index.checked
+        self._map_dirty = True
+
+    def _forget_index(self, ref: str) -> None:
+        self.scene_indexes.pop(ref, None)
+        self._checked.pop(ref, None)
+        self._map_dirty = True
+
+    def _schedule_follow(self) -> None:
+        """``follow`` ``FOLLOW_MS`` after the last change (separate from the check's
+        debounce)."""
+        self._cancel_follow()
+        if not self.closed:
+            self._follow_id = self.root.after(scenes.FOLLOW_MS, self.follow)
+
+    def _cancel_follow(self) -> None:
+        if self._follow_id is not None:
+            try:
+                self.root.after_cancel(self._follow_id)
+            except tk.TclError:
+                pass
+            self._follow_id = None
+
+    def follow(self) -> None:
+        """Re-read the scripts that changed since their index and redraw what changed."""
+        self._follow_id = None
+        if not self.closed and self._reindex():
+            self._index_changed()
+
+    def _reindex(self) -> bool:
+        """``scenes.reindex`` each open script whose ``changes`` its index hasn't seen;
+        True when any was re-read. The Events tab's scene is parsed even when unchanged
+        (``want``)."""
+        positions = self._positions()
+        changed = False
+        shown = self.story.ref if self.story is not None else None
+        for ref, record in self.files.items():
+            index = self.scene_indexes.get(ref)
+            if index is None:
+                continue
+            want = self.story.want() if self.story is not None and ref == shown \
+                else frozenset()
+            missing = any((name, 0) in index.starts and (name, 0) not in index.reads
+                          for name in want)
+            current = index.changes == record.changes and index.positions == positions
+            if current and not missing:
+                continue
+            self.scene_indexes[ref] = scenes.reindex(
+                index, ref, record.widget.get("1.0", "end-1c"), record.changes,
+                checked=self._checked.get(ref, index.checked), want=want,
+                positions=positions)
+            changed = changed or not current
+        return changed
 
     def open_label_box(self, box: Box) -> None:
         """A click or Enter on a box: its label line in the Editor tab."""
@@ -1630,8 +2080,17 @@ class EditorWindow:
         peer = self.side_text
         assert peer is not None
         self._place_jump(peer, max(1, min(box.line, _line_of(peer.index("end-1c")))))
-        if self.story_map.focused is not None:
-            self.story_map.see(self.story_map.focused)    # the map just got narrower
+        if self.side_tab == "events" and self.story is not None:
+            self.story.show(record.ref, box.name)
+        self.show_side_tab(self.side_tab)   # F46 C1: the tab last chosen in this window
+        view = self.story_map
+        shown = view.layout.index_of(box.name) if view.layout is not None else None
+        view.select_box(shown)                          # F46: 2 px accent while it shows
+        if shown is not None and shown != view.focused:
+            view.focus_box(shown)                       # the box opened is the map's own
+        if view.focused is not None:                    # the map just got narrower: the
+            self.map_split.update_idletasks()           # pane mustn't cover the box (F46)
+            view.see(view.focused)
         # Last: the row's quiet <<TreeviewSelect>> must not meet update_idletasks above.
         self._select_current_row()
 
@@ -1640,7 +2099,7 @@ class EditorWindow:
         its own cursor, selection and view."""
         self._drop_side_peer()
         peer = tk.Text.__new__(tk.Text)
-        tk.BaseWidget._setup(peer, self.side_frame, {})
+        tk.BaseWidget._setup(peer, self.script_page, {})
         peer.widgetName = "text"
         source.peer_create(peer._w, **self._text_options(editable=True))
         peer.tag_configure("sel", foreground=PLAIN_COLOR)
@@ -1650,11 +2109,14 @@ class EditorWindow:
         # Esc closes the side editor (an open completion list takes it first).
         peer.bind("<Escape>", lambda _e: None if self.popup.is_open
                   else self._break(self.close_side))
+        # Ctrl+E: the Events page (G8; only here, the Editor tab keeps Tk's end of line).
+        for key in (f"<{self.mod}-e>", f"<{self.mod}-E>"):
+            peer.bind(key, lambda _e: self._break(self.toggle_side_tab, True))
         tags = list(peer.bindtags())
         tags.insert(1, self._editor_bindtag)
         peer.bindtags(tuple(tags))
         self._install_change_hook(peer, owner=source)
-        peer.grid(row=1, column=1, sticky="nsew")
+        peer.grid(row=0, column=1, sticky="nsew")
         self.side_vbar.configure(command=peer.yview)
         self.side_hbar.configure(command=peer.xview)
         self.side_text, self._side_source = peer, source
@@ -1683,11 +2145,13 @@ class EditorWindow:
         split.update_idletasks()
         total = split.winfo_width()
         width = self._side_width or int(total * SIDE_SHARE)
-        split.add(self.side_frame, minsize=SIDE_MIN_WIDTH, stretch="always")
+        split.add(self.side_frame, minsize=self._px(SIDE_MIN_WIDTH), stretch="always")
         self._side_open = True
+        # Esc in the Events list closes the pane (bound only while open, as the peer's).
+        self.events_view.tree.bind("<Escape>", lambda _e: self._break(self.close_side))
         if total > 1:
             split.update_idletasks()
-            split.sash_place(0, max(MAP_MIN_WIDTH, total - width), 0)
+            split.sash_place(0, max(self._px(MAP_MIN_WIDTH), total - width), 0)
 
     def close_side(self, focus_map: bool = True) -> None:
         """✕ or Esc: hide the side editor; the focus goes back to the map."""
@@ -1698,6 +2162,8 @@ class EditorWindow:
             self._side_width = width
         self.map_split.forget(self.side_frame)
         self._side_open = False
+        self.story_map.select_box(None)
+        self.events_view.tree.unbind("<Escape>")
         self._drop_side_peer()
         if focus_map and not self.closed:
             self.map_canvas.focus_set()
@@ -1712,6 +2178,89 @@ class EditorWindow:
         line, column = (int(part) for part in peer.index("insert").split("."))
         self.notebook.select(0)
         self._place_jump(record.widget, line, column)
+
+    # --- The side pane's tabs (F46 C1, 04 §6.11) ---------------------------------------------
+
+    def show_side_tab(self, name: str, focus: bool = True) -> None:
+        """The side pane's Events or Script page, remembered for this window (G12); Events
+        shows the scene at the Script cursor with its row selected. ``focus``: the keyboard
+        focus goes to the page."""
+        self.side_tab = name
+        index = SIDE_PAGES.index(name)
+        if self.side_book.index("current") != index:
+            self.side_book.select(index)
+        if name == "events" and self.story is not None:
+            self.story.follow_cursor()
+        widget = self._side_page_widget()
+        if focus and self._side_open and widget is not None:
+            widget.focus_set()
+            if widget is self.side_text:
+                widget.see("insert")
+
+    def toggle_side_tab(self, from_side: bool) -> None:
+        """Ctrl+E: Events ⇄ Script. From the map the focus stays there; with the pane
+        closed, the focused box opens on the other tab."""
+        other = "events" if self.side_tab == "script" else "script"
+        if not self._side_open or self.side_text is None:
+            focused = self.story_map.focused
+            if from_side or focused is None:
+                return
+            self.side_tab = other
+            self.open_label_beside(self.story_map.layout.boxes[focused])
+            self.map_canvas.focus_set()
+            return
+        self.show_side_tab(other, focus=from_side)
+
+    def _on_side_tab_changed(self, _event: tk.Event | None = None) -> None:
+        """A click on the side pane's tab strip."""
+        try:
+            name = SIDE_PAGES[self.side_book.index("current")]
+        except (tk.TclError, IndexError):
+            return
+        if name != self.side_tab and not self.closed:
+            self.show_side_tab(name)
+
+    def _fit_side_head(self, _event: tk.Event | None = None) -> None:
+        """The side pane's header never clips: Open in Editor tab, then the file name, are
+        hidden while the tabs and ✕ leave no room for them."""
+        head = self.side_tabs.frame
+        width = head.winfo_width()
+        if width <= 1:
+            return
+        need = self.side_close_button.winfo_reqwidth() + self._px(8) + sum(
+            cell.winfo_reqwidth() for cell, *_rest in self.side_tabs.cells)
+        for widget, pad, side in ((self.side_open_button, 0, "right"),
+                                  (self.side_name, self._px(PANEL_INSET), "left")):
+            need += widget.winfo_reqwidth() + pad
+            packed = widget.winfo_manager() == "pack"
+            if need <= width and not packed:
+                widget.pack(side=side, pady=self._px(4) if side == "right" else 0,
+                            padx=(pad, 0))
+            elif need > width and packed:
+                widget.pack_forget()
+
+    def _side_page_widget(self) -> tk.Widget | None:
+        """The shown side page's focus stop: the Events list or the Script peer."""
+        return self.events_view.tree if self.side_tab == "events" else self.side_text
+
+    def story_ask(self, text: str, buttons: Sequence[str], *, escape: int,
+                  default: int) -> int:
+        """A story action's question (``scriptedit.Ask``), in Studio's dialog."""
+        return ask(self.root, text, buttons, escape=escape, default=default)
+
+    def reindex_scenes(self) -> None:
+        """Bring the scene index up to date now (the Events tab asks before drawing)."""
+        if not self.closed and self._reindex():
+            self._index_changed()
+
+    def text_cursor_moved(self) -> None:
+        """The Events tab moved the Script cursor: the gutter and status bar follow."""
+        self._schedule_refresh()
+
+    def _follow_events(self) -> None:
+        if not self.closed and self._side_open and self.side_tab == "events" \
+                and self.story is not None:
+            self.story.follow_cursor()
 
     def _side_active(self) -> tk.Text | None:
         """The side editor's peer while it is on screen, else None."""
@@ -1728,7 +2277,7 @@ class EditorWindow:
             return False
 
     def _on_side_yscroll(self, first: str, last: str) -> None:
-        self.side_vbar.set(first, last)
+        self._side_vbar_set(first, last)
         self._schedule_refresh()
 
     def _update_side_name(self) -> None:
@@ -1779,6 +2328,361 @@ class EditorWindow:
             show_error(self.root, NO_SUCH_LABEL.format(name=name))
             return
         self.jump_to(where[0], where[1])
+
+    # --- The Story menu, context menus and the map's actions (F46 step 5) ---------------------
+
+    def story_actions(self) -> list:
+        """The action table (04 §6.11): ``(label, accelerator, run, enabled, targets)`` rows
+        and None for a separator. ``targets`` names the context menus that show it: box,
+        edge, map (empty space) and row. Rename scene, Delete scene and Change target… land
+        in step 6 (disabled until then)."""
+        view = self.story_map
+        alt = "Option" if self.mod == "Command" else "Alt"
+
+        def box() -> bool:
+            return view.layout is not None and view.focused is not None
+
+        def edge() -> bool:
+            return view.selected_edge() is not None
+
+        def choice() -> bool:
+            found = view.selected_edge()
+            return found is not None and found[2] == "menu"
+
+        def row() -> bool:
+            return self._side_open and self.side_tab == "events" \
+                and self.events_view.selected() is not None
+
+        def editable_row() -> bool:
+            return row() and not (self.story is not None and self.story.stale)
+
+        def later() -> bool:
+            return False
+
+        return [
+            (STORY_NEW_SCENE, "Ctrl+Shift+N", lambda: self.new_scene(), lambda: True,
+             ("map", "box")),
+            (STORY_GO_TO, "Ctrl+J", lambda: self.go_to_scene(), box, ("box",)),
+            (STORY_RENAME, "F2", lambda: self.rename_scene(), later, ("box",)),
+            (STORY_DELETE_SCENE, "Delete", lambda: self.delete_scene(), later, ("box",)),
+            (STORY_MOVE_BOX, "", lambda: self.move_box(), box, ("box",)),
+            None,
+            (STORY_DELETE_ARROW, "Delete", lambda: self.delete_arrow(), edge, ("edge",)),
+            (STORY_CHOICE_TEXT, "F2", lambda: self.edit_choice_text(), choice, ("edge",)),
+            (STORY_CHANGE_TARGET, "", lambda: self.change_target(), later, ("edge",)),
+            None,
+            (STORY_TIDY_UP, "", lambda: self.tidy_up(), lambda: bool(view.places),
+             ("map", "box")),
+            None,
+            (STORY_INSERT, "Insert", lambda: self.insert_command(), editable_row, ("row",)),
+            (STORY_EDIT, "Enter", lambda: self.edit_command(), editable_row, ("row",)),
+            (STORY_UP, f"{alt}+Up", lambda: self.move_command(-1), editable_row, ("row",)),
+            (STORY_DOWN, f"{alt}+Down", lambda: self.move_command(1), editable_row,
+             ("row",)),
+        ]
+
+    def _update_story_menu(self) -> None:
+        """The Story menu's entries, enabled for what is focused or selected now."""
+        for entry in self.story_actions():
+            if entry is not None:
+                self.story_menu.entryconfigure(
+                    entry[0], state="normal" if entry[3]() else "disabled")
+
+    def context_menu(self, kind: str) -> tk.Menu:
+        """The context menu for a ``box``, an ``edge``, the ``map``'s empty space or an
+        Events ``row``: that target's enabled actions only (AC-F46-33; built anew)."""
+        menu = tk.Menu(self.root, tearoff=0)
+        last_was_item = False
+        for entry in self.story_actions():
+            if entry is None:
+                if last_was_item:
+                    menu.add_separator()
+                last_was_item = False
+                continue
+            label, accel, run, when, kinds = entry
+            if kind not in kinds or not when():
+                continue
+            if kind == "map" and label == STORY_NEW_SCENE:
+                label, run = STORY_NEW_SCENE_HERE, (lambda: self.new_scene(self._context_at))
+            if kind == "row" and label == STORY_DOWN:
+                menu.add_command(label=label, accelerator=accel, command=run)
+                menu.add_command(label=STORY_DELETE_ROW, accelerator="Delete",
+                                 command=self.delete_command)
+                last_was_item = True
+                continue
+            menu.add_command(label=label, accelerator=accel.replace("Ctrl", self._key_word()),
+                             command=run)
+            last_was_item = True
+        if menu.index("end") is not None and menu.type("end") == "separator":
+            menu.delete("end")
+        self.last_context = menu            # tests read it
+        return menu
+
+    def _key_word(self) -> str:
+        return "Cmd" if self.mod == "Command" else "Ctrl"
+
+    def map_context(self, kind: str, what: object, x: int, y: int) -> None:
+        """Button-3, Shift+F10 or the Menu key on the map (``StoryMapView.on_context``)."""
+        if kind == "map":
+            self._context_at = what if isinstance(what, tuple) else None
+        self._post(self.context_menu(kind), x, y)
+
+    def events_context(self, event: tk.Event | None = None) -> str:
+        """Button-3 on an Events row (it is chosen first), Shift+F10 or the Menu key."""
+        events = self.events_view
+        if event is not None and event.type == tk.EventType.ButtonPress:
+            index = events._row_at(event.y)
+            if index is not None:
+                events.select(index)
+            x, y = event.x_root, event.y_root
+        else:
+            index = events.selected()
+            tree = events.tree
+            box = tree.bbox(f"{index + 1}.0") if index is not None else None
+            x = tree.winfo_rootx() + (box[0] + 40 if box else 20)
+            y = tree.winfo_rooty() + (box[1] + box[3] // 2 if box else 20)
+        events.tree.focus_set()
+        self._post(self.context_menu("row"), x, y)
+        return "break"
+
+    def _post(self, menu: tk.Menu, x: int, y: int) -> None:
+        if CONTEXT_MENUS_POST:
+            try:
+                menu.tk.call("tk_popup", menu, x, y)
+            finally:
+                menu.grab_release()
+
+    def _map_say(self, text: str) -> None:
+        """A map action's outcome or refusal: the map's banner and the Events status."""
+        self.story_map.say(text)
+        if self.story is not None and text:
+            self.story.say(text)
+
+    def _edge_chosen(self) -> None:
+        """A selected arrow: its full choice text in the status bar (PR-F46-13)."""
+        found = self.story_map.selected_edge()
+        text = ""
+        if found is not None and found[3]:
+            text = CHOICE_STATUS.format(text=found[3])
+        self.story_status.configure(text=text)
+        self.status_bar.layout()
+
+    def _scene_names(self) -> list[str]:
+        names = {_label_row(row)[0] for row in self._check_names.get("label", ())}
+        for index in self.scene_indexes.values():
+            names.update(name for name, _n in index.starts)
+        if self.story_map.layout is not None:
+            names.update(box.name for box in self.story_map.layout.boxes)
+        return sorted(names)
+
+    def _scene_file(self, name: str) -> str | None:
+        view = self.story_map
+        index = view.layout.index_of(name) if view.layout is not None else None
+        if index is not None:
+            return view.layout.boxes[index].file
+        return self.label_places().get(name, (None, None))[0]
+
+    def new_scene(self, place: tuple[int, int] | None = None) -> None:
+        """New scene (toolbar, Ctrl+Shift+N, a double-click on empty map space, New scene
+        here; PR-F46-14): the dialog, then the label and placeholder appended to the file
+        as one undo step, the box placed (at the click, else beside the selected box) and
+        opened beside the map with the placeholder selected."""
+        if self.closed:
+            return
+        view = self.story_map
+        refs = [ref for ref in self.refs if ref.startswith("script/") and ref.endswith(".vns")]
+        if not refs:
+            show_error(self.root, NO_SCRIPT_FOR_SCENE)
+            return
+        chosen = view.selected_name() or view.focused_name()
+        default = self._scene_file(chosen) if chosen else None
+        if default not in refs:
+            default = "script/main.vns" if "script/main.vns" in refs else refs[0]
+        taken = self._scene_names()
+        answer = formdialogs.ask_new_scene(self.root, refs, default, taken=taken,
+                                           problem=files.label_problem)
+        if answer is None:
+            return
+        name, ref = answer
+        record = self._record(ref)
+        if not record.editable:
+            show_error(self.root, record.error.format() if record.error is not None
+                       else scriptedit.UNSAFE)
+            return
+        text = record.widget.get("1.0", "end-1c")
+        if place is None and chosen is not None and view.layout is not None:
+            near = view.layout.boxes[view.layout.index_of(chosen)]
+            occupied = [(b.x, b.y) for b in view.layout.boxes]
+            place = place_free(occupied, (near.x + COLUMN_STEP, near.y))
+        plan = scriptedit.plan_new_scene(text.split("\n"), ref, name, indent_unit(text),
+                                         place, taken=taken)
+        if isinstance(plan, scriptedit.Refuse):
+            show_error(self.root, plan.text)
+            return
+        if not isinstance(plan, scriptedit.Plan) or not scriptedit.verify(
+                plan, {ref: text}, positions=self._positions()):
+            show_error(self.root, scriptedit.UNSAFE)
+            return
+        widget = record.widget
+        for file_plan in plan.files:
+            self._as_one_step(widget, lambda e=file_plan.edits: apply_edits(widget, e))
+        self.follow()
+        self.map_plan_done(plan)
+        self._map_dirty = True
+        self.refresh_story_map()
+        index = view.layout.index_of(name) if view.layout is not None else None
+        if index is None:
+            return
+        self.open_label_beside(view.layout.boxes[index])
+        select = plan.files[0].select
+        peer = self.side_text
+        if select is not None and peer is not None and self.side_tab == "script":
+            line, col0, col1 = select
+            peer.tag_remove("sel", "1.0", "end")
+            peer.tag_add("sel", f"{line}.{col0}", f"{line}.{col1}")
+            peer.mark_set("insert", f"{line}.{col1}")
+            peer.see("insert")
+        self.map_canvas.focus_set()
+
+    def add_arrow(self, src: str, dst: str) -> object:
+        """An arrow ``src → dst`` (a handle drag, Go to scene…; PR-F46-07, 12): what it
+        writes follows the source's end; Make a choice opens the new arrow's text field."""
+        ref = self._scene_file(src)
+        if ref is None or self.story is None:
+            return None
+        record = self._record(ref)
+        unit = indent_unit(record.widget.get("1.0", "end-1c"))
+        plan = self.story.act_on(ref, src, lambda read, lines, start, **kw:
+                                 scriptedit.plan_add_arrow(read, lines, start, dst, unit,
+                                                           **kw), answer="choice")
+        self._map_done(plan)
+        if plan is not None and plan.then is not None \
+                and plan.then[0] == scriptedit.THEN_CHOICE_TEXT:
+            view = self.story_map
+            index = view.edge_index(src, plan.then[1], "menu")
+            if index is not None:
+                view.focus_box(view.layout.index_of(src))
+                view.select_edge(index)
+                view.open_choice_field(index)
+        return plan
+
+    def _map_done(self, plan: object) -> None:
+        """After a map action: the map redrawn now, and its status or refusal said."""
+        self._map_dirty = True
+        self.refresh_story_map()
+        if plan is None:
+            self._map_say(self.story.status if self.story is not None else "")
+        else:
+            self._map_say(getattr(plan, "status", None) or "")
+
+    def go_to_scene(self) -> None:
+        """Go to scene… (Ctrl+J): pick a scene; the focused box gets an arrow to it, as a
+        drag would write."""
+        view = self.story_map
+        src = view.focused_name()
+        if src is None:
+            return
+        picked = formdialogs.pick_scene(self.root, self._scene_names())
+        if picked is not None:
+            self.add_arrow(src, picked)
+
+    def delete_arrow(self) -> object:
+        """Delete arrow (Delete on a selected arrow, PR-F46-08)."""
+        found = self.story_map.selected_edge()
+        if found is None or self.story is None:
+            return None
+        src, dst, kind, _choice = found
+        ref = self._scene_file(src)
+        if ref is None:
+            return None
+        self._record(ref)
+        plan = self.story.act_on(ref, src, lambda read, lines, start, **kw:
+                                 scriptedit.plan_delete_arrow(read, lines, start, dst, kind,
+                                                              **kw))
+        self._map_done(plan)
+        return plan
+
+    def edit_choice_text(self) -> None:
+        """Edit choice text (F2 on a choice arrow): its inline field."""
+        view = self.story_map
+        found = view.selected_edge()
+        if found is not None and found[2] == "menu" and view.edge is not None:
+            view.open_choice_field(view.edge)
+
+    def choice_text(self, index: int, text: str) -> object:
+        """The inline field's Enter: the choice's quoted text (PR-F46-13), as one step."""
+        view = self.story_map
+        if view.layout is None or self.story is None or not 0 <= index < len(
+                view.layout.edges):
+            return None
+        edge = view.layout.edges[index]
+        src, dst = view.layout.boxes[edge.src].name, view.layout.boxes[edge.dst].name
+        ref = self._scene_file(src)
+        if ref is None:
+            return None
+        old = edge.choice
+
+        def planner(read: Any, lines: Any, start: int) -> object:
+            paths = []
+            for i in scriptedit._link_statements(read, dst, "menu"):
+                block = read.blocks[scriptedit.block_of(read, i)]
+                menu = next((s for s in read.statements if s.path == block.owner), None)
+                if block.owner is None or menu is None or not isinstance(menu.node, Menu):
+                    continue
+                said = menu.node.choices[block.branch].text
+                paths.append((said != old, (*block.owner, block.branch)))
+            if not paths:
+                return scriptedit.Refuse(scriptedit.STALE)
+            return scriptedit.plan_choice_text(read, lines, start, min(paths)[1], text)
+        plan = self.story.act_on(ref, src, planner)
+        self._map_done(plan)
+        found = view.edge_index(src, dst, "menu")
+        if found is not None:
+            view.select_edge(found)
+        self.map_canvas.focus_set()
+        return plan
+
+    def map_delete(self) -> None:
+        """Delete on the map: the selected arrow, else (step 6) the focused scene."""
+        if self.story_map.edge is not None:
+            self.delete_arrow()
+        else:
+            self.delete_scene()
+
+    def rename_scene(self) -> None:
+        """Rename scene (F2 on a box): step 6."""
+
+    def delete_scene(self) -> None:
+        """Delete scene (Delete on a box): step 6."""
+
+    def change_target(self) -> None:
+        """Change target… on an arrow: step 6."""
+
+    def move_box(self) -> None:
+        """Move box (G3): the focused box follows the arrow keys until Enter."""
+        self.story_map.start_move()
+
+    def tidy_up(self) -> None:
+        self.story_map.tidy_up()
+
+    def insert_command(self) -> None:
+        if self.story is not None:
+            self.story.insert(self.events_view.selected())
+
+    def edit_command(self) -> None:
+        index = self.events_view.selected()
+        if self.story is not None and index is not None:
+            self.story.edit(index)
+
+    def move_command(self, step: int) -> None:
+        index = self.events_view.selected()
+        if self.story is not None and index is not None:
+            self.story.move(index, step)
+
+    def delete_command(self) -> None:
+        index = self.events_view.selected()
+        if self.story is not None and index is not None:
+            self.story.delete(index)
 
     # --- Help pane (PR-F45-16) --------------------------------------------------------------
 
@@ -2028,6 +2932,10 @@ class EditorWindow:
         if self.closed:
             return
         record = next((r for r in self.files.values() if r.widget is widget), None)
+        if content and record is not None:
+            record.changes += 1                 # now, not at <<Modified>> (F46 map undo)
+            if not self._suppress and record.ref in self.scene_indexes:
+                self._schedule_follow()
         if content and not self._suppress:
             self.edit_serial += 1
             self._schedule_auto_check()
@@ -2041,7 +2949,7 @@ class EditorWindow:
 
     def _on_yscroll(self, widget: tk.Text, first: str, last: str) -> None:
         if widget is self._shown:
-            self.vbar.set(first, last)
+            self._vbar_set(first, last)
             self._schedule_refresh()
 
     def _on_xscroll(self, widget: tk.Text, first: str, last: str) -> None:
@@ -2304,11 +3212,12 @@ class EditorWindow:
     def cycle_focus(self, step: int) -> None:
         """F6 / Shift+F6: Project → Editor area → Start values → Problems → Help →
         Project (UI-F45-02, amended AC-F44-32; the editor area is the current tab's
-        widget, then the Story map's side editor while it is open)."""
+        widget, then the Story map's side pane's shown page while it is open)."""
         areas: list[tk.Widget] = [self.tree, self._tab_widget()]
         side = self._side_active()
-        if side is not None:
-            areas.append(side)
+        page = self._side_page_widget()
+        if side is not None and page is not None:
+            areas.append(page)              # F46: the side pane's shown page
         areas += [self.start_values, self.problems, self.help_text]
         try:
             focus = self.root.focus_get()
@@ -2318,7 +3227,8 @@ class EditorWindow:
             target = self.problems if step > 0 else self.start_values
         else:
             if focus in self._editor_widgets() or focus in (self.map_canvas,
-                                                             self.asset_pane.frame):
+                                                             self.asset_pane.frame) \
+                    or focus in self._empty_buttons():
                 position = 1
             elif focus in areas:
                 position = areas.index(focus)
@@ -2327,9 +3237,21 @@ class EditorWindow:
             target = areas[(position + step) % len(areas)]
         target.focus_set()
 
+    def _empty_buttons(self) -> list[tk.Widget]:
+        """The shown empty states' buttons (08 §9): each is its area's focus stop."""
+        found = [state.focus_widget() for state in (
+            self.editor_empty, self.story_map.empty, self.asset_pane.empty,
+            self.outline_view.empty)]
+        return [widget for widget in found if widget is not None]
+
     def _tab_widget(self) -> tk.Widget:
-        """The widget F6 lands on in the notebook: the current tab's."""
+        """The widget F6 lands on in the notebook: the current tab's (an empty state's
+        button while one shows)."""
         index = self.notebook.index("current")
+        empty = (self.editor_empty, self.story_map.empty, self.asset_pane.empty,
+                 self.outline_view.empty)[index].focus_widget()
+        if empty is not None:
+            return empty
         if index == 1:
             return self.map_canvas
         if index == 2:
@@ -2448,7 +3370,7 @@ class EditorWindow:
         if size == self.font_px:
             return
         self.font_px = size
-        self.font.configure(size=-size)
+        self.font.configure(size=-self._px(size))
         tab = self._tab_width()
         for widget in self._editor_widgets() + ([self.side_text] if self.side_text else []):
             widget.configure(tabs=(tab,))
@@ -2519,6 +3441,9 @@ class EditorWindow:
                     pass
         self._refresh_id = self._poll_id = self._add_id = None
         self._cancel_debounce()
+        self._cancel_follow()
+        self._cancel_layout_save()
+        self.save_layout()                      # F46: whatever happens to the scripts
         self.runner.stop()
         self.check_runner.stop()
         self.root.destroy()
@@ -2584,6 +3509,8 @@ class EditorWindow:
             self._set_text(record, result.text)
             result.text = ""
             record.doc = result
+            self._forget_index(record.ref)
+            self._baseline(record)
             widget = record.widget
             widget.mark_set("insert", f"{min(line, _line_of(widget.index('end-1c')))}.0")
             widget.see("insert")
@@ -2709,7 +3636,7 @@ class EditorWindow:
         """The problems panel: the newest check's summary and rows (warning and info rows
         hidden by the View toggle), then the newest preview or start-value report in F44's
         text, or its gray hint. A paragraph with a line in a file the editor shows is a
-        link: its location is underlined in ``#0A4FBF``, the pointer is a hand over it, and
+        link: its location is underlined in the link color, the pointer is a hand over it, and
         a click or Enter jumps."""
         if self.closed:
             return
@@ -2732,13 +3659,18 @@ class EditorWindow:
         for index, (text, item, clickable, link) in enumerate(entries):
             tag = f"{PARAGRAPH_PREFIX}{index}"
             start = panel.index("end-1c")
+            if item is not None:        # a row: its severity's icon first (08 §7)
+                self._panel_icon(getattr(item, "severity", "error"), "end")
+            begin = panel.index("end-1c")
             panel.insert("end", text + ("\n" if index < len(entries) - 1 else ""))
             panel.tag_add(tag, start, "end-1c")
+            if item is not None:
+                panel.tag_add(TAG_ICON_ROW, start, "end-1c")
             if index:
                 panel.tag_add(TAG_GAP, start, f"{start} lineend")
             if clickable:
                 if link > 0:
-                    panel.tag_add(TAG_LINK, start, f"{start}+{self._tk_length(text[:link])}c")
+                    panel.tag_add(TAG_LINK, begin, f"{begin}+{self._tk_length(text[:link])}c")
                 panel.tag_add(TAG_CLICK, start, "end-1c")
             self.paragraphs.append(Paragraph(tag, item, clickable))   # type: ignore[arg-type]
         if hint is not None:
@@ -2747,10 +3679,19 @@ class EditorWindow:
                 panel.insert("end", "\n" + hint, TAG_HINT)
                 panel.tag_add(TAG_GAP, f"{start}+1c", "end-1c")
             else:
-                panel.insert("1.0", hint, TAG_HINT)
+                if hint == NO_PROBLEMS:     # clean: the success icon (08 §9)
+                    self._panel_icon("success", "1.0")
+                panel.insert("end", hint, TAG_HINT)
         panel.tag_raise("sel")
         panel.configure(state="disabled")
         panel.yview_moveto(0)
+
+    def _panel_icon(self, severity: str, where: str) -> None:
+        """A severity icon at ``where`` in Problems: an image, so the panel's text (what
+        ``get`` returns) stays the report's wording (UI-F45-03)."""
+        image = self._severity_icons.get(severity, self._severity_icons["error"])
+        self.problems.image_create(where, image=image, align="center",
+                                   padx=self._px(SEVERITY_ICON_GAP) // 2)
 
     def panel_paragraphs(self) -> list[str]:
         """The panel's paragraphs as shown (for tests and the docs)."""
@@ -2862,6 +3803,16 @@ class EditorWindow:
 
 
 # --- Helpers --------------------------------------------------------------------------------
+
+def _label_row(row: object) -> tuple:
+    """``(name, file, line)`` of a ``NameEntry`` or a row of the name index."""
+    name = getattr(row, "name", None)
+    if name is not None:
+        return name, getattr(row, "file", None), getattr(row, "line", None)
+    if isinstance(row, str):
+        return row, None, None
+    return tuple(row)[:3]
+
 
 def _marker_severity(items: Sequence[CheckItem]) -> str | None:
     """``error`` if any item on the line is an error, else ``warning`` for a warning, else

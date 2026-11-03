@@ -1,0 +1,15 @@
+include "ch2.vns"
+define hana = Character("Hana")
+default coins = 2
+default stall_price = 1
+
+label start:
+    # Mia arrives
+    scene bg room with dissolve
+    hana happy "Welcome to the festival!"  # first line
+    jump festival
+
+label festival:
+    "The lanterns were lit."
+    call stall
+    return

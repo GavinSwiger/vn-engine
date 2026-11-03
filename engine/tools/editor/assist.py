@@ -88,7 +88,7 @@ class Context:
 
 @dataclass(frozen=True, slots=True)
 class Candidate:
-    """One completion row: the name, then its kind word (shown in ``#5E5E5E``)."""
+    """One completion row: the name, then its kind word (shown in the muted color)."""
 
     text: str
     kind: str

@@ -669,8 +669,10 @@ def emit_results(emit: Emit, problems: list[dict], total: int,
     link_total = 0
     if program is not None:
         links, link_total = label_links(program, limit=CHECK_MAX_LINKS)
+        # F46 ``04`` §3.5: 7 items, the choice text (or null) and its condition flag last.
         sent_links = ([_text(link.src), _text(link.dst), link.kind, _text(link.file),
-                       link.line] for link in links[:CHECK_MAX_LINKS])
+                       link.line, None if link.choice is None else _text(link.choice),
+                       link.conditional] for link in links[:CHECK_MAX_LINKS])
         for event in chunk_event("graph", sent_links, key="links"):
             emit(event)
     emit({"v": REPORT_VERSION, "event": "done", "loaded": program is not None,

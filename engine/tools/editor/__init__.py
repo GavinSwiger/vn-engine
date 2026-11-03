@@ -77,6 +77,9 @@ def run_editor(game_dir: Path | str) -> int:
     except UserFacingError as error:
         print(redact(error.format()), file=sys.stderr)
         return 1
+    from engine.tools.editor.theme import declare_dpi_awareness
+
+    declare_dpi_awareness()             # before Tk reads the screen's DPI (F45 08 §10)
     try:
         root = tkinter.Tk()
     except tkinter.TclError:

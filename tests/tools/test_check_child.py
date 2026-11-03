@@ -1,18 +1,24 @@
 """The real check child (F45 ``04`` §7.1 steps 1-2, §8.4-8.6; TR-F45-02): two subprocess
 runs in the default tier, one per code path (a full run with an overlay; bad input), plus
-the CLI rows in process. AC-F45-12, AC-F45-13."""
+the CLI rows in process. AC-F45-12, AC-F45-13. F46's 7-item graph rows, in process
+(AC-F46-03)."""
 
 import ast
 import os
 import re
+import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from engine.app import cli
 from engine.core.editorreport import REPORT_MARKER
-from engine.core.paths import engine_root
+from engine.core.paths import GamePaths, engine_root
+from engine.script import load_story
+from engine.script.labelgraph import LabelLink, label_links
+from engine.tools import check
 from engine.tools.editor.checker import check_argv, decode_check_line
 from tests.tools.f45_games import edit_line, studio, tree
 
@@ -102,3 +108,55 @@ def test_ac_f45_13_bad_input_and_release_runs_exit_2(tmp_path, capsys):
     top = [node for node in module.body if isinstance(node, (ast.Import, ast.ImportFrom))]
     assert found == ["_check"]
     assert all("tools" not in (getattr(node, "module", "") or "") for node in top)
+
+
+LANTERNS = Path(__file__).resolve().parents[1] / "fixtures" / "F46" / "games" / "lanterns"
+
+
+def _graph(*rows: list) -> tuple | None:
+    found = decode_check_line(check.encode_event({"v": 1, "event": "graph", "links": list(rows)}))
+    return None if found is None else found[1]
+
+
+def test_ac_f46_03_choice_links_on_the_wire(tmp_path):
+    game = tmp_path / "lanterns"
+    shutil.copytree(LANTERNS, game)
+    long_text = "A long way round, " * 16 + "ending here."           # 300 characters
+    assert len(long_text) == 300
+    nested = ["label nested:", "    menu:", '        "Outer" if coins > 0:',
+              "            if stall_price > 0:", "                menu:",
+              '                    "Inner":', "                        jump river",
+              f'        "{long_text}":', "            jump river", ""]
+    with (game / "script" / "ch2.vns").open("ab") as out:
+        out.write("\n".join(nested).encode("utf-8"))
+    program = load_story(GamePaths.for_game(game)).program
+    assert program is not None
+    links, total = label_links(program, limit=100)
+    by_place = {(k.file, k.line): k for k in links}
+    assert by_place["script/ch2.vns", 5] == LabelLink(
+        "stall", "river", "menu", "script/ch2.vns", 5, "Buy the red one", True)
+    assert by_place["script/ch2.vns", 9] == LabelLink(
+        "stall", "river", "jump", "script/ch2.vns", 9, None, False)
+    inner = by_place["script/ch2.vns", 24]
+    assert (inner.choice, inner.conditional) == ("Inner", False)    # the innermost choice
+
+    events: list[dict] = []
+    check.emit_results(events.append, [], 0, {}, program, 0.0)
+    graph = [event for event in events if event["event"] == "graph"]
+    assert graph and all(event["v"] == 1 for event in graph)
+    assert {len(row) for event in graph for row in event["links"]} == {7}
+    decoded = tuple(link for event in graph for link in _graph(*event["links"]))
+    assert decoded == tuple(
+        replace(k, choice=None if k.choice is None else check._text(k.choice)) for k in links)
+    assert by_place["script/ch2.vns", 26].choice == long_text
+    assert decoded[[k.line for k in links].index(26)].choice == check._text(long_text)
+
+    # A row from before F46 still decodes; a 6-item row or a cond that isn't a bool breaks
+    # the line.
+    assert _graph(["a", "b", "jump", "script/m.vns", 3]) == (
+        LabelLink("a", "b", "jump", "script/m.vns", 3, None, False),)
+    for bad in (["a", "b", "menu", "script/m.vns", 3, "Go"],
+                ["a", "b", "menu", "script/m.vns", 3, "Go", 1],
+                ["a", "b", "menu", "script/m.vns", 3, "Go", None],
+                ["a", "b", "menu", "script/m.vns", 3, 7, False]):
+        assert _graph(bad) is None, bad
