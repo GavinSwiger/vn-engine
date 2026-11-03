@@ -1,6 +1,6 @@
 # ADR-0008 — Dev tools that edit author files
 
-Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1)
+Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3)
 Proposed by: vn-feature-architect (F44 `04-technical.md` §17). Gaps raised by: vn-qa-engineer
 (F44 `06-acceptance.md` §7, G1 and G11). Decided by: vn-system-architect (F44
 `07-architecture-review.md`).
@@ -134,6 +134,83 @@ amended exception. F42 still excludes `engine/tools/` (so a frozen build has nei
 nor `check`) and may exclude `engine/data/starter/`. A future tool that writes author files
 (e.g. an F41 autofix) still needs its own amendment.
 
+## Amendment 2 — Studio layout folder (F46)
+
+Proposed by: vn-feature-architect (F46 `04-technical.md` §16). Decided by: vn-system-architect
+(F46 `07-architecture-review.md` §2.1, accepted with modifications; recorded here at the F42
+review).
+
+**Context.** F46 keeps story-map box places outside the script.
+
+**Decision.** Dev runs only; never the game process or the check child.
+1. Studio may create `<game>/.studio/` with one `os.mkdir` under the real game folder
+   (`ensure_real_dir`'s dev rule), and create or replace regular files in it with
+   `write_atomic`, never through a link. A new file gets `0o666 & ~umask`.
+2. **Named files only.** `storymap.json` (F46), `build.json` (F42, Amendment 3) and
+   `studio.json` (F47: Guide open and done state, "played", "sample"; main session 2026-11-02),
+   each with its `write_atomic` temp. Studio never deletes, renames or makes subfolders there. Another file
+   name needs a line here.
+3. A read or write failure never blocks or dirties a script or a build.
+4. The game, the loader and the check child never read the folder. It is not a group folder
+   (`GamePaths` listings, `OverlayPaths` and the project panel never see it) and not an
+   ADR-0003 write root.
+
+**Consequences.** Invariant 9(b) names it. Packaged builds exclude `<game>/.studio/` (F42
+PR-F42-05). It is not git-ignored; version control is the author's choice.
+
+## Amendment 3 — Build output and the build tool (F42)
+
+Proposed by: vn-feature-architect (F42 `04-technical.md` §18). Decided by: vn-system-architect
+(F42 `07-architecture-review.md` §3, accepted with modifications).
+
+**Context.** F42's `python -m engine build` and Studio's **Build game…** dialog create, rename
+and delete outside the game folder, and Studio can run pip. Amendment 1 doesn't allow either.
+
+**Decision.** Decision 1 and Amendment 1 still hold: dev runs only; never the game process or
+the check child; `build` doesn't exist in frozen builds and is a usage error with `--release`.
+1. **Where.** Only the author-chosen *Save to*: a real folder that is neither inside the real
+   game folder nor contains it, and is not inside `<engine root>/engine` (real paths, normcase,
+   both ways). Plus `.studio/build.json` under Amendment 2. The packer child's own per-user
+   cache is a third-party write, accepted (SEC-F42-04).
+2. **What.** Create *Save to* (one `os.mkdir`, real parent); one staging folder per run
+   (`.<folder>.building-<8 hex>`, `os.mkdir`, staging marker first) with files by exclusive
+   create; rename an earlier build aside (`.<folder>.old-<8 hex>`) and the new one in.
+3. **Deletes.** Only this run's staging; the earlier build at exactly `<Save to>/<computed
+   name>` (and its `.zip`) after the strict marker test and the author's confirmation
+   (`REPLACE_ASK` or `--replace`); stale staging and aside entries older than 60 s that match
+   their pattern and marker. One no-follow, real-path-contained, capped walker
+   (`tools/build/tree.py`) over `safefile.remove_file`; never `shutil.rmtree`; never a name
+   from `build.json`, a marker or a report event. After **Cancel build**, Studio deletes staging
+   only after the process tree has exited, joining a bare `STAGING_RE` name to its own *Save to*.
+4. **Reads.** The game folder only by no-follow real-entry walks with handle identity checks.
+   The build child and the packer never import, `exec` or `compile` game-folder code, and no
+   game-folder path reaches the packer. Engine-install files (Python's and the bundled
+   libraries' licenses, `engine/data`) are read at fixed paths.
+5. **Children.** Argument lists, no shell, `cwd = engine_root()`, `-E` with `PYTHON*` removed,
+   never elevated; **Cancel build** kills the whole tree. Author code runs only in the check
+   grandchild (Amendment 1 §4–5; a Build arms it; the CLI `build` equals `run`).
+6. **pip.** Only `-E -m pip install --require-hashes --only-binary=:all: --no-input
+   --disable-pip-version-check -r <engine root>/requirements-build.txt` (every package `==`
+   with SHA-256, no index option), on the author's click, output redacted. Studio never imports
+   PyInstaller; versions come from `importlib.metadata`.
+7. **OS queries.** The build child reads free space on *Save to*'s volume
+   (`shutil.disk_usage`) and installed package versions. Neither is personal data; this is a
+   dev-tool exception to invariant 9(c)'s allow-list.
+8. **Imports.** `tools/build`: `core`, `script`, stdlib; pygame only in `icon.py`; never
+   PyInstaller (it runs as a child), `app`, `runtime`, `render`, `ui`, `audio`, `persist`,
+   `meta`, `minigames` or another `tools` module. `tools/editor` may import only
+   `tools.build.{names,texts,rules,tree,procs}`. `engine/__main__.py` imports
+   `tools.build.command` only inside its `build` handler and passes it to `app.cli.main` as
+   `builder=`, so `app` never imports `tools`.
+
+**Modifications to the draft:** `build.json` named under Amendment 2; the `engine/` exclusion
+for *Save to*; the packer cache; no event path in Cancel cleanup; OS queries (7); fixed
+engine-install reads; the `builder=` injection.
+
+**Consequences.** Invariant 9(b) and 9(c) and ADR-0003 §2's dev-tool row name Amendment 3.
+*Save to* is written only on an explicit Build. AC-F42-37 and -39 test it. Any later tool that
+writes outside the game folder needs its own amendment.
+
 ## Status history
 
 - 2026-11-01: proposed (F44 04-technical §17).
@@ -143,3 +220,7 @@ nor `check`) and may exclude `engine/data/starter/`. A future tool that writes a
 - 2026-11-02: Amendment 1 §1 widened at F31 approval (F31 `07` §5, I-9): the group folders add
   `files` (the `ASSET_GROUPS` row for meta-file originals, kind `meta`). `characters` is never a
   group. No other change. Status remains accepted.
+- 2026-11-02: Amendment 2 (F46 `.studio/` layout folder), accepted in F46 `07` §2.1, recorded
+  here at the F42 review; `build.json` added as its second named file.
+- 2026-11-02: Amendment 3 (F42 build output, `build.json`, pip) proposed in F42 `04` §18 and
+  accepted with modifications (F42 `07` §3).
