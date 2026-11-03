@@ -1,0 +1,7 @@
+Python
+Python 3.12 ships inside _internal (python312.dll and its library).
+Source: https://www.python.org
+License: Python Software Foundation License Version 2
+Full text: https://docs.python.org/3.12/license.html
+
+Copyright (c) 2001 Python Software Foundation; All Rights Reserved.

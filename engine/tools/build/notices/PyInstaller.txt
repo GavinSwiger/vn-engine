@@ -1,0 +1,12 @@
+PyInstaller
+The game's .exe starts through PyInstaller's bootloader, and PyInstaller's
+small start-up modules are inside _internal.
+Source: https://github.com/pyinstaller/pyinstaller
+License: GPL 2.0 or later with the PyInstaller bootloader exception
+(the bootloader and the files it adds may be shipped with any program,
+under any license); the start-up modules are under the Apache License 2.0.
+Full texts: https://github.com/pyinstaller/pyinstaller/blob/develop/COPYING.txt
+
+Copyright (c) 2010-2025, PyInstaller Development Team
+Copyright (c) 2005-2009, Giovanni Bajo
+Based on previous work under copyright (c) 2002 McMillan Enterprises, Inc.
