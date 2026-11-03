@@ -3369,6 +3369,76 @@ game start; the rest stop the launch.
 | `… only .vns files can be included.` / `… that is a folder. …` | Include each `.vns` file by name. |
 | `include can't be inside a label or block, …` / `the file name goes in quotes. …` | Top level, with quotes. |
 
+### Unused and unreached (tidy-up warnings)
+These six warnings list scenes no player can reach and things the story never uses. They
+never stop the game and never show in Studio's Problems list: Studio lists them in
+**Database ▸ Clean up** (see [database.md](database.md#clean-up)), and the `lint` command
+below prints them. A game in progress has some; tidy them up before you build.
+
+| Code | Message | Fix |
+|---|---|---|
+| W237 | `nothing leads to label "old_ending" from start (no jump, call or choice), so players never see it. Add a jump to it, or delete it if you don't need it.` | Add a jump, call or choice to the scene, or delete it. A scene replay's scene counts as reached. |
+| W238 | `character "kenji" never speaks and no line names it.` | Give the character a line, or delete its `define`. Studio lists characters after your first Play or Check now. |
+| W239 | `picture "hana sad_blink1" isn't shown anywhere in the story.` | Show it, or delete the file. Pictures in `gui/`, `fonts/`, `minigames/`, `files/` and `masks/` are never listed. |
+| W240 | `sound "music/old_theme.ogg" isn't played anywhere in the story.` | Play it, or delete the file. The music room counts as a use. |
+| W241 | `variable "lantern_count" has a default, but no line reads or changes it.` | Use it in an `if` or a `$` line, or delete the `default`. |
+| W242 | `define "max_tries" is defined but never used.` (also `transition`, `position` and `meter`) | Use it, or delete its line. Built-in positions and transitions are never listed. |
+
+#### The lint command
+`lint` checks a game the way Studio's Check now does (settings, script, launch) and prints
+every problem and every tidy-up warning, for your code editor or an automatic build:
+
+```
+python -m engine lint [GAME_DIR] [--json] [--strict]
+```
+
+Each line is `file:line:column: severity code: message`; parts it doesn't have are left
+out, and paths are inside the game folder, with `/`. The last line counts them:
+
+```
+script/main.vns:50: warning W237: nothing leads to label "old_ending" from start (no jump, call or choice), so players never see it. Add a jump to it, or delete it if you don't need it.
+images/bg/old_park.png: warning W239: picture "bg old_park" isn't shown anywhere in the story.
+0 errors, 2 warnings, 0 notes.
+```
+
+- `--json` prints one JSON document instead: `items` (each with `file`, `line`, `column`,
+  `severity`, `code`, `text` and `source`, which is `"lint"` for the six warnings above),
+  `errors`, `warnings`, `notes`, and `more` (items past the first 1,000).
+- `--strict` treats warnings as failures.
+- Exit code: 0 with no errors (warnings are fine), 1 with errors (or warnings with
+  `--strict`), 2 when the folder isn't a game.
+- `lint` writes nothing in the game folder. It runs from the engine's source only; a built
+  game says `lint is only available in dev runs`.
+
+To see the results in VS Code's Problems panel, open the game folder in VS Code and save
+this as `.vscode/tasks.json`, with `cwd` set to the folder that holds the engine. Then run
+**Terminal ▸ Run Task… ▸ Lint the game**:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lint the game",
+      "type": "shell",
+      "command": "python -m engine lint \"${workspaceFolder}\"",
+      "options": {"cwd": "C:/path/to/vn-engine"},
+      "problemMatcher": {
+        "owner": "vn-engine",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^([^:]+):(\\d+)(?::(\\d+))?: (error|warning|info) ?(\\w*): (.*)$",
+          "file": 1, "line": 2, "column": 3, "severity": 4, "code": 5, "message": 6
+        }
+      }
+    }
+  ]
+}
+```
+
+Lines without a line number (a whole file, such as an unused picture) don't match the
+pattern; they show in the task's terminal.
+
 ---
 
 ## 22. Run-time errors

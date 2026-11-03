@@ -2411,3 +2411,37 @@ def test_example_music_room_and_achievements():
     assert [t.name for t in tracks.open_tracks(store)] == ["lantern_walk"]   # not heard here
     store.unlock("ending", "true")
     assert [t.name for t in tracks.open_tracks(store)] == ["lantern_walk", "river"]
+
+
+def test_ac_f41_24_lint_warnings_command_and_vs_code_task():
+    """F41 W4: ``script-language.md`` has the six warnings as ``messages.py`` words them, the
+    ``lint`` command and a VS Code ``tasks.json`` whose problem matcher reads its lines;
+    ``database.md`` has Database ▸ Clean up."""
+    import json
+
+    from engine.script.messages import format_message
+    from engine.tools.editor import cleanup
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    errors = _section(text, "Common errors")
+    tidy = errors[errors.index("### Unused and unreached (tidy-up warnings)"):]
+    for code in ("W237", "W238", "W239", "W240", "W241", "W242"):
+        assert f"| {code} | `{format_message(code)}`" in tidy, code
+    for words in ("python -m engine lint [GAME_DIR] [--json] [--strict]", "--strict",
+                  "lint is only available in dev runs", "0 errors, 2 warnings, 0 notes.",
+                  "Database ▸ Clean up"):
+        assert words in tidy, words
+    task = json.loads(re.search(r"^```json\n(.*?)^```", tidy, re.M | re.S).group(1))
+    matcher = task["tasks"][0]["problemMatcher"]
+    assert matcher["fileLocation"] == ["relative", "${workspaceFolder}"]
+    pattern = matcher["pattern"]
+    assert pattern["regexp"] == r"^([^:]+):(\d+)(?::(\d+))?: (error|warning|info) ?(\w*): (.*)$"
+    sample = re.search(r"^(script/main\.vns:50: warning W237: .*)$", tidy, re.M).group(1)
+    found = re.match(pattern["regexp"], sample)
+    assert found and found.group(1, 2, 4, 5) == ("script/main.vns", "50", "warning", "W237")
+
+    database = (REPO / "docs" / "database.md").read_text(encoding="utf-8")
+    clean = database[database.index("## Clean up"):]
+    for words in (cleanup.SHOW_ON_MAP, cleanup.DELETE, cleanup.NOT_CHECKED, "Open in Pictures",
+                  "Nothing to clean up", "(#clean-up)"):
+        assert words in clean or words in database, words

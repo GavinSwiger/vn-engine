@@ -40,6 +40,8 @@ positions go into `config.toml`.
   center or right back; your own positions can be deleted while unused.
 - **Achievements**: the rewards players keep across playthroughs, in the order the
   Achievements page shows them. See [Achievements](#achievements).
+- **Clean up** (last): scenes nothing leads to and things the story never uses, found
+  by each check. See [Clean up](#clean-up).
 
 ## Blinking and talking
 
@@ -215,3 +217,32 @@ Game settings ▸ **Extras** ▸ Achievement words (and Button words ▸ Achieve
 page's heading, the notice's start, the "Unlocked" count and a hidden achievement's words.
 Sending achievements to a store such as Steam needs a platform hook written in Python: see
 [minigames.md](minigames.md), "Achievement hook". Achievements always work without one.
+
+## Clean up
+
+**Clean up** is the last category. Each time the game is checked (as you type, on Play, or
+with Check now), it lists what the story doesn't use, so you can tidy up before you build:
+
+- **Scenes not reached**: no jump, call or choice leads there from `start` (a scene replay
+  counts as a way in).
+- **Characters**, **Pictures**, **Sounds** and **Variables** that no line uses.
+- **Other**: transitions, positions, meters and other `define` lines nothing uses.
+
+The count next to Clean up is how many there are. Each row shows the name and where it is
+(file and line). Click one to see its kind, where it is, the picture or a ▶ to hear the
+sound, why it is listed, and two buttons:
+
+- **Open in Pictures** (or Characters, Sounds, …) shows it in its own category. A scene has
+  **Show on map**, which selects its box on the Story map; a plain `define` has **Open in
+  Editor**.
+- **Delete…** is that category's own Delete, with its own question first: a file is
+  deleted from the game folder ("This can't be undone"), a line is removed (Edit ▸ Undo
+  brings it back), and a scene is deleted from the Story map as **Delete scene** does.
+  A deleted row leaves the list.
+
+Type in the search box to find a row by name. Before the first check the list says
+**Not checked yet** with **Check now**. If the story has errors, Clean up asks you to fix them in
+Problems first, because it needs a story that loads. Characters are listed only after your
+first Play or Check now; until then a line above the list says so. With nothing unused,
+it says **Nothing to clean up**. The same list, as warnings W237–W242, is what
+`python -m engine lint` prints: see [script-language.md](script-language.md#unused-and-unreached-tidy-up-warnings).
