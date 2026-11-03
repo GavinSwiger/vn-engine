@@ -16,6 +16,9 @@ import pytest
 ENGINE = Path(__file__).resolve().parent.parent / "engine"
 HOME_MODULES = {"core/paths.py", "core/logsetup.py"}
 CLIPBOARD_MODULE = "ui/builtin/error.py"
+# F40 (04 §7.6, SEC-F40-12): the dev console's Ctrl+V is the one clipboard read. It lives
+# under ``engine/tools/``, which packaged builds leave out, and keeps one cleaned line.
+CLIPBOARD_READER = "tools/console/panel.py"
 # F30 (SEC-F30-01 (a)): the one identity call allowed, and where.
 IDENTITY_ALLOWED = {"meta/username.py": ("getpass", "getuser")}
 
@@ -164,7 +167,9 @@ def test_home_lookups_only_in_paths_and_logsetup():
 
 def test_clipboard_is_never_read_and_only_written_by_the_error_screen():
     found = engine_findings()
-    assert {p: f["clipboard-read"] for p, f in found.items() if "clipboard-read" in f} == {}
+    readers = {p: f["clipboard-read"] for p, f in found.items() if "clipboard-read" in f}
+    assert set(readers) <= {CLIPBOARD_READER}                   # F40: the dev console only
+    assert len(readers.get(CLIPBOARD_READER, ())) <= 1
     writers = {p for p, f in found.items() if "clipboard-write" in f}
     assert writers == {CLIPBOARD_MODULE}
 
