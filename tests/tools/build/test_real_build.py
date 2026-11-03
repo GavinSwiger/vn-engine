@@ -114,8 +114,8 @@ def _build(game: Path, save_to: Path) -> Built:
 def example_build(tmp_path_factory) -> Built:
     base = tmp_path_factory.mktemp("p8example")
     game = base / "P8 Lanterns Q7x"
-    shutil.copytree(engine_root() / "game", game,
-                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(engine_root() / "game", game,                 # never the real meta folder
+                    ignore=shutil.ignore_patterns("__pycache__", "characters", "logs"))
     config = game / "config.toml"
     text = config.read_text(encoding="utf-8")
     text = text.replace('version = "0.1.0"', f'version = "{VERSION}"\nid = "{APP_ID}"', 1)
