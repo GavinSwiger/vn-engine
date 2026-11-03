@@ -103,6 +103,15 @@ SWITCHED: Mapping[str, tuple[str, Mapping[str, tuple[str, ...]]]] = {
 
 # --- Names and labels -------------------------------------------------------------------------
 
+def field_tip(label: tk.Widget, form_key: str, field_key: str) -> object | None:
+    """F47 P3-D: the field's plain-words hint (``fieldhints.form_hint``) as a tooltip on its
+    label; None when it has none."""
+    from engine.tools.editor import fieldhints
+    from engine.tools.editor.playbar import Tooltip     # Tk only; playbar imports dialogs
+    text = fieldhints.form_hint(form_key, field_key)
+    return Tooltip(label, text) if text else None
+
+
 def entry_title(doc: StatementDoc) -> str:
     """The picker's plain-words name for ``doc``: its form's title when it has a form
     (Narration and Stop music by their own words), else the doc's title."""
@@ -285,6 +294,7 @@ class FormDialog:
             if assets is not None and any(f.key == LOOK_KEY for f in form.fields) else None
         self._ready = False
         self.labels: dict[str, ttk.Label] = {}
+        self.tips: dict[str, object] = {}               # field key → its label's Tooltip
         self.holders: dict[str, ttk.Frame] = {}
         self.builder: formtools.ConditionBuilder | None = None    # the If form's condition
         self.toolbar: formtools.TextToolbar | None = None          # Say's text
@@ -304,6 +314,7 @@ class FormDialog:
                        pady=(round(4 * scale) if tall and row == 0 else
                              gap + round(4 * scale) if tall else 0 if row == 0 else gap, 0))
             self.labels[field.key] = label
+            self.tips[field.key] = field_tip(label, form.key, field.key)   # P3-D
             widget.grid(row=row, column=1,
                         sticky="w" if field.kind == "number" or tall else "ew",
                         pady=(0 if row == 0 else gap, 0))
@@ -719,14 +730,17 @@ def add_try_it(form_dialog: FormDialog, body: ttk.Frame
         self.speaker = tk.StringVar(dialog, value=values.speaker)
         self.look = tk.StringVar(dialog, value=values.look)
         self.question = tk.StringVar(dialog, value=values.question)
-        ttk.Label(top, text=SPEAKER, style="Dialog.TLabel").grid(row=0, column=0, sticky="w")
+        self.tips: dict[str, object] = {}               # P3-D: field key → its Tooltip
+        for column, text, key in ((0, SPEAKER, "speaker"), (2, LOOK, "look"),
+                                  (4, TEXT, "question")):
+            label = ttk.Label(top, text=text, style="Dialog.TLabel")
+            label.grid(row=0, column=column, sticky="w")
+            self.tips[key] = field_tip(label, forms.CHOICE_FORM, key)
         speaker = _NameBox(top, self.speaker, self.characters, width=12)
         self.speaker_box = speaker.box
         speaker.box.grid(row=0, column=1, sticky="w", padx=(gap, round(16 * scale)))
-        ttk.Label(top, text=LOOK, style="Dialog.TLabel").grid(row=0, column=2, sticky="w")
         ttk.Entry(top, textvariable=self.look, width=10).grid(
             row=0, column=3, sticky="w", padx=(gap, round(16 * scale)))
-        ttk.Label(top, text=TEXT, style="Dialog.TLabel").grid(row=0, column=4, sticky="w")
         self.question_entry = ttk.Entry(top, textvariable=self.question, width=30)
         self.question_entry.grid(row=0, column=5, sticky="ew", padx=(gap, 0))
         # The options
@@ -735,9 +749,11 @@ def add_try_it(form_dialog: FormDialog, body: ttk.Frame
         self.table = ttk.Frame(body, style="Dialog.TFrame")
         self.table.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
         self.table.columnconfigure(1, weight=1)
-        for column, text in ((1, OPTION_TEXT), (2, OPTION_WHEN), (3, OPTION_GOES)):
-            ttk.Label(self.table, text=text, style="Dialog.Hint.TLabel").grid(
-                row=0, column=column, sticky="w", padx=(0, gap))
+        for column, text, key in ((1, OPTION_TEXT, "text"), (2, OPTION_WHEN, "condition"),
+                                  (3, OPTION_GOES, "goes")):
+            label = ttk.Label(self.table, text=text, style="Dialog.Hint.TLabel")
+            label.grid(row=0, column=column, sticky="w", padx=(0, gap))
+            self.tips[key] = field_tip(label, forms.CHOICE_FORM, key)
         self.items: list[dict] = []
         self.chosen = 0
         for item in values.choices:

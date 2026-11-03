@@ -38,7 +38,7 @@ from typing import Any
 from engine.script.messages import show
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
-from engine.tools.editor import declplan, files
+from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.dbmore import (
     ABOUT_MORE,
     DELETE,
@@ -766,7 +766,8 @@ class DatabasePane(MoreCategories):
             self._uses_line(body, entry).grid(row=3, column=0, sticky="w")
             return
         values = dict(entry.decl.values)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_CHARACTER))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         if values.get(dec.NAME) is not None:
@@ -874,7 +875,8 @@ class DatabasePane(MoreCategories):
             return
         values = dict(entry.decl.values)
         kind = str(values["kind"])
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_VARIABLE))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         if entry.name_editable:
@@ -1035,7 +1037,8 @@ class DatabasePane(MoreCategories):
         assert entry is not None
         body, form = self._new_body(key)
         self._title(body, row.text)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_PICTURE))
         grid.frame.grid(row=1, column=0, sticky="ew")
         if entry.kind == dec.COLOR:
             if entry.editable and entry.decl is not None and entry.decl.values is not None:
@@ -1079,7 +1082,8 @@ class DatabasePane(MoreCategories):
         assert entry is not None and row.ref is not None
         body, form = self._new_body(key)
         self._title(body, row.text)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_SOUND))
         grid.frame.grid(row=1, column=0, sticky="ew")
         grid.row(LABEL_FOLDER, ttk.Label(grid.frame, text=db.SOUND_TITLES[
             entry.folder or db.OTHER_SOUNDS]))

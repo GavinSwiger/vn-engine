@@ -1,11 +1,12 @@
 """F47's command forms, pure half (F47 ``01-design.md`` §4.5, §4.8, PR-F47-06, PR-F47-19;
-``04-technical.md`` P2-A: AC-F47-27, 28, 29, 31; P2-B: 32, 33). No Tk.
+``04-technical.md`` P2-A: AC-F47-27, 28, 29, 31; P2-B: 32, 33; P3-C: 53). No Tk.
 
 Each table row is a line, the values its form reads, and the Events row text. The row must
 come from ``forms.rows`` (so it passed the gate), write back the same line, and parse back
 to the same shape; the "stays a Script row" lists are shapes the form can't write back."""
 
 from collections.abc import Mapping
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,7 @@ from engine.script.statement_docs import all_docs
 from engine.tools.editor import forms, forms_more
 from engine.tools.editor.forms import form_by_key, form_for_doc, missing_forms, rows, shape
 from engine.tools.editor.scenes import parse_chunk
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 
 def _rows(*body: str):
@@ -48,8 +50,8 @@ def _docs(key: str, prefix: str = ""):
 
 def test_ac_f47_27_text_only_is_a_reason_map(monkeypatch):
     """AC-F47-27: ``TEXT_ONLY`` maps key → reason; every insert doc has a form or a non-empty
-    reason; the reasons are §4.8's (plus the Database and not-yet reasons, each only on its
-    own keys, until P2-B/W9/P3 add those forms)."""
+    reason; the reasons are §4.8's (plus the Database's reason on its own keys; the not-yet
+    reason left with P3-C's flowchart and rollback forms)."""
     assert forms.TEXT_ONLY_REASONS == (
         "Python code: for things the forms can't do.",
         "Python values: use the Database for characters, transitions and minigame data.",
@@ -59,9 +61,10 @@ def test_ac_f47_27_text_only_is_a_reason_map(monkeypatch):
     text_only = forms.TEXT_ONLY
     assert isinstance(text_only, Mapping) and "define" in text_only
     assert all(isinstance(reason, str) and reason.strip() for reason in text_only.values())
-    allowed = {**dict.fromkeys(("default", "image", "points", "lock"), forms.DATABASE_REASON),
-               **dict.fromkeys(("minigame", "file", "ui", "flowchart", "rollback"),
-                               forms.NO_FORM_YET_REASON)}
+    allowed = dict.fromkeys(("default", "image", "points", "lock"), forms.DATABASE_REASON)
+    assert not {"file", "ui"} & set(text_only)                  # W9: Meta file, Game UI
+    assert not {"flowchart", "rollback"} & set(text_only)       # P3-C: AC-F47-53
+    assert forms.NO_FORM_YET_REASON not in text_only.values()   # every later step landed
     for key, reason in text_only.items():
         assert reason in forms.TEXT_ONLY_REASONS or allowed.get(key) == reason, key
     assert missing_forms() == []
@@ -320,3 +323,104 @@ def test_ac_f47_33_lock_and_unlock_forms():
     ], {"route": "", "tip": "", "item": ""})
     with pytest.raises(ValueError):
         unlock.write({"what": "ending", "ending": "sad"})
+
+
+# --- AC-F47-53 --------------------------------------------------------------------------------
+
+def _written_lines(word: str) -> list[str]:
+    """Every ``<word> …`` line of the example game's scripts, and every script line of the
+    docs' code blocks (a block may hold other text: a line counts when it loads alone)."""
+    root = Path(__file__).resolve().parents[3]
+    found: list[str] = []
+    for path in sorted((root / "game").rglob("*.vns")):
+        found += [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+                  if line.strip().startswith(word + " ") or line.strip() == word]
+    for path in sorted((root / "docs").glob("*.md")):
+        block = False
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("```"):
+                block = not block
+            elif block and (line.strip().startswith(word + " ") or line.strip() == word):
+                alone = parse_chunk("script/t.vns", f"label t:\n    {line.strip()}\n")
+                if alone is not None and alone.error is None:
+                    found.append(line.strip())
+    return found
+
+
+def test_ac_f47_53_flowchart_mark_and_rollback_forms():
+    """AC-F47-53: the Flowchart scene, Flowchart mark, Leave off flowchart, Forget flowchart
+    and Rollback forms read and write every shape; each ``flowchart`` doc and the
+    ``rollback`` doc opens its form; every such line in the example game and the docs is a
+    form row (so is the game's looping sound and its music with a fade out), and the shapes
+    they can't write back stay Script rows."""
+    flags = {"hidden": "", "no_jump": ""}
+    _check([
+        ("flow_scene", """flowchart scene "Daichi's Stall\"""", {"title": "Daichi's Stall"},
+         "Flowchart scene  Daichi's Stall"),
+        ("flow_scene", 'flowchart scene "The Promise" hidden no jump',
+         {"title": "The Promise", "hidden": "True", "no_jump": "True"},
+         "Flowchart scene  The Promise · hidden until reached · no jump"),
+        ("flow_scene", 'flowchart scene "A {{b} sign" no jump',
+         {"title": "A {b} sign", "no_jump": "True"}, "Flowchart scene  A {b} sign · no jump"),
+        ("flow_mark", 'flowchart "Where should we watch the lanterns?"',
+         {"title": "Where should we watch the lanterns?"},
+         "Flowchart mark  Where should we watch the lanterns?"),
+        ("flow_mark", "flowchart", {"title": ""}, "Flowchart mark  its own title"),
+        ("flow_mark", "flowchart hidden", {"title": "", "hidden": "True"},
+         "Flowchart mark  its own title · hidden until reached"),
+        ("flow_mark", 'flowchart "Last night" hidden no jump',
+         {"title": "Last night", "hidden": "True", "no_jump": "True"},
+         "Flowchart mark  Last night · hidden until reached · no jump"),
+    ], flags)
+    _check([("flow_omit", "flowchart omit", {}, "Leave off flowchart")], {})
+    _check([
+        ("flow_forget", "flowchart forget", {"scene": ""},
+         "Forget flowchart  the whole flowchart"),
+        ("flow_forget", "flowchart forget stall", {"scene": "stall"},
+         "Forget flowchart  stall"),
+    ], {})
+    _check([
+        ("rollback", "rollback block", {"what": "wall"},
+         "Rollback  players can't go back past this line"),
+        ("rollback", "rollback off", {"what": "turn off"},
+         "Rollback  players can't go back from here on"),
+        ("rollback", "rollback on", {"what": "turn on"}, "Rollback  players can go back again"),
+        ("rollback", "rollback fixed", {"what": "keep the pick"},
+         "Rollback  going back through the next choice can't change the pick"),
+    ], {})
+    _check([
+        ("sound_options", 'play sound "sfx/river.wav" loop volume 40',
+         {"file": "sfx/river.wav", "loop": "True", "volume": "40"},
+         "Sound  sfx/river.wav · repeats · volume 40%"),
+        ("sound_options", 'play sound "sfx/rain.ogg" loop',
+         {"file": "sfx/rain.ogg", "loop": "True"}, "Sound  sfx/rain.ogg · repeats"),
+        ("sound_options", 'play sound "sfx/bell.ogg" volume 30',
+         {"file": "sfx/bell.ogg", "volume": "30"}, "Sound  sfx/bell.ogg · volume 30%"),
+    ], {"loop": "", "volume": ""})
+    _check([
+        ("music_options", 'play music "bgm/night.wav" fadeout 1.5',
+         {"file": "bgm/night.wav", "fadeout": "1.5"},
+         "Music  bgm/night.wav · old music fades out 1.5 s"),
+        ("music_options", 'play music "bgm/night.wav" fadein 2 fadeout 1 volume 60',
+         {"file": "bgm/night.wav", "fadein": "2", "fadeout": "1", "volume": "60"},
+         "Music  bgm/night.wav · fade in 2 s · old music fades out 1 s · volume 60%"),
+    ], {"fadein": "", "fadeout": "", "volume": ""})
+    # The Insert picker: each doc opens its own form; the plain play lines stay F46's.
+    keys = {doc.syntax.split(" [")[0].split(" <")[0]: form_for_doc(doc).key
+            for doc in _docs("flowchart") + _docs("rollback")}
+    assert keys == {'flowchart scene "title"': "flow_scene", "flowchart": "flow_mark",
+                    "flowchart omit": "flow_omit", "flowchart forget": "flow_forget",
+                    "rollback block|off|on|fixed": "rollback"}
+    assert "flowchart" not in forms.TEXT_ONLY and "rollback" not in forms.TEXT_ONLY
+    assert [row.form for row in _rows('play sound "a.ogg"', 'play music "a.ogg"')[1][:2]] \
+        == ["sound", "music"]
+    # Every example-game and docs line is a form row.
+    lines = _written_lines("flowchart") + _written_lines("rollback")
+    assert len(lines) > 10
+    _, got = _rows(*lines)
+    assert None not in [row.form for row in got[:len(lines)]], \
+        [row.text for row in got if row.form is None]
+    # Shapes the forms can't write back.
+    _scripts("flowchart no jump hidden", 'flowchart scene "x" no jump hidden',
+             'play sound "a.ogg" volume 40 loop', 'play music "a.ogg" volume 50 fadein 1',
+             'play music "a.ogg" once', 'play sound "a.ogg" fadein 1')

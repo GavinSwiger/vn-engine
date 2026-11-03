@@ -39,6 +39,14 @@ imports this module inside the function, as this one imports ``forms``), and the
     then one name field per kind so each gets its own picker; the row word says what the
     line does ("Give item", "Forget ending", …). There is no ``unlock ending``. The
     top-level ``lock`` declarations are the Database's (``forms.DECLARATIONS_GROUP``).
+- P3-C (AC-F47-53), the design's Story map mark and Rollback forms. One form per
+  ``flowchart`` doc, named as the game's Flowchart page names it (Insert, the rows and the
+  docs agree): **Flowchart scene** (``flowchart scene "title" [hidden] [no jump]``),
+  **Flowchart mark** (``flowchart ["title"] [hidden] [no jump]``, above a menu, chapter or
+  ending), **Leave off flowchart** (``flowchart omit``) and **Forget flowchart**
+  (``flowchart forget [<label>]``). Titles are shown text (``{`` doubled when written, as
+  Ending). **Rollback** (``rollback block|off|on|fixed``) picks plain words
+  (``ROLLBACK_PICKS``) and its row says what the line does for the player.
 
 Pure: no Tk.
 """
@@ -50,14 +58,16 @@ from typing import Final
 
 from engine.core.constants import (
     COLOR_WORDS, GLITCH_KINDS, GLITCH_SIZES, SHAKE_DIRECTIONS, SHAKE_SIZES)
-from engine.script.audio import QueueMusic, StopAudio, Voice
+from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.codex import CodexLock
 from engine.script.effects import Flash, Shake
+from engine.script.flowchart import Flowchart
 from engine.script.fourthwall import CrashEffect, TitleEffect
 from engine.script.glitch import JITTER, Effect
 from engine.script.limits import CHAPTER_NAME_MAX
 from engine.script.nodes import Chapter, Statement
 from engine.script.nvl import Nvl
+from engine.script.rollback import Rollback
 from engine.script.routes import Ending, Lock
 from engine.script.stage import Hide, Scene, Show
 from engine.script.words import canonical_name, check_name
@@ -562,6 +572,180 @@ _LOCK_LABELS: Final = {"route": "Route", "ending": "Ending", "tip": "Codex tip",
                        "item": "Item"}
 
 
+# --- Flowchart marks, Rollback (P3-C: AC-F47-53) ----------------------------------------------
+
+MARK_OWN_TITLE: Final = "its own title"             # Flowchart mark with no title
+WHOLE_FLOWCHART: Final = "the whole flowchart"      # Forget flowchart with no label
+HIDDEN_TEXT: Final = "hidden until reached"
+NO_JUMP_TEXT: Final = "no jump"
+# Rollback's picks, in the docs' order of ``rollback block|off|on|fixed``.
+ROLLBACK_PICKS: Final = ("wall", "turn off", "turn on", "keep the pick")
+_ROLLBACK: Final = dict(zip(ROLLBACK_PICKS, ("block", "off", "on", "fixed"), strict=True))
+ROLLBACK_TEXTS: Final = {
+    "wall": "players can't go back past this line",
+    "turn off": "players can't go back from here on",
+    "turn on": "players can go back again",
+    "keep the pick": "going back through the next choice can't change the pick"}
+
+
+def _flow_flags(rest: list[str], node: Flowchart) -> dict[str, str] | None:
+    """``[hidden] [no jump]`` (all of ``rest``, in the docs' order) read against ``node``."""
+    hidden = rest[:1] == ["hidden"]
+    rest = rest[1:] if hidden else rest
+    no_jump = rest[:2] == ["no", "jump"]
+    rest = rest[2:] if no_jump else rest
+    if rest or (hidden, no_jump) != (node.hidden, node.no_jump):
+        return None
+    return {"hidden": "True" if hidden else "", "no_jump": "True" if no_jump else ""}
+
+
+def _flow_flags_write(values: Values) -> str:
+    return _join("hidden" if values.get("hidden") else "",
+                 "no jump" if values.get("no_jump") else "")
+
+
+def _flow_flags_text(values: Values) -> str:
+    return _dot(HIDDEN_TEXT if values.get("hidden") else "",
+                NO_JUMP_TEXT if values.get("no_jump") else "")
+
+
+def _flow_scene_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, Flowchart) or node.form != "scene" or node.title is None \
+            or not tokens or len(tokens) < 3 or tokens[:2] != ["flowchart", "scene"] \
+            or tokens[2] != _card_text(node.title):
+        return None
+    flags = _flow_flags(tokens[3:], node)
+    return None if flags is None else {"title": node.title, **flags}
+
+
+def _flow_mark_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, Flowchart) or node.form != "mark" or not tokens \
+            or tokens[0] != "flowchart":
+        return None
+    rest, title = tokens[1:], ""
+    if rest and rest[0].startswith('"'):
+        if node.title is None or rest[0] != _card_text(node.title):
+            return None
+        title, rest = node.title, rest[1:]
+    elif node.title is not None:
+        return None
+    flags = _flow_flags(rest, node)
+    return None if flags is None else {"title": title, **flags}
+
+
+def _flow_omit_read(node: Statement, code: str) -> dict[str, str] | None:
+    if isinstance(node, Flowchart) and node.form == "omit" \
+            and _tokens(code) == ["flowchart", "omit"]:
+        return {}
+    return None
+
+
+def _flow_forget_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, Flowchart) or node.form != "forget" or not tokens \
+            or tokens[:2] != ["flowchart", "forget"] or len(tokens) > 3:
+        return None
+    if len(tokens) == 2:
+        return {"scene": ""} if node.target is None else None
+    if tokens[2].startswith('"') or canonical_name(tokens[2]) != node.target:
+        return None
+    return {"scene": tokens[2]}
+
+
+def _flow_mark_write(values: Values) -> str:
+    title = values.get("title", "")
+    return _join("flowchart", _card_text(title) if title else "", _flow_flags_write(values))
+
+
+def _rollback_read(node: Statement, code: str) -> dict[str, str] | None:
+    if not isinstance(node, Rollback) or _tokens(code) != ["rollback", node.word]:
+        return None
+    return {"what": next(pick for pick, word in _ROLLBACK.items() if word == node.word)}
+
+
+def _rollback_write(values: Values) -> str:
+    return f"rollback {_ROLLBACK[values.get('what') or ROLLBACK_PICKS[0]]}"
+
+
+_FLAG_FIELDS: Final = (
+    Field("hidden", "Hidden until reached", "flag", optional=True),
+    Field("no_jump", "No jump", "flag", optional=True))
+
+
+# --- Music and Sound with options (P3-C) ------------------------------------------------------
+# F46's Music and Sound forms read only the plain lines (their fields are kept as they are).
+# These read the lines with options, in the docs' order: ``play music "<file>" [fadein <s>]
+# [fadeout <s>] [volume <n>]`` and ``play sound "<file>" [loop] [volume <n>]``. With no
+# option set, a line they write reads back as F46's Music or Sound row (as Transition's).
+
+def _audio_options(rest: list[str], node: PlayAudio, fades: tuple[str, ...]
+                   ) -> dict[str, str] | None:
+    """``[<fade> <s>]… [volume <n>]`` (all of ``rest``) read against ``node``."""
+    got: dict[str, str] = {}
+    for word in fades:
+        value = getattr(node, word)
+        if rest[:1] == [word] and len(rest) > 1 and _NUMBER.fullmatch(rest[1]) \
+                and value is not None:
+            got[word], rest = rest[1], rest[2:]
+        elif value is not None:
+            return None
+        else:
+            got[word] = ""
+    got["volume"] = ""
+    if rest[:1] == ["volume"] and len(rest) > 1 and rest[1].isdigit() \
+            and int(rest[1]) == node.volume:
+        got["volume"], rest = rest[1], rest[2:]
+    elif node.volume != 100:
+        return None
+    return None if rest else got
+
+
+def _play_options(values: Values, fades: tuple[str, ...]) -> str:
+    parts = [f"{word} {values[word]}" for word in fades if values.get(word, "").strip()]
+    volume = values.get("volume", "").strip()
+    return _join(*parts, f"volume {volume}" if volume else "")
+
+
+def _music_more_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, PlayAudio) or node.channel != "music" or not node.loop \
+            or node.restart or node.start is not None or not tokens \
+            or tokens[:3] != ["play", "music", quote(node.audio_file)]:
+        return None
+    got = _audio_options(tokens[3:], node, ("fadein", "fadeout"))
+    return None if got is None else {"file": node.audio_file, **got}
+
+
+def _sound_more_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, PlayAudio) or node.channel != "sound" or node.restart \
+            or node.start is not None or not tokens \
+            or tokens[:3] != ["play", "sound", quote(node.audio_file)]:
+        return None
+    rest = tokens[3:]
+    loop = rest[:1] == ["loop"]
+    if loop != node.loop:
+        return None
+    got = _audio_options(rest[1:] if loop else rest, node, ("fadein",))
+    if got is None or got.pop("fadein"):            # a sound's fade in: a Script row
+        return None
+    return {"file": node.audio_file, "loop": "True" if loop else "", **got}
+
+
+def _music_more_summary(values: Values) -> str:
+    fadein, fadeout = values.get("fadein", ""), values.get("fadeout", "")
+    return _dot(values.get("file", ""), f"fade in {_secs(fadein)}" if fadein else "",
+                f"old music fades out {_secs(fadeout)}" if fadeout else "",
+                _volume_text(values))
+
+
+def _volume_text(values: Values) -> str:
+    volume = values.get("volume", "")
+    return f"volume {volume}%" if volume else ""
+
+
 _SIZE_PICK: Final = Field("size", "Size", "pick", options=("", *GLITCH_SIZES), optional=True)
 _HOW_LONG_FIELDS: Final = (
     _SIZE_PICK,
@@ -679,8 +863,61 @@ FORMS: tuple[CommandForm, ...] = (
                (("lock", "lock route|ending"), ("lock", "lock tip|item"))),
     _lock_form("unlock", "Unlock", UNLOCK_WHAT,
                (("unlock", "unlock route"), ("unlock", "unlock tip|item"))),
+    # P3-C: AC-F47-53
+    CommandForm(
+        "flow_scene", "Flowchart scene", "Flowchart scene",
+        (("flowchart", "flowchart scene"),), Flowchart,
+        (Field("title", "Title", "text"), *_FLAG_FIELDS),
+        _flow_scene_read,
+        lambda v: _join("flowchart scene", _card_text(v.get("title", "")),
+                        _flow_flags_write(v)),
+        lambda v: _dot(v.get("title", ""), _flow_flags_text(v))),
+    CommandForm(
+        "flow_mark", "Flowchart mark", "Flowchart mark", (("flowchart", "flowchart ["),),
+        Flowchart,
+        (Field("title", "Title", "text", optional=True), *_FLAG_FIELDS),
+        _flow_mark_read, _flow_mark_write,
+        lambda v: _dot(v.get("title", "") or MARK_OWN_TITLE, _flow_flags_text(v))),
+    CommandForm(
+        "flow_omit", "Leave off flowchart", "Leave off flowchart",
+        (("flowchart", "flowchart omit"),), Flowchart, (),
+        _flow_omit_read, lambda v: "flowchart omit", lambda v: ""),
+    CommandForm(
+        "flow_forget", "Forget flowchart", "Forget flowchart",
+        (("flowchart", "flowchart forget"),), Flowchart,
+        (Field("scene", "Only this scene", "scene", "label", optional=True),),
+        _flow_forget_read,
+        lambda v: _join("flowchart forget", v.get("scene", "").strip()),
+        lambda v: v.get("scene", "") or WHOLE_FLOWCHART),
+    CommandForm(
+        "rollback", "Rollback", "Rollback", (("rollback", ""),), Rollback,
+        (Field("what", "Rollback", "pick", options=ROLLBACK_PICKS),),
+        _rollback_read, _rollback_write,
+        lambda v: ROLLBACK_TEXTS[v.get("what") or ROLLBACK_PICKS[0]]),
+    # Music and Sound with options (no docs: Insert opens F46's Music and Sound).
+    CommandForm(
+        "music_options", "Music", "Music", (), PlayAudio,
+        (_SOUND_FILE,
+         Field("fadein", "Fade in (seconds)", "number", optional=True),
+         Field("fadeout", "Fade out the old music (seconds)", "number", optional=True),
+         Field("volume", "Volume (%)", "number", optional=True)),
+        _music_more_read,
+        lambda v: _join("play music", quote(v["file"]),
+                        _play_options(v, ("fadein", "fadeout"))),
+        _music_more_summary),
+    CommandForm(
+        "sound_options", "Sound", "Sound", (), PlayAudio,
+        (_SOUND_FILE,
+         Field("loop", "Repeat until stopped", "flag", optional=True),
+         Field("volume", "Volume (%)", "number", optional=True)),
+        _sound_more_read,
+        lambda v: _join("play sound", quote(v["file"]), "loop" if v.get("loop") else "",
+                        _play_options(v, ())),
+        lambda v: _dot(v.get("file", ""), "repeats" if v.get("loop") else "",
+                       _volume_text(v))),
 )
 
 __all__ = ["CHANGES", "CHAPTER_UNTITLED", "CRASH_PLAYER_NAME", "ENDING_NO_CARD", "EVERY_SOUND",
-           "FORMS", "GAME_MESSAGE", "GAME_TITLE", "GLITCHES", "HOW_LONG", "LOCK_WHAT",
-           "PAGE_WORDS", "UNLOCK_WHAT", "chapter_name"]
+           "FORMS", "GAME_MESSAGE", "GAME_TITLE", "GLITCHES", "HIDDEN_TEXT", "HOW_LONG",
+           "LOCK_WHAT", "MARK_OWN_TITLE", "NO_JUMP_TEXT", "PAGE_WORDS", "ROLLBACK_PICKS",
+           "ROLLBACK_TEXTS", "UNLOCK_WHAT", "WHOLE_FLOWCHART", "chapter_name"]

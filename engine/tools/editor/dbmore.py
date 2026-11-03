@@ -35,7 +35,7 @@ from engine.script.messages import show
 from engine.script.points import POINTS_LIMIT
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
-from engine.tools.editor import (declplan, fieldwidgets, files, stageat, tomlpatch,
+from engine.tools.editor import (declplan, fieldhints, fieldwidgets, files, stageat, tomlpatch,
                                   trywiring)
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.fieldwidgets import (
@@ -465,7 +465,8 @@ class MoreCategories:
         title = self._title(body, entry.name)
         values = dict(entry.decl.values)
         ranged = values.get("low") is not None
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_METER))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         self._name_row(grid, form, entry)
@@ -567,7 +568,8 @@ class MoreCategories:
         body, form = self._new_body(key)
         title = self._title(body, entry.shown)
         values = dict(entry.decl.values)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_CODEX))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         f["kind"] = ChoiceField(grid.frame, [(dec.TIP, "Tip"), (dec.ITEM, "Item")],
@@ -648,7 +650,8 @@ class MoreCategories:
         body, form = self._new_body(key)
         title = self._title(body, entry.shown)
         values = dict(entry.decl.values)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(fieldhints.ROUTE))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         f["title"] = TextField(grid.frame, str(values["title"]), width=26,
@@ -715,7 +718,8 @@ class MoreCategories:
         body, _form = self._new_body(key)
         values = entry.decl.values if entry.decl is not None and entry.decl.values else {}
         self._title(body, entry.shown)
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_ENDING))
         grid.frame.grid(row=1, column=0, sticky="ew")
         if values.get("heading"):
             grid.row(LABEL_HEADING, ttk.Label(grid.frame, text=str(values["heading"])))
@@ -757,7 +761,8 @@ class MoreCategories:
         self._title(body, entry.name)
         values = dict(entry.decl.values)
         kind = str(values["kind"])
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_TRANSITION))
         grid.frame.grid(row=1, column=0, sticky="ew")
         f = form.fields
         self._name_row(grid, form, entry)
@@ -890,7 +895,8 @@ class MoreCategories:
             self._stage_fit_bound = True
             self.form_frame.bind("<Configure>", lambda _e: self._fit_stage(), add="+")
         self._fit_stage()
-        grid = FormGrid(body, scale=self.scale)
+        grid = FormGrid(body, scale=self.scale,
+                        tips=fieldhints.database_tips(db.CATEGORY_POSITION))
         grid.frame.grid(row=3, column=0, sticky="ew", pady=(self._px(12), 0))
         state: dict[str, db.Entry] = {}
 

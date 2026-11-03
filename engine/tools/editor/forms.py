@@ -71,8 +71,8 @@ PLUGIN_REASON: Final = "Plugin code is written in Python (docs/minigames.md)."
 TEXT_ONLY_REASONS: Final = (PYTHON_CODE_REASON, PYTHON_VALUES_REASON, INCLUDE_REASON,
                             STORY_MAP_REASON, PLUGIN_REASON)
 # Not in §4.8 (F47 P2-A): declarations the Database writes, and statements whose form is a
-# later F47 step (P3 flowchart, rollback). Each later step drops its keys (W8 dropped
-# ``minigame``: ``minigamedata.FORM``; W9 ``file`` and ``ui``: ``forms_files_ui``).
+# later F47 step (none left: W8 dropped ``minigame``, ``minigamedata.FORM``; W9 ``file`` and
+# ``ui``, ``forms_files_ui``; P3-C ``flowchart`` and ``rollback``, ``forms_more``).
 DATABASE_REASON: Final = (
     "Made in the Database: variables, pictures, meters, codex entries and routes.")
 NO_FORM_YET_REASON: Final = "No form for this yet: it goes in as a script line."
@@ -84,8 +84,7 @@ NO_FORM_YET_REASON: Final = "No form for this yet: it goes in as a script line."
 TEXT_ONLY: Final[Mapping[str, str]] = MappingProxyType({
     "at": STORY_MAP_REASON, "label": STORY_MAP_REASON,
     "define": PYTHON_VALUES_REASON, "include": INCLUDE_REASON,
-    **dict.fromkeys(("default", "image", "points", "lock"), DATABASE_REASON),
-    **dict.fromkeys(("flowchart", "rollback"), NO_FORM_YET_REASON)})
+    **dict.fromkeys(("default", "image", "points", "lock"), DATABASE_REASON)})
 # A doc in this group is a top-level declaration, never an Events row: it has no form.
 DECLARATIONS_GROUP: Final = "Declarations"
 

@@ -96,10 +96,10 @@ def test_script_rows_form_gate(monkeypatch):
         ("show daichi at 760 behind hana", None),
         ("show hana happy zoom 1.3", None),
         ("show lantern_girl as girl_a at 900 flip on", None),
-        ('play sound "sfx/rain.ogg" loop volume 40', None),
+        ('play sound "sfx/rain.ogg" volume 40 loop', None),     # F47's Sound: loop first
         ('scene bg river_dusk with fade "#ffe08a" 0.4', None),   # F47's Transition: 0.4 first
         ("$ coins = max(0, coins - 1)", None),
-        ("flowchart forget stall", None),
+        ("flowchart no jump hidden", None),                      # F47's mark: hidden first
         ("pause 1", "pause"),
     ]
     read, lines = _inline(*(line for line, _ in table))

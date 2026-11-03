@@ -26,7 +26,7 @@ Imports only the standard library and ``theme``.
 
 import re
 import tkinter as tk
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from tkinter import colorchooser, ttk
 from tkinter import font as tkfont
 
@@ -363,15 +363,18 @@ class AssetPicker(ChoiceField):
 
 class FormGrid:
     """Rows of (changed bar, label, field, **Use default**) on ``parent``, plus captions.
-    ``row`` returns the row's ``FormRow``."""
+    ``row`` returns the row's ``FormRow``. ``tips``: label → its plain-words hint, shown as
+    the label's tooltip (F47 P3-D: ``fieldhints.database_tips``)."""
 
     def __init__(self, parent: tk.Misc, *, scale: float = 1.0,
-                 label_width: int = 110) -> None:
+                 label_width: int = 110, tips: Mapping[str, str] | None = None) -> None:
         self.frame = ttk.Frame(parent)
         self.scale = scale
         self.frame.columnconfigure(2, weight=1)
         self.frame.columnconfigure(1, minsize=_px(label_width, scale))
         self.next_row = 0
+        self.tips = tips or {}
+        self.tooltips: dict[str, object] = {}           # label → its Tooltip
 
     def caption(self, text: str, *, button: tuple[str, Callable[[], object]] | None = None
                 ) -> ttk.Button | None:
@@ -398,6 +401,9 @@ class FormGrid:
         bar.grid(row=r, column=0, sticky="ns", padx=(0, _px(6, px)), pady=_px(3, px))
         text = ttk.Label(self.frame, text=label)
         text.grid(row=r, column=1, sticky="w", pady=_px(3, px), padx=(0, _px(12, px)))
+        if self.tips.get(label):
+            from engine.tools.editor.playbar import Tooltip     # playbar imports dialogs
+            self.tooltips[label] = Tooltip(text, self.tips[label])
         widget = field.widget if isinstance(field, _Field) else field
         widget.grid(row=r, column=2, sticky="w", pady=_px(3, px))
         default = None
