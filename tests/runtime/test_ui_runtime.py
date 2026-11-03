@@ -20,6 +20,7 @@ from engine.script.messages import format_message
 from tests.persist.save_support import make_save
 from tests.runtime import corpus, fourthwall_story, glitch_story
 from tests.runtime.effects_story import of_type, take_all, write_game
+from tests.runtime.stage_story import example_minigames
 from tests.runtime.ui_story import (F32, GOLDEN, R, golden_text, launched, load, run_h,
                                     template_u, walk)
 
@@ -71,10 +72,13 @@ def test_ac_f32_09_commands_holding_and_headless_wipes(tmp_path, caplog):
     interp.run(10_000)
     assert interp.checkpoint().ui is EMPTY_UI and not of_type(take_all(interp), *UI_COMMANDS)
 
-    # The older corpora release none of the three.
+    # The example (F32 s6) releases only its bonus scene's ui style dark and ui style off;
+    # the older corpora release none of the three.
     example = corpus.example_program()
-    assert not of_type(run_headless(example, seed=42, image_files=corpus.example_images()),
-                       *UI_COMMANDS)
+    released = of_type(run_headless(example, seed=42, image_files=corpus.example_images(),
+                                    minigames=example_minigames()), *UI_COMMANDS)
+    assert released and {(type(c), c.name) for c in released} == {(UiStyle, "dark"),
+                                                                  (UiStyle, None)}
     assert not of_type(glitch_story.run_h(glitch_story.walk()), *UI_COMMANDS)
     assert not of_type(fourthwall_story.run_h(fourthwall_story.walk()), *UI_COMMANDS)
     assert not of_type(plain, *UI_COMMANDS)

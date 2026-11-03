@@ -2084,3 +2084,97 @@ def test_ac_f30_38_fourth_wall_tricks_docs(tmp_path):
 
     ui = " ".join(_section(UI.read_text(encoding="utf-8"), "Layers (z-order)").split())
     assert "The **fake crash screen** (F30, `effect crash`)" in ui
+
+
+# --- AC-F32-26: "Dynamic UI" and the UI system's run-time looks note -----------------------
+
+# Each F32 code → the forms the reference quotes (``format_message`` arguments), in order.
+F32_MESSAGES: dict[str, list[tuple]] = {
+    "E319": [(), ("unknown", "colour", "color"), ("style_needs",), ("block_needs", "saving"),
+             ("delete_needs",), ("left", "saving on", "now"), ("top",)],
+    "E320": [(), ("glowy", None)],
+    "E321": [(), ("long", 240), ("tags",)],
+    "W204": [(), ("True or False",)],
+    "W205": [()],
+    "W206": [()],
+    "W207": [(), ("playthrough.2.theme.title", "background_image", "gui/night.png", "image")],
+}
+
+
+def test_ac_f32_26_dynamic_ui_docs(tmp_path):
+    """``script-language.md``'s "Dynamic UI" (not proposed) covers SR-F32-01..07,
+    ``[playthrough.N]``, ``[style.<name>]``, the layer order, and the four rules (the look's
+    three moments, ``ui saving off`` before ``ui delete saves``, the title's Load page and
+    ``title_entries``, F28 for flicker); its E319-E321 and W204-W207 rows quote
+    ``messages.py``. Each story block loads and launches in a copy of the doc game with no
+    error or warning, and the TOML block loads as a config with none. ``ui-system.md`` notes
+    that ``GameShell.theme`` follows the current look and that player settings win."""
+    import shutil
+
+    from engine.core.config import load_config
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.messages import format_message
+    from engine.script.ui import HEADING
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _section(text, HEADING)
+    assert "proposed" not in section
+    flat = " ".join(section.split())
+    for words in ("`persistent.playthrough`", "`ui style <name>`", "`ui style off`",
+                  "`ui saving off [\"reason\"]`", "`ui loading off [\"reason\"]`",
+                  "`ui delete saves`", "1 to 200 characters, with no text tags",
+                  "`[playthrough.N]`", "from 0 to 99, at most 16", "`[style.<name>]` table (at "
+                  "most 32)", "lowercase letters, digits, and `_`, up to 32", "not `off` or a "
+                  "reserved word", "`$ persistent.playthrough = len(persistent.endings)`",
+                  "**Layer order.**", "the current style first, then in the chosen "
+                  "playthrough look, then in `[theme]` and `[words]`, then in the engine's "
+                  "default",
+                  "**The look is chosen only at the title, at New Game, and at a load.**",
+                  "**Write `ui saving off` before `ui delete saves`**, because auto-saves can "
+                  "make new saves",
+                  "**The title's Load page is never blocked.**", "`title_entries`",
+                  "**Use [Glitch effects](#24-glitch-effects) for flicker, not rapid `ui "
+                  "style` lines.**", "**Player settings win.**", "capped at 48",
+                  "colors and frame change at once", "with the next line",
+                  "The quick menu takes the whole style at once",
+                  "`python -m engine run game --playthrough 2`"):
+        assert words in flat, words
+    for code, forms in F32_MESSAGES.items():
+        row = re.search(rf"^\| {code} \|.*$", section, re.M).group(0)
+        for args in forms:
+            assert f"`{format_message(code, args)}`" in row, (code, args)
+    assert "#26-dynamic-ui" in _section(text, "Statements")
+
+    blocks = re.findall(r"^```(\w*)\n(.*?)^```$", section, re.M | re.S)
+    stories = [body for kind, body in blocks if not kind]
+    assert len(stories) == 2 and all("ui " in block for block in stories)
+    for n, block in enumerate(stories):
+        game = tmp_path / f"game{n}"
+        shutil.copytree(REPO / "tests" / "fixtures" / "docgame", game)
+        story = 'define hana = Character("Hana")\n' + block
+        if "label start:" not in block:                          # the delete example's label
+            label = re.match(r"label (\w+):", block).group(1)
+            story += f"label start:\n    call {label}\n    return\n"
+        (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+        (game / "script" / "chapter2.vns").unlink()              # included only by main.vns
+        result = load_story(GamePaths.for_game(game))
+        assert result.errors == () and result.warnings == (), (n, result.errors,
+                                                                 result.warnings)
+        launch = run_launch(result.program)
+        assert launch.namespace is not None and launch.warnings == ()
+    tomls = [body for kind, body in blocks if kind == "toml"]
+    assert len(tomls) == 1
+    game = tmp_path / "configured"
+    (game / "script").mkdir(parents=True)
+    (game / "script" / "main.vns").write_text('label start:\n    "Hi."\n', encoding="utf-8")
+    (game / "config.toml").write_text('[game]\ntitle = "Doc"\n' + tomls[0], encoding="utf-8")
+    loaded = load_config(GamePaths.for_game(game))
+    assert loaded.errors == [] and loaded.warnings == [], (loaded.errors, loaded.warnings)
+    assert set(loaded.config.style) == {"ashes"} and set(loaded.config.playthrough) == {2}
+
+    ui = " ".join(UI.read_text(encoding="utf-8").split())
+    for words in ("`GameShell.theme` is a property that follows the current look",
+                  "Player settings win over every layer"):
+        assert words in ui, words

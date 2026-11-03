@@ -84,6 +84,7 @@ class PersistentLaunch:
         self.job: ReadJob | None = None
         self.outcome: ReadOutcome | None = None
         self.notices: list[LaunchNotice] = []
+        self.memory_only = False            # F32 --playthrough: read, then keep MEMORY
 
     @property
     def done(self) -> bool:
@@ -154,12 +155,14 @@ class PersistentLaunch:
 
 
 def open_for_launch(program: object, *, game_root: Path | None, release: bool,
-                    app_id: str | None, off: bool = False,
+                    app_id: str | None, off: bool = False, memory_only: bool = False,
                     log: logging.Logger | None = None) -> PersistentLaunch:
     """§7.4 steps 1–4: the session's store, its mode, and the launch read (not yet stepped).
 
     ``off`` is ``--no-persistent`` (dev runs only). ``app_id`` is ``[game] id`` as
     configured (None when it isn't set; the log folder's fallback slug never counts).
+    ``memory_only`` (F32's ``--playthrough N``) reads the file as usual but keeps the mode
+    MEMORY, so nothing is written or created.
     Neither ``off`` nor a release run without an id touches the file system. Never raises
     ``OSError``."""
     log = log if log is not None else get_logger("persist")
@@ -167,6 +170,7 @@ def open_for_launch(program: object, *, game_root: Path | None, release: bool,
     store = PersistentStore(identity_scheme=scheme, log=log)
     launch = PersistentLaunch(store, program, mode=MEMORY, folder=None, release=release,
                               log=log)
+    launch.memory_only = memory_only
     if off:
         log.info("%s", OFF_TEXT)
         return launch
@@ -208,7 +212,7 @@ def install_persistence(app: "App", launch: PersistentLaunch) -> PersistentSync:
     ``App.writer`` (owner ``persist``), with the launch's warnings counted for
     ``take_notices`` and the once-per-session rule. Once per launch, after the read."""
     assert launch.done, "install_persistence needs the finished launch read"
-    mode = launch.mode
+    mode = MEMORY if launch.memory_only else launch.mode
     sync = PersistentSync(launch.store, launch.program, mode=mode,
                           folder=launch.folder if mode is not MEMORY else None,
                           stamp=launch.stamp, log=launch.log,

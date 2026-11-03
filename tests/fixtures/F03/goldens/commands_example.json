@@ -668,6 +668,10 @@
      "type": "MetaDelete"
     },
     {
+     "name": "dark",
+     "type": "UiStyle"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -891,6 +895,10 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "name": null,
+     "type": "UiStyle"
     },
     {
      "lasting": {
@@ -5267,6 +5275,10 @@
      "type": "MetaDelete"
     },
     {
+     "name": "dark",
+     "type": "UiStyle"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -5490,6 +5502,10 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "name": null,
+     "type": "UiStyle"
     },
     {
      "lasting": {
@@ -9617,6 +9633,10 @@
      "type": "MetaDelete"
     },
     {
+     "name": "dark",
+     "type": "UiStyle"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -9840,6 +9860,10 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "name": null,
+     "type": "UiStyle"
     },
     {
      "lasting": {
@@ -14289,6 +14313,10 @@
      "type": "MetaDelete"
     },
     {
+     "name": "dark",
+     "type": "UiStyle"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -14512,6 +14540,10 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "name": null,
+     "type": "UiStyle"
     },
     {
      "lasting": {
@@ -18064,6 +18096,10 @@
      "type": "MetaDelete"
     },
     {
+     "name": "dark",
+     "type": "UiStyle"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -18287,6 +18323,10 @@
      "speaker_tag": "thought",
      "text": "I wasn't sure what she meant. I let her go on anyway.",
      "type": "Say"
+    },
+    {
+     "name": null,
+     "type": "UiStyle"
     },
     {
      "lasting": {

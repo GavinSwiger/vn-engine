@@ -128,6 +128,26 @@ logo_image = "gui/logo.png"
 frame_image = "gui/button.png"
 # frame_slice_width = 24   # the size of the picture's corners
 
+# A playthrough look: the title changes once players have played before. The story sets
+# persistent.playthrough (script/endings.vns adds 1 at each ending), and from playthrough
+# 2 on the title uses this table's music and words over the ones above (a picture in gui/
+# can change too, with background_image). The look is chosen when the title opens, at New
+# Game, and when a save loads. To see it while you test:
+# python -m engine run game --playthrough 2. Every key is in docs/script-language.md,
+# "Dynamic UI".
+[playthrough.2.theme.title]
+music = "bgm/bridge_night.wav"
+[playthrough.2.words]
+new_game = "Walk the festival again"
+
+# A style: a second look for the text box that the story switches on with "ui style dark"
+# and off with "ui style off" (the bonus scene in script/bonus.vns). Keys not set here
+# keep the look above.
+[style.dark.theme.textbox]
+fill_color = "#1E1A1C"
+text_color = "#EDE3E8"
+border_color = "#5A3848"
+
 # The words on the buttons and in the dialogs. Remove the "#" to change one.
 [words]
 # new_game = "New Game"

@@ -246,7 +246,8 @@ class StoryLoadScreen(Screen):
         self.persistent = open_for_launch(
             result.program, game_root=paths.root if paths is not None else None,
             release=not app.dev, app_id=app.config.game.id,
-            off=getattr(app, "no_persistent", False))
+            off=getattr(app, "no_persistent", False),
+            memory_only=getattr(app, "playthrough_preview", None) is not None)
         return True
 
     def _read_slice(self, deadline: float, *, at_least_one: bool) -> bool:

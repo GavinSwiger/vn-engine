@@ -40,7 +40,7 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
            start: "StartOptions | None" = None, editor_report: bool = False,
            seed: int | None = None, no_persistent: bool = False, resume: bool = False,
            window_at: tuple[int, int] | None = None,
-           try_lines: Sequence[str] | None = None) -> int:
+           try_lines: Sequence[str] | None = None, playthrough: int | None = None) -> int:
     """Run one session of the game in ``game_dir``; return the process exit code.
 
     F44: ``start`` holds ``run --start``/``--set`` (``App.start``); ``editor_report``
@@ -52,7 +52,9 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
     ``ResumeScreen``; ``window_at`` (``--window-at=X,Y``) opens the window there.
     F47 P2-F: ``try_lines`` (``--try-stdin``) makes it Studio's Try it run
     (``app/trystory.py``): no log file, no settings read, a small window, the label's
-    lines played from the start, persistent data in memory, and nothing written."""
+    lines played from the start, persistent data in memory, and nothing written.
+    F32: ``playthrough`` (``--playthrough N``) is ``App.playthrough_preview``: persistent
+    data is read but kept in memory, with ``persistent.playthrough`` set to N."""
     log = logsetup.begin(level=log_level_override or "info", engine_root=engine_root())
     app_log = get_logger("app")
     state = _Startup(game_dir, release=release)
@@ -96,7 +98,7 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             code = _run_session(state, log, release=release, bench_seconds=bench_seconds,
                                 start=start, editor_report=editor_report, seed=seed,
                                 no_persistent=no_persistent, resume=resume,
-                                window_at=window_at)
+                                window_at=window_at, playthrough=playthrough)
         except KeyboardInterrupt:
             interrupted = True
             code = 0
@@ -222,7 +224,8 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
                  bench_seconds: float | None, start: "StartOptions | None" = None,
                  editor_report: bool = False, seed: int | None = None,
                  no_persistent: bool = False, resume: bool = False,
-                 window_at: tuple[int, int] | None = None) -> int:
+                 window_at: tuple[int, int] | None = None,
+                 playthrough: int | None = None) -> int:
     import pygame
 
     from engine.app import platform as osinfo
@@ -296,6 +299,7 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
               dev=not release, bench_seconds=bench_seconds, start=start, seed=seed,
               no_persistent=no_persistent or trying, editor_link=link)
     app.try_run = trying
+    app.playthrough_preview = playthrough          # F32: run --playthrough N
     if link is not None:                      # F39: Studio's messages; the failed place
         if not trying:                        # a try run's stdin held its lines
             link.listen(_editor_input(), resume=resume)

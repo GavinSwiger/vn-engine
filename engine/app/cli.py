@@ -67,6 +67,7 @@ from pathlib import Path
 
 from engine import _bootcheck
 from engine.core import safefile
+from engine.core.constants import PLAYTHROUGH_MAX
 from engine.core.paths import engine_root, is_frozen, launcher_game_dir
 from engine.core.startvalues import StartOptions, parse_set_list
 
@@ -84,6 +85,8 @@ START_NEEDS_LABEL = "--start needs a label name, like club_poem"
 # F03 step 13 (04 §12.1): --seed N, decimal, 0 <= N < 2**64 (draft for the narrative designer).
 SEED_MAX = (1 << 64) - 1
 SEED_NEEDS_NUMBER = f"--seed needs a whole number from 0 to {SEED_MAX}, like 42"
+# F32 (04 §6.8, 07 G7): run --playthrough N previews the title look of playthrough N.
+PLAYTHROUGH_NEEDS_NUMBER = "--playthrough needs a whole number from 0 to 99, like 2"
 # F39 (SPEC §5.4): the window spot of an updated preview.
 WINDOW_AT_MAX = 100_000
 WINDOW_AT_NEEDS_NUMBERS = "--window-at needs two whole numbers, like 120,80"
@@ -130,6 +133,14 @@ def _seed(text: str) -> int:
     0 <= N < 2**64."""
     if not (text.isascii() and text.isdigit()) or int(text) > SEED_MAX:
         raise argparse.ArgumentTypeError(SEED_NEEDS_NUMBER)
+    return int(text)
+
+
+def _playthrough(text: str) -> int:
+    """argparse type for ``--playthrough`` (F32 ``04`` §6.8): ASCII digits only, 0 to
+    ``PLAYTHROUGH_MAX``."""
+    if not (text.isascii() and text.isdigit()) or int(text) > PLAYTHROUGH_MAX:
+        raise argparse.ArgumentTypeError(PLAYTHROUGH_NEEDS_NUMBER)
     return int(text)
 
 
@@ -326,6 +337,10 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
     run.add_argument("--no-persistent", action="store_true",
                      help="don't read or save persistent data in this run, to test a first "
                           "playthrough (dev runs)")
+    run.add_argument("--playthrough", metavar="N", type=_playthrough, default=None,
+                     help="show the game as playthrough N (persistent.playthrough = N), "
+                          "keeping persistent data in memory, to preview a playthrough's "
+                          "title look (dev runs)")
     # F39: Studio's own (hidden); Studio passes ``--window-at=X,Y`` as one item, so a
     # negative X isn't read as an option.
     run.add_argument("--resume-from-editor", action="store_true", help=argparse.SUPPRESS)
@@ -362,6 +377,7 @@ def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) 
                           ("--report-to-editor", args.report_to_editor),
                           ("--seed", args.seed is not None),
                           ("--no-persistent", args.no_persistent),
+                          ("--playthrough", args.playthrough is not None),
                           ("--resume-from-editor", args.resume_from_editor),
                           ("--window-at", args.window_at is not None),
                           ("--try-stdin", args.try_stdin)):
@@ -430,6 +446,7 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        editor_report=getattr(args, "report_to_editor", False),
                        seed=getattr(args, "seed", None),
                        no_persistent=getattr(args, "no_persistent", False),
+                       playthrough=getattr(args, "playthrough", None),
                        resume=getattr(args, "resume_from_editor", False),
                        window_at=getattr(args, "window_position", None),
                        try_lines=getattr(args, "try_lines", None))
@@ -442,7 +459,8 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             start: StartOptions | None = None, editor_report: bool = False,
             seed: int | None = None, no_persistent: bool = False, resume: bool = False,
             window_at: tuple[int, int] | None = None,
-            try_lines: tuple[str, ...] | None = None) -> int:
+            try_lines: tuple[str, ...] | None = None,
+            playthrough: int | None = None) -> int:
     """The startup sequence (``engine.app.bootstrap.launch``)."""
     from engine.app import bootstrap
 
@@ -451,4 +469,5 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             pygame_warning=pygame_warning, start=start,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
-                            window_at=window_at, try_lines=try_lines)
+                            window_at=window_at, try_lines=try_lines,
+                            playthrough=playthrough)

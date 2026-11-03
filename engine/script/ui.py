@@ -187,8 +187,7 @@ def parse_ui(raw: RawStatement, ctx: ParseContext) -> UiStatement | None:
 SPEC: Final = StatementSpec(word=WORD_UI, placement="either", takes_block=False,
                             tail=TAIL_SCRIPT, parse=parse_ui)
 
-# The docs/script-language.md section F32 s6 writes; each doc's ``docs`` is None until then
-# (the completeness test's DOCS_PENDING), and s6 sets it to HEADING.
+# The docs/script-language.md section every ui doc links to (F32 s6).
 HEADING: Final = "Dynamic UI"
 # Four Insert entries in "Effects" (04 §15 step 2). Completion (07 I-10, F45's slot rule):
 # ``ui`` lists the kind ``ui`` (style, saving, loading, delete; tools/check.py's NAME_SOURCES)
@@ -199,25 +198,25 @@ DOCS: Final = (
         WORD_UI, "UI style", "Effects", "ui style <style>",
         "Switches the text box, choices, NVL page, and quick menu to a [style.<name>] look "
         "from config.toml. ui style off brings back the normal look. Saves keep the style.",
-        'ui style ashes\n"The room feels colder now."\nui style off', None, "F32",
+        'ui style ashes\n"The room feels colder now."\nui style off', HEADING, "F32",
         fields=("ashes",), names=("ui",)),
     StatementDoc(
         WORD_UI, "Stop saving", "Effects", 'ui saving off ["<reason>"]|on',
         "Turns off saving: the Save page shows the reason (or the game's own words) instead "
         "of slots, and auto-saves stop. ui saving on allows saving again.",
         'ui saving off "There\'s nothing left to keep."\n"Something is watching."\n'
-        "ui saving on", None, "F32", fields=("There's nothing left to keep.",), names=("ui",)),
+        "ui saving on", HEADING, "F32", fields=("There's nothing left to keep.",), names=("ui",)),
     StatementDoc(
         WORD_UI, "Stop loading", "Effects", 'ui loading off ["<reason>"]|on',
         "Turns off loading during the story: the Load page shows the reason (or the game's "
         "own words) instead of slots. The title's Load page always works.",
-        'ui loading off "Not now."\n"There is no going back."\nui loading on', None, "F32",
+        'ui loading off "Not now."\n"There is no going back."\nui loading on', HEADING, "F32",
         fields=("Not now.",), names=("ui",)),
     StatementDoc(
         WORD_UI, "Delete all saves", "Effects", "ui delete saves",
         "Deletes every save slot of this game, auto-saves included. Write ui saving off first, "
         "so no auto-save makes a new one. A Studio preview deletes nothing.",
-        "ui saving off\nui delete saves", None, "F32", names=("ui",)),
+        "ui saving off\nui delete saves", HEADING, "F32", names=("ui",)),
 )
 
 

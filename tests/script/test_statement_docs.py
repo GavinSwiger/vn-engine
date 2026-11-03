@@ -31,9 +31,7 @@ from engine.script.words import STATEMENT_WORDS
 LANGUAGE_DOC = Path(__file__).resolve().parents[2] / "docs" / "script-language.md"
 
 # 07 I-4: keys whose docs/script-language.md heading is still to come.
-DOCS_PENDING = {
-    "ui": "F32 s6",                  # ui.HEADING; registered by ui.register_words() from F32 s3
-}
+DOCS_PENDING: dict[str, str] = {}
 
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _HEADING = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")

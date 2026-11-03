@@ -27,6 +27,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from engine.tools.editor import studiostate
+from engine.tools.editor.dialogs import ask, show_info
 from engine.tools.editor.hotreload import HotReload, HotReloadEvent
 from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
     BEGINNING,
@@ -38,6 +39,7 @@ from engine.tools.editor.preview import (
     POLL_INTERVAL_MS,
     PreviewEvent,
     PreviewState,
+    editor_report,
     preview_argv,
     start_value_args,
     start_values_report,
@@ -57,6 +59,11 @@ STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_t
     PreviewState.STOPPED_ERROR: "Stopped with an error, listed in Problems.",
     PreviewState.STOPPED_UNEXPECTED: "Stopped unexpectedly.",
 }
+# F32 (04 §6.8): Run ▸ "Preview title as playthrough…".
+PLAYTHROUGH_MENU = "Preview title as playthrough…"
+PLAYTHROUGH_ASK = "Preview the title as which playthrough?"
+NO_PLAYTHROUGHS = "This game has no [playthrough] tables."
+PLAYTHROUGH_CONFIG_HEAD = "config.toml has a problem, so the preview didn't start."
 LIVE = (PreviewState.STARTING, PreviewState.RUNNING, PreviewState.UPDATING)
 # F39: the game can be updated in these states (the error screen too, while it is open).
 UPDATABLE = (*LIVE, PreviewState.STOPPED_ERROR)
@@ -234,19 +241,24 @@ class RunWiring:
         """▶ Play this scene and F5."""
         self.play(self.scene_to_play())
 
-    def play(self, label: str | None) -> None:
-        """Play from ``label`` (None: the start). Saves every unsaved file first: the first
-        failure shows its dialog and nothing starts. Start-value problems go to the panel,
-        and nothing starts (I-5). Focus stays where it was (03 §4)."""
-        if self.closed:
-            return
+    def _save_before_play(self) -> bool:
+        """Save every unsaved file (the first failure shows its dialog: False) and ask for
+        the first full check (07 I-1)."""
         was_armed, dirty = self.armed, self.dirty_files()
         self.armed = True
         for record in dirty:
             if not self.save_record(record):
-                return
+                return False
         if dirty or not was_armed:          # after saves, and the first full check (07 I-1)
             self.request_check()
+        return True
+
+    def play(self, label: str | None) -> None:
+        """Play from ``label`` (None: the start). Saves every unsaved file first: the first
+        failure shows its dialog and nothing starts. Start-value problems go to the panel,
+        and nothing starts (I-5). Focus stays where it was (03 §4)."""
+        if self.closed or not self._save_before_play():
+            return
         args, problems = start_value_args(self.start_values_text)
         if problems:
             self.show_event(PreviewEvent(PreviewState.DIDNT_START,
@@ -264,6 +276,36 @@ class RunWiring:
         self.hot.stop()
         self.runner.stop()
         self.show_event(PreviewEvent(PreviewState.CLOSED))
+
+    def preview_playthrough(self) -> None:
+        """Run ▸ Preview title as playthrough… (F32 04 §6.8): ``config.toml``'s
+        ``[playthrough.N]`` keys in a small chooser, then the game's title as that
+        playthrough (``run --playthrough N``: persistent data read, kept in memory). No
+        tables: an info box. A config that fails to load: its errors in the panel, no
+        chooser, no preview (07 G8). Start values and "Play as a new player" don't apply."""
+        if self.closed:
+            return
+        from engine.core.config import load_config
+        from engine.core.paths import GamePaths
+
+        loaded = load_config(GamePaths.for_game(self.paths.root))
+        if loaded.errors:
+            self.show_event(PreviewEvent(PreviewState.DIDNT_START, editor_report(
+                *(error.format() for error in loaded.errors), head=PLAYTHROUGH_CONFIG_HEAD)))
+            return
+        numbers = sorted(loaded.config.playthrough)
+        if not numbers:
+            show_info(self.root, NO_PLAYTHROUGHS)
+            return
+        picked = ask(self.root, PLAYTHROUGH_ASK, [*(str(n) for n in numbers), "Cancel"],
+                     escape=len(numbers))
+        if picked >= len(numbers) or not self._save_before_play():
+            return
+        self._saved_refs = []               # a restart, not an update
+        self.hot.stop()
+        self.runner.start(preview_argv(self.paths.root, None, [],
+                                       extra=("--playthrough", str(numbers[picked]))))
+        self.apply_events(self.runner.poll())
 
     def play_options(self) -> None:
         """Play options…: the start values and "Play as a new player", for this session."""

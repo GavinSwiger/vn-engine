@@ -15,7 +15,7 @@ from engine.runtime.character import Character
 from engine.runtime.commands import (AudioRestore, FakeCrash, Glitch, NvlPage, PlayVoice, PrefetchImages, Say,
                                      ShowMenu,
                                      ShowStage, StartMinigame, StoryEnded, StoryWait,
-                                     WindowTitle)
+                                     UiBlocks, UiStyle, WindowTitle)
 from engine.runtime.headless import run_headless
 from engine.runtime.images import ImageSource
 from engine.runtime.interpreter import Interpreter, RestoreResult, Status
@@ -214,7 +214,11 @@ def test_ac_f04_50_ac_f03_56_continuing_from_every_round_tripped_line():
         # comes just before it.
         say = got[first]
         voice = [PlayVoice(say.sid, say.voice, True)] if say.voice else []
-        assert [c for c in got[:first] if type(c) is not PrefetchImages] == [
+        # F32 s6: the bonus scene's ui style comes back with the saved style.
+        looks = [c for c in got[:first] if type(c) in (UiStyle, UiBlocks)]
+        assert all(c.name == state.ui.style for c in looks if type(c) is UiStyle)
+        assert [c for c in got[:first]
+                if type(c) not in (PrefetchImages, UiStyle, UiBlocks)] == [
             AudioRestore(state.audio, "restore"), NvlPage(state.nvl.on, state.nvl.page),
             ShowStage(state.stage, restored=True),
             *([WindowTitle(state.window_title)] if state.window_title is not None else []),

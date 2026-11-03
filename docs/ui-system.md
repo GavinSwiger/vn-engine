@@ -257,6 +257,19 @@ Nested elements and states use nested tables: `[theme.textbox.name_tab]`,
 warning rules (architecture, "Configuration"). Button words are not tokens; they live in
 a separate table (F10 OQ-2).
 
+**Looks that change at run time (F32).** A `[playthrough.N]` table (title tokens, words,
+`title_entries`) and a `[style.<name>]` table (`textbox`, `choice`, `nvl`, `quick_menu`
+tokens and words) are layers over `[theme]`: a token is looked up in the current style,
+then the chosen playthrough look, then `[theme]`, then the default
+(script-language.md, "Dynamic UI"). `GameShell.theme` is a property that follows the
+current look, so screens read their tokens through it each time and never keep an old
+theme; a look is built once per combination and never changed in place. Player settings
+win over every layer: F16's text size scales the looked-up size (a style's 40 at 150 % is
+capped at 48), and reduce motion turns every fade into a cut. On a `ui style` switch the
+text box's colors and frame change on the shown box at once and its text with the next
+line; the quick menu takes the whole style at once. Error screens and F30's fake crash
+never use a look.
+
 ### Token list
 
 | Token | Type | Default | Purpose |
@@ -1038,3 +1051,6 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - 2026-11-02: F30 built (step 6): the fake crash screen and the first-launch name question
   under "Screens above" (with the name's clean thumbnails), and the fake crash row in
   "Fixed engine colors".
+- 2026-11-02: F32 built (step 6): run-time looks under "Where authors set them"
+  (`[playthrough.N]` and `[style.<name>]` layers, `GameShell.theme` following the current
+  look, player settings winning, what changes at once on a style switch).

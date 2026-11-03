@@ -26,6 +26,11 @@ label hana_file:
     # "file delete" deletes a file the story wrote. Like a write, it can't be undone. The
     # original in files/ stays, so a new game writes the file again.
     file delete "hana.chr"
+    # "ui style" switches the text box to a style from config.toml, here [style.dark],
+    # while Hana's file is gone. The box's colors change at once and its text with the
+    # next line. "ui style off" brings back the usual look; saves keep the style. Every
+    # rule is in docs/script-language.md, "Dynamic UI".
+    ui style dark
     # Glitch effects: the picture seems to break while Hana's file is gone. The lines say
     # what happens too, so players who turn effects down miss nothing. Every rule is in
     # docs/script-language.md, "Glitch effects".
@@ -56,6 +61,7 @@ label hana_file:
     file exists "hana.chr" into hana_here
     # "effect off" stops every glitch at once.
     effect off
+    ui style off
     if hana_here:
         hana happy "You put me back! I knew you would."
     else:

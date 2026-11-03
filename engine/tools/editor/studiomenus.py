@@ -23,7 +23,7 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
-from engine.tools.editor.runwiring import UPDATE_MENU, UPDATE_ON_SAVE_MENU
+from engine.tools.editor.runwiring import PLAYTHROUGH_MENU, UPDATE_MENU, UPDATE_ON_SAVE_MENU
 from engine.tools.editor.guide import GUIDE_TITLE
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.build.texts import MENU as BUILD_MENU
@@ -112,6 +112,7 @@ class StudioMenus:
                 Item(PLAY_SCENE_MENU, "F5", self.play_scene),
                 Item(STOP_MENU, f"{key}+F2", self.stop_game),
                 Item(PLAY_OPTIONS, command=self.play_options),
+                Item(PLAYTHROUGH_MENU, command=self.preview_playthrough),   # F32
                 SEPARATOR,
                 Item(UPDATE_MENU, f"{key}+R", self.update_game, guarded=True),
                 Check(UPDATE_ON_SAVE_MENU, self.update_on_save, self.toggle_update_on_save),

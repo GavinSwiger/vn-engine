@@ -19,7 +19,7 @@ from engine.runtime.audio import EMPTY_AUDIO
 from engine.runtime.commands import (Advance, AudioRestore, ChapterStarted, CodexAdded,
                                      Command, Event, FakeCrash, Flash, Glitch, MetaDelete, MetaWrite, NvlPage, PlayVoice, PrefetchImages, Say, Shake, ShowMenu,
                                      ShowStage, StartMinigame, StoryEnded, StoryFailed,
-                                     StoryWait, WindowTitle)
+                                     StoryWait, UiBlocks, UiStyle, WindowTitle)
 from engine.runtime.interpreter import (CHECKPOINT_TYPES, RestoreResult, Status, Step,
                                         register_executor)
 from engine.runtime.state import GameState
@@ -108,6 +108,8 @@ def test_i_9_a_retained_snapshot_is_unchanged_after_a_full_run():
         router.register(kind, shown.append)
     router.register(Glitch, shown.append)                   # F28 s6 (the bonus scene)
     router.register(WindowTitle, shown.append)              # F30 s6 (its crash: StoryWait)
+    for kind in (UiStyle, UiBlocks):                        # F32 s6 (the bonus scene)
+        router.register(kind, shown.append)
     end_waits(interp)                                       # F18: the prologue's card
     retained = []
     while interp.status is Status.WAITING:
@@ -263,7 +265,8 @@ def test_ac_f03_84_bursts_with_f04s_stage(tmp_path):
                  if type(c) not in (PrefetchImages, StoryWait, Shake, Flash, ChapterStarted,
                                     CodexAdded, MetaWrite, MetaDelete,      # F31 s5
                                     Glitch,                                 # F28 s6
-                                    WindowTitle, FakeCrash)]                # F30 s6
+                                    WindowTitle, FakeCrash,                 # F30 s6
+                                    UiStyle, UiBlocks)]                     # F32 s6
         if first:
             assert burst[0] == AudioRestore(EMPTY_AUDIO, "new_game")
             first = False
@@ -296,6 +299,9 @@ def test_ac_f03_84_bursts_with_f04s_stage(tmp_path):
         titles = [c for c in burst if type(c) is WindowTitle]                     # F30 s6
         assert all(c == WindowTitle(state.window_title) for c in titles)
         burst = [c for c in burst if type(c) is not WindowTitle]
+        styles = [c for c in burst if type(c) is UiStyle]                         # F32 s6
+        assert all(c.name == state.ui.style for c in styles)
+        burst = [c for c in burst if type(c) not in (UiStyle, UiBlocks)]
         restored = [dataclasses.replace(c, restored=True) for c in voice]
         glitch = [Glitch(state.glitch, restored=True)] if state.glitch.on else []   # F28 s6
         assert burst[3:3 + len(glitch)] == glitch

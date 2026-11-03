@@ -422,6 +422,10 @@ See [section 24](#24-glitch-effects): `effect tear`, `effect colorshift`, `effec
 See [section 25](#25-fourth-wall-tricks): `effect window_title`, `effect crash`, and the
 `{username}` tag.
 
+### Dynamic UI
+See [section 26](#26-dynamic-ui): `ui style`, `ui saving off`/`on`, `ui loading off`/`on`,
+and `ui delete saves`.
+
 ### chapter
 ```
     scene bg festival
@@ -3453,6 +3457,161 @@ game runs; W189 and W190 are warnings in `--dev` runs. The story goes on after a
 | W189 | `this line uses {username}, but [meta] username is off in config.toml, so every player sees "friend". Set username = true under [meta] to let players choose.` / `…and 4 more lines use {username}.` (warning, `--dev` runs) | Set `username = true` under `[meta]`, or leave it off if "friend" is what you want. |
 | W190 | `this Python code reads the computer's user name or environment. Anything it stores goes into saves, history, and persistent data that players share. To show the player's name, use {username} in text instead.` / `…and 2 more lines read identity.` (warning, `--dev` runs) | Remove the code and write `{username}` in the line instead. |
 
+## 26. Dynamic UI
+
+The game's look can change while it runs. A **playthrough look** restyles the title once
+players have played before: a new picture, music, and button words for a second
+playthrough. A **style** is a second look for the text box, choices, NVL page, and quick
+menu that the story switches on and off with `ui style`. The story can also turn off
+saving or loading for a while, and delete every save. The example game's bonus scene,
+`game/script/bonus.vns`, uses a style, and its endings (`game/script/endings.vns`) set
+the playthrough, each with a comment above its first use.
+
+```
+label start:
+    scene bg room
+    # Turn the text box to the [style.ashes] look in config.toml.
+    ui style ashes
+    hana "The room feels colder now."
+    ui saving off "There's nothing left to keep."
+    hana "Don't bother saving. It won't help."
+    ui saving on
+    ui style off
+    hana "...Sorry. I don't know what came over me."
+    $ persistent.playthrough = 2
+    return
+```
+
+### Playthrough looks
+`persistent.playthrough` is a value the game remembers across playthroughs, like any
+[persistent](#persistent-data-across-playthroughs) value. It starts at 0 without a
+`default` line, and the engine never changes it: the story sets it, for example
+`$ persistent.playthrough = 2` just above an ending, or
+`$ persistent.playthrough = len(persistent.endings)`. Your own
+`default persistent.playthrough = …` replaces the 0. Delete progress in Settings and
+`persistent._clear()` put it back to its starting value.
+
+A `[playthrough.N]` table in `config.toml` (N a whole number from 0 to 99, at most 16
+tables) is the title's look from playthrough N on: the table with the largest N that is
+not above `persistent.playthrough` is used, and below every N the title keeps its usual
+look. A table may hold:
+
+- `[playthrough.N.theme.title]`: any `[theme.title]` key, such as the picture
+  (`background_image`, an image in `gui/`), `logo_image`, `music`, and the colors;
+- `[playthrough.N.words]`: any `[words]` key, such as `new_game`. These words also show
+  in the game menu and the quick menu while that look is chosen;
+- `title_entries`: the title's buttons, as `[title] entries`.
+
+**The look is chosen only at the title, at New Game, and at a load.** Setting
+`persistent.playthrough` in the middle of the story changes nothing on screen until the
+title opens again (after an ending, or Main Menu), a New Game starts, or a save loads.
+F33's content warning, shown before the title, uses the chosen look's words and colors.
+
+**The title's Load page is never blocked.** No story runs at the title, so
+`ui loading off` can't reach it. To keep players from loading at the title in a later
+playthrough, leave `load` out of that look's `title_entries`.
+
+To see a playthrough look while you test, run the game as that playthrough:
+`python -m engine run game --playthrough 2`. The run reads the game's persistent data
+but keeps it in memory, so nothing is written. In Studio, **Run ▸ Preview title as
+playthrough…** does the same.
+
+### Styles
+A `[style.<name>]` table (at most 32) is a look the story turns on with
+`ui style <name>`. The name is lowercase letters, digits, and `_`, up to 32, starting
+with a letter, and not `off` or a reserved word. A style may hold `theme` keys of the
+`textbox`, `choice`, `nvl`, and `quick_menu` areas (with their sub-tables, such as
+`[style.ashes.theme.choice.focused]`) and `[style.<name>.words]`. Values follow the same
+rules as `[theme]`. A key the style doesn't set keeps the usual look.
+
+```toml
+[playthrough.2]
+title_entries = ["new_game", "settings", "quit"]
+
+[playthrough.2.theme.title]
+music = "bgm/title_quiet.ogg"
+
+[playthrough.2.words]
+new_game = "Again?"
+
+[style.ashes.theme.textbox]
+fill_color = "#1E1A1C"
+text_color = "#EDE3E8"
+border_color = "#5A3848"
+
+[style.ashes.words]
+save = "Keep"
+```
+
+- **`ui style <name>`** makes that style the current one; **`ui style off`** goes back to
+  the usual look. One style is on at a time: a second `ui style` replaces the first.
+- The text box's colors and frame change at once, on the box already shown; its text
+  takes the new font, size, and colors with the next line. The quick menu takes the whole
+  style at once. Choices and the NVL page use the style the next time they appear.
+- **Player settings win.** The player's text size scales the style's size (a style's
+  `text_size = 40` at 150 % is capped at 48), and reduce motion turns fades into cuts
+  whatever look set them.
+- A style is part of the story: saves keep it, rollback brings back the one that was on,
+  and New Game and the title clear it. A save whose style `config.toml` no longer has
+  loads with the usual look (W205).
+- **Use [Glitch effects](#24-glitch-effects) for flicker, not rapid `ui style` lines.** A
+  style switch is cheap, but it isn't meant to flash, and glitches keep to the game's
+  flashing limit.
+
+**Layer order.** Each key and word is looked up in the current style first, then in the
+chosen playthrough look, then in `[theme]` and `[words]`, then in the engine's default.
+A key whose default follows another key (`nvl.fill_color` follows `textbox.fill_color`)
+follows the value found. Fonts and pictures in looks and styles are checked at launch like
+`[theme]`'s; one that can't be used gives W207 and the `[theme]` key instead. In `--dev`
+runs, the text and fill colors of each style and each playthrough look get the contrast
+check of [Menus and theme](#15-menus-and-theme) (W67, naming the table).
+
+### Saving and loading off
+- **`ui saving off ["reason"]`** turns off saving: the Save page shows the reason instead
+  of its slots, quick save says it, and auto-saves stop (the quit auto-save too).
+  **`ui saving on`** allows saving again. Without a reason the game's word `saving_off`
+  shows, "Saving is turned off here."
+- **`ui loading off ["reason"]`** and **`ui loading on`** do the same for loading during
+  the story, with the word `loading_off`, "Loading is turned off here."
+- A reason is plain text in quotes, 1 to 200 characters, with no text tags (`{{` writes a
+  `{`).
+- Like a style, the blocks and their reasons are saved, rolled back, and cleared by New
+  Game and the title.
+
+### Deleting every save
+**`ui delete saves`** deletes every save slot of this game, auto-saves and quick saves
+included, and the story goes on at once. It never touches persistent data, settings, or
+the player's other files. Rollback can't bring the saves back, and running the line again
+deletes again. A headless run and a Studio preview delete nothing; the log says
+`ui delete saves: no saves are deleted in a preview.`
+
+**Write `ui saving off` before `ui delete saves`**, because auto-saves can make new saves
+right after the delete, and turn saving back on only when the scene is over:
+
+```
+label the_end_of_everything:
+    ui saving off "There's nothing left to keep."
+    ui delete saves
+    hana "It's all gone now. Just us."
+    ui saving on
+    return
+```
+
+### When something is wrong
+E319 to E321 stop the launch with the file and line. W204 and W205 are warnings in the log
+while the game runs; W206 and W207 are warnings at launch (W206 in `--dev` runs). The
+story goes on after a warning.
+
+| Code | Message | Fix |
+|---|---|---|
+| E319 | `ui needs what to change, e.g. ui style ashes, ui saving off, ui loading on, or ui delete saves.` / `ui can change style, saving, loading, or delete saves, but not "colour". Did you mean "color"?` / `ui style needs a style name from config.toml, or off, e.g. ui style ashes.` / `ui saving needs off or on, e.g. ui saving off "Not here." or ui saving on.` / `ui delete needs the word saves: ui delete saves.` / `ui saving on takes nothing more, but this line has "now" left over.` / `ui goes inside a label, because it runs when the story reaches it.` | Write `ui style <name>`, `ui saving off`/`on`, `ui loading off`/`on`, or `ui delete saves`, inside a label. |
+| E320 | `there is no UI style "ashs" in config.toml. Did you mean "ashes"? Add a [style.ashs] table, or use ui style off.` / `there is no UI style "glowy" in config.toml. Add a [style.glowy] table, or use ui style off.` | Fix the name, or add the `[style.<name>]` table to `config.toml`. |
+| E321 | `the reason needs at least one character, or leave it out to use the game's own words.` / `the reason can be at most 200 characters, but this one has 240.` / `the reason is plain text, so it can't hold {b} or other tags. To show a {, write {{.` | Shorten the reason, or leave it out. |
+| W204 | `persistent.playthrough isn't a whole number (it holds text), so the title uses playthrough 0's look.` / `persistent.playthrough isn't a whole number (it holds True or False), so the title uses playthrough 0's look.` (warning, while playing; the value itself is never shown) | Set `persistent.playthrough` to a whole number, such as 2. |
+| W205 | `this save uses the UI style "ashes", which config.toml no longer has, so the normal look is used.` (warning, while playing) | Add the `[style.<name>]` table back if old saves should keep their look. |
+| W206 | `config.toml: [style.ashes] isn't used by any ui style line.` (warning, `--dev` runs) | Use the style with `ui style <name>`, or remove its table. |
+| W207 | `config.toml: [style.ashes.theme.textbox] frame_image "gui/x.png" doesn't exist, so [theme.textbox] frame_image is used.` / `config.toml: [playthrough.2.theme.title] background_image "gui/night.png" couldn't be read as an image, so [theme.title] background_image is used.` (warning, at launch) | Fix the file name, or put the picture or font in the game folder. |
+
 ---
 
 ## Changelog
@@ -3624,3 +3783,7 @@ game runs; W189 and W190 are warnings in `--dev` runs. The story goes on after a
   eight `[words]` keys, E300 to E302, W188 to W190), a section 7 pointer, the `{username}`
   row in the tag table, the Data group's two rows, and notes in Saves, Content warning,
   Reserved words, and Common errors.
+- 2026-11-02: F32 step 6: new section 26, Dynamic UI (`persistent.playthrough` and
+  `[playthrough.N]` title looks, `[style.<name>]` and `ui style`, the layer order, player
+  settings winning, `ui saving`/`ui loading` off and on with a reason, `ui delete saves`
+  after `ui saving off`, `run --playthrough N`, E319 to E321 and W204 to W207).

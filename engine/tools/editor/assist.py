@@ -49,6 +49,10 @@ QUOTED_KINDS: Final = (AUDIO_KIND, META_FILE_KIND)   # kinds written in quotes
 VERB_KIND: Final = "verb"                # the word after a VERB_STATEMENTS word
 # Statements whose second word is one of a fixed list, read from their docs' syntaxes.
 VERB_STATEMENTS: Final = frozenset(("file",))
+FIXED_KIND: Final = "fixed"              # the fixed third word of a two-word form (F32)
+# F32 (AC-F32-24): the words that may follow these two words; ``ui style`` is a slot.
+FIXED_WORDS: Final = {("ui", "saving"): ("off", "on"), ("ui", "loading"): ("off", "on"),
+                      ("ui", "delete"): ("saves",)}
 COMPLETION_MAX: Final = 200              # rows a list holds (04 §7.6)
 COMPLETION_VISIBLE: Final = 10           # rows shown at once (design §6.1)
 PREFIX_MAX: Final = 1_024                # a longer typed run completes nothing (huge lines)
@@ -229,6 +233,10 @@ def completion_context(line: str, column: int) -> Context | None:
             kinds = slots[word]
             # image names have several words (lock item … image <words>)
             span_start = found.end() if IMAGE_KIND in kinds else -1
+    fixed = FIXED_WORDS.get((first.group(1), later[0])) if len(later) == 1 else None
+    if fixed is not None and not quoted:
+        return Context((FIXED_KIND,), before[start:], start, column,
+                       scope=f"{first.group(1)} {later[0]}")
     if not later and not quoted and verb_words(first.group(1)):
         return Context((VERB_KIND,), before[start:], start, column, scope=first.group(1))
     if first.group(1) == MINIGAME_WORD and later and not quoted:
@@ -384,6 +392,8 @@ def candidates(ctx: Context, names: Mapping[str, Iterable[object]],
             pool = CODEX_FIELDS
         elif kind == VERB_KIND:
             pool = verb_words(ctx.scope)
+        elif kind == FIXED_KIND:
+            pool = FIXED_WORDS.get(tuple(ctx.scope.split()), ())
         else:
             pool = names.get(kind, ())
         for entry in pool:
@@ -540,4 +550,4 @@ __all__ = ["AUDIO_KIND", "CHARACTER_KIND", "CLOSE_TAG_KIND", "CODEX_FIELD_KIND",
            "SLOT_KINDS", "STATEMENT_KIND", "accept", "slot_words",
            "auto_open", "candidates", "completion_context", "help_for", "help_sections",
            "insert_menu", "insert_text", "statement_words", "META_FILE_KIND", "QUOTED_KINDS",
-           "VERB_KIND", "VERB_STATEMENTS", "verb_words"]
+           "VERB_KIND", "VERB_STATEMENTS", "verb_words", "FIXED_KIND", "FIXED_WORDS"]

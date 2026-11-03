@@ -136,6 +136,10 @@ class App:
         # F47 P2-F: Studio's Try it run (``run --try-stdin``, ``app/trystory.py``): saves
         # and meta files stay off the disk, so the run writes nothing.
         self.try_run = False
+        # F32 (04 §6.8): ``run --playthrough N`` (dev runs only). Persistent data is read but
+        # stays in memory (``open_for_launch(memory_only=True)``), and ``install_looks`` sets
+        # ``persistent.playthrough`` to N before the launch look is chosen.
+        self.playthrough_preview: int | None = None
         # F12 step 6: the process's one file writer (ADR-0007; ``persist/writer.py``), shared
         # by F12's persistent data, F16's settings, and F11's saves. Its thread starts on the
         # first write. ``persist`` is F12's ``PersistentSync`` (``app/persistence.py``:

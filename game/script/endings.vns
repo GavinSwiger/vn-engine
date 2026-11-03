@@ -47,11 +47,16 @@ label river_end:
     # to the title screen. sad is the ending's name: one per ending, used by "until" in
     # main.vns and by "lock ending" below. Nothing after an ending runs, so its lines go
     # above it.
+    # persistent.playthrough picks the title's look: from 2 on, the title uses
+    # [playthrough.2] in config.toml (the bridge's night music and "Walk the festival
+    # again"). The title opens after the ending card, so it changes then.
+    $ persistent.playthrough = 2
     ending sad "Sad End" "Paper Ashes"
 
 label festival_end:
     hana happy "Then come on! They light the big lantern at ten."
     "We ran down into the crowd. For one night, it felt like I had never left."
+    $ persistent.playthrough = 2
     ending good "Good End" "The Lantern Festival"
 
 # The promise route: the bridge's third choice opens only after the sad and the good

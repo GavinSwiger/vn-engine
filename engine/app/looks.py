@@ -263,6 +263,9 @@ def install_looks(app: "App", interp: "Interpreter") -> Looks:
     choices = getattr(app, "choices", None)
     add_parts(looks, checks, choices)
     store = getattr(interp, "persistent", None)
+    preview = getattr(app, "playthrough_preview", None)
+    if preview is not None and store is not None:
+        store.set(PLAYTHROUGH_NAME, preview)    # 04 §6.8: memory only, before the choice
     warned = [False]
     shell.set_looks(looks, lambda: read_playthrough(store, warned))
     textbox = getattr(app, "textbox", None)

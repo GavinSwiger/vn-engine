@@ -19,7 +19,7 @@ def test_ac_f32_07_insert_and_help_rows(tmp_path):
         docs = docs_for("ui")
         assert [d.syntax.split(" <")[0].split(" [")[0] for d in docs] == [
             "ui style", "ui saving off", "ui loading off", "ui delete saves"]
-        assert ui.HEADING == "Dynamic UI" and all(d.docs is None for d in docs)   # s6 sets it
+        assert ui.HEADING == "Dynamic UI" and all(d.docs == ui.HEADING for d in docs)   # F32 s6
         menu = dict(insert_menu())
         for n, doc in enumerate(docs):
             assert doc.syntax and doc.example and doc.feature == "F32"
