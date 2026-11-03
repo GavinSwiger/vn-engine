@@ -292,6 +292,18 @@ class _Persist:
         return lambda *a, **k: None
 
 
+def _persist_after_load(s: Session):
+    """Install a ``_Persist`` once the load screen has handed over; returns it.
+
+    Not as soon as the story exists: the load screen still warms the real sync's encoder
+    after ``install_story`` (``_after_launch``), in what is left of the launch frame's real
+    50 ms slice. On a busy machine that slice is used up and the warm-up runs in the next
+    frame, on the stand-in (``None + float``: the load fails and the script never ends)."""
+    yield from s.until(lambda: s.app.story is not None and not s.app.loading)
+    s.app.persist = persist = _Persist(s)
+    return persist
+
+
 def _gray(s: Session) -> int:
     return s.px(10, 10)[0]
 
@@ -395,8 +407,7 @@ def test_ac_f30_22_a_wait_never_a_step(tmp_path, caplog):
     out: dict = {}
 
     def script(s: Session):
-        yield from s.until(lambda: s.app.story is not None)
-        persist = s.app.persist = _Persist(s)
+        persist = yield from _persist_after_load(s)
         persist.fail = OSError("disk")                      # one DEBUG line; the page shows
         c = yield from to_crash(s)
         out["flush"] = (list(persist.flushes), c, crash_up(s) is not None)
@@ -435,8 +446,7 @@ def test_ac_f30_22_a_wait_never_a_step(tmp_path, caplog):
     out = {"crash_frames": 0}
 
     def script(s: Session):
-        yield from s.until(lambda: s.app.story is not None)
-        persist = s.app.persist = _Persist(s)
+        persist = yield from _persist_after_load(s)
         yield from s.until_line("Hello.")
         s.app.skip_auto.start_skip()
         for _ in range(120):
