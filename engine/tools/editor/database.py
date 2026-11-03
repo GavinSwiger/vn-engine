@@ -74,6 +74,7 @@ from engine.tools.editor.fieldwidgets import (
     TextField,
     ToggleField,
     color_dot,
+    fit_wrap,
 )
 from engine.tools.editor.helperhub import CANT_PLAY, PLAYING, ThumbLoader, hub_for
 from engine.tools.editor.preview import Report
@@ -279,9 +280,12 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
         self.new_button = ttk.Button(self.list_head, text=NEW_BUTTON, command=self.new_entry,
                                      style="Chrome.Ghost.TButton", takefocus=1)
         self.new_button.pack(side="right", padx=(0, px(4)))
-        self.cat_choice = ChoiceField(self.list_frame, [(k, TITLES[k]) for k in ALL_CATEGORIES],
-                                      self.category,
-                                      on_change=lambda key: self.select_category(str(key)))
+        # Narrow windows: the categories as a drop-down over each list (this one, and one
+        # per category with its own list, such as Minigame data: ``category_choice``).
+        self.extra_categories: dict[str, str] = {}      # key → title, added by ``add_category``
+        self.cat_choices: list[ChoiceField] = []
+        self.on_compact: list[Callable[[bool], None]] = []
+        self.cat_choice = self.category_choice(self.list_frame)
         self.search_var = tk.StringVar(master=self.root)
         self.search = ttk.Entry(self.list_frame, textvariable=self.search_var)
         self.search.pack(fill="x", padx=px(8), pady=(px(8), px(6)))
@@ -523,6 +527,39 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
         if chosen and chosen[0] != self.category:
             self.select_category(chosen[0])
 
+    def category_choices(self) -> list[tuple[str, str]]:
+        """Every category as (key, title), in the side bar's order."""
+        return [(k, TITLES[k]) for k in ALL_CATEGORIES] + list(self.extra_categories.items())
+
+    def category_choice(self, parent: tk.Misc) -> ChoiceField:
+        """A drop-down of every category (narrow windows), kept showing the picked one."""
+        choice = ChoiceField(parent, self.category_choices(), self.category,
+                             on_change=lambda key: self.pick_category(str(key)))
+        self.cat_choices.append(choice)
+        return choice
+
+    def add_category(self, key: str, title: str) -> None:
+        """A category with its own list and form (Minigame data): in the side bar and in
+        every category drop-down."""
+        self.extra_categories[key] = title
+        self.cat_tree.insert("", "end", iid=key, text=title, values=("",))
+        for choice in self.cat_choices:
+            choice.set_choices(self.category_choices())
+
+    def show_category_choice(self, key: str) -> None:
+        """Every category drop-down shows ``key``."""
+        for choice in self.cat_choices:
+            choice.set(key)
+
+    def pick_category(self, key: str) -> None:
+        """``key`` picked in a category drop-down: as if picked in the side bar."""
+        if key in ALL_CATEGORIES:
+            self.select_category(key)
+        elif key in self.extra_categories:
+            self.cat_tree.selection_set(key)
+            self.cat_tree.see(key)
+            self.show_category_choice(key)
+
     def select_category(self, key: str) -> None:
         if key not in ALL_CATEGORIES:
             return
@@ -531,7 +568,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
         self.category = key
         if tuple(self.cat_tree.selection()) != (key,):
             self.cat_tree.selection_set(key)
-        self.cat_choice.set(key)
+        self.show_category_choice(key)
         self.list_title.configure(text=TITLES[key].upper())
         if key in READ_ONLY:
             self.new_button.pack_forget()
@@ -554,9 +591,16 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
                                         before=self.search)
         else:
             self.cat_choice.widget.pack_forget()
-            self.paned.add(self.cat_frame, before=self.list_frame,
-                           width=self._px(CATEGORY_WIDTH), minsize=self._px(120),
-                           stretch="never")
+            first = next((pane for pane in self.paned.panes()), None)
+            if first is not None:
+                self.paned.add(self.cat_frame, before=first,
+                               width=self._px(CATEGORY_WIDTH), minsize=self._px(120),
+                               stretch="never")
+            else:
+                self.paned.add(self.cat_frame, width=self._px(CATEGORY_WIDTH),
+                               minsize=self._px(120), stretch="never")
+        for hook in self.on_compact:
+            hook(compact)
 
     # --- The list ---------------------------------------------------------------------------
 
@@ -698,8 +742,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
     def _message_form(self, text: str) -> None:
         body, _form = self._new_body(("message", text))
         if text:
-            ttk.Label(body, text=text, style="Hint.TLabel", wraplength=self._px(360),
-                      justify="left").grid(row=0, column=0, sticky="w")
+            fit_wrap(ttk.Label(body, text=text, style="Hint.TLabel", justify="left"),
+                     self._px(360)).grid(row=0, column=0, sticky="ew")
 
     def _form_key(self, row: Row) -> tuple:
         entry = row.entry
@@ -778,9 +822,9 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
 
     def _complex(self, body: ttk.Frame, row: int, entry: db.Entry) -> None:
         box = ttk.Frame(body)
-        box.grid(row=row, column=0, sticky="w")
-        ttk.Label(box, text=declplan.COMPLEX, wraplength=self._px(360),
-                  justify="left").pack(anchor="w")
+        box.grid(row=row, column=0, sticky="ew")
+        fit_wrap(ttk.Label(box, text=declplan.COMPLEX, justify="left"),
+                 self._px(360)).pack(anchor="w", fill="x")
         if entry.place is not None:
             ref, line = entry.place
             ttk.Button(box, text=db.EDIT_AS_SCRIPT, style="Secondary.TButton",

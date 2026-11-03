@@ -641,6 +641,16 @@ class Gallery:
             self.on_activate(self.selected)
 
 
+def fit_wrap(label: ttk.Label, most: int) -> ttk.Label:
+    """Wrap ``label`` to the width it is given, at most ``most`` px: a form column narrower
+    than ``most`` wraps the text instead of clipping it. Lay it out stretched (``sticky="ew"``
+    or ``fill="x"``)."""
+    label.configure(wraplength=most)
+    label.bind("<Configure>", lambda e: label.configure(
+        wraplength=max(1, min(most, e.width))), add="+")
+    return label
+
+
 __all__ = ["AssetPicker", "ChoiceField", "ColorField", "FormGrid", "FormRow", "Gallery",
            "NumberField", "ScrollFrame", "TextField", "ToggleField", "ask_color",
-           "color_dot"]
+           "color_dot", "fit_wrap"]

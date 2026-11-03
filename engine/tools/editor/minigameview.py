@@ -1742,6 +1742,7 @@ class MinigamePane:
         self.new_button.pack(side="right", padx=(0, px(4)))
         self.list_body = ttk.Frame(self.list_frame)
         self.list_body.pack(fill="both", expand=True, pady=(px(8), 0))
+        self.cat_choice: Any = None                 # the categories drop-down (``attach``)
         self.tree = ttk.Treeview(self.list_body, show="tree", selectmode="browse",
                                  columns=("detail",), height=1, style="Surface.Treeview")
         self.tree.column("#0", width=px(130), stretch=True)
@@ -1786,7 +1787,18 @@ class MinigamePane:
                   stretch="never")
         paned.add(self.editor_frame, minsize=self.host.px(320), stretch="always")
         self.showing = True
+        db_pane.show_category_choice(CATEGORY)
         self.refresh()
+
+    def compact(self, on: bool) -> None:
+        """Narrow windows: the categories drop-down over the list (the side bar is gone)."""
+        if self.cat_choice is None:
+            return
+        if on:
+            self.cat_choice.widget.pack(fill="x", padx=self.host.px(8),
+                                        pady=(self.host.px(8), 0), before=self.list_body)
+        else:
+            self.cat_choice.widget.pack_forget()
 
     def hide(self) -> None:
         if not self.showing:
@@ -1800,6 +1812,7 @@ class MinigamePane:
                   stretch="never")
         paned.add(db_pane.form_frame, minsize=self.host.px(FORM_MIN_WIDTH), stretch="always")
         self.showing = False
+        db_pane.show_category_choice(db_pane.category)
 
     def on_category(self) -> None:
         chosen = self.database.cat_tree.selection()
@@ -1988,7 +2001,10 @@ def attach(database: Any) -> MinigamePane:
     ``DatabasePane``). The pane swaps its own list and editor into the Database's columns
     while the category is picked."""
     pane = MinigamePane(database)
-    database.cat_tree.insert("", "end", iid=CATEGORY, text=CATEGORY_TITLE, values=("",))
+    database.add_category(CATEGORY, CATEGORY_TITLE)
+    pane.cat_choice = database.category_choice(pane.list_frame)  # narrow windows
+    database.on_compact.append(pane.compact)
+    pane.compact(database.compact)
     database.cat_tree.bind("<<TreeviewSelect>>", lambda _e: pane.on_category(), add="+")
     database.minigames = pane
     pane.refresh()

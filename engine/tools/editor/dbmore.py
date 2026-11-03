@@ -390,8 +390,8 @@ class MoreCategories:
         else:
             empty = NO_ENDINGS
         text = "\n".join(r.text for r in members) if members else empty
-        ttk.Label(body, text=text, style="Hint.TLabel", justify="left",
-                  wraplength=self._px(360)).grid(row=2, column=0, sticky="w")
+        fieldwidgets.fit_wrap(ttk.Label(body, text=text, style="Hint.TLabel", justify="left"),
+                              self._px(360)).grid(row=2, column=0, sticky="ew")
         if row.group == "endings" and members:
             ttk.Label(body, text=db.ENDINGS_HINT, style="Hint.TLabel").grid(
                 row=3, column=0, sticky="w", pady=(self._px(12), 0))
@@ -1062,8 +1062,8 @@ class MoreCategories:
 
     def _broken_positions_form(self) -> None:
         body, _form = self._new_body(("positions-broken",))
-        ttk.Label(body, text=CONFIG_BROKEN, wraplength=self._px(360),
-                  justify="left").grid(row=0, column=0, sticky="w")
+        fieldwidgets.fit_wrap(ttk.Label(body, text=CONFIG_BROKEN, justify="left"),
+                              self._px(360)).grid(row=0, column=0, sticky="ew")
         ttk.Button(body, text=OPEN_CONFIG, style="Secondary.TButton",
                    command=self.open_config).grid(row=1, column=0, sticky="w",
                                                   pady=(self._px(8), 0))
