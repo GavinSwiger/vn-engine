@@ -72,8 +72,8 @@ class StepSpec:
 
 STEPS: Final = (
     StepSpec("name", "Name your game", ShowMe(SETTINGS, "game")),
-    StepSpec("character", "Add a character", ShowMe(DATABASE, "characters")),
-    StepSpec("background", "Add a background", ShowMe(DATABASE, "pictures")),
+    StepSpec("character", "Add a character", ShowMe(DATABASE, "character")),
+    StepSpec("background", "Add a background", ShowMe(DATABASE, "picture")),
     StepSpec("scene", "Write your first scene", ShowMe(STORY_MAP, START_LABEL)),
     StepSpec("choice", "Add a choice", ShowMe(INSERT, "choice")),
     StepSpec("ending", "Add an ending", ShowMe(INSERT, "ending")),

@@ -39,9 +39,12 @@ def test_ac_f47_25_guide_steps_tick_and_state_is_remembered(tmp_path):
     assert [row.number for row in empty] == list(range(1, 8))
     assert not any(row.done for row in empty) and not guide.all_done(empty)
     assert [row.show_me for row in empty] == [
-        ShowMe(guide.SETTINGS, "game"), ShowMe(guide.DATABASE, "characters"),
-        ShowMe(guide.DATABASE, "pictures"), ShowMe(guide.STORY_MAP, "start"),
+        ShowMe(guide.SETTINGS, "game"), ShowMe(guide.DATABASE, "character"),
+        ShowMe(guide.DATABASE, "picture"), ShowMe(guide.STORY_MAP, "start"),
         ShowMe(guide.INSERT, "choice"), ShowMe(guide.INSERT, "ending"), ShowMe(guide.PLAY)]
+    from engine.tools.editor.dbmodel import CATEGORIES      # the Database's category keys
+    assert {row.show_me.item for row in empty if row.show_me.place == guide.DATABASE} <= set(
+        CATEGORIES)
     full = GuideFacts(folder_name="my game", title="Night Ferry", characters=frozenset({"rin"}),
                       backgrounds=frozenset({"bg pier"}), endings=frozenset({"good"}),
                       start_rows=3, choices=1, played=True)

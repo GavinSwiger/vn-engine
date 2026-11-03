@@ -32,6 +32,7 @@ Imports ``core``, ``script``, and ``runtime`` only (never pygame, ``app``, ``ren
 ``ui``, ``audio``, ``persist``, ``meta``, or ``minigames``; ``tests/test_import_rules.py``).
 """
 
+import ast
 import json
 import logging
 import os
@@ -40,7 +41,7 @@ import stat
 import sys
 import time
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import BinaryIO
 
@@ -80,7 +81,7 @@ from engine.runtime.launch import LaunchJob, LaunchResult
 from engine.runtime.limits import IMAGE_SCAN_MAX_DEPTH
 from engine.runtime.transitions import TransitionDef
 from engine.script import LoadOptions, load_story
-from engine.script.audio import PLAYABLE_EXTS
+from engine.script.audio import PLAYABLE_EXTS, PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.labelgraph import label_links
 from engine.script.assetgroups import MINIGAME_FILE_MAX_BYTES
@@ -89,9 +90,11 @@ from engine.script.flowchart import Flowchart
 from engine.script.flowgraph import FlowNode, FlowOptions
 from engine.script.glitch import EFFECT_STATEMENT_KINDS, WORD_OFF
 from engine.script.minigame import Minigame
-from engine.script.nodes import Chapter, Statement
+from engine.script.nodes import Chapter, Define, PyCode, Say, Statement
 from engine.script.pluginsigs import PluginSig, dict_keys, plugin_sigs
 from engine.script.program import Program
+from engine.script.stage import Scene, Show
+from engine.script.texttags import NameMark, TaggedText, VarMark
 from engine.script.ui import FORMS as UI_FORMS
 
 SCRIPT_PREFIX = "script/"
@@ -489,6 +492,130 @@ def _minigame_uses(ctx: CheckContext) -> Iterable[NameRow] | None:
     return [(s.name, *_where(s)) for s in _statements(ctx.program) if isinstance(s, Minigame)]
 
 
+# --- F47 usage rows (04 §3.3, §7.1 step 5; AC-F47-15) ----------------------------------------
+# Syntactic, so they are sent under --no-launch too. One row per (name, file, line): Studio's
+# Database counts a name's distinct lines ("Used in N lines").
+
+USE_KINDS = ("character_use", "image_use", "audio_use", "variable_use")
+_USE_MAX_DEPTH = 8                              # nested node data walked per statement
+_USES_CACHE: list[tuple[Program, dict[str, list[NameRow]]]] = []   # the last program's rows
+
+
+def _variable_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F47: each ``default`` (a story variable), at its line."""
+    if ctx.program is None:
+        return None
+    return [(d.name, *_where(d)) for d in ctx.program.defaults]
+
+
+def _python_tree(source: str, mode: str) -> ast.AST | None:
+    try:
+        return ast.parse(source, mode=mode)
+    except (SyntaxError, ValueError, MemoryError, RecursionError):
+        return None
+
+
+def _character_call(define: Define) -> ast.Call | None:
+    """A define's value when it is a ``Character(...)`` call (read, never run)."""
+    tree = _python_tree(define.value.source.strip(), "eval")
+    body = getattr(tree, "body", None)
+    if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) \
+            and body.func.id == "Character":
+        return body
+    return None
+
+
+class _UseWalk:
+    """Collects the use rows of one program: who speaks, what is shown, what plays, and which
+    story variables code, conditions and ``{var=…}`` tags name."""
+
+    def __init__(self, program: Program) -> None:
+        self.rows: dict[str, dict[NameRow, None]] = {kind: {} for kind in USE_KINDS}
+        self.variables = program.default_names
+        self.characters: set[str] = set()
+        for define in program.defines:
+            call = _character_call(define)
+            if call is None:
+                continue
+            self.characters.add(define.name)
+            ref, line = _where(define)
+            for keyword in call.keywords:
+                value = keyword.value
+                if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+                    continue
+                if keyword.arg == "blip":
+                    self.add("audio_use", value.value, ref, line)
+                elif keyword.arg == "name_from" and value.value in self.variables:
+                    self.add("variable_use", value.value, ref, line)
+        for stmt in _statements(program):
+            self.node(stmt, stmt.file.ref, stmt.line, 0)
+
+    def add(self, kind: str, name: str | None, ref: str | None, line: int | None) -> None:
+        if name:
+            self.rows[kind][(name, ref, line)] = None
+
+    def python(self, py: PyCode, ref: str) -> None:
+        tree = _python_tree(py.source, py.mode)
+        if tree is None:
+            return
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                if node.id in self.variables:
+                    self.add("variable_use", node.id, ref, py.line)
+                elif node.id in self.characters:
+                    self.add("character_use", node.id, ref, py.line)
+
+    def node(self, obj: object, ref: str, line: int, depth: int) -> None:
+        if depth > _USE_MAX_DEPTH or obj is None or isinstance(obj, (str, int, float, bool)):
+            return
+        if isinstance(obj, PyCode):
+            self.python(obj, ref)
+            return
+        if isinstance(obj, TaggedText):
+            for piece in obj.pieces:
+                name = getattr(piece, "name", None) if isinstance(piece, VarMark) \
+                    else getattr(piece, "var", None) if isinstance(piece, NameMark) else None
+                if name in self.variables:
+                    self.add("variable_use", name, ref, line)
+            return
+        if isinstance(obj, tuple):
+            if obj and isinstance(obj[0], Statement):
+                return                                   # a block: _statements walks it
+            for item in obj:
+                self.node(item, ref, line, depth + 1)
+            return
+        if not is_dataclass(obj) or isinstance(obj, type):
+            return
+        own = getattr(obj, "line", None)
+        line = own if type(own) is int else line
+        if isinstance(obj, Say):
+            self.add("character_use", obj.speaker, ref, line)
+            if obj.speaker and obj.attributes:
+                self.add("image_use", " ".join((obj.speaker, *obj.attributes)), ref, line)
+        elif isinstance(obj, (Scene, Show)):
+            self.add("image_use", obj.image, ref, line)
+        elif isinstance(obj, (PlayAudio, QueueMusic, StopAudio, Voice)):
+            self.add("audio_use", obj.audio_file, ref, line)
+        for item in fields(obj):
+            if item.name not in ("file", "sid", "label", "path"):
+                self.node(getattr(obj, item.name, None), ref, line, depth + 1)
+
+
+def _story_uses(program: Program) -> dict[str, list[NameRow]]:
+    if not _USES_CACHE or _USES_CACHE[0][0] is not program:
+        walk = _UseWalk(program)
+        _USES_CACHE[:] = [(program, {kind: list(rows) for kind, rows in walk.rows.items()})]
+    return _USES_CACHE[0][1]
+
+
+def _uses(kind: str) -> Callable[[CheckContext], Iterable[NameRow] | None]:
+    def rows(ctx: CheckContext) -> Iterable[NameRow] | None:
+        if ctx.program is None:
+            return None
+        return _story_uses(ctx.program)[kind]
+    return rows
+
+
 def _bundled_sigs() -> list[tuple[PluginSig, str | None]]:
     found: list[tuple[PluginSig, str | None]] = []
     for path in sorted(BUNDLED_MINIGAMES.glob("*.py")):
@@ -563,6 +690,11 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "ui": _ui_names,                        # F32: what ui changes
     "style": _style_names,                  # F32: config's style names and off
     "sprite": _sprite_names,                # F28: sprite tags (effect jitter <sprite>)
+    "variable": _variable_names,            # F47: each default, at its line
+    "character_use": _uses("character_use"),   # F47: each line a character speaks or is named
+    "image_use": _uses("image_use"),        # F47: each scene/show line (and say attributes)
+    "audio_use": _uses("audio_use"),        # F47: each audio line, and Character blips
+    "variable_use": _uses("variable_use"),  # F47: each line whose code or text names a default
 }
 
 
