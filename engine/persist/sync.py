@@ -27,6 +27,9 @@ warnings.
 - **Ends** (§7.7): ``flush_now`` (error screen, F30) and ``close`` (quit) never start a write
   while one is in flight and wait at most until their deadline (``CLOSE_WAIT_S``); a final
   write that can't finish in time is skipped with W52 (SEC-F12-07).
+- **Replay sandbox** (F36 ``04`` §7.2): while ``store.in_sandbox``, ``update`` only drains
+  unlocks (a write in flight or a merge waits until it ends), ``flush_now`` writes nothing,
+  and ``close`` puts the store back first. A crash mid-replay writes nothing.
 - **Unlocks** are drained from the store every frame and passed to the listeners (F34, F37),
   on the main thread. ``take_notices`` drains this session's W50–W52 for a later toast
   (SEC-F12-12, ``07`` I-9).
@@ -227,8 +230,8 @@ class PersistentSync:
             return
         self._now = now
         self._drain_unlocks()
-        if self.mode is not WRITABLE:
-            return
+        if self.mode is not WRITABLE or self.store.in_sandbox:
+            return          # F36: no result taken, no merge slice, no write in a replay
         self._take_results()
         if self.merge is not None:
             if self.merge.run_for(self.clock() + limits.MERGE_SLICE_S, self.clock):
@@ -248,8 +251,10 @@ class PersistentSync:
         """Write everything now (error screen, F30): wait for a write in flight, finish a
         merge, write, and merge again if another copy changed the file, until the file holds
         the store or the writer's clock reaches ``until`` (default: ``CLOSE_WAIT_S`` from
-        now). Never two writes at once. True when the file holds the store."""
-        if self._closed or self.mode is not WRITABLE:
+        now). Never two writes at once. True when the file holds the store. While the
+        replay sandbox is open it writes nothing and returns False (F36 ``04`` §7.2: F30's
+        fake crash calls it, and must neither write the replay nor end the sandbox)."""
+        if self._closed or self.mode is not WRITABLE or self.store.in_sandbox:
             return False
         assert self._client is not None and self._writer is not None
         deadline = self._writer.quit_deadline() if until is None else until
@@ -280,13 +285,16 @@ class PersistentSync:
         """Quit (``App.run``'s ``finally``): wait for a write in flight, then write what is
         unwritten, all by ``until`` (default ``CLOSE_WAIT_S`` from now; the App passes the
         writer's shared quit deadline). A write that can't finish by then is skipped with
-        W52. A writer the sync built is stopped (abandoned past the deadline). Runs once."""
+        W52. A writer the sync built is stopped (abandoned past the deadline). Runs once.
+        An open replay sandbox is put back first (F36), so a quit mid-replay writes the old
+        content plus the kept unlocks."""
         if self._closed:
             return
         deadline = until
         if deadline is None and self._writer is not None:
             deadline = self._writer.quit_deadline()
         try:
+            self.store.end_sandbox()
             if self.mode is WRITABLE and self._unfinished() and not self.flush_now(deadline):
                 if self.mode is WRITABLE and self._unfinished():
                     self._warn("W52-quit", "W52", final_write_skipped_text(self.store.display))

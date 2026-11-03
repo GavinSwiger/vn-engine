@@ -25,6 +25,10 @@ without importing ``persist``; ``engine/persist/`` reads and writes the file.
   whose result is cached per ``unlocks_gen``; ``set``/``delete`` raise
   ``PersistentViewName`` (E245). A stored value under a view's name goes to the view's
   ``migrate`` and is removed.
+- **Replay sandbox** (F36 ``04`` §7.1): ``begin_sandbox`` keeps an in-place image of the
+  store; while ``in_sandbox`` the store changes as usual but the sync writes nothing;
+  ``end_sandbox`` puts the image back, keeping names of kinds registered ``replay_keeps``,
+  with ``version`` moved forward so the sync writes once.
 
 This module's ``register_kind`` (unlock kinds) is not ``engine.runtime.values.register_kind``
 (kind words for messages).
@@ -309,6 +313,24 @@ class _Kind:
     known: Callable[[str], bool] | None     # the owner's recognizer (SEC-F12-04d)
     epoch: int                              # renewed when names are removed
     revocable: bool = False                 # F19: relock and the per-name merge
+    replay_keeps: bool = False              # F36: unlocks made in a replay survive it
+
+
+@dataclass(slots=True)
+class _Image:
+    """What ``begin_sandbox`` keeps (F36 ``04`` §7.1): copies of everything the file holds
+    and the bookkeeping the merge reads, so ``end_sandbox`` can put the store back. Value
+    entries are ``(name, live copy, frag, name_json, watched)``; runs are fresh key lists;
+    kinds are ``(kind, names copy, the _Kind then)``."""
+
+    values: list[tuple[str, Value, bytes, bytes, bool]]
+    changed: dict[str, int]
+    cleared: int
+    cleared_at: int
+    records: dict[str, tuple[list[tuple[str, list[str]]], int]]
+    kinds: list[tuple[str, dict[str, None], "_Kind"]]
+    unlock_changed: dict[tuple[str, str], int]
+    reset_count: int
 
 
 @dataclass(slots=True)
@@ -370,6 +392,7 @@ class PersistentStore:
         self._unlock_changed: dict[tuple[str, str], int] = {}   # revocable: version per name
         self._views: dict[str, _View] = {}
         self._reset_count = 0                # F20 (07 A9): F16's Delete progress resets
+        self._image: _Image | None = None    # F36: the replay sandbox's image while open
 
     @property
     def reset_count(self) -> int:
@@ -621,13 +644,15 @@ class PersistentStore:
 
     def register_kind(self, kind: str, *,
                       known: Callable[[str], bool] | None = None,
-                      revocable: bool = False) -> None:
+                      revocable: bool = False, replay_keeps: bool = False) -> None:
         """Register an unlock kind (F19, F21, F34, F35, F37). ``known`` recognizes the
         owner's real names, so in a full kind they push out names it doesn't recognize.
         ``revocable`` (F19) allows ``relock`` and the per-name merge (``merge_kind``).
+        ``replay_keeps`` (F36: F35's tracks, F37's achievements): names unlocked while the
+        replay sandbox is open are kept when it ends (``end_sandbox``).
         ``ValueError`` for a bad kind or a registration past ``UNLOCK_KINDS_MAX``. A kind
         read from the file is adopted; kinds nobody registered give way (W54). Registering
-        again replaces ``known`` and ``revocable`` (F39)."""
+        again replaces ``known``, ``revocable`` and ``replay_keeps`` (F39)."""
         if not valid_kind(kind):
             raise ValueError("an unlock kind is 1 to 64 characters of text")
         entry = self._kinds.get(kind)
@@ -639,6 +664,7 @@ class PersistentStore:
                 entry.registered = True
             entry.known = known
             entry.revocable = revocable
+            entry.replay_keeps = replay_keeps
             return
         if registered >= UNLOCK_KINDS_MAX:
             raise ValueError(f"more than {UNLOCK_KINDS_MAX} unlock kinds")
@@ -648,7 +674,8 @@ class PersistentStore:
             self.version += 1
             self.unlocks_gen += 1
             self.warn_dropped(1)
-        self._kinds[kind] = _Kind({}, True, known, self._next_epoch(), revocable)
+        self._kinds[kind] = _Kind({}, True, known, self._next_epoch(), revocable,
+                                  replay_keeps)
 
     def is_revocable(self, kind: str) -> bool:
         """``kind`` is registered and revocable (the merge's choice, F19 ``04`` §7.5)."""
@@ -769,6 +796,94 @@ class PersistentStore:
         migrate = self._views[name].migrate
         if migrate is not None:
             migrate(value)
+
+    # --- The replay sandbox (F36 ``04`` §7.1) -------------------------------------------------
+
+    @property
+    def in_sandbox(self) -> bool:
+        """The replay sandbox is open: the store changes as usual, but ``engine/persist``'s
+        sync writes nothing (F36 ``04`` §7.2) and ``end_sandbox`` will put it back."""
+        return self._image is not None
+
+    def begin_sandbox(self) -> None:
+        """Keep an image of the store (values, seen and choice records, unlock names, and
+        the merge bookkeeping) so ``end_sandbox`` can put it back. Pointer lists only: about
+        8 MB and a few ms at F12's caps, once. ``RuntimeError`` if it is already open."""
+        if self._image is not None:
+            raise RuntimeError("the replay sandbox is already open")
+        self._image = _Image(
+            values=[(name, plain_copy(e.live), e.frag, e.name_json, e.watched)
+                    for name, e in self._values.items()],
+            changed=dict(self._changed),
+            cleared=self._cleared,
+            cleared_at=self._cleared_at,
+            records={form: ([(group, list(run.order)) for group, run in rec.runs.items()],
+                            rec.total)
+                     for form, rec in self._records.items()},
+            kinds=[(kind, dict(entry.names), entry) for kind, entry in self._kinds.items()],
+            unlock_changed=dict(self._unlock_changed),
+            reset_count=self._reset_count)
+
+    def end_sandbox(self) -> None:
+        """Put the image back (no-op when the sandbox isn't open). Names unlocked meanwhile
+        under a kind registered ``replay_keeps`` are kept, in unlock order, unlocked again
+        quietly (their notice already showed). Every run and kind gets a new epoch and every
+        open ``RecordJournal`` is reset with every run touched, so the encoder starts over;
+        ``version``, ``values_gen`` and ``unlocks_gen`` only go forward, so the sync writes
+        once afterwards: the old content plus the kept names."""
+        image = self._image
+        if image is None:
+            return
+        self._image = None
+        before = {kind: names for kind, names, _ in image.kinds}
+        kept = [(kind, name) for kind, entry in self._kinds.items()
+                if entry.registered and entry.replay_keeps
+                for name in entry.names if name not in before.get(kind, ())]
+        # Values: fresh entries; a name that became a view meanwhile stays out.
+        self._values = {}
+        total = 0
+        for name, live, frag, name_json, watched in image.values:
+            if name in self._views:
+                continue
+            entry = self._values[name] = _Entry(live, frag, name_json, watched)
+            total += entry.size
+        self._sum = total
+        self._changed = {n: v for n, v in image.changed.items() if n not in self._views}
+        self._cleared = image.cleared
+        self._cleared_at = image.cleared_at
+        # Records: fresh runs with new epochs, and every reader's journal starts over.
+        for form, (runs, count) in image.records.items():
+            records = self._records[form]
+            records.runs.clear()
+            for group, order in runs:
+                records.runs[group] = _KeyRun(order, self._next_epoch())
+            records.total = count
+        for journal in self._journals:
+            journal.reset.update((SEEN, CHOSEN))
+            for form in (SEEN, CHOSEN):
+                journal.touched[form] = dict.fromkeys(self._records[form].runs, True)
+        # Kinds: the image's names under today's registration; kinds registered meanwhile
+        # stay registered (empty), kinds read from a file meanwhile go.
+        kinds: dict[str, _Kind] = {}
+        for kind, names, then in image.kinds:
+            now = self._kinds.get(kind, then)
+            kinds[kind] = _Kind(names, now.registered, now.known, self._next_epoch(),
+                                now.revocable, now.replay_keeps)
+        for kind, entry in self._kinds.items():
+            if kind not in kinds and entry.registered:
+                kinds[kind] = _Kind({}, True, entry.known, self._next_epoch(),
+                                    entry.revocable, entry.replay_keeps)
+        self._kinds = kinds
+        self._unlock_changed = image.unlock_changed
+        self._reset_count = image.reset_count
+        self.version += 1
+        self.values_gen += 1
+        self.unlocks_gen += 1
+        for kind, name in kept:
+            self.unlock(kind, name, quiet=True)
+        # Notices not yet taken: only those whose name is still unlocked (kept kinds, and
+        # unlocks from before the sandbox).
+        self._new_unlocks = [(k, n) for k, n in self._new_unlocks if self.is_unlocked(k, n)]
 
     # --- Sync (persist only) ---------------------------------------------------------------
 
