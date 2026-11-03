@@ -39,7 +39,8 @@ imports this module inside the function, as this one imports ``forms``), and the
     then one name field per kind so each gets its own picker; the row word says what the
     line does ("Give item", "Forget ending", …). There is no ``unlock ending``. F34-W4
     adds **Gallery picture** (``lock|unlock gallery <picture>``: a picture name of up to 5
-    words; its picker offers only gallery pictures, with a thumbnail). The
+    words; its picker offers only gallery pictures, with a thumbnail); F36-W4 adds **Scene
+    replay** (``lock|unlock replay <scene>``; its picker offers the scene replays). The
     top-level ``lock`` declarations are the Database's (``forms.DECLARATIONS_GROUP``).
 - P3-C (AC-F47-53), the design's Story map mark and Rollback forms. One form per
   ``flowchart`` doc, named as the game's Flowchart page names it (Insert, the rows and the
@@ -89,8 +90,9 @@ HOW_LONG: Final = ("burst", "on", "off")            # Glitch and Jitter characte
 PAGE_WORDS: Final = ("start", "new page", "end")    # Full-screen text: nvl on, clear, off
 _PAGE: Final = dict(zip(PAGE_WORDS, ("on", "clear", "off"), strict=True))
 CHAPTER_UNTITLED: Final = "untitled"                # chapter_name for a title with no words
-LOCK_WHAT: Final = ("route", "ending", "tip", "item", "gallery")
-UNLOCK_WHAT: Final = ("route", "tip", "item", "gallery")  # no ``unlock ending``: reach its line
+LOCK_WHAT: Final = ("route", "ending", "tip", "item", "gallery", "replay")
+# No ``unlock ending``: players reach its line.
+UNLOCK_WHAT: Final = ("route", "tip", "item", "gallery", "replay")
 GALLERY_WHAT: Final = "gallery"                     # F34: its name is a picture (≤ 5 words)
 _HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 _NO_COLOUR: Final = frozenset(("cut", "dissolve", "glitch"))   # built-ins that take none
@@ -538,7 +540,8 @@ _LOCK_WORDS: Final = {
     ("lock", "tip"): "Forget tip", ("lock", "item"): "Take item",
     ("unlock", "route"): "Unlock route", ("unlock", "tip"): "Give tip",
     ("unlock", "item"): "Give item",
-    ("lock", "gallery"): "Forget gallery picture", ("unlock", "gallery"): "Unlock gallery picture"}
+    ("lock", "gallery"): "Forget gallery picture", ("unlock", "gallery"): "Unlock gallery picture",
+    ("lock", "replay"): "Forget scene replay", ("unlock", "replay"): "Unlock scene replay"}
 
 
 def _lock_read(word: str, whats: tuple[str, ...]):
@@ -576,7 +579,7 @@ def _lock_form(word: str, title: str, whats: tuple[str, ...],
 
 
 _LOCK_LABELS: Final = {"route": "Route", "ending": "Ending", "tip": "Codex tip",
-                       "item": "Item", "gallery": "Gallery picture"}
+                       "item": "Item", "gallery": "Gallery picture", "replay": "Scene replay"}
 
 
 # --- Flowchart marks, Rollback (P3-C: AC-F47-53) ----------------------------------------------
@@ -868,10 +871,10 @@ FORMS: tuple[CommandForm, ...] = (
     # in the Declarations group, which ``forms.form_for_doc`` never gives a form.
     _lock_form("lock", "Lock", LOCK_WHAT,
                (("lock", "lock route|ending"), ("lock", "lock tip|item"),
-                ("lock", "lock gallery"))),
+                ("lock", "lock gallery"), ("lock", "lock replay"))),
     _lock_form("unlock", "Unlock", UNLOCK_WHAT,
                (("unlock", "unlock route"), ("unlock", "unlock tip|item"),
-                ("unlock", "unlock gallery"))),
+                ("unlock", "unlock gallery"), ("unlock", "unlock replay"))),
     # P3-C: AC-F47-53
     CommandForm(
         "flow_scene", "Flowchart scene", "Flowchart scene",

@@ -124,13 +124,13 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     db = win.database
     assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()] == [
         "Characters", "Pictures", "Gallery", "Sounds", "Music room", "Variables", "Meters",
-        "Codex", "Endings & routes", "Chapters", "Transitions",
+        "Codex", "Endings & routes", "Scene replays", "Chapters", "Transitions",
         "Positions", "Minigame data", "Character files"]   # P1 (F34's Gallery, F35's
     # Music room), P2 (F31's Character files last)
     # 9 pictures: the sample's 6 looks and backgrounds plus Hana's 3 F38 frames.
     assert db.counts() == {"character": 2, "picture": 9, "gallery": 0, "sound": 4,
                            "music_room": 0, "variable": 1,
-                           "meter": 0, "codex": 0, "ending": 2, "chapter": 0,
+                           "meter": 0, "codex": 0, "ending": 2, "replay": 0, "chapter": 0,
                            "transition": 0, "position": 3, "meta_file": 0}
     assert [r.text for r in db.visible_rows()] == ["Daichi", "Hana"]
 
@@ -161,7 +161,7 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     db2 = open_database(ed2, "character")
     assert {k: v for k, v in db2.counts().items() if k != "position"} == dict.fromkeys(
         ("character", "picture", "gallery", "sound", "music_room", "variable", "meter", "codex", "ending",
-         "chapter", "transition", "meta_file"), 0)
+         "replay", "chapter", "transition", "meta_file"), 0)
     for category, things in (("character", "characters"), ("picture", "pictures"),
                              ("sound", "sounds"), ("variable", "variables")):
         db2.select_category(category)

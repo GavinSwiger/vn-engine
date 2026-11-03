@@ -97,6 +97,8 @@ class WindowAssets(FormAssets):
                 self.declared.setdefault(kind, []).append(name)
         pictures = list(dict.fromkeys(dbmodel.gallery_pictures(decls)))
         self.declared["gallery"] = sorted(pictures, key=str.casefold)
+        self.declared["replay"] = list(dict.fromkeys(      # F36: the Scenes page's scenes
+            d.name for d in decls if d.kind == dec.REPLAY))
         project = getattr(self.win, "project", None)
         refs = project.file_refs("images") if project is not None else []
         self.image_refs = {}

@@ -302,9 +302,9 @@ def test_ac_f47_33_lock_and_unlock_forms():
     assert forms.TEXT_ONLY["lock"] == forms.DATABASE_REASON
     assert [(f.key, f.name_kind) for f in lock.fields[1:]] == [
         ("route", "route"), ("ending", "ending"), ("tip", "tip"), ("item", "item"),
-        ("gallery", "gallery")]                          # F34-W4: AC-F34-32
-    assert lock.fields[0].options == ("route", "ending", "tip", "item", "gallery")
-    assert unlock.fields[0].options == ("route", "tip", "item", "gallery")
+        ("gallery", "gallery"), ("replay", "replay")]    # F34-W4, F36-W4
+    assert lock.fields[0].options == ("route", "ending", "tip", "item", "gallery", "replay")
+    assert unlock.fields[0].options == ("route", "tip", "item", "gallery", "replay")
     _check([
         ("lock", "lock route promise", {"what": "route", "route": "promise"},
          "Lock route  promise"),
@@ -313,7 +313,7 @@ def test_ac_f47_33_lock_and_unlock_forms():
          "Forget tip  lanterns"),
         ("lock", "lock item red_lantern", {"what": "item", "item": "red_lantern"},
          "Take item  red_lantern"),
-    ], {"route": "", "ending": "", "tip": "", "item": "", "gallery": ""})
+    ], {"route": "", "ending": "", "tip": "", "item": "", "gallery": "", "replay": ""})
     _check([
         ("unlock", "unlock route promise", {"what": "route", "route": "promise"},
          "Unlock route  promise"),
@@ -321,7 +321,7 @@ def test_ac_f47_33_lock_and_unlock_forms():
          "Give tip  lanterns"),
         ("unlock", "unlock item red_lantern", {"what": "item", "item": "red_lantern"},
          "Give item  red_lantern"),
-    ], {"route": "", "tip": "", "item": "", "gallery": ""})
+    ], {"route": "", "tip": "", "item": "", "gallery": "", "replay": ""})
     with pytest.raises(ValueError):
         unlock.write({"what": "ending", "ending": "sad"})
 

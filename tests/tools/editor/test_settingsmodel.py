@@ -104,6 +104,8 @@ def test_ac49_p2_pages_exist_and_list_real_keys():
         for row in found.rows:
             if found.key == "extras" and section_class(row.path) is None:
                 continue                       # F34-W4: [gallery] comes with F34-W3
+            if row.later:                      # a parallel step adds them (F36-W3's words)
+                continue
             assert set(row.keys) <= set(config_fields(section_class(row.path))), row
     for key in sm.P2_PAGES:
         page = sm.page(key)

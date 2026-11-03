@@ -276,6 +276,10 @@ class PageDef:
 MUSIC_ROOM_WORDS: Final = ("music_room", "music_play", "music_pause", "music_previous",
                            "music_next", "music_play_all", "music_repeat_one", "music_locked",
                            "music_pick")
+# F36's Endings and Scenes pages and the replay's words (01 §6.2; F36-W3 adds them to
+# WordsConfig).
+REPLAY_WORDS: Final = ("endings", "endings_count", "ending_locked", "ending_replay", "replays",
+                       "replay_end", "replay_no_saving")
 PAGES: Final[tuple[PageDef, ...]] = (
     PageDef("game", "Game", (
         Row("game", "Game", ("title", "version")),
@@ -359,7 +363,9 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("gallery", "Gallery"),
         Row("theme.gallery.caption", "Gallery picture titles"),
         Row("theme.gallery.viewer", "Gallery picture viewer"),
-        Row("words", "Music room words", MUSIC_ROOM_WORDS, later=True))),
+        Row("words", "Music room words", MUSIC_ROOM_WORDS, later=True),
+        Row("endings", "Endings list", ("list", "replay"), later=True),
+        Row("words", "Endings and scene replay words", REPLAY_WORDS, later=True))),
     PageDef("words", "Button words", (
         Row("words", "Title screen and game menu", (
             "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
@@ -398,6 +404,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
             "flowchart_no_jump", "flowchart_endings", "flowchart_nodes")),
         Row("words", "Content warning", ("warning_heading", "warning_continue")),
         Row("words", "Music room", MUSIC_ROOM_WORDS, later=True),
+        Row("words", "Endings and scene replays", REPLAY_WORDS, later=True),
         Row("words", "Fake crash and user name", (
             "fake_crash_message", "fake_crash_hint", "fake_crash_label", "ask_username",
             "ask_username_yes", "ask_username_no")),
@@ -450,6 +457,12 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "words.music_next": "Next button", "words.music_play_all": "Play all button",
     "words.music_repeat_one": "Repeat track button", "words.music_locked": "Locked track",
     "words.music_pick": "Nothing picked yet",
+    "endings.list": "Show an Endings page in Extras",                # F36 §7
+    "endings.replay": "Let players replay endings they've reached",
+    "words.endings": "Endings page heading", "words.endings_count": "Endings reached",
+    "words.ending_locked": "Ending not reached yet", "words.ending_replay": "Replay button",
+    "words.replays": "Scenes page heading", "words.replay_end": "End Replay button",
+    "words.replay_no_saving": "No saving during a replay",
 })
 _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "id": "ID",
                  "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",

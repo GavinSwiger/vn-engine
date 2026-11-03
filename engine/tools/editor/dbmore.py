@@ -816,6 +816,12 @@ class MoreCategories:
             play = self._scene_button(buttons, label)
             if play is not None:
                 play.pack(side="left", padx=(self._px(8), 0))
+        replay = getattr(self, "ending_replay_button", None)      # F36: dbreplays
+        if entry.kind == dec.ENDING and entry.place is not None and callable(replay):
+            label = _label_at(self.texts.get(entry.place[0], ""), entry.place[1])
+            button = replay(buttons, label)
+            if button is not None:
+                button.pack(side="left", padx=(self._px(8), 0))
         grid.widget(buttons, pady=(8, 8))
         if entry.kind == dec.ENDING:
             grid.widget(ttk.Label(grid.frame, text=SEEN_BY.format(n=entry.uses)

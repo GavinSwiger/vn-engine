@@ -387,7 +387,8 @@ class MusicRoomCategory:
         """After the list is filled: the bar under it, the + button's and empty state's
         words."""
         on = self.category == db.CATEGORY_MUSIC_ROOM
-        if not on and self.category != db.CATEGORY_GALLERY:     # the gallery sets its own
+        if not on and self.category not in (db.CATEGORY_GALLERY,     # they set their own
+                                            db.CATEGORY_REPLAY):
             self.new_button.configure(text=NEW)
             if self.empty.button is not None:
                 self.empty.button.configure(text=NEW)

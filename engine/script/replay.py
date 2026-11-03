@@ -351,10 +351,9 @@ DOCS: Final = (
         fields=("river", "By the River")),
 )
 
-# The in-label lines' docs: Insert opens Studio's Lock/Unlock form on "Scene replay". Not
-# registered yet: F36-W4 registers them in ``register_words`` together with that form's
-# "Scene replay" choice (Studio's form registry checks every in-label lock/unlock doc has a
-# form, AC-F47-33, F45's ``missing_forms``).
+# The in-label lines' docs: Insert opens Studio's Lock/Unlock form on "Scene replay" (F36-W4
+# registered them with that form's choice: Studio's form registry checks every in-label
+# lock/unlock doc has a form, AC-F47-33, F45's ``missing_forms``).
 LABEL_DOCS: Final = (
     StatementDoc(
         WORD_LOCK, "Forget a scene replay", "Story flow", "lock replay <scene>",
@@ -373,7 +372,7 @@ def register_words() -> None:
     if LOCK_TARGETS.get(WORD_REPLAY) is REPLAY_TARGET:
         return
     register_target(REPLAY_TARGET)
-    for doc in DOCS:                     # LABEL_DOCS: F36-W4 (see above)
+    for doc in (*DOCS, *LABEL_DOCS):     # LABEL_DOCS: Studio's Lock/Unlock "Scene replay"
         register_doc(doc)
 
 

@@ -28,6 +28,12 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
   makes a new track's title from its file's name. ``marks(texts)`` reads the
   ``ending``/``chapter`` lines in labels (read-only ``ENDING``/``CHAPTER``), and
   ``position_rows(config_text)`` the ``[stage.positions]`` table with the built-ins.
+- F36-W4: ``REPLAY`` (``lock replay <scene> "Title" [image <picture>] [to <scene>][:]``
+  with one ``name = literal`` starting value per indented line): named by its scene, values
+  ``{"title", "image", "to", "values"}`` (``REPLAY_KEYS``; ``values`` a tuple of (variable,
+  value) pairs in written order). ``replay_uses(texts)`` finds the ``lock|unlock replay
+  <scene>`` lines in labels; ``label_places(texts)`` the scenes and ``scene_title`` a new
+  replay's title (the scene's ``flowchart scene`` title, else its name in words).
 - Titles and categories are values as shown (``{{`` read as ``{``, written back doubled);
   codex paragraphs are kept as written (their ``{b}``/``{i}``/``{color}`` tags stay).
 - ``CHARACTER_OPTIONS`` is Studio's own copy of the runtime's option table, in doc order with
@@ -65,7 +71,10 @@ from engine.script.gallery import VERSIONS_MAX as GALLERY_VERSIONS_MAX
 from engine.script.musicroom import TITLE_MAX as TRACK_TITLE_MAX
 from engine.script.musicroom import TRACKS_MAX
 from engine.script.musicroom import UNTIL_MAX as TRACK_UNTIL_MAX
+from engine.core.startvalues import StartValueError, parse_literal
 from engine.script.points import METER_NAME_MAX, POINTS_LIMIT, STATEMENT_PARTS
+from engine.script.replay import TITLE_MAX as REPLAY_TITLE_MAX
+from engine.script.replay import VALUES_MAX as REPLAY_VALUES_MAX
 from engine.script.routes import PERSISTENT_VIEWS, ROUTE_TITLE_MAX
 from engine.script.routes import UNTIL_MAX as ROUTE_UNTIL_MAX
 from engine.script.words import (
@@ -90,8 +99,9 @@ CHAPTER: Final = "chapter"        # a chapter line in a label (read-only: marks(
 POSITION: Final = "position"      # a [stage.positions] key of config.toml (F04)
 GALLERY: Final = "gallery"        # lock gallery <picture> "Title" … : (F34)
 TRACK: Final = "track"            # lock track n "Title" file "…" [open | until a, b] (F35)
+REPLAY: Final = "replay"          # lock replay <scene> "Title" [image …] [to …] … : (F36)
 EDITABLE_KINDS: Final = frozenset((CHARACTER, COLOR, VARIABLE, PERSISTENT, METER, TIP, ITEM,
-                                   ROUTE, TRANSITION, GALLERY, TRACK))
+                                   ROUTE, TRANSITION, GALLERY, TRACK, REPLAY))
 # Kinds one form switches between (``declplan.plan_edit``'s ``kind``): the Variables form's
 # "Remembered across playthroughs" and the Codex form's Tips / Items.
 SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
@@ -100,7 +110,8 @@ SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
 _NAMESPACES: Final[Mapping[str, str]] = MappingProxyType({   # kinds sharing one set of names
     CHARACTER: "python", DEFINE: "python", VARIABLE: "python", TRANSITION: "python",
     PERSISTENT: "persistent", METER: "points", TIP: "codex", ITEM: "codex", ROUTE: "route",
-    COLOR: "image", IMAGE: "image", GALLERY: "gallery", TRACK: "track"})
+    COLOR: "image", IMAGE: "image", GALLERY: "gallery", TRACK: "track",
+    REPLAY: "replay"})
 
 # Meters (design §4.3): the values of a points declaration. None: not written (no range: the
 # engine's ±1,000,000,000; no start: 0, or low when 0 is outside the range).
@@ -118,6 +129,16 @@ _GALLERY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+gallery[ \t]+([^\n#\"]+?)[
 # Music room (F35 SPEC §3): the title as shown, the file inside audio/ as written, ``open``
 # and the ``until`` ending names (``open`` and ``until`` never both).
 TRACK_KEYS: Final = ("title", "file", "open", "until")
+
+# Scene replays (F36 01 §5.1): the title as shown, the picture name (None: the scene's first
+# background), the ``to`` scene (None: the replay ends when the scene does) and the starting
+# values, (variable, literal) pairs in written order.
+REPLAY_KEYS: Final = ("title", "image", "to", "values")
+_REPLAY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+replay[ \t]+([^\W\d]\w*)[ \t]*(?:#.*)?$")
+_VALUE_LINE = re.compile(r"([^\W\d]\w*)[ \t]*=(?!=)(.*)", re.DOTALL)
+_LABEL_LINE = re.compile(r"label[ \t]+([^\W\d]\w*)[ \t]*(?:\(|:)")
+_FLOW_TITLE = re.compile(r'[ \t]+flowchart[ \t]+scene[ \t]+("(?:[^"\\\n]|\\.)*")')
+_VALUE_TYPES: Final = (type(None), bool, int, float, str)
 
 # Transitions (design §4.3, docs/script-language.md "Your own transitions"): kind word →
 # constructor, and every values key with its default (the constructor's own).
@@ -744,6 +765,162 @@ def track_title(file: str) -> str:
     return shown[:TRACK_TITLE_MAX].strip() or "Track"
 
 
+# --- Scene replays (F36 lock replay) ---
+
+def start_value_ok(value: object) -> bool:
+    """A starting value a replay may hold: a number (finite), text, Yes-No or None."""
+    if type(value) is float:
+        return math.isfinite(value)                                  # type: ignore[arg-type]
+    return type(value) in _VALUE_TYPES
+
+
+def replay_ok(values: Mapping[str, object], name: str | None = None) -> bool:
+    """True when ``values`` make a valid ``lock replay`` (of scene ``name`` when given: its
+    ``to`` can't be the scene itself)."""
+    title, image, to, pairs = (values.get(k) for k in REPLAY_KEYS)
+    if type(title) is not str or not title.strip() or len(title) > REPLAY_TITLE_MAX \
+            or "\n" in title:
+        return False
+    if image is not None and (type(image) is not str or _image_name(image) != image
+                              or len(image.split()) > 5):
+        return False
+    if to is not None and (type(to) is not str or _name_token(to) != to or to == name):
+        return False
+    if type(pairs) not in (tuple, list) or len(pairs) > REPLAY_VALUES_MAX:
+        return False
+    seen: set[str] = set()
+    for pair in pairs:                                              # type: ignore[union-attr]
+        if type(pair) not in (tuple, list) or len(pair) != 2:
+            return False
+        variable, value = pair
+        if type(variable) is not str or _name_token(variable) != variable \
+                or variable in seen or not start_value_ok(value):
+            return False
+        seen.add(variable)
+    return True
+
+
+def _value_read(line: str) -> tuple[str, object] | None:
+    """One starting-value line ``name = literal`` (its comment dropped), or None."""
+    code, _comment = code_of([line])
+    match = _VALUE_LINE.fullmatch(code)
+    if match is None:
+        return None
+    variable = _name_token(match.group(1))
+    try:
+        value = parse_literal(match.group(2).strip())
+    except StartValueError:
+        return None
+    if variable is None or not start_value_ok(value):
+        return None
+    return variable, value
+
+
+def _replay_read(tokens: list[str], body: list[str]) -> tuple[str, dict[str, object]] | None:
+    """``<scene> "Title" [image <picture>] [to <scene>] [:]`` and the block's starting
+    values."""
+    if len(tokens) < 2 or not tokens[1].startswith('"'):
+        return None
+    name, title = _name_token(tokens[0]), _title_token(tokens[1])
+    rest = tokens[2:]
+    colon = bool(rest) and rest[-1] == ":"
+    if colon:
+        rest = rest[:-1]
+    image: str | None = None
+    to: str | None = None
+    if rest and rest[0] == "image":
+        end = next((i for i in range(2, len(rest)) if rest[i] == "to"), len(rest))
+        image = _image_name(" ".join(rest[1:end])) if end > 1 else None
+        if image is None or any(t.startswith('"') or t in (",", ":") for t in rest[1:end]):
+            return None
+        rest = rest[end:]
+    if rest and rest[0] == "to":
+        if len(rest) < 2:
+            return None
+        to = _name_token(rest[1])
+        if to is None:
+            return None
+        rest = rest[2:]
+    if rest or name is None or title is None \
+            or colon != any(code_of([line])[0] for line in body):
+        return None
+    pairs: list[tuple[str, object]] = []
+    for line in body:
+        if not code_of([line])[0]:
+            continue
+        found = _value_read(line.strip())
+        if found is None:
+            return None
+        pairs.append(found)
+    values = {"title": title, "image": image, "to": to, "values": tuple(pairs)}
+    return (name, values) if replay_ok(values, name) else None
+
+
+def literal_text(value: object) -> str:
+    """A starting value as written: ``3``, ``2.5``, ``"Hana"``, ``True``, ``None``."""
+    return "None" if value is None else _literal_text(value)
+
+
+def replay_lines(name: str, values: Mapping[str, object]) -> tuple[str, ...]:
+    """``lock replay <scene> "Title" [image <picture>] [to <scene>]`` and, with starting
+    values, ``:`` and one indented ``name = value`` per line. Raises ValueError for bad
+    values."""
+    if _name_token(name) != name or not replay_ok(values, name):
+        raise ValueError("bad replay")
+    head = f"lock replay {name} {quote(written_text(str(values['title'])))}"
+    if values.get("image"):
+        head += f" image {values['image']}"
+    if values.get("to"):
+        head += f" to {values['to']}"
+    pairs = tuple(values.get("values") or ())                       # type: ignore[arg-type]
+    if not pairs:
+        return (head,)
+    return (head + ":", *(f"{CODEX_INDENT}{n} = {literal_text(v)}" for n, v in pairs))
+
+
+def replay_uses(texts: Mapping[str, str]) -> tuple[tuple[str, str, int, bool], ...]:
+    """Every ``lock|unlock replay <scene>`` line in a label: ``(scene, ref, line, unlock)``,
+    in ref order, then line order."""
+    found: list[tuple[str, str, int, bool]] = []
+    for ref in sorted(texts):
+        for number, line in enumerate(texts[ref].split("\n"), start=1):
+            match = _REPLAY_LINE.match(line)
+            if match is not None:
+                found.append((canonical_name(match.group(2)), ref, number,
+                              match.group(1) == "unlock"))
+    return tuple(found)
+
+
+def label_places(texts: Mapping[str, str]) -> dict[str, tuple[str, int]]:
+    """Every top-level ``label <name>:`` of ``texts``: name → (ref, line), the first one when a
+    name is written twice (in ref order, then line order)."""
+    out: dict[str, tuple[str, int]] = {}
+    for ref in sorted(texts):
+        for number, line in enumerate(texts[ref].split("\n"), start=1):
+            match = _LABEL_LINE.match(line)
+            if match is not None:
+                out.setdefault(canonical_name(match.group(1)), (ref, number))
+    return out
+
+
+def scene_title(name: str, texts: Mapping[str, str] | None = None) -> str:
+    """A new replay's title: the scene's ``flowchart scene "Title"`` (its first, in the
+    label's own lines), else its name in words (``river_walk`` → "River Walk")."""
+    place = label_places(texts).get(name) if texts else None
+    if place is not None and texts is not None:
+        lines = texts[place[0]].split("\n")
+        for line in lines[place[1]:]:
+            if line[:1] not in ("", " ", "\t", "#"):
+                break                                       # the next top-level statement
+            match = _FLOW_TITLE.match(line)
+            title = _title_token(match.group(1)) if match is not None else None
+            if title and title.strip() and len(title) <= REPLAY_TITLE_MAX:
+                return title.strip()
+    words = name.replace("_", " ").split()
+    shown = " ".join(w[:1].upper() + w[1:] for w in words)
+    return shown[:REPLAY_TITLE_MAX].strip() or "Scene"
+
+
 def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None:
     count = _head_lines(lines)
     code, _comment = code_of(lines[:count])
@@ -755,6 +932,12 @@ def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None
             name = _image_name(" ".join(words[:5])) if words else None
             return None if name is None else Decl(GALLERY, name, ref, first, last, None)
         return Decl(GALLERY, found[0], ref, first, last, found[1])
+    if tokens is not None and len(tokens) >= 3 and tokens[:2] == ["lock", REPLAY]:
+        replay = _replay_read(tokens[2:], lines[count:]) if count == 1 else None
+        if replay is None:                 # read-only: Edit as script
+            name = _name_token(tokens[2])
+            return None if name is None else Decl(REPLAY, name, ref, first, last, None)
+        return Decl(REPLAY, replay[0], ref, first, last, replay[1])
     if tokens is None or len(tokens) < 3 or tokens[0] != "lock" \
             or tokens[1] not in (TIP, ITEM, ROUTE, TRACK):
         return None
@@ -1119,6 +1302,8 @@ def lines_for(kind: str, name: str, values: Mapping[str, object]) -> tuple[str, 
         return codex_lines(kind, name, values)
     if kind == GALLERY:
         return gallery_lines(name, values)
+    if kind == REPLAY:
+        return replay_lines(name, values)
     return (line_for(kind, name, values),)
 
 
@@ -1201,6 +1386,9 @@ __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX
            "VARIABLE", "VARIABLE_KINDS", "VARIABLE_STARTS", "YES_NO", "Decl", "PositionRow",
            "character_call", "character_values", "codex_lines", "codex_ok", "color_ok",
            "TRACK", "TRACKS_MAX", "TRACK_KEYS", "TRACK_TITLE_MAX", "TRACK_UNTIL_MAX",
+           "REPLAY", "REPLAY_KEYS", "REPLAY_TITLE_MAX", "REPLAY_VALUES_MAX", "label_places",
+           "literal_text", "replay_lines", "replay_ok", "replay_uses", "scene_title",
+           "start_value_ok",
            "find", "gallery_lines", "gallery_ok", "gallery_title", "gallery_uses",
            "is_character_call", "is_transition_call", "line_for", "lines_for",
            "marks", "meter_line", "meter_ok", "meter_read", "meter_start", "name_problem",

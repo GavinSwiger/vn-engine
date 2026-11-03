@@ -65,7 +65,8 @@ KIND_WORDS: Final[Mapping[str, str]] = {
     dec.CHARACTER: "character", dec.COLOR: "colour background", dec.VARIABLE: "variable",
     dec.PERSISTENT: "remembered variable", dec.METER: "meter", dec.TIP: "tip",
     dec.ITEM: "item", dec.ROUTE: "route", dec.TRANSITION: "transition",
-    dec.POSITION: "position", dec.GALLERY: "gallery picture", dec.TRACK: "music-room track"}
+    dec.POSITION: "position", dec.GALLERY: "gallery picture", dec.TRACK: "music-room track",
+    dec.REPLAY: "scene replay"}
 SWAP_REFUSED: Final = "Studio can't turn that into another kind of entry."
 MOVE_ACROSS_FILES: Final = ("These pictures are in different script files. Move their lines in "
                             "the text to reorder them.")
@@ -207,7 +208,8 @@ def _current(decl: dec.Decl, texts: Mapping[str, str]) -> list[str] | Refuse:
 def _comment(decl: dec.Decl, old: list[str]) -> str:
     """The trailing comment an edit keeps: a codex entry's head line's, else the
     statement's."""
-    return code_of(old[:1] if decl.kind in (dec.TIP, dec.ITEM, dec.GALLERY) else old)[1]
+    return code_of(old[:1] if decl.kind in (dec.TIP, dec.ITEM, dec.GALLERY, dec.REPLAY)
+                   else old)[1]
 
 
 def _others_line(decl: dec.Decl, old: list[str]) -> tuple[str, ...]:

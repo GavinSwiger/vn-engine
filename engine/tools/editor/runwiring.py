@@ -319,6 +319,18 @@ class RunWiring:
         self.runner.start(preview_argv(self.paths.root, None, [], extra=("--extras", page)))
         self.apply_events(self.runner.poll())
 
+    def play_replay(self, label: str) -> None:
+        """F36 Database ▸ Scene replays' and ending rows' ▶ Play replay: saves like ▶ Play,
+        then runs the game's dev ``run --replay <label>`` through the Play bar (the scene
+        plays as a replay; nothing is saved). Start values and "Play as a new player" don't
+        apply."""
+        if self.closed or not self._save_before_play():
+            return
+        self._saved_refs = []               # a restart, not an update
+        self.hot.stop()
+        self.runner.start(preview_argv(self.paths.root, None, [], replay=label))
+        self.apply_events(self.runner.poll())
+
     def play_options(self) -> None:
         """Play options…: the start values and "Play as a new player", for this session."""
         answer = ask_play_options(self.root, self.start_values_text, self.play_fresh,

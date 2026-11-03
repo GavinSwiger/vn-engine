@@ -138,3 +138,40 @@ track (off removes it), change its **Music room title**, or **Open in Music room
 room's words (Play, Pause, Next…) are on Game settings ▸ **Extras** and **Button words**.
 A track's script name keeps players' records, so Studio doesn't rename it; to rename one,
 edit its line (players who had it lose it).
+
+## Scene replays
+
+Scene replays let players watch a scene again from Extras ▸ Scenes once they've reached it.
+A replay never changes their saves or progress. Studio writes one line per replay into
+`database.vns`, in the Scenes page's order, with any starting values indented under it:
+
+```
+lock replay festival "The Festival"
+lock replay bridge "On the Footbridge" image cg lanterns to fireworks:
+    sent_lantern = True
+    player = "Hana"
+```
+
+- **+ New replay…** lists the scenes that don't have a replay yet; pick one and it goes at
+  the end, its title taken from the scene's Flowchart title, else its name
+  (`river_walk` → "River Walk").
+- Click a replay to see its form: the **Scene** it plays (with **Go to**), the **Title**
+  players see, the **Picture** on its tile (the first choice, "scene's first
+  background", uses the first background the scene shows) and where it **Ends**: **When
+  the scene ends**, or **At scene** — the replay stops when the story reaches that scene.
+- **Starting values**: in a replay, variables start at their starting values. Set any the
+  scene needs, such as the player's name: **+ Add a starting value**, pick the variable,
+  then its value (Yes or No, a number or a text, as the variable's kind). **Remove** takes
+  one away. Up to 32.
+- Players unlock a replay the first time they reach its scene. An **Unlock** or **Forget**
+  event (Events ▸ Lock / Unlock ▸ Scene replay) opens or locks one from the story; while
+  one names a replay, its scene can't change and **Delete** is refused, with **Show uses**.
+- **◀ Move earlier** and **Move later ▶** (or Alt+Up / Alt+Down in the list) change the
+  order. Both replays must be in the same script file.
+- **▶ Play replay** plays the scene as players see it from Extras, through the Play bar;
+  **▶ Preview Extras** opens Extras ▸ Scenes with every scene open. Nothing is saved.
+
+In Endings & routes, each ending has **▶ Play replay** too (it plays the ending's scene)
+while Game settings ▸ **Extras** ▸ "Let players replay endings they've reached" is on. The
+same page has "Show an Endings page in Extras" and the Endings and Scenes words. A replay's
+scene name keeps players' records, so Studio doesn't rename it.
