@@ -9,7 +9,8 @@ from engine.core.paths import GamePaths
 from engine.script import load_story
 from engine.script.labelgraph import LabelLink, label_links
 from engine.tools.editor.storymap import (
-    COLUMN_STEP, ROW_STEP, Box, MapLayout, cycle_target, hidden_text, layout, neighbour)
+    COLUMN_STEP, ROW_STEP, Box, MapLayout, cycle_target, hidden_text, label_notes, layout,
+    neighbour)
 
 # S's scripts (06 §5), written here so these tests don't wait for the shared fixture.
 S_MAIN = ('include "ch2.vns"\ndefine hana = Character("Hana")\ndefault trust = 0\n'
@@ -105,3 +106,23 @@ def test_ac_f45_44_story_map_marks(s_graph):
              LabelLink("start", "inn", "jump", "f", 3)]
     marks = {b.name: b.marks for b in layout(calls, ["start", "shop", "inn"]).boxes}
     assert marks["shop"] == () and marks["inn"] == ("ends",)
+
+
+def test_ac_f41_09_a_replay_scene_is_not_marked_not_reached(s_graph):
+    """F41 P4: ``replay_scene`` rows (read by name) are starting points for "not reached";
+    columns stay the distance from ``start``."""
+    links, labels = s_graph
+    links = [*links, LabelLink("side", "epilogue", "jump", "script/ch2.vns", 14),
+             LabelLink("orphan", "epilogue", "call", "script/ch2.vns", 16)]
+    labels = [*labels, ("epilogue", "script/ch2.vns", 15), ("orphan", "script/ch2.vns", 16)]
+    names = {"replay_scene": [("side", "script/main.vns", 2), ("nowhere", "script/main.vns", 3)]}
+    notes = label_notes(labels, names)
+    assert {name for name, note in notes.items() if note.replay} == {"side"}
+    plain, shown = layout(links, labels), layout(links, labels, notes=notes)
+    marks = {b.name: b.marks for b in shown.boxes}
+    assert marks["side"] == ("replay",)
+    assert "not reached" not in marks["epilogue"]          # led to from a replay scene
+    assert "not reached" in marks["orphan"]                # nothing leads here
+    assert [(b.name, b.column, b.row) for b in shown.boxes] == \
+        [(b.name, b.column, b.row) for b in plain.boxes]    # columns from start only
+    assert {b.name: b.marks for b in plain.boxes}["side"] == ("not reached",)

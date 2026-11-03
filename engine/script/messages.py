@@ -109,6 +109,10 @@ and E315 (``metafiles.py``), E312's target forms, E313, and E314 (``checks.py``)
 headless ``player deletes|restores <name>`` words in H-input (F31 ``07`` I-5). Forms ``01``
 leaves open are drafts for the narrative designer.
 
+F41 (L1) adds its six lint texts W237–W242 (its ``01-design.md`` §4.1, final): never the
+load's; ``tools/lint.py`` findings that the check child sends as names rows and the ``lint``
+CLI prints.
+
 Places (``Place``) are ``(file ref, line)`` pairs. Lists inside one message show at most
 ``SCRIPT_MESSAGE_LIST_ITEMS`` items, then "and N more" (SEC-F02-09).
 """
@@ -3498,6 +3502,45 @@ def _w224(name: str = "first_steps") -> str:
             "achievement line names it, so players never get it.")
 
 
+# --- F41 Script linter (F41 01 §4.1 PR-F41-05; 04 §7.2) -------------------------------------
+# Lint W237–W242 (``tools/lint.py`` findings, F41-P2; the check child's names rows and the
+# ``lint`` CLI's ``source: "lint"`` items, F41-P3). Never raised by the load: ``checks.py``
+# has no rule for them. Final texts (01 §4.1). W243–W246 and E360–E364 are claimed and spare.
+# Labels, characters, pictures, variables and defines go through ``show_name``; a sound's
+# file (its name under ``audio/``, as Database's Sounds category shows it) through ``show``.
+
+_W242_KINDS = ("define", "transition", "position", "meter")
+
+
+def _w237(label: str = "old_ending") -> str:
+    return (f'nothing leads to label "{show_name(str(label))}" from start (no jump, call or '
+            "choice), so players never see it. Add a jump to it, or delete it if you don't "
+            "need it.")
+
+
+def _w238(name: str = "kenji") -> str:
+    return f'character "{show_name(str(name))}" never speaks and no line names it.'
+
+
+def _w239(name: str = "hana sad_blink1") -> str:
+    return f'picture "{show_name(str(name))}" isn\'t shown anywhere in the story.'
+
+
+def _w240(file: str = "music/old_theme.ogg") -> str:
+    return f'sound "{show(str(file))}" isn\'t played anywhere in the story.'
+
+
+def _w241(name: str = "lantern_count") -> str:
+    return f'variable "{show_name(str(name))}" has a default, but no line reads or changes it.'
+
+
+def _w242(kind: str = "define", name: str = "max_tries") -> str:
+    """``kind``: ``define``, ``transition``, ``position`` or ``meter`` (anything else reads
+    as ``define``)."""
+    word = kind if kind in _W242_KINDS else "define"
+    return f'{word} "{show_name(str(name))}" is defined but never used.'
+
+
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
 # Drafts for the narrative designer (06 G2). Names a plugin declares (minigame and argument
 # names) and every piece of line text go through ``show_name``/``show``.
@@ -4512,6 +4555,13 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E340": _e340,
     "W223": _w223,
     "W224": _w224,
+    # F41 script linter (01 §4.1): lint W237–W242 (tools/lint.py findings; never the load).
+    "W237": _w237,
+    "W238": _w238,
+    "W239": _w239,
+    "W240": _w240,
+    "W241": _w241,
+    "W242": _w242,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

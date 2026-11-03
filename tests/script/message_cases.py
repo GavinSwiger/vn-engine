@@ -71,6 +71,9 @@ F31 rows (``feature = "F31"``; F31 ``06-acceptance.md`` AC-F31-09) edit F31's te
 ``metafiles.register_words()`` (since F31 s3 ``file`` registers at import, so the call changes
 nothing). Their W196–W200 rows
 (``time = "run"``) are data; ``tests/script/test_metafiles_parse.py`` checks their texts.
+F41 rows (``feature = "F41"``, ``time = "lint"``; F41 ``01-design.md`` §4.1, AC-F41-05) are
+data: the lint texts W237–W242 come from ``tools/lint.py``, never the load;
+``tests/script/test_lint_messages.py`` formats each and compares.
 
 Regenerate the golden file only with the reviewed command::
 

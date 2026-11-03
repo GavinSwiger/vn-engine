@@ -390,9 +390,10 @@ def test_cases_are_well_formed():
         assert case.feature in ("F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F12",
                                 "F14", "F17", "F18", "F19", "F20", "F21", "F22", "F23",
                                 "F28", "F29", "F30", "F31", "F32", "F34", "F35", "F36",
-                                "F37"), case.id
+                                "F37", "F41"), case.id
         assert case.ac.startswith(f"AC-{case.feature}-"), case.id
-        assert case.time in ("load", "launch", "run"), case.id
+        assert case.time in ("load", "launch", "run", "lint"), case.id
+        assert case.time != "lint" or case.feature == "F41", case.id
         assert case.feature != "F02" or case.time == "load", case.id
         assert "D" not in case.edit or case.feature in ("F05", "F29"), case.id
         assert "M" not in case.edit or case.feature == "F07", case.id
@@ -429,6 +430,7 @@ def test_cases_are_well_formed():
     assert {"AC-F35-01", "AC-F35-02"} <= acs                     # F35 S2
     assert {f"AC-F36-0{n}" for n in range(2, 7)} <= acs          # F36 W1
     assert {"AC-F37-01", "AC-F37-02", "AC-F37-08"} <= acs        # F37 S2
+    assert "AC-F41-05" in acs                                    # F41 L1
 
 
 def test_every_template_code_with_a_row_is_covered():

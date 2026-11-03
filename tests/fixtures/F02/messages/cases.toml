@@ -8769,3 +8769,98 @@ code = "W223"
 needs = "load"
 where = "game"
 expect = { exact = '''achievement completionist's when condition failed (NameError), so it isn't checked again until the game restarts.''' }
+
+# --- F41 rows (01 §4.1 PR-F41-05; AC-F41-05): the six lint texts, final. time = "lint": data,
+# --- never the load's (tools/lint.py findings, sent by the check child and printed by the lint
+# --- CLI). Each id names its form (W242-<kind>); tests/script/test_lint_messages.py formats each
+# --- with its arguments and compares.
+
+[[case]]
+id = "F41-05-W237"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W237"
+needs = "load"
+where = "game"
+expect = { exact = '''nothing leads to label "old_ending" from start (no jump, call or choice), so players never see it. Add a jump to it, or delete it if you don't need it.''' }
+
+[[case]]
+id = "F41-05-W238"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W238"
+needs = "load"
+where = "game"
+expect = { exact = '''character "kenji" never speaks and no line names it.''' }
+
+[[case]]
+id = "F41-05-W239"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W239"
+needs = "load"
+where = "game"
+expect = { exact = '''picture "hana sad_blink1" isn't shown anywhere in the story.''' }
+
+[[case]]
+id = "F41-05-W240"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W240"
+needs = "load"
+where = "game"
+expect = { exact = '''sound "music/old_theme.ogg" isn't played anywhere in the story.''' }
+
+[[case]]
+id = "F41-05-W241"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W241"
+needs = "load"
+where = "game"
+expect = { exact = '''variable "lantern_count" has a default, but no line reads or changes it.''' }
+
+[[case]]
+id = "F41-05-W242-define"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W242"
+needs = "load"
+where = "game"
+expect = { exact = '''define "max_tries" is defined but never used.''' }
+
+[[case]]
+id = "F41-05-W242-transition"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W242"
+needs = "load"
+where = "game"
+expect = { exact = '''transition "slow_fade" is defined but never used.''' }
+
+[[case]]
+id = "F41-05-W242-position"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W242"
+needs = "load"
+where = "game"
+expect = { exact = '''position "far_left" is defined but never used.''' }
+
+[[case]]
+id = "F41-05-W242-meter"
+ac = "AC-F41-05"
+feature = "F41"
+time = "lint"
+code = "W242"
+needs = "load"
+where = "game"
+expect = { exact = '''meter "trust" is defined but never used.''' }

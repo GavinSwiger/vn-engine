@@ -22,6 +22,9 @@ boxes and edges at canvas positions, and the window draws them. Deterministic an
   AC-F45-61): a ``flowchart_scene`` row (the scene mark, the label's first line) gives the
   box its Flowchart scene title. F32 (AC-F32-25): a ``ui_delete`` row (a ``ui delete
   saves`` line) marks its label ``deletes saves``.
+- F41 P4 (04 §7.4, PR-F41-07): a ``replay_scene`` row (a ``lock replay`` scene's label, read
+  by name) is a starting point besides ``start``: it and what it leads to aren't marked
+  ``not reached``, and its box is marked ``replay``. Columns stay the distance from ``start``.
 - ``neighbour`` is the arrow keys (the nearest box in a 90° cone); ``targets`` and
   ``cycle_target`` are Tab (the focused box's outgoing edges, in link order).
 - F46 (``04`` §3.4, §6.1.7, §6.4): an edge carries its first link's ``choice`` text and
@@ -67,6 +70,7 @@ MARK_ENDS: Final = "ends"
 MARK_ENDING: Final = "ending"                   # the label holds an ``ending`` line (F19)
 MARK_OUT_OF_DATE: Final = "out of date"         # F46: the scene's text doesn't parse now
 MARK_DELETES_SAVES: Final = "deletes saves"     # F32: the label holds ``ui delete saves``
+MARK_REPLAY: Final = "replay"                   # F41: a scene replay starts here
 CHIP_CHARS: Final = 24                          # F46: a choice chip's characters before "…"
 LINK_KINDS: Final = ("jump", "call", "menu")
 _ENDING_LINKS = frozenset({"jump", "menu"})     # a label with none of these ends the story
@@ -112,6 +116,7 @@ class Notes:
     minigames: tuple[str, ...] = ()
     scene: str | None = None
     deletes_saves: bool = False                 # F32: a ``ui delete saves`` line
+    replay: bool = False                        # F41: a scene replay (F36) starts here
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,15 +185,22 @@ def label_notes(labels: Iterable[object],
     """Label name → ``Notes`` from the name index's ``chapter``, ``ending``,
     ``minigame_use``, and ``flowchart_scene`` rows (each in the label whose line is the
     nearest above it in the same file). Rows without a place, or above every label of their
-    file, are left out."""
+    file, are left out. F41: ``replay_scene`` rows name their label (the declaration is top
+    level, so its line says nothing); a name that isn't a label is left out."""
     starts: dict[str, list[tuple[int, str]]] = {}
+    found: dict[str, dict[str, list[str]]] = {}
+    known: set[str] = set()
     for entry in labels:
         name, where, line = _label_row(entry)
+        known.add(name)
         if where is not None and line is not None:
             starts.setdefault(where, []).append((line, name))
     for rows in starts.values():
         rows.sort()
-    found: dict[str, dict[str, list[str]]] = {}
+    for entry in names.get("replay_scene", ()):
+        name = _label_row(entry)[0]
+        if name in known:
+            found.setdefault(name, {}).setdefault("replay_scene", []).append(name)
     for kind in ("chapter", "ending", "minigame_use", "flowchart_scene", "ui_delete"):
         for entry in names.get(kind, ()):
             what, where, line = _label_row(entry)
@@ -202,7 +214,7 @@ def label_notes(labels: Iterable[object],
     return {label: Notes(next(iter(kinds.get("chapter", ())), None),
                          tuple(kinds.get("ending", ())), tuple(kinds.get("minigame_use", ())),
                          next(iter(kinds.get("flowchart_scene", ())), None),
-                         bool(kinds.get("ui_delete")))
+                         bool(kinds.get("ui_delete")), bool(kinds.get("replay_scene")))
             for label, kinds in found.items()}
 
 
@@ -241,6 +253,16 @@ def layout(links: Iterable[object], labels: Iterable[object], *,
                     distance[there] = distance[here] + 1
                     queue.append(there)
     last = max(distance.values()) + 1 if distance else 0
+    # F41 P4: "not reached" counts scene replays as starting points too (columns don't).
+    reached = set(distance)
+    queue = deque(name for name in rows if name not in reached
+                  and notes.get(name, Notes()).replay)
+    reached.update(queue)
+    while queue:
+        for there in outgoing.get(queue.popleft(), ()):
+            if there not in reached:
+                reached.add(there)
+                queue.append(there)
 
     placed: list[Box] = []
     next_row: dict[int, int] = {}
@@ -253,11 +275,13 @@ def layout(links: Iterable[object], labels: Iterable[object], *,
         marks = []
         if name == START_LABEL:
             marks.append(MARK_START)
-        if name not in distance:
+        if name not in reached:
             marks.append(MARK_NOT_REACHED)
+        note = notes.get(name, Notes())
+        if note.replay:
+            marks.append(MARK_REPLAY)
         if name not in ending_out and reached_by.get(name) != {"call"}:
             marks.append(MARK_ENDS)
-        note = notes.get(name, Notes())
         if note.endings:
             marks.append(MARK_ENDING)
         if note.deletes_saves:
@@ -772,7 +796,7 @@ def cycle_target(layout_: MapLayout, anchor: int, current: int | None) -> int | 
 __all__ = ["BOX_HEIGHT", "BOX_WIDTH", "Box", "CHIP_CHARS", "CHIP_CHAR_PX", "CHIP_HEIGHT",
            "CHIP_PAD", "CHIP_SLOTS", "COLUMN_STEP", "DIRECTIONS", "Edge", "LINK_KINDS",
            "MAP_UNDO_STEPS", "MARK_ENDING", "MARK_ENDS", "MARK_NOT_REACHED", "MARK_OUT_OF_DATE",
-           "MARK_START", "MAX_BOXES", "MapHistory", "MapLayout", "MapStep", "MapUndo", "Notes",
+           "MARK_REPLAY", "MARK_START", "MAX_BOXES", "MapHistory", "MapLayout", "MapStep", "MapUndo", "Notes",
            "PLACE_MARGIN", "PLACE_STEP", "PLACE_TRIES", "Places", "ROW_STEP", "RectHash",
            "START_LABEL", "UNDO_BLOCKED", "UndoRecord", "box_rect", "chip_rect", "chip_size",
            "chip_slot", "chip_text", "curve_at", "curve_points", "cycle_target", "edge_curve",
