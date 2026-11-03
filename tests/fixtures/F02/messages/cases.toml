@@ -8864,3 +8864,188 @@ code = "W242"
 needs = "load"
 where = "game"
 expect = { exact = '''meter "trust" is defined but never used.''' }
+
+# --- F43 rows (01 §5.4; 04 W0): the ten translation texts, final, each with the place it is
+# --- raised with. time = "translate": data, never the script load's (po.py, translations.py,
+# --- translatecheck.py, the language setting, check and build). Each id names its form
+# --- (W248-<form>); tests/script/test_translation_messages.py formats each and compares.
+
+[[case]]
+id = "F43-01-W253-bad_name"
+ac = "AC-F43-01"
+feature = "F43"
+time = "translate"
+code = "W253"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/japanese.po isn't used: "japanese" isn't a language code such as ja, pt-BR or zh-Hans.''' }
+
+[[case]]
+id = "F43-01-W253-original"
+ac = "AC-F43-01"
+feature = "F43"
+time = "translate"
+code = "W253"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/en.po isn't used: en is the original language.''' }
+
+[[case]]
+id = "F43-01-W253-too_many"
+ac = "AC-F43-01"
+feature = "F43"
+time = "translate"
+code = "W253"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/zu.po isn't used: a game can have 32 languages.''' }
+
+[[case]]
+id = "F43-03-W247-utf8"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W247"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po can't be read (it isn't UTF-8 text), so Japanese shows the original text.''' }
+
+[[case]]
+id = "F43-03-W247-large"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W247"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po can't be read (it is larger than 16 MB), so Japanese shows the original text.''' }
+
+[[case]]
+id = "F43-03-W247-entries"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W247"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po can't be read (it has more than 100,000 entries), so Japanese shows the original text.''' }
+
+[[case]]
+id = "F43-03-W248-quote"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W248"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: a quote isn't closed, so this entry is skipped.''' }
+
+[[case]]
+id = "F43-03-W248-no_msgstr"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W248"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: msgstr is missing, so this entry is skipped.''' }
+
+[[case]]
+id = "F43-03-W248-twice"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W248"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: the key "start.3" is used twice, so this entry is skipped.''' }
+
+[[case]]
+id = "F43-03-W248-long"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W248"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: the translation is longer than 2,000 characters, so this entry is skipped.''' }
+
+[[case]]
+id = "F43-03-W248-unsupported"
+ac = "AC-F43-03"
+feature = "F43"
+time = "translate"
+code = "W248"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: this kind of entry isn't supported, so this entry is skipped.''' }
+
+[[case]]
+id = "F43-07-W249"
+ac = "AC-F43-07"
+feature = "F43"
+time = "translate"
+code = "W249"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: this { never closes. End the tag with }, or write {{ to show a {, so the original text is shown.''' }
+
+[[case]]
+id = "F43-08-W250"
+ac = "AC-F43-08"
+feature = "F43"
+time = "translate"
+code = "W250"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: the translation uses {score}, which the original doesn't, so the original text is shown.''' }
+
+[[case]]
+id = "F43-09-W251"
+ac = "AC-F43-09"
+feature = "F43"
+time = "translate"
+code = "W251"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ja.po, line 120: the translation leaves out {name}, which the original shows.''' }
+
+[[case]]
+id = "F43-18-W255"
+ac = "AC-F43-18"
+feature = "F43"
+time = "translate"
+code = "W255"
+needs = "load"
+where = "game"
+expect = { exact = '''the language in settings isn't in this game any more, so English is used.''' }
+
+[[case]]
+id = "F43-21-W252"
+ac = "AC-F43-21"
+feature = "F43"
+time = "translate"
+code = "W252"
+needs = "load"
+where = "game"
+expect = { exact = '''Japanese: 37 characters can't be drawn by any of the game's fonts (日, 本, 語 and 34 more), so they show as boxes. Give Japanese a font: [translation.ja] font in config.toml, or Game settings ▸ Languages in Studio.''' }
+
+[[case]]
+id = "F43-23-W254"
+ac = "AC-F43-23"
+feature = "F43"
+time = "translate"
+code = "W254"
+needs = "load"
+where = "game"
+expect = { exact = '''translations/ar.po has right-to-left or joined letters, which the engine can't draw correctly yet.''' }
+
+[[case]]
+id = "F43-25-W256"
+ac = "AC-F43-25"
+feature = "F43"
+time = "translate"
+code = "W256"
+needs = "load"
+where = "game"
+expect = { exact = '''Japanese: 12 texts aren't translated yet (players see the original) and 3 changed since they were translated.''' }

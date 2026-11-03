@@ -113,6 +113,10 @@ F41 (L1) adds its six lint texts W237–W242 (its ``01-design.md`` §4.1, final)
 load's; ``tools/lint.py`` findings that the check child sends as names rows and the ``lint``
 CLI prints.
 
+F43 (W0) adds its ten translation texts W247–W256 (its ``01-design.md`` §5.4, final, with
+W248's "this kind of entry isn't supported" from ``04``): never the script load's; raised by
+reading and checking ``translations/*.po``, the language setting, and ``check``/build.
+
 Places (``Place``) are ``(file ref, line)`` pairs. Lists inside one message show at most
 ``SCRIPT_MESSAGE_LIST_ITEMS`` items, then "and N more" (SEC-F02-09).
 """
@@ -3541,6 +3545,144 @@ def _w242(kind: str = "define", name: str = "max_tries") -> str:
     return f'{word} "{show_name(str(name))}" is defined but never used.'
 
 
+# --- F43 Localization (F43 01 §5.4, final; 04 W0) -------------------------------------------
+# Translation warnings W247–W256: never the script load's. Raised by reading
+# ``translations/*.po`` (``po.py`` W247/W248, ``translations.discover`` W253), by checking an
+# entry as its kind (``translatecheck.py`` W249–W251, W254, W252's missing characters), by the
+# language setting (W255) and by ``check``/build (W252, W256). E365–E367 are claimed and spare.
+# ``file`` is the file's name inside ``translations/`` (``ja.po``); W247, W253 and W254 start
+# with ``translations/<file>``, so they are raised with that ``file=`` and no line. W248–W251
+# carry no place: raise them with ``file="translations/ja.po"`` and the entry's line, which
+# ``format()`` puts first. Language names (the English name, ``Japanese``), file names, keys
+# and characters go through ``show``; ``{var}`` names through ``show_name``.
+
+_PO_MAX_TEXT = "16 MB"                  # 04 §8 rule 3: a .po's cap (bytes) ...
+_PO_MAX_ENTRIES = 100_000               # ... and entries
+_W247_REASONS = {
+    "utf8": "it isn't UTF-8 text",
+    "large": f"it is larger than {_PO_MAX_TEXT}",
+    "entries": f"it has more than {_PO_MAX_ENTRIES:,} entries",
+}
+_W248_FORMS = frozenset(("quote", "no_msgstr", "twice", "long", "unsupported"))
+_W253_FORMS = frozenset(("bad_name", "original", "too_many"))
+_W252_SHOWN = 3                         # AC-F43-21: three characters, then "and N more"
+
+
+def _plain_and(items: Sequence[str]) -> str:
+    """``a``; ``a and b``; ``a, b and c`` (01 §5.4 writes no serial comma)."""
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _var_names(names: str | Sequence[str]) -> str:
+    listed = [names] if isinstance(names, str) else list(names)
+    return _plain_and([f"{{{show_name(str(n))}}}" for n in listed])
+
+
+def _w247(form: str = "utf8", file: str = "ja.po", language: str = "Japanese") -> str:
+    """A .po that isn't read at all: ``form`` a ``_W247_REASONS`` key (anything else reads as
+    ``utf8``)."""
+    reason = _W247_REASONS.get(form, _W247_REASONS["utf8"])
+    return (f"translations/{show(str(file))} can't be read ({reason}), so {show(str(language))} "
+            "shows the original text.")
+
+
+def _w248(form: str = "quote", detail: object = "") -> str:
+    """One skipped entry (no place: the caller gives the file and line). ``form``: ``quote``;
+    ``no_msgstr``; ``twice`` (``detail`` the key); ``long`` (``detail`` the kind's character
+    cap, an int); ``unsupported`` (``msgid_plural``, an unknown keyword). Anything else reads
+    as ``unsupported``."""
+    if form == "quote":
+        problem = "a quote isn't closed"
+    elif form == "no_msgstr":
+        problem = "msgstr is missing"
+    elif form == "twice":
+        problem = f'the key "{show(str(detail))}" is used twice'
+    elif form == "long" and isinstance(detail, int):
+        problem = f"the translation is longer than {detail:,} characters"
+    else:
+        problem = "this kind of entry isn't supported"
+    return f"{problem}, so this entry is skipped."
+
+
+def _w249(message: str = _E161["open"]) -> str:
+    """A tag mistake in a translation (no place): ``message`` is the F05/F29/F07 message for
+    the same mistake in a script line (``format_message`` of its code); its final ``.`` is
+    dropped."""
+    text = str(message)
+    text = text[:-1] if text.endswith(".") else text
+    return f"{text}, so the original text is shown."
+
+
+def _w250(names: str | Sequence[str] = "score") -> str:
+    """``{var}``/``{username}`` names the translation uses and the original doesn't (no place;
+    names without braces)."""
+    return (f"the translation uses {_var_names(names)}, which the original doesn't, so the "
+            "original text is shown.")
+
+
+def _w251(names: str | Sequence[str] = "name") -> str:
+    """``{var}`` names the translation leaves out (dev note; no place)."""
+    return f"the translation leaves out {_var_names(names)}, which the original shows."
+
+
+def _w252(language: str = "Japanese", code: str = "ja", count: int = 37,
+          chars: Sequence[str] = ("日", "本", "語")) -> str:
+    """``count`` characters no font of the chain draws; ``chars`` the first ones in text order
+    (three are shown, then "and N more")."""
+    count = int(count)
+    shown = [show(str(c)) for c in list(chars)[:_W252_SHOWN]]
+    more = count - len(shown)
+    listed = ", ".join(shown) + f" and {more:,} more" if more > 0 else _plain_and(shown)
+    lang = show(str(language))
+    what = ("1 character can't be drawn by any of the game's fonts" if count == 1 else
+            f"{count:,} characters can't be drawn by any of the game's fonts")
+    boxes = "it shows as a box" if count == 1 else "they show as boxes"
+    return (f"{lang}: {what} ({listed}), so {boxes}. Give {lang} a font: "
+            f"[translation.{show(str(code))}] font in config.toml, or Game settings ▸ "
+            "Languages in Studio.")
+
+
+def _w253(form: str = "bad_name", file: str = "japanese.po", name: str = "japanese") -> str:
+    """A file in ``translations/`` that isn't used: ``bad_name`` (``name`` the file's stem);
+    ``original`` (``name`` the original's code); ``too_many`` (past 32 languages). Anything
+    else reads as ``bad_name``."""
+    head = f"translations/{show(str(file))} isn't used:"
+    if form == "original":
+        return f"{head} {show(str(name))} is the original language."
+    if form == "too_many":
+        return f"{head} a game can have 32 languages."
+    return (f'{head} "{show(str(name))}" isn\'t a language code such as ja, pt-BR or '
+            "zh-Hans.")
+
+
+def _w254(file: str = "ar.po") -> str:
+    return (f"translations/{show(str(file))} has right-to-left or joined letters, which the "
+            "engine can't draw correctly yet.")
+
+
+def _w255(original: str = "English") -> str:
+    """``original``: the original language's name."""
+    return (f"the language in settings isn't in this game any more, so {show(str(original))} "
+            "is used.")
+
+
+def _w256(language: str = "Japanese", new: int = 12, changed: int = 3) -> str:
+    """A language not fully Done: ``new`` texts with no translation, ``changed`` texts whose
+    original changed since. A zero count leaves its part out."""
+    new, changed = int(new), int(changed)
+    parts = []
+    if new or not changed:
+        parts.append(f"{new:,} text{' isn' if new == 1 else 's aren'}'t translated yet "
+                     "(players see the original)")
+    if changed:
+        since = "it was" if changed == 1 else "they were"
+        noun = "" if new else (" text" if changed == 1 else " texts")
+        parts.append(f"{changed:,}{noun} changed since {since} translated")
+    return f"{show(str(language))}: {' and '.join(parts)}."
+
+
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
 # Drafts for the narrative designer (06 G2). Names a plugin declares (minigame and argument
 # names) and every piece of line text go through ``show_name``/``show``.
@@ -4562,6 +4704,18 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W240": _w240,
     "W241": _w241,
     "W242": _w242,
+    # F43 localization (01 §5.4): translation W247–W256 (po.py, translations.py,
+    # translatecheck.py, the language setting, check/build; never the script load).
+    "W247": _w247,
+    "W248": _w248,
+    "W249": _w249,
+    "W250": _w250,
+    "W251": _w251,
+    "W252": _w252,
+    "W253": _w253,
+    "W254": _w254,
+    "W255": _w255,
+    "W256": _w256,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

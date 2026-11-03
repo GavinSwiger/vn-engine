@@ -74,6 +74,10 @@ nothing). Their W196–W200 rows
 F41 rows (``feature = "F41"``, ``time = "lint"``; F41 ``01-design.md`` §4.1, AC-F41-05) are
 data: the lint texts W237–W242 come from ``tools/lint.py``, never the load;
 ``tests/script/test_lint_messages.py`` formats each and compares.
+F43 rows (``feature = "F43"``, ``time = "translate"``; F43 ``01-design.md`` §5.4) are data:
+the translation texts W247–W256 come from reading and checking ``translations/*.po``, the
+language setting, and ``check``/build, never the script load; each ``exact`` is the text with
+the place it is raised with, and ``tests/script/test_translation_messages.py`` compares.
 
 Regenerate the golden file only with the reviewed command::
 
