@@ -818,6 +818,10 @@ To try the Music Room while you work, run `python -m engine run game --extras mu
 (dev runs only): every track counts as open, and nothing is saved. Players close the heard
 tracks again with "delete persistent data" in Settings.
 
+The example game has three tracks: "Lantern Walk", the title music, `open`; "Bridge at
+Night", which opens when the story first plays it on the bridge; and "The River at Night",
+the river's sound, `until true`.
+
 `track`, `open` and `until` are still free as names: they mean something only right after
 `lock`. (`file` is a statement word of its own, section 23.)
 
@@ -994,6 +998,12 @@ their notices show.
 The **Extras** button (and the Achievements page in it) shows once at least one achievement
 is earned. To try the page while you work, run `python -m engine run game --extras
 achievements` (dev runs only): every achievement counts as earned, and nothing is saved.
+
+The example game has four achievements: "Sharp Eyes" (an `unlock achievement` line when the
+lantern game is won in 10 turns or fewer), "Set Adrift" (an `unlock achievement` line at the
+lantern release, with the lantern's picture), "Two Ways Home" (`when "sad" in
+persistent.endings and "good" in persistent.endings`), and "A Promise Kept", `hidden`, given
+by the promise route.
 
 A game sold on a store such as Steam can also tell the store about each achievement with a
 **platform hook**, a small Python plugin: see docs/minigames.md, "Achievement hook".
@@ -4132,3 +4142,5 @@ story goes on after a warning.
   description, `image`, `hidden` and `when`, `unlock achievement` in a label, the notice,
   the Achievements page, achievements earned in a replay kept, the platform hook, the five
   words, E339, E340, W223, W224).
+- 2026-11-03: "lock track (music room)" and "lock achievement (achievements)" name the
+  example game's three tracks and four achievements.

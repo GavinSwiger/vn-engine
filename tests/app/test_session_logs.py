@@ -148,6 +148,15 @@ def test_example_game_without_a_subfolder(tmp_path, user_roots, missing):
                          for name in EXAMPLE}
         played = [r for r in problems if r in missing_audio]
         assert played and played[0][2].startswith("audio/bgm/lantern_walk.wav")
+        # F35: the dev load names each music-room track's missing file first (W220, area
+        # script, at its lock track line).
+        tracks = [r for r in problems if r[:2] == ("WARNING", "script") and ": track " in r[2]]
+        assert [r[2].split(": ", 1)[1] for r in tracks] == [
+            f'track {name} plays "{file}", but there is no such file in audio/.'
+            for name, file in (("lantern_walk", "bgm/lantern_walk.wav"),
+                               ("bridge_night", "bgm/bridge_night.wav"),
+                               ("river", "sfx/river.wav"))]
+        problems = [r for r in problems if r not in tracks]
         # F08 step 8: the launch check names each music and sound file first, in order of
         # first use (W21, area script; the lines are wherever the example's statements
         # are), then the voice files in one W22 (step 12's voiced lines). F06: the blip

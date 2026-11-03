@@ -111,6 +111,12 @@ lock item shed_key "Shed Key" in "Things":
 lock item candles "Candles" in "Things":
     "Four white candles tied with red string. Lantern candles burn longer than the cheap ones."
 
+# Extras: the title screen gets an Extras button once the player has something to see
+# again, and each of its pages (Gallery, Scenes, Endings, Music Room, Achievements) shows
+# once its first picture, scene, ending, track, or achievement unlocks. The lines below
+# declare what goes on those pages. To see them all while you work, run
+# python -m engine run game --extras: everything counts as unlocked, and nothing is saved.
+
 # "lock gallery" adds a picture to the gallery: a page of Extras, on the title screen,
 # where players look again at the special pictures they have seen. The picture is named
 # as for "show" ("cg big_lantern" is images/cg/big_lantern.png), and the title in quotes
@@ -150,6 +156,31 @@ lock replay festival_end "The Lantern Festival":
     hana_name = "Hana"
 lock replay promise "Hana's Promise":
     hana_name = "Hana"
+
+# "lock track" adds a song to the Music Room, another page of Extras, where players
+# listen to the game's music again. The name comes first, then the title in quotes shown
+# in the list, then the file, as "play music" writes it. A track with nothing after its
+# file opens the first time the story plays it (the bridge, in routes/daichi.vns) and
+# stays open across playthroughs. "open" puts the title music there from the start, and
+# "until true" opens the river's sound once the player has reached the true ending.
+lock track lantern_walk "Lantern Walk" file "bgm/lantern_walk.wav" open
+lock track bridge_night "Bridge at Night" file "bgm/bridge_night.wav"
+lock track river "The River at Night" file "sfx/river.wav" until true
+
+# "lock achievement" declares an achievement: a reward kept across playthroughs. When
+# the player earns one, a notice shows at the top right, and the Achievements page of
+# Extras lists them all with a count. The name comes first, then the title and the
+# description in quotes. "image" gives it a picture, named as for "show". An
+# "unlock achievement" line in the story gives it to the player: "Sharp Eyes" in the
+# lantern game (chapter1.vns), "Set Adrift" at the lantern release (routes/daichi.vns).
+lock achievement set_adrift "Set Adrift" "Send a paper lantern down the river." image items lantern
+lock achievement sharp_eyes "Sharp Eyes" "Win the lantern game in 10 turns or fewer."
+# "when" and a condition, written as for "if", give an achievement by itself as soon as
+# the condition is true: here, once the player has seen both of these endings.
+lock achievement two_ways_home "Two Ways Home" "See the sad ending and the good ending." when "sad" in persistent.endings and "good" in persistent.endings
+# "hidden" shows "Hidden achievement" in the list until the player earns it, so the
+# secret stays secret. The promise route gives it (endings.vns).
+lock achievement promise_kept "A Promise Kept" "Wait at the bridge with Hana." hidden
 
 # "label" names a scene. The story begins at the label called start. Once players
 # have saves, keep your label names: a save finds its line again inside its label, even

@@ -74,6 +74,9 @@ label promise:
     hana happy "Promise me something. Next year, don't wait six years."
     scene cg last_lantern with dissolve
     "I promised. Below us, one last lantern turned once and went on downstream."
+    # "A Promise Kept" is hidden (main.vns): the Achievements page shows its title only
+    # from now on.
+    unlock achievement promise_kept
     # "lock ending" makes the game forget an ending, as if the river had carried it away.
     # With the sad and the good ending forgotten, the promise route is locked again, so
     # the next playthrough starts over.

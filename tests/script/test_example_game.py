@@ -120,6 +120,7 @@ def test_ac_f34_15_w226_once_per_picture_and_the_example_is_clean(tmp_path):
     copy = tmp_path / "game"
     shutil.copytree(GAME / "script", copy / "script")
     shutil.copytree(GAME / "files", copy / "files")
+    shutil.copytree(GAME / "audio", copy / "audio")     # the music-room tracks' files (W220)
     shutil.copy(GAME / "config.toml", copy / "config.toml")
     endings = copy / "script" / "endings.vns"
     text = endings.read_bytes().decode("utf-8")

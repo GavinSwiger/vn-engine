@@ -259,20 +259,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night",
-      "cg big_lantern"
-     ],
-     "sprites": [
-      "hana happy",
-      "hana surprised",
-      "hana pout",
-      "daichi smile",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -296,8 +282,7 @@
     {
      "backgrounds": [
       "bg bridge_night",
-      "cg big_lantern",
-      "cg last_lantern_ashes"
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -332,6 +317,21 @@
      "speaker": null,
      "text": "The festival lanterns were already lit when I reached the river.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "stage": {
@@ -4923,20 +4923,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night",
-      "cg big_lantern"
-     ],
-     "sprites": [
-      "hana happy",
-      "hana surprised",
-      "hana pout",
-      "daichi smile",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -4960,8 +4946,7 @@
     {
      "backgrounds": [
       "bg bridge_night",
-      "cg big_lantern",
-      "cg last_lantern_ashes"
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -4996,6 +4981,21 @@
      "speaker": null,
      "text": "The festival lanterns were already lit when I reached the river.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "stage": {
@@ -9329,20 +9329,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night",
-      "cg big_lantern"
-     ],
-     "sprites": [
-      "hana happy",
-      "hana surprised",
-      "hana pout",
-      "daichi smile",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -9366,8 +9352,7 @@
     {
      "backgrounds": [
       "bg bridge_night",
-      "cg big_lantern",
-      "cg last_lantern_ashes"
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -9402,6 +9387,21 @@
      "speaker": null,
      "text": "The festival lanterns were already lit when I reached the river.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "stage": {
@@ -14066,20 +14066,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night",
-      "cg big_lantern"
-     ],
-     "sprites": [
-      "hana happy",
-      "hana surprised",
-      "hana pout",
-      "daichi smile",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -14103,8 +14089,7 @@
     {
      "backgrounds": [
       "bg bridge_night",
-      "cg big_lantern",
-      "cg last_lantern_ashes"
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -14139,6 +14124,21 @@
      "speaker": null,
      "text": "The festival lanterns were already lit when I reached the river.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "stage": {
@@ -17903,20 +17903,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night",
-      "cg big_lantern"
-     ],
-     "sprites": [
-      "hana happy",
-      "hana surprised",
-      "hana pout",
-      "daichi smile",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -17940,8 +17926,7 @@
     {
      "backgrounds": [
       "bg bridge_night",
-      "cg big_lantern",
-      "cg last_lantern_ashes"
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -17976,6 +17961,21 @@
      "speaker": null,
      "text": "The festival lanterns were already lit when I reached the river.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "stage": {

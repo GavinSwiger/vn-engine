@@ -205,6 +205,8 @@ label lantern_release:
         and its little flame burned {i}{color=#1e4a9c}blue{/color}{/i}."
     # The river has the lantern now, so it leaves the codex.
     lock item lantern
+    # An achievement, unlike an item, is kept for good: a new game never takes it away.
+    unlock achievement set_adrift
     # {{ shows a {. Only { needs doubling; a } on its own shows as it is.
     daichi "Make a wish. The shrine writes them as {{name}: {{wish}. They're free on this side of the stall."
     # {next} at the very end cuts the line off: the next line follows by itself.

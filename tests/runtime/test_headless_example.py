@@ -477,7 +477,10 @@ def test_ac_f19_35_the_example_endings_and_the_promise_route(caplog):
         ("true", "True End", "Hana's Promise")]
     assert [(r.name, tuple(r.until)) for r in program.routes] == [("promise", ("sad", "good"))]
     assert sorted((s.unlock, s.kind, s.name) for s in program.iter_statements()
-                  if type(s) is Lock) == [(False, "ending", "good"), (False, "ending", "sad")]
+                  if type(s) is Lock) == [(False, "ending", "good"), (False, "ending", "sad"),
+                                          (True, "achievement", "promise_kept"),   # F37
+                                          (True, "achievement", "set_adrift"),
+                                          (True, "achievement", "sharp_eyes")]
     assert load_config(GamePaths(EXAMPLE.resolve())).config.choice.show_locked is True
     last = _night_end(program)
     store = PersistentStore(identity_scheme=program.identity_scheme)

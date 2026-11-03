@@ -95,6 +95,9 @@ label lantern_stall:
     minigame lantern_memory pairs=6 into turns
     if turns <= 10:
         "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
+        # "unlock achievement" gives the player an achievement declared in main.vns, for
+        # good: a notice shows "Achievement unlocked: Sharp Eyes" over the story.
+        unlock achievement sharp_eyes
     else:
         "\"{var=turns} turns,\" the stall keeper said, and smiled. \"The wish is still extra.\""
     # "menu" stops the story until the player picks one of its choices, shown as buttons.

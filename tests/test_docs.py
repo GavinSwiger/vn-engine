@@ -2356,4 +2356,58 @@ def test_ac_f36_35_replay_docs_and_example(tmp_path):
             assert says[0].text.startswith(first) and says[-1].text.startswith(last), label
         if label in ("bridge", "river_end", "festival_end"):   # starting value names Hana's plate
             assert "Hana" in {c.name for c in says}, label
-        assert not store.in_sandbox and parse(decode(encode_bytes(store))) == before, label
+        # Achievements earned in a replay are kept (F37): the good ending's replay meets
+        # two_ways_home's when (sad and good reached); everything else is put back.
+        after = parse(decode(encode_bytes(store)))
+        kept = set(after["unlocks"].pop("achievement", ())) - set(
+            before["unlocks"].get("achievement", ()))
+        assert kept == ({"two_ways_home"} if label == "festival_end" else set()), label
+        after["unlocks"]["achievement"] = before["unlocks"].get("achievement", [])
+        if "achievement" not in before["unlocks"]:
+            del after["unlocks"]["achievement"]
+        assert not store.in_sandbox and after == before, label
+
+
+def test_example_music_room_and_achievements():
+    """The example game's Extras (F35, F37): three music-room tracks, one per rule (``open``,
+    heard, ``until true``), and four achievements (two ``unlock achievement`` lines, one
+    ``when``, one ``hidden``), named in section 7. A sad-ending playthrough gives the two
+    lines' achievements; the good ending's replay meets the ``when``, the promise's replay
+    gives the hidden one (both kept, as replays keep achievements); the river track opens with
+    the true ending."""
+    from engine.runtime.headless import run_headless
+    from engine.runtime.musicroom import TrackIndex
+    from engine.runtime.persistent import PersistentStore
+    from tests.runtime import corpus
+
+    program, images = corpus.example_program(), corpus.example_images()
+    assert [(t.name, t.title, t.file, t.open, t.until) for t in program.tracks] == [
+        ("lantern_walk", "Lantern Walk", "bgm/lantern_walk.wav", True, ()),
+        ("bridge_night", "Bridge at Night", "bgm/bridge_night.wav", False, ()),
+        ("river", "The River at Night", "sfx/river.wav", False, ("true",))]
+    assert [(a.name, a.title, a.image, a.hidden, a.when is not None)
+            for a in program.achievements] == [
+        ("set_adrift", "Set Adrift", "items lantern", False, False),
+        ("sharp_eyes", "Sharp Eyes", None, False, False),
+        ("two_ways_home", "Two Ways Home", None, False, True),
+        ("promise_kept", "A Promise Kept", None, True, False)]
+    flat = " ".join(LANGUAGE.read_text(encoding="utf-8").split())
+    assert ('The example game has three tracks: "Lantern Walk", the title music, `open`; '
+            '"Bridge at Night"') in flat
+    assert ('The example game has four achievements: "Sharp Eyes" (an `unlock achievement` '
+            'line') in flat
+
+    store = PersistentStore(identity_scheme=program.identity_scheme)
+    tracks = TrackIndex.build(program)
+    run_headless(program, seed=1, image_files=images, persistent=store,
+                 inputs=corpus.play(program, 1, images, corpus.EXAMPLE_PICKS[1]).inputs,
+                 minigames=corpus.example_minigames())
+    assert store.unlocked("ending") == ("sad",)
+    assert set(store.unlocked("achievement")) == {"sharp_eyes", "set_adrift"}
+    for label, earned in (("festival_end", "two_ways_home"), ("promise", "promise_kept")):
+        run_headless(program, seed=1, image_files=images, persistent=store, replay=label,
+                     minigames=corpus.example_minigames())
+        assert earned in store.unlocked("achievement"), label
+    assert [t.name for t in tracks.open_tracks(store)] == ["lantern_walk"]   # not heard here
+    store.unlock("ending", "true")
+    assert [t.name for t in tracks.open_tracks(store)] == ["lantern_walk", "river"]
