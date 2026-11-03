@@ -143,10 +143,10 @@ def test_ac_f45_48_page_names_the_window_texts():
                  window.TAB_EDITOR, window.TAB_MAP, window.TAB_ASSET,
                  window.START_VALUES_HEADING, window.PROBLEMS_HEADING, window.STARTS_AT):
         assert name in flat, name
-    menus = inspect.getsource(window.EditorWindow._build_menus)
+    menus = inspect.getsource(window.EditorWindow.menu_table)     # studiomenus' table
     for name in ("New game…", "New script file", "Rename", "Delete", "Check now",
                  "Go to label"):
-        assert f'label="{name}' in menus and name in flat, name
+        assert f'Item("{name}' in menus and name in flat, name
 
 
 def test_ac_f45_48_key_list_holds_every_studio_key():

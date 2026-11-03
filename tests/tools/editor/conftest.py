@@ -186,3 +186,21 @@ def try_link_file(link: Path, target: Path) -> bool:
     except (OSError, NotImplementedError):
         return False
     return True
+
+
+# window.py's split (F47 04 §3.4): a name tests patch may live in any of Studio's modules.
+STUDIO_MODULES = ("window", "fileactions", "checkwiring", "runwiring", "mapwiring",
+                  "studiomenus", "editorkeys")
+
+
+def patch_studio(monkeypatch, name: str, value) -> None:
+    """``monkeypatch.setattr`` ``name`` in every Studio module that has it (a dialog
+    function, a constant, a module); at least one must."""
+    import importlib
+    found = False
+    for module_name in STUDIO_MODULES:
+        module = importlib.import_module(f"engine.tools.editor.{module_name}")
+        if hasattr(module, name):
+            monkeypatch.setattr(module, name, value)
+            found = True
+    assert found, f"no Studio module has {name!r}"

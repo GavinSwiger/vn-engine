@@ -27,6 +27,7 @@ from engine.tools.editor.preview import (
     Report,
     ReportItem,
 )
+from tests.tools.editor.conftest import patch_studio
 from tests.tools.editor.test_preview import Runners, StubbornPopen, child
 
 tk = pytest.importorskip("tkinter")
@@ -77,8 +78,8 @@ def make_editor(monkeypatch):
     runners = Runners()
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window, "show_error",
-                        lambda parent, message: errors_shown.append(message))
+    patch_studio(monkeypatch, "show_error",
+                 lambda parent, message: errors_shown.append(message))
 
     def build(game: Path, *, children: tuple[str, ...] = ("started_exit0",),
               mapped: bool = False, stubborn: bool = False, kill_after_s: float = 2.0,

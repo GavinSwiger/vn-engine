@@ -27,6 +27,7 @@ from engine.tools import editor as editor_package
 from engine.tools.editor.document import open_document
 from engine.tools.editor.syntax import SYNTAX_TAGS, TAG_COLORS, label_above
 from tests.fixtures.F44.byte_variants import VARIANTS
+from tests.tools.editor.conftest import patch_studio
 from tests.tools.editor.conftest import R_SCRIPTS, link_dir
 
 tk = pytest.importorskip("tkinter")
@@ -142,8 +143,8 @@ def make_editor(monkeypatch):
     roots: list = []
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window, "show_error",
-                        lambda parent, message: errors_shown.append(message))
+    patch_studio(monkeypatch, "show_error",
+                 lambda parent, message: errors_shown.append(message))
 
     def build(game: Path, *, mapped: bool = False) -> Editor:
         root = new_root()
@@ -182,7 +183,7 @@ def no_dialog(monkeypatch):
         assert answers, f"unexpected dialog: {message}"
         return answers.pop(0)
 
-    monkeypatch.setattr(window, "ask", fake_ask)
+    patch_studio(monkeypatch, "ask", fake_ask)
     return SimpleNamespace(calls=calls, answers=answers)
 
 
@@ -953,7 +954,7 @@ def test_focus_events_check_the_disk_at_most_once_a_second(make_editor, route_ga
                                                            monkeypatch):
     ed = make_editor(route_game)
     clock = [100.0]
-    monkeypatch.setattr(window, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    patch_studio(monkeypatch, "time", SimpleNamespace(monotonic=lambda: clock[0]))
     checks = []
     monkeypatch.setattr(ed.win, "check_outside_changes", lambda: checks.append(clock[0]))
     ed.win._last_outside_check = float("-inf")

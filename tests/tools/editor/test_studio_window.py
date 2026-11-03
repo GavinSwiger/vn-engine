@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from engine.core.paths import GamePaths
-from tests.tools.editor.conftest import S_SCRIPTS, png
+from tests.tools.editor.conftest import S_SCRIPTS, patch_studio, png
 
 tk = pytest.importorskip("tkinter")
 window = pytest.importorskip("engine.tools.editor.window")
@@ -59,13 +59,13 @@ def studio(monkeypatch):
         return None if answer is None else (answer if isinstance(answer, tuple)
                                             else (answer, option_value))
 
-    monkeypatch.setattr(window, "ask", fake_ask)
-    monkeypatch.setattr(window, "ask_text", fake_ask_text)
-    monkeypatch.setattr(window, "ask_open_files", lambda parent: list(picked))
-    monkeypatch.setattr(window, "show_error",
-                        lambda parent, text: dialogs.append(("error", text)))
-    monkeypatch.setattr(window, "show_info",
-                        lambda parent, text: dialogs.append(("info", text)))
+    patch_studio(monkeypatch, "ask", fake_ask)
+    patch_studio(monkeypatch, "ask_text", fake_ask_text)
+    patch_studio(monkeypatch, "ask_open_files", lambda parent: list(picked))
+    patch_studio(monkeypatch, "show_error",
+                 lambda parent, text: dialogs.append(("error", text)))
+    patch_studio(monkeypatch, "show_info",
+                 lambda parent, text: dialogs.append(("info", text)))
 
     def build(game: Path, *, mapped: bool = False) -> Editor:
         root = new_root()

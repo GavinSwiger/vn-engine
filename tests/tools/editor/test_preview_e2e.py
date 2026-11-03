@@ -60,7 +60,7 @@ from tests.app.test_editor_link import (  # noqa: F401  (fixtures used by name)
 from tests.app.test_smoke_launch import roots_env
 from tests.fakes.banned_words import BANNED_ANY, BANNED_CASED
 from tests.fixtures.F44.seeded import SEEDED, seeded_scripts
-from tests.tools.editor.conftest import R_SCRIPTS
+from tests.tools.editor.conftest import R_SCRIPTS, patch_studio
 from tests.tools.editor.test_preview import Runners, run_until, states
 
 S = PreviewState
@@ -593,8 +593,8 @@ def editors(tmp_path, monkeypatch):
     runners = Runners()
     callback_errors: list = []
     errors_shown: list[str] = []
-    monkeypatch.setattr(window, "show_error",
-                        lambda parent, message: errors_shown.append(message))
+    patch_studio(monkeypatch, "show_error",
+                 lambda parent, message: errors_shown.append(message))
     env = child_env(tmp_path)
 
     def build(game: Path):

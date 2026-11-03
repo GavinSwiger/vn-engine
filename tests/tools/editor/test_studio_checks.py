@@ -29,6 +29,7 @@ from engine.tools.editor.views import MAP_OUT_OF_DATE
 tk = pytest.importorskip("tkinter")
 window = pytest.importorskip("engine.tools.editor.window")
 from tests.tools import f45_games  # noqa: E402
+from tests.tools.editor.conftest import patch_studio  # noqa: E402
 from tests.tools.editor.test_studio_window import studio  # noqa: E402,F401
 from tests.tools.editor.test_window import Editor, new_root  # noqa: E402
 from tests.tools.editor.test_window_preview import click_paragraph  # noqa: E402
@@ -203,7 +204,7 @@ def test_ac32_gutter_markers(studio, studio_game):
 # --- AC-F45-33: when checks run, and what the status says ------------------------------------
 
 def test_ac33_when_checks_run_and_the_status(studio, studio_game, monkeypatch):
-    monkeypatch.setattr(window, "CHECK_DEBOUNCE_MS", 60_000)
+    patch_studio(monkeypatch, "CHECK_DEBOUNCE_MS", 60_000)
     ed = studio(studio_game)
     requests = ed.checks.requests
     assert requests == [(None, 0, False)] and status(ed) == "Checking…"   # load-only (I-1)
@@ -262,7 +263,7 @@ def test_ac33_when_checks_run_and_the_status(studio, studio_game, monkeypatch):
 # --- AC-F45-34: check as you type -------------------------------------------------------------
 
 def test_ac34_check_as_you_type(studio, studio_game, monkeypatch):
-    monkeypatch.setattr(window, "CHECK_DEBOUNCE_MS", 50)
+    patch_studio(monkeypatch, "CHECK_DEBOUNCE_MS", 50)
     ed = studio(studio_game)
     requests = ed.checks.requests
     path = studio_game / "script" / "main.vns"
@@ -301,7 +302,7 @@ def test_ac34_check_as_you_type(studio, studio_game, monkeypatch):
     assert len(requests) == 4
 
     done(ed)
-    monkeypatch.setattr(window, "encode_overlay", lambda files: None)
+    patch_studio(monkeypatch, "encode_overlay", lambda files: None)
     ed.text.insert("end", "\n# four")
     ed.win.check_now()
     assert requests[-1][0] is None
@@ -340,7 +341,7 @@ def pump(ed: Editor, until, timeout: float = 10.0) -> None:
 
 def test_ac36_the_walkthrough_with_a_real_check(tmp_path, monkeypatch):
     game = f45_games.studio(tmp_path)
-    monkeypatch.setattr(window, "CHECK_DEBOUNCE_MS", 60_000)
+    patch_studio(monkeypatch, "CHECK_DEBOUNCE_MS", 60_000)
     root = new_root()
     errors: list = []
     root.report_callback_exception = lambda *info: errors.append(info)

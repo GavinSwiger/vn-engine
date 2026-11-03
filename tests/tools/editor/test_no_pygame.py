@@ -145,22 +145,23 @@ def build_window(game_dir):
 
     # AC-F46-45: Events open, an Events action and a rename applied, a box moved, and the
     # layout file written.
-    import engine.tools.editor.window as window_module
+    import engine.tools.editor.mapwiring as map_module     # rename_scene's dialogs
     view = win.story_map
     win.side_tab = "events"
     win.open_label_beside(view.layout.boxes[view.layout.index_of("river")])
     root.update()
     assert win.story is not None and win.story.rows
     win.story.move(0, 1)
-    window_module.ask_text = lambda *args, **kwargs: ("river bank", True)
-    window_module.ask = lambda *args, **kwargs: 0
+    map_module.ask_text = lambda *args, **kwargs: ("river bank", True)
+    map_module.ask = lambda *args, **kwargs: 0
     view.focus_box(view.layout.index_of("river"))
     assert win.rename_scene() is not None
     view.move_to(view.layout.index_of("club"), (300, 300))
     win.save_layout()
     assert (game_dir / ".studio" / "storymap.json").is_file()
     for name in ("scenes", "forms", "eventsview", "scriptedit", "formdialogs",
-                 "layoutfile", "storyeditor"):
+                 "layoutfile", "storyeditor", "studiolook", "fileactions", "checkwiring",
+                 "runwiring", "mapwiring", "studiomenus", "editorkeys"):
         assert "engine.tools.editor." + name in sys.modules, name
     done.append(win)
     root.destroy()

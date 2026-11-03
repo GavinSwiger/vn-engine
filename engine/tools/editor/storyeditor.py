@@ -18,7 +18,7 @@ dragging a row onto another, Ctrl+C/X/V as script text (PR-F46-23).
 
 ``win`` is the ``EditorWindow`` (duck-typed: ``files``, ``scene_indexes``, ``side_text``,
 ``current``, ``reindex_scenes``, ``follow``, ``check_names``, ``story_ask``, ``jump_to``,
-``show_side_tab``, ``_as_one_step``, ``root``, ``mod``). Imports: ``tkinter`` (through the
+``show_side_tab``, ``apply_plan``, ``root``, ``mod``). Imports: ``tkinter`` (through the
 view), ``scenes``, ``forms``, ``scriptedit``, ``formdialogs``, ``assist``, ``syntax``.
 """
 
@@ -254,8 +254,8 @@ class StoryEditor:
 
     def act(self, planner: Planner, *, answer: str = "confirm") -> Plan | None:
         """Guard, plan (an ``Ask``'s first button plans again with ``answer=True``),
-        verify, apply as one undo step per file, follow. The plan applied, or None when
-        nothing was written (the status line says why)."""
+        verify and apply as one undo step per file (``win.apply_plan``), follow. The plan
+        applied, or None when nothing was written (the status line says why)."""
         got = self.guard()
         if got is None:
             return None
@@ -281,17 +281,14 @@ class StoryEditor:
             return None
         records = {fp.ref: self.win.files.get(fp.ref) for fp in result.files}
         if any(r is None or not r.editable for r in records.values()):
-            self.say(scriptedit.UNSAFE)
+            self.say(scriptedit.UNSAFE)         # only files already open (never opens one)
             return None
-        texts = {ref: r.widget.get("1.0", "end-1c") for ref, r in records.items()}
         index = self.win.scene_indexes.get(self.ref)
         positions = index.positions if index is not None else ()
-        if not scriptedit.verify(result, texts, positions=positions):
+        if not self.win.apply_plan(result, lambda texts: scriptedit.verify(
+                result, texts, positions=positions)):
             self.say(scriptedit.UNSAFE)
             return None
-        for file_plan in result.files:
-            widget = records[file_plan.ref].widget
-            self.win._as_one_step(widget, lambda w=widget, e=file_plan.edits: apply_edits(w, e))
         self._after(result)
         return result
 

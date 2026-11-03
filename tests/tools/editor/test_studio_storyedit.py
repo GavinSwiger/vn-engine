@@ -19,6 +19,7 @@ from engine.tools.editor.theme import THEME
 
 tk = pytest.importorskip("tkinter")
 window = pytest.importorskip("engine.tools.editor.window")
+from tests.tools.editor.conftest import patch_studio  # noqa: E402
 from tests.tools.editor.test_studio_window import studio, tab  # noqa: E402,F401
 from tests.tools.editor.test_window import take_focus  # noqa: E402
 
@@ -482,7 +483,7 @@ def test_ac_f46_13_refusals_stale_broken_locked(studio, lanterns, monkeypatch, t
 
 
 def test_ac_f46_18_one_action_one_undo_step(studio, lanterns, monkeypatch):
-    monkeypatch.setattr(window, "CHECK_DEBOUNCE_MS", 20)
+    patch_studio(monkeypatch, "CHECK_DEBOUNCE_MS", 20)
     picks, values, seen = [], [], {}
     answer_dialogs(monkeypatch, picks, values, seen)
     on_disk = (lanterns / MAIN).read_bytes()
@@ -951,7 +952,7 @@ def menu_entries(menu) -> list[tuple[str, str]]:
 
 
 def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
-    monkeypatch.setattr(window, "CONTEXT_MENUS_POST", False)
+    patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
     ed = studio_l(studio, lanterns)
     win, view, canvas, events = ed.win, ed.story_map, ed.map_canvas, ed.events_view
     menu = win.story_menu
@@ -1153,7 +1154,7 @@ def test_ac_f46_36_visual_roles_and_cues(studio, lanterns, monkeypatch):
     assert tree.tag_cget("chosenword", "foreground") == THEME["foreground"]
     assert "chosenword" not in tree.tag_names("4.0")
 
-    monkeypatch.setattr(window, "scale_of", lambda root: 1.5)   # 150 %
+    patch_studio(monkeypatch, "scale_of", lambda root: 1.5)   # 150 %
     big = studio_l(studio, lanterns)
     view, canvas = big.story_map, big.map_canvas
     assert view.dpi == 1.5 and view.handle_px() == 12
@@ -1208,7 +1209,7 @@ def test_ac_f46_39_rename_in_studio(studio, lanterns, monkeypatch):
     def ask_text(parent, message, initial, *, ok, hint=None, **_kw):
         seen.append((message, initial, ok, hint("Lantern Stall")))
         return "Lantern Stall", True
-    monkeypatch.setattr(window, "ask_text", ask_text)
+    patch_studio(monkeypatch, "ask_text", ask_text)
     ed = studio_l(studio, lanterns)
     win, view, canvas = ed.win, ed.story_map, ed.map_canvas
     for ref in [ref for ref in win.files if ref != MAIN]:
@@ -1257,7 +1258,7 @@ def test_ac_f46_41_change_target_in_studio(studio, lanterns, monkeypatch):
     offered: list = []
     monkeypatch.setattr(formdialogs, "pick_scene", lambda parent, names, **kw: (
         offered.append((list(names), kw)), "festival")[1])
-    monkeypatch.setattr(window, "CONTEXT_MENUS_POST", False)
+    patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
     ed = studio_l(studio, lanterns)
     win, view = ed.win, ed.story_map
     view.select_edge(view.edge_index("stall", "river", "jump"))
@@ -1328,7 +1329,7 @@ def test_ac_f46_42_new_file(studio, lanterns, monkeypatch):
 
 
 def test_ac_f46_43_preview_from_this_scene(studio, lanterns, monkeypatch):
-    monkeypatch.setattr(window, "CONTEXT_MENUS_POST", False)
+    patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
     ed = studio_l(studio, lanterns)
     win, view = ed.win, ed.story_map
     started: list = []
