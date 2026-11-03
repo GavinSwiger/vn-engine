@@ -174,6 +174,13 @@ ending is ``_return``'s ordinary end. ``_end``, ``_fail`` and ``stop_replay`` ca
 releases ``StoryFailed``. In a replay ``run`` skips F20's anchor lookup, so nothing is
 recorded.
 
+F40's (its ``04`` §7.2, §7.3; F43 ``07`` I-1, I-2, I-5): the developer console's three state
+methods, in their own section. ``author_call`` is ``_author``'s public face. ``console_change``
+is a restore-style transaction that re-records ``last_checkpoint`` with the changed variables,
+dice, meters, and items and makes it the timeline's only step (the wall, at once);
+``console_jump`` is restore step 6's runtime reset plus ``_hold_scene``, the first part of
+``_hold_restored`` (a pure split), then ``_enter``.
+
 ``restore`` (§7.5) is a transaction: it checks the state and fills missing defaults
 before it changes anything, so every result but ``OK`` leaves the interpreter as it was.
 ``restore(..., check_only=True)`` (F11 C10) runs only its scheme and position checks.
@@ -239,7 +246,7 @@ from engine.runtime.rollback import DEFAULT_DEPTH, ROLLBACK_ON, RollbackState, T
 from engine.runtime.state import GameState, ItemsState, reserved_since_save
 from engine.runtime.text import resolve_body
 from engine.runtime.ui import EMPTY_UI, UiState
-from engine.runtime.values import Unsaveable, freeze, kind_words
+from engine.runtime.values import Unsaveable, freeze, kind_words, same_value
 from engine.script import nodes
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
@@ -1420,14 +1427,7 @@ class Interpreter:
         audio, which the presentation reconciles with what plays (F08 §7.6). ``landing``
         (F14): a rollback landing (back, or a forward chain's last), whose menu command
         ``fix_menu`` locks before it is held (04 §5.2, 07 I-7); a load's never is."""
-        self._hold(AudioRestore(state.audio, "restore"))
-        self._hold(NvlPage(state.nvl.on, state.nvl.page))  # F17: always, even in ADV
-        self._hold(ShowStage(state.stage, restored=True))
-        if state.glitch.on:                                 # F28 (04 §4.2, §6.3)
-            self._hold(Glitch(state.glitch, restored=True))
-        fourthwall_mod.hold_restored(self, state.window_title,     # F30 (04 §6.1): the
-                                     snapshot.window_title)        # title_ok'd one, committed
-        ui_mod.hold_restored(self, snapshot.ui)             # F32 (07 I-1): W205's, committed
+        self._hold_scene(state, snapshot)                   # F40 (07 I-1): the preamble
         if attached is None:                                # F08 I-1: the line's voice
             attached = audio_mod.voice_attached(cmd)
         for extra in attached:                              # F07: present_menu's
@@ -1436,6 +1436,22 @@ class Interpreter:
             cmd = rollback_mod.fix_menu(self, pos, cmd)  # type: ignore[arg-type]
         self._hold(cmd)
         self._settle(pos, snapshot)
+
+    def _hold_scene(self, state: GameState, snapshot: GameState) -> None:
+        """The first part of restore step 7 (F40 ``04`` §7.2, 07 I-1: a pure split of
+        ``_hold_restored``, which calls it first): [F08 AudioRestore] [F17 NvlPage(on, page)]
+        [F04 ShowStage(restored)] [F28 Glitch(restored), only when ``state``'s set isn't
+        empty] [F30 WindowTitle] [F32 UiStyle] [F32 UiBlocks], by the rules
+        ``_hold_restored`` names; the title and the ``ui`` are committed (``snapshot``'s).
+        F40's ``console_jump`` holds it with the live state as both arguments."""
+        self._hold(AudioRestore(state.audio, "restore"))
+        self._hold(NvlPage(state.nvl.on, state.nvl.page))  # F17: always, even in ADV
+        self._hold(ShowStage(state.stage, restored=True))
+        if state.glitch.on:                                 # F28 (04 §4.2, §6.3)
+            self._hold(Glitch(state.glitch, restored=True))
+        fourthwall_mod.hold_restored(self, state.window_title,     # F30 (04 §6.1): the
+                                     snapshot.window_title)        # title_ok'd one, committed
+        ui_mod.hold_restored(self, snapshot.ui)             # F32 (07 I-1): W205's, committed
 
     def _check_position(self, state: GameState, use_hints: bool, *, fresh_menu: bool = False
                         ) -> "tuple[Statement, list[Call]] | RestoreOutcome":
@@ -1559,6 +1575,169 @@ class Interpreter:
             if piece.code is not None and name in piece.code.co_names:
                 return StoryError(message, code="E85e", **where(owner, piece.line))
         return StoryError(message, code="E85e", **where(stmt))
+
+    # --- Developer console (F40 ``04`` §7.2, §7.3; 07 I-1, I-2, I-5) ------------------------
+
+    def author_call(self, run: Callable[..., _T], *args: object) -> _T:
+        """F40 (04 §7.3): the console's one way into author code (its Code line, an author
+        ``__repr__``): ``_author``, so the call runs between ``guard.enter()`` and
+        ``guard.exit()`` and counts in ``author_calls`` exactly as a ``$`` line does.
+        Exceptions pass through; the console's ``guarded`` catches them."""
+        return self._author(run, *args)
+
+    def console_change(self, apply: Callable[[], bool]) -> str | None:
+        """F40 (04 §7.2): one console Set or Code run, as a transaction joined to the
+        current step. Returns None once committed; ``""`` when ``apply`` returned False (it
+        failed or was refused, and shows its own text); else the reason it was undone (an
+        E85e/E181/E183 message, or ``GameState.save_problem``'s word).
+
+        1. Undo copy: ``freeze`` copies of ``G``'s non-reserved names (a value that can't
+           be frozen is kept by reference), the dice, the meters, and the held items.
+        2. ``apply()`` (Code runs through ``author_call``).
+        3. F12's in-place check (even when ``apply`` failed); on an error
+           ``persistent.revert_in_place()`` puts the refused values back, so the next line
+           can't fail on them. Persistent writes that were accepted stay, as for a ``$`` line.
+        4. The story variables, dice, meters, and items replace those of
+           ``last_checkpoint`` (its position, stage, audio, and history stay); E85e or
+           ``save_problem`` refuses. On success that state is the checkpoint and the only
+           step of the timeline (``timeline.reset``: Back can't cross the change, the
+           remembered future goes, and F39's carry has nothing older to send). With no
+           checkpoint yet (an F09 wait before the first line) the next checkpoint is a wall.
+        5. Any failure: ``G`` (in-place changes too), the dice, the meters, and the items go
+           back to step 1's copies; a variable left untouched keeps its own object. A
+           ``BaseException`` out of ``apply`` is re-raised after that and step 3.
+
+        Nothing is held or released. Only while WAITING (else ``ValueError``); the console
+        refuses a replay and a minigame before calling (SEC-F40-10)."""
+        current = self.current
+        if self.status is not Status.WAITING or current is None:
+            raise ValueError("console_change: the story isn't waiting")
+        undo = self._console_undo_copy()
+        core = self.core
+        dice, ready = core.state, core.ready
+        points, items = self.points.state(), self.codex.state()
+        try:
+            ok = apply()
+            reason = self._console_persistent(current)
+            if not ok:
+                reason = ""
+            elif reason is None:
+                reason = self._console_record(current)
+        except BaseException:
+            self._console_put_back(undo, dice, ready, points, items)
+            self._console_persistent(current)
+            raise
+        if reason is not None:
+            self._console_put_back(undo, dice, ready, points, items)
+        return reason
+
+    def console_jump(self, label: str) -> str | None:
+        """F40 (04 §7.2): go on at ``label`` as a ``jump`` line would, keeping the variables,
+        meters, stage, music, and NVL page. Returns None, or E85e's message when the live
+        values can't be saved (nothing changes then).
+
+        The call stack, the step counts, the waiting menu, every wait, ``then``, deferred
+        step, card, and forward chain, and the held and released commands are dropped
+        (restore step 6's runtime-only fields); the timeline is emptied (the wall). Then the
+        scene preamble (``_hold_scene``: AudioRestore, NvlPage, ShowStage restored, …) is
+        held and the story RUNS from the label's first line (``_enter``, uncounted): F36's
+        ``arrive``, F20's anchors, F19's endings and F37's achievements record as they do
+        for a ``jump`` line (07 I-5). Nothing is saved (no auto-save); ``checkpoint()``
+        stays the line before the jump until the next line. Only while WAITING at an
+        existing label (else ``ValueError``); the console refuses a replay and a minigame
+        before calling (SEC-F40-10)."""
+        current = self.current
+        if self.status is not Status.WAITING or current is None:
+            raise ValueError("console_jump: the story isn't waiting")
+        if type(label) is not str or label not in self.program.labels:
+            raise ValueError("console_jump: no such label")
+        try:
+            live = self._snapshot(current, [])
+        except StoryError as e:                             # E85e: nothing changed
+            return e.message
+        self.call_stack = []
+        self.steps = 0
+        self.entered.clear()
+        self.recent_py.clear()
+        self._drop_held()
+        self._released.clear()
+        if self.choices.waiting is not None:                # F07: no menu waits now
+            self.choices = replace(self.choices, waiting=None)
+        self._reset_runtime(stage_shown=self.stage, kept_line=None, menu_open=None,
+                            glitch_shown=self.glitch)
+        self.timeline.reset(None)
+        self._hold_scene(live, live)
+        self.status = Status.RUNNING
+        self._enter(label, count=False)
+        return None
+
+    def _console_undo_copy(self) -> dict[str, tuple[object, object]]:
+        """``console_change`` step 1: name → (the object, its ``freeze`` copy, or
+        ``_MISSING`` when it can't be frozen) for every non-reserved name in ``G``."""
+        reserved = self.reserved
+        undo: dict[str, tuple[object, object]] = {}
+        for name, value in self.G.items():
+            if name in reserved:
+                continue
+            try:
+                undo[name] = (value, freeze(value))
+            except Unsaveable:
+                undo[name] = (value, _MISSING)
+        return undo
+
+    def _console_put_back(self, undo: dict[str, tuple[object, object]], dice: int,
+                          ready: bool, points: PointsState, items: ItemsState) -> None:
+        """``console_change`` step 5: ``_roll_back`` with the undo copy. A name still bound
+        to its own object, unchanged by value, keeps that object (so what shares it still
+        does); any other gets its copy, which undoes in-place changes too."""
+        G = self.G
+        saved: dict[str, object] = {}
+        for name, (value, frozen) in undo.items():
+            if frozen is _MISSING:
+                saved[name] = value
+                continue
+            if G.get(name, _MISSING) is value:
+                try:
+                    if same_value(freeze(value), frozen):
+                        saved[name] = value
+                        continue
+                except Unsaveable:
+                    pass
+            saved[name] = frozen
+        self._roll_back(saved, dice, ready, points, items)
+
+    def _console_persistent(self, at: Statement) -> str | None:
+        """``console_change`` step 3: F12's in-place check; the refused values are put back
+        (``revert_in_place``) and the error's message returned."""
+        error = self._check_persistent(at)
+        if error is None:
+            return None
+        self.persistent.revert_in_place()
+        return error.message
+
+    def _console_record(self, at: Statement) -> str | None:
+        """``console_change`` step 4: re-record the step with the changed values, or the
+        reason it can't be saved (nothing committed then)."""
+        checkpoint = self.last_checkpoint
+        try:
+            if checkpoint is None:                          # only to check it can be saved
+                state = self._snapshot(at, self.call_stack)
+            else:
+                state = replace(checkpoint,
+                                variables=MappingProxyType(self._freeze_variables(at)),
+                                dice=self.core.state, points=self.points.state(),
+                                items=self.codex.state())
+        except StoryError as e:                             # E85e
+            return e.message
+        problem = state.save_problem()
+        if problem is not None:
+            return problem
+        if checkpoint is None:
+            self.timeline.block_pending = True
+        else:
+            self.last_checkpoint = state
+            self.timeline.reset(state)                      # the wall, at once (07)
+        return None
 
     # --- Limits (§7.2, SR-F03-26, SR-F03-27) -------------------------------------------
 

@@ -186,6 +186,25 @@ def _live_json(value: object) -> bytes:
                       default=_refuse).encode("ascii")
 
 
+def _decoded(frag: bytes) -> Value:
+    """A fresh value from one of the store's own fragments (``compact_json`` of a checked
+    value, so plain JSON within ``freeze``'s limits)."""
+    return json.loads(frag)
+
+
+def _refill(entry: "_Entry", good: Value) -> None:
+    """Put ``good`` into ``entry``: the live list or dict keeps its identity and gets
+    ``good``'s members (F40 ``revert_in_place``); any other live value is replaced."""
+    live = entry.live
+    if type(live) is list and type(good) is list:
+        live[:] = good
+    elif type(live) is dict and type(good) is dict:
+        live.clear()
+        live.update(good)
+    else:
+        entry.live = good
+
+
 def valid_name(name: object) -> bool:
     """A name an author could store: an identifier that isn't a keyword, NFKC-normal, with
     no leading ``_``, and at most ``PERSIST_NAME_MAX_CHARS`` characters (04 §8)."""
@@ -560,7 +579,7 @@ class PersistentStore:
         try:
             return freeze(entry.live)
         except Unsaveable:
-            return json.loads(entry.frag)
+            return _decoded(entry.frag)
 
     def set_known(self, names: Iterable[str]) -> None:
         """The names the program mentions (LaunchJob, before phase 2b; SEC-F12-04)."""
@@ -609,6 +628,37 @@ class PersistentStore:
             entry.frag = frag
             self._bump_values()
             self._changed[name] = self.version
+
+    def revert_in_place(self) -> tuple[str, ...]:
+        """F40 (``04`` §7.2 step 3, 07 I-2): after ``check_in_place`` refused a console
+        change, check every watched value as it does, but put a refused one back instead of
+        raising: its live list or dict gets the contents of its last good fragment, decoded
+        as the store decodes its own fragments (``_decoded``), in place, so every holder of
+        the object sees it. A change the check accepts is kept, as ``check_in_place`` keeps
+        it. No file I/O; unlock kinds, records, and views are never touched. Returns the
+        names put back, in store order. Only ``Interpreter.console_change`` calls it."""
+        put_back: list[str] = []
+        for name, entry in list(self._values.items()):
+            if not entry.watched or self._values.get(name) is not entry:
+                continue
+            try:
+                encoded: bytes | None = _live_json(entry.live)
+            except (TypeError, ValueError, RecursionError):
+                encoded = None
+            if encoded == entry.frag:
+                continue
+            try:
+                frag = compact_json(freeze(entry.live))
+                self._make_room(name, len(entry.name_json) + 1 + len(frag))
+            except (Unsaveable, PersistentTooBig):
+                _refill(entry, _decoded(entry.frag))
+                put_back.append(name)
+                continue
+            self._sum += len(frag) - len(entry.frag)
+            entry.frag = frag
+            self._bump_values()
+            self._changed[name] = self.version
+        return tuple(put_back)
 
     def begin_defines(self) -> None:
         self._in_defines = True
@@ -911,7 +961,7 @@ class PersistentStore:
 
     def values_snapshot(self) -> dict[str, Value]:
         """name → a copy of each value's last checked form (tests, comparisons)."""
-        return {name: json.loads(entry.frag) for name, entry in self._values.items()}
+        return {name: _decoded(entry.frag) for name, entry in self._values.items()}
 
     def load_value(self, name: str, value: Value, frag: bytes) -> bool:
         """Store a value read from the file (already checked); False if it doesn't fit the
