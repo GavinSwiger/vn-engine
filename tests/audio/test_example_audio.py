@@ -211,9 +211,10 @@ def test_ac_f08_15_headless_and_windowed_audio_states_are_equal(tmp_path, user_r
     headless = _headless_states()          # first: _windowed patches Interpreter.run
     game = copy_example(tmp_path / "game")
     code, windowed, shown = _windowed(scripted_app, game, monkeypatch)
-    assert code == 0 and len(shown) == 55          # F17: 7 nvl; F19: 4 at the end; F24-4: 2;
+    assert code == 0 and len(shown) == 56          # F17: 7 nvl; F19: 4 at the end; F24-4: 2;
     #                                                F25-4: 6 (the map, the cross-examination);
-    #                                                F26-4: 2 (around the phone chat)
+    #                                                F26-4: 2 (around the phone chat);
+    #                                                F27-4: 1 (before the shed's room)
     assert windowed == headless
     # The run is audible: music, the river, and the queue are in the states.
     assert any(state["sounds"] for _key, state in headless)
@@ -245,9 +246,10 @@ def test_ac_f08_41_no_sound_device(tmp_path, user_roots, scripted_app, monkeypat
             seen.append((type(audio.backend), audio.voice_playing()))
 
     code, windowed, shown = _windowed(scripted_app, game, monkeypatch, look=look)
-    assert code == 0 and len(shown) == 55          # F17: 7 nvl; F19: 4 at the end; F24-4: 2;
+    assert code == 0 and len(shown) == 56          # F17: 7 nvl; F19: 4 at the end; F24-4: 2;
     #                                                F25-4: 6 (the map, the cross-examination);
-    #                                                F26-4: 2 (around the phone chat)
+    #                                                F26-4: 2 (around the phone chat);
+    #                                                F27-4: 1 (before the shed's room)
     assert windowed == headless
     assert seen and set(seen) == {(NullMixer, False)}
     problems = [r for r in records(game / "logs" / "latest.log") if r[0] in ("WARNING", "ERROR")]

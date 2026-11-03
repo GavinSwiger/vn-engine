@@ -1504,3 +1504,146 @@ def test_ac_f20_70_flowchart_docs(tmp_path):
             f"`.{f.name}.`" in tokens, f.name
     for name in (f.name for f in dataclasses.fields(WordsConfig) if f.name.startswith("flowchart")):
         assert f"`{name}`" in tokens, name
+
+
+# --- AC-F27-23: the puzzle room in docs/minigames.md, its tokens in ui-system.md --------------
+
+def _room_args(**change: object) -> dict:
+    """The section's attic (Template R's, the hook moved) as arguments, with ``change`` keys
+    ``"<hotspot>.<field>"`` replaced in a hotspot, ``"-<hotspot>"`` dropped, or a top-level
+    ``room`` key or ``state`` replaced."""
+    import copy
+
+    from tests.fixtures.F27 import rooms
+    room = rooms.room()
+    room["hotspots"]["hook"]["rect"] = [300, 260, 64, 96]
+    for side in ("string", "vent", "glint"):             # above the hint at 150% (W180)
+        room["hotspots"][side]["rect"][1] = {"string": 470, "vent": 440, "glint": 460}[side]
+    args = {"room": room, "state": None}
+    for key, value in change.items():
+        if key == "state":
+            args["state"] = value
+        elif key == "room":
+            args["room"] = value
+        elif key.startswith("-"):
+            del room["hotspots"][key[1:]]
+        elif "." in key:
+            spot, field = key.split(".")
+            room["hotspots"][spot][field] = value
+        else:
+            room[key] = value
+    return copy.deepcopy(args)
+
+
+def _f27_refusals() -> dict[str, list[dict]]:
+    """R1–R14 → arguments whose first problem it is (the forms the section's table shows)."""
+    base = _room_args()["room"]
+    renamed = {**base, "hotspots": {"coat hook": base["hotspots"]["hook"], **base["hotspots"]}}
+    many = {f"s{i}": {"rect": [0, 0, 32, 32], "label": "x", "exit": True} for i in range(45)}
+    return {
+        "R1": [_room_args(room={"background": base["background"], "hotspot": {}}),
+               _room_args(room=[1])],
+        "R2": [_room_args(background=3)],
+        "R3": [_room_args(hotspots=many), _room_args(room=renamed)],
+        "R4": [_room_args(**{"hook.takes": "rusty_key"})],
+        "R5": [_room_args(**{"hook.rect": [300, 260]})],
+        "R6": [_room_args(**{"window.look": "w" * 95}), _room_args(**{"hook.label": ""})],
+        "R7": [_room_args(**{"drawer.take": "magnet"}), _room_args(**{"hook.look": "A hook."}),
+               _room_args(**{"window.nope": "No."})],
+        "R8": [_room_args(**{"drawer.use": 3})],
+        "R9": [_room_args(**{"magnet.after": "drawr"}), _room_args(**{"magnet.after": "window"})],
+        "R10": [_room_args(**{"hook.image": True})],
+        "R11": [_room_args(**{"out.exit": "yes"}), _room_args(**{"-out": None})],
+        "R12": [_room_args(combine={"magnet_string": "magnet"}),
+                _room_args(combine={"magnet_string": ["magnet", "string"],
+                                    "x": ["string", "magnet"]})],
+        "R13": [_room_args(state=[]), _room_args(state={"gone": "hook"})],
+        "R14": [_room_args(**{"hook.take": "rusty_kye"}), _room_args(**{"hook.take": "lanterns"})],
+    }
+
+
+def _room_reason(args: dict) -> str:
+    from engine.minigames.bundled import room_rules
+    from tests.fixtures.F27 import rooms
+
+    found = room_rules.problem(args) or room_rules.story_problem(args, rooms.STORY)
+    assert found is not None, args
+    return found
+
+
+def test_ac_f27_23_puzzle_room_docs(tmp_path):
+    """``docs/minigames.md``'s "Puzzle room", not proposed: 01 §5.2's template (the hook out of
+    the door), the ``state`` loop, ``lock item`` after a use, the arguments (with
+    ``PuzzleRoom``'s defaults), R1–R14 as ``room_rules`` words them, each with a fix, E272's
+    "these arguments" form, W179's limit and W180's widest hint, spent use spots returning
+    without ``state``, spacing advice with Tab and RB, and the testing sentence ("first exit",
+    ``finish``). Its story block loads with Template R's images and names in dev, launches,
+    and plays headless with no error or warning to the hallway; its TOML blocks are tokens and
+    the plugin's words. ``ui-system.md`` lists every ``plugin.puzzle_room`` token."""
+    import ast
+    import tomllib
+
+    from engine.minigames.bundled.puzzle_room import TOKENS, PuzzleRoom
+    from engine.runtime.commands import Say, StartMinigame
+    from engine.runtime.headless import run_headless
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.loader import LoadOptions
+    from engine.script.messages import format_message
+    from tests.runtime.menu_story import write_game
+    from tests.runtime.stage_story import example_minigames
+
+    text = MINIGAMES.read_text(encoding="utf-8")
+    heading = re.search(r"^## Puzzle room\s*$", text, re.M)
+    assert heading is not None
+    following = re.search(r"^## ", text[heading.end():], re.M)
+    section = text[heading.start():heading.end() + following.start() if following else None]
+    assert "proposed" not in section
+    flat = " ".join(section.split())
+    for words in ("leaves by the first exit in room order", "give it with `finish`",
+                  "Write `lock item` after a use", "**Pass `state` back.**",
+                  "every spent `use` hotspot comes back",
+                  "**an item your script gives the player later is invisible to it**",
+                  "The check uses the widest hint the screen can show",
+                  "**Leave room between hotspots.**", "Tab, Page Down, and the gamepad's RB",
+                  "the later one in room order gets the click", "W179", "W180",
+                  "`[theme.plugin.puzzle_room]`", "`[words.plugin.puzzle_room]`",
+                  "Saving in a room saves its start"):
+        assert words in flat, words
+    for name, spec in PuzzleRoom.args.items():
+        default = "none (you must give it)" if name == "room" else f"`{spec.default!r}`"
+        assert re.search(rf"^\| `{name}` \| {re.escape(default)} \|", section, re.M), name
+    for number, changes in _f27_refusals().items():
+        rows = re.findall(rf"^\| {number} \| `([^|]+)` \| ([^|]+) \|$", section, re.M)
+        assert [reason for reason, _ in rows] == [_room_reason(c) for c in changes], number
+        assert all(len(fix.strip()) > 10 for _, fix in rows), number
+    one = format_message("E272", ("plugin_all", "puzzle_room",
+                                  _room_reason(_f27_refusals()["R4"][0])))
+    assert f"`{one}`" in section and "`puzzle_room can't use these arguments:`" in section
+
+    blocks = re.findall(r"^```([a-z]*)\n(.*?)^```", section, re.M | re.S)
+    assert [lang for lang, _ in blocks] == ["", "toml", "toml"]
+    theme = tomllib.loads(blocks[1][1])["theme"]["plugin"]["puzzle_room"]
+    assert {f"{part}.{key}" for part, keys in theme.items() for key in keys} <= set(TOKENS)
+    assert tomllib.loads(blocks[2][1])["words"]["plugin"]["puzzle_room"] == PuzzleRoom.words
+    attic = re.search(r"^define attic = (\{.*?^    \})$", blocks[0][1], re.M | re.S)
+    assert attic is not None
+    assert {"room": ast.literal_eval(attic.group(1)), "state": None} == \
+        _room_args()
+    story = blocks[0][1] + "\nlabel start:\n    jump attic_room\n"
+    sigs = example_minigames()
+    result = load_story(write_game(tmp_path / "room", story),
+                        LoadOptions(dev=True, minigames=sigs))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    launch = run_launch(result.program, dev=True)
+    assert launch.namespace is not None and launch.warnings == ()
+    commands = run_headless(result.program, seed=1, dev=True, minigames=sigs)
+    assert type(commands[-1]).__name__ == "StoryEnded", commands[-1]
+    assert [c.name for c in commands if type(c) is StartMinigame] == ["puzzle_room"]
+    assert "The hallway was even colder than the attic." in [
+        c.text for c in commands if type(c) is Say]
+
+    tokens = UI.read_text(encoding="utf-8")
+    for token in TOKENS:
+        assert re.search(rf"^\| `plugin\.puzzle_room\.{re.escape(token)}` \| ", tokens,
+                         re.M), token

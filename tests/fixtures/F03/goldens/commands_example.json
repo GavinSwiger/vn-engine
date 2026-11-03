@@ -1057,6 +1057,174 @@
      "type": "Say"
     },
     {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "festival_shed/5f49be261ecf",
+     "speaker": null,
+     "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "room": {
+       "background": "bg festival_shed",
+       "hotspots": {
+        "candles": {
+         "after": "chest",
+         "image": "shed candles",
+         "label": "Candles",
+         "rect": [
+          600,
+          352,
+          80,
+          60
+         ],
+         "take": "candles"
+        },
+        "chest": {
+         "label": "Wooden chest",
+         "look": "Locked. Someone carved a lantern on the lid.",
+         "nope": "It doesn't fit.",
+         "rect": [
+          520,
+          400,
+          220,
+          120
+         ],
+         "use": "shed_key"
+        },
+        "door": {
+         "exit": true,
+         "label": "Door",
+         "rect": [
+          40,
+          120,
+          180,
+          420
+         ]
+        },
+        "nail": {
+         "image": "shed key",
+         "label": "Nail",
+         "rect": [
+          300,
+          250,
+          64,
+          96
+         ],
+         "take": "shed_key"
+        },
+        "shelf": {
+         "label": "Shelf",
+         "look": "Folded festival banners, older than me.",
+         "rect": [
+          420,
+          150,
+          300,
+          70
+         ]
+        },
+        "window": {
+         "label": "Window",
+         "look": "The festival lights, blurred by the dusty glass.",
+         "rect": [
+          880,
+          110,
+          240,
+          200
+         ]
+        }
+       }
+      },
+      "state": null
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip",
+       "lantern"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 1
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "puzzle_room",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 533919876299229763,
+     "sid": "shed_room/57d30134a3ce",
+     "skippable": true,
+     "type": "StartMinigame"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -1500,14 +1668,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -1521,8 +1693,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 533919876299229763,
+     "run": 2,
+     "seed": 4640348442306208352,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -2406,14 +2578,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -2427,8 +2603,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 4640348442306208352,
+     "run": 3,
+     "seed": 9035287264038165814,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -3102,14 +3278,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -3123,8 +3303,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 9035287264038165814,
+     "run": 4,
+     "seed": 3335561882147042384,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -3266,7 +3446,7 @@
       ],
       "waiting": null
      },
-     "dice": "cdb2d7c80f4581e7",
+     "dice": "7a47aefcdacfc371",
      "flow": {
       "path": []
      },
@@ -3419,6 +3599,12 @@
         "name": "",
         "sid": "lantern_stall/b22b51e4f01e",
         "text": "I took the red one. It glowed like a coal in my hands."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "festival_shed/5f49be261ecf",
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall."
        },
        {
         "kind": "line",
@@ -3700,11 +3886,17 @@
        "evidence": "festival_map",
        "statement": "train"
       },
+      "shed_state": {
+       "action": "exit",
+       "gone": [],
+       "hotspot": "door",
+       "item": null
+      },
       "trust": 1,
       "wish_for": "daichi"
      }
     },
-    "dice": "cdb2d7c80f4581e7",
+    "dice": "7a47aefcdacfc371",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -3722,6 +3914,12 @@
       "correct": true,
       "evidence": "festival_map",
       "statement": "train"
+     },
+     "shed_state": {
+      "action": "exit",
+      "gone": [],
+      "hotspot": "door",
+      "item": null
      },
      "trust": 1,
      "wish_for": "daichi"
@@ -4778,6 +4976,173 @@
      "type": "Say"
     },
     {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "festival_shed/5f49be261ecf",
+     "speaker": null,
+     "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "room": {
+       "background": "bg festival_shed",
+       "hotspots": {
+        "candles": {
+         "after": "chest",
+         "image": "shed candles",
+         "label": "Candles",
+         "rect": [
+          600,
+          352,
+          80,
+          60
+         ],
+         "take": "candles"
+        },
+        "chest": {
+         "label": "Wooden chest",
+         "look": "Locked. Someone carved a lantern on the lid.",
+         "nope": "It doesn't fit.",
+         "rect": [
+          520,
+          400,
+          220,
+          120
+         ],
+         "use": "shed_key"
+        },
+        "door": {
+         "exit": true,
+         "label": "Door",
+         "rect": [
+          40,
+          120,
+          180,
+          420
+         ]
+        },
+        "nail": {
+         "image": "shed key",
+         "label": "Nail",
+         "rect": [
+          300,
+          250,
+          64,
+          96
+         ],
+         "take": "shed_key"
+        },
+        "shelf": {
+         "label": "Shelf",
+         "look": "Folded festival banners, older than me.",
+         "rect": [
+          420,
+          150,
+          300,
+          70
+         ]
+        },
+        "window": {
+         "label": "Window",
+         "look": "The festival lights, blurred by the dusty glass.",
+         "rect": [
+          880,
+          110,
+          240,
+          200
+         ]
+        }
+       }
+      },
+      "state": null
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "lantern"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 2
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "puzzle_room",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 5315161610431815060,
+     "sid": "shed_room/57d30134a3ce",
+     "skippable": true,
+     "type": "StartMinigame"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -5238,14 +5603,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -5259,8 +5628,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 5315161610431815060,
+     "run": 2,
+     "seed": 12489259578856561289,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -6143,14 +6512,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -6164,8 +6537,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 12489259578856561289,
+     "run": 3,
+     "seed": 12128874106461539356,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -6757,7 +7130,7 @@
       ],
       "waiting": null
      },
-     "dice": "e6d41080583f5f19",
+     "dice": "23143f1be1a2dff3",
      "flow": {
       "path": []
      },
@@ -6904,6 +7277,12 @@
         "name": "",
         "sid": "lantern_stall/a90c918e4e87",
         "text": "I wrote her name small, in one corner, where she might not notice."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "festival_shed/5f49be261ecf",
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall."
        },
        {
         "kind": "line",
@@ -7178,11 +7557,17 @@
        "evidence": "festival_map",
        "statement": "train"
       },
+      "shed_state": {
+       "action": "exit",
+       "gone": [],
+       "hotspot": "door",
+       "item": null
+      },
       "trust": 4,
       "wish_for": "daichi"
      }
     },
-    "dice": "e6d41080583f5f19",
+    "dice": "23143f1be1a2dff3",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -7197,6 +7582,12 @@
       "correct": true,
       "evidence": "festival_map",
       "statement": "train"
+     },
+     "shed_state": {
+      "action": "exit",
+      "gone": [],
+      "hotspot": "door",
+      "item": null
      },
      "trust": 4,
      "wish_for": "daichi"
@@ -8315,6 +8706,173 @@
      "type": "Say"
     },
     {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "festival_shed/5f49be261ecf",
+     "speaker": null,
+     "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "room": {
+       "background": "bg festival_shed",
+       "hotspots": {
+        "candles": {
+         "after": "chest",
+         "image": "shed candles",
+         "label": "Candles",
+         "rect": [
+          600,
+          352,
+          80,
+          60
+         ],
+         "take": "candles"
+        },
+        "chest": {
+         "label": "Wooden chest",
+         "look": "Locked. Someone carved a lantern on the lid.",
+         "nope": "It doesn't fit.",
+         "rect": [
+          520,
+          400,
+          220,
+          120
+         ],
+         "use": "shed_key"
+        },
+        "door": {
+         "exit": true,
+         "label": "Door",
+         "rect": [
+          40,
+          120,
+          180,
+          420
+         ]
+        },
+        "nail": {
+         "image": "shed key",
+         "label": "Nail",
+         "rect": [
+          300,
+          250,
+          64,
+          96
+         ],
+         "take": "shed_key"
+        },
+        "shelf": {
+         "label": "Shelf",
+         "look": "Folded festival banners, older than me.",
+         "rect": [
+          420,
+          150,
+          300,
+          70
+         ]
+        },
+        "window": {
+         "label": "Window",
+         "look": "The festival lights, blurred by the dusty glass.",
+         "rect": [
+          880,
+          110,
+          240,
+          200
+         ]
+        }
+       }
+      },
+      "state": null
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "lantern"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 1
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "puzzle_room",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 15551202664927782724,
+     "sid": "shed_room/57d30134a3ce",
+     "skippable": true,
+     "type": "StartMinigame"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -8775,14 +9333,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -8796,8 +9358,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 15551202664927782724,
+     "run": 2,
+     "seed": 13610778289651446475,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -9680,14 +10242,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -9701,8 +10267,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 13610778289651446475,
+     "run": 3,
+     "seed": 9053886688338620871,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -10375,14 +10941,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -10396,8 +10966,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 9053886688338620871,
+     "run": 4,
+     "seed": 13744861071081698247,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -10539,7 +11109,7 @@
       ],
       "waiting": null
      },
-     "dice": "8472b4e95145bd81",
+     "dice": "b3dc71acfa53149b",
      "flow": {
       "path": []
      },
@@ -10698,6 +11268,12 @@
         "name": "",
         "sid": "lantern_stall/d5683b4ada3b",
         "text": "I took the white one. It was so light it hardly felt real."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "festival_shed/5f49be261ecf",
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall."
        },
        {
         "kind": "line",
@@ -10978,11 +11554,17 @@
        "evidence": "festival_map",
        "statement": "train"
       },
+      "shed_state": {
+       "action": "exit",
+       "gone": [],
+       "hotspot": "door",
+       "item": null
+      },
       "trust": 3,
       "wish_for": "daichi"
      }
     },
-    "dice": "8472b4e95145bd81",
+    "dice": "b3dc71acfa53149b",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -11000,6 +11582,12 @@
       "correct": true,
       "evidence": "festival_map",
       "statement": "train"
+     },
+     "shed_state": {
+      "action": "exit",
+      "gone": [],
+      "hotspot": "door",
+      "item": null
      },
      "trust": 3,
      "wish_for": "daichi"
@@ -11996,6 +12584,173 @@
      "type": "Say"
     },
     {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "festival_shed/5f49be261ecf",
+     "speaker": null,
+     "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "room": {
+       "background": "bg festival_shed",
+       "hotspots": {
+        "candles": {
+         "after": "chest",
+         "image": "shed candles",
+         "label": "Candles",
+         "rect": [
+          600,
+          352,
+          80,
+          60
+         ],
+         "take": "candles"
+        },
+        "chest": {
+         "label": "Wooden chest",
+         "look": "Locked. Someone carved a lantern on the lid.",
+         "nope": "It doesn't fit.",
+         "rect": [
+          520,
+          400,
+          220,
+          120
+         ],
+         "use": "shed_key"
+        },
+        "door": {
+         "exit": true,
+         "label": "Door",
+         "rect": [
+          40,
+          120,
+          180,
+          420
+         ]
+        },
+        "nail": {
+         "image": "shed key",
+         "label": "Nail",
+         "rect": [
+          300,
+          250,
+          64,
+          96
+         ],
+         "take": "shed_key"
+        },
+        "shelf": {
+         "label": "Shelf",
+         "look": "Folded festival banners, older than me.",
+         "rect": [
+          420,
+          150,
+          300,
+          70
+         ]
+        },
+        "window": {
+         "label": "Window",
+         "look": "The festival lights, blurred by the dusty glass.",
+         "rect": [
+          880,
+          110,
+          240,
+          200
+         ]
+        }
+       }
+      },
+      "state": null
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "puzzle_room",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 2483351169433638393,
+     "sid": "shed_room/57d30134a3ce",
+     "skippable": true,
+     "type": "StartMinigame"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -12484,14 +13239,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -12505,8 +13264,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 2483351169433638393,
+     "run": 2,
+     "seed": 11915800808285486558,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -13371,14 +14130,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -13392,8 +14155,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 11915800808285486558,
+     "run": 3,
+     "seed": 16848105351295415679,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -13517,7 +14280,7 @@
       ],
       "waiting": null
      },
-     "dice": "520fc53ec8c1d95b",
+     "dice": "a4085b9901e0c005",
      "flow": {
       "path": []
      },
@@ -13658,6 +14421,12 @@
         "name": "",
         "sid": "lantern_stall/d3554ead7e29",
         "text": "I put my coins away. Next year, maybe."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "festival_shed/5f49be261ecf",
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall."
        },
        {
         "kind": "line",
@@ -13861,11 +14630,17 @@
        "evidence": "festival_map",
        "statement": "train"
       },
+      "shed_state": {
+       "action": "exit",
+       "gone": [],
+       "hotspot": "door",
+       "item": null
+      },
       "trust": 1,
       "wish_for": null
      }
     },
-    "dice": "520fc53ec8c1d95b",
+    "dice": "a4085b9901e0c005",
     "status": "ENDED",
     "variables": {
      "asked_bridge": false,
@@ -13883,6 +14658,12 @@
       "correct": true,
       "evidence": "festival_map",
       "statement": "train"
+     },
+     "shed_state": {
+      "action": "exit",
+      "gone": [],
+      "hotspot": "door",
+      "item": null
      },
      "trust": 1,
      "wish_for": null
@@ -14968,6 +15749,174 @@
      "type": "Say"
     },
     {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "festival_shed/5f49be261ecf",
+     "speaker": null,
+     "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "room": {
+       "background": "bg festival_shed",
+       "hotspots": {
+        "candles": {
+         "after": "chest",
+         "image": "shed candles",
+         "label": "Candles",
+         "rect": [
+          600,
+          352,
+          80,
+          60
+         ],
+         "take": "candles"
+        },
+        "chest": {
+         "label": "Wooden chest",
+         "look": "Locked. Someone carved a lantern on the lid.",
+         "nope": "It doesn't fit.",
+         "rect": [
+          520,
+          400,
+          220,
+          120
+         ],
+         "use": "shed_key"
+        },
+        "door": {
+         "exit": true,
+         "label": "Door",
+         "rect": [
+          40,
+          120,
+          180,
+          420
+         ]
+        },
+        "nail": {
+         "image": "shed key",
+         "label": "Nail",
+         "rect": [
+          300,
+          250,
+          64,
+          96
+         ],
+         "take": "shed_key"
+        },
+        "shelf": {
+         "label": "Shelf",
+         "look": "Folded festival banners, older than me.",
+         "rect": [
+          420,
+          150,
+          300,
+          70
+         ]
+        },
+        "window": {
+         "label": "Window",
+         "look": "The festival lights, blurred by the dusty glass.",
+         "rect": [
+          880,
+          110,
+          240,
+          200
+         ]
+        }
+       }
+      },
+      "state": null
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip",
+       "lantern"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 1
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "puzzle_room",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 3836177584277386782,
+     "sid": "shed_room/57d30134a3ce",
+     "skippable": true,
+     "type": "StartMinigame"
+    },
+    {
      "stage": {
       "background": "bg river_dusk",
       "sprites": [
@@ -15411,14 +16360,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -15432,8 +16385,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 3836177584277386782,
+     "run": 2,
+     "seed": 16094839057210939872,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -16123,14 +17076,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -16144,8 +17101,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 16094839057210939872,
+     "run": 3,
+     "seed": 267916602303041196,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -16793,14 +17750,18 @@
         [
          "lantern",
          "fortune_slip",
-         "festival_map"
+         "festival_map",
+         "shed_key",
+         "candles"
         ]
        ]
       ],
       "items": [
        "lantern",
        "fortune_slip",
-       "festival_map"
+       "festival_map",
+       "shed_key",
+       "candles"
       ],
       "meters": [
        "hana",
@@ -16814,8 +17775,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 267916602303041196,
+     "run": 4,
+     "seed": 10145667893448738017,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -16951,7 +17912,7 @@
       ],
       "waiting": null
      },
-     "dice": "3b32920a9345f91b",
+     "dice": "ed71345d19d665c5",
      "flow": {
       "path": []
      },
@@ -17110,6 +18071,12 @@
         "name": "",
         "sid": "lantern_stall/b22b51e4f01e",
         "text": "I took the red one. It glowed like a coal in my hands."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "festival_shed/5f49be261ecf",
+        "text": "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said, and nodded at a door behind the stall."
        },
        {
         "kind": "line",
@@ -17367,11 +18334,17 @@
        "evidence": "festival_map",
        "statement": "train"
       },
+      "shed_state": {
+       "action": "exit",
+       "gone": [],
+       "hotspot": "door",
+       "item": null
+      },
       "trust": 1,
       "wish_for": "daichi"
      }
     },
-    "dice": "3b32920a9345f91b",
+    "dice": "ed71345d19d665c5",
     "status": "ENDED",
     "variables": {
      "asked_bridge": false,
@@ -17389,6 +18362,12 @@
       "correct": true,
       "evidence": "festival_map",
       "statement": "train"
+     },
+     "shed_state": {
+      "action": "exit",
+      "gone": [],
+      "hotspot": "door",
+      "item": null
      },
      "trust": 1,
      "wish_for": "daichi"

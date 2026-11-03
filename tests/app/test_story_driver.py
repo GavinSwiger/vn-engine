@@ -526,8 +526,8 @@ def test_ac_f03_70_the_example_game_plays_to_the_end(tmp_path, user_roots, scrip
     # ending's 3 lines; F24-4 the wish line before the poem and its reaction after it;
     # F25-4 Hana's map line and, on the bridge, one line before the cross-examination and
     # the four of its won branch; F26-4 the walk home's line before Hana's phone chat and
-    # the thought after it.
-    assert shown == expected and len(shown) == 55
+    # the thought after it; F27-4 the stall keeper's line before the shed's puzzle room.
+    assert shown == expected and len(shown) == 56
     assert [type(s) for s in app.screens] == [TitleScreen]
     assert app.shell.mode is Mode.TITLE
     assert app.story.status is Status.ENDED

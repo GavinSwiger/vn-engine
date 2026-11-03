@@ -532,6 +532,26 @@ Words (`[words.plugin.phone_chat]`): `title` "Phone" (the save description), `ig
 "Don't reply", `close` "Put the phone away", and `placeholder` "Message" (the message
 field); an ask's own ignore label wins over `ignore`.
 
+**Puzzle room (F27).** The bundled `puzzle_room` minigame's own tokens, set in the `.spot`
+sub-table of `[theme.plugin.puzzle_room]`; layout and states are in
+[F27 01-design](../specs/F27-puzzle-room/01-design.md) §6 and the guide is
+[minigames.md](minigames.md), "Puzzle room". Hotspots are invisible but for their `image`;
+the focused or hovered one (at most one) gets the ring and a name tag on `panel.*`. The
+Items, Put away, and Back buttons reuse `button.*`, and the item picker is F21's codex view.
+The ring is two lines, so it shows at 3:1 or better on any picture: the white outer line
+against dark art, the near-black inner line against light art.
+
+| Token | Type | Default | Purpose |
+|---|---|---|---|
+| `plugin.puzzle_room.spot.ring_color` | color | `"#FFFFFF"` | The focus ring: a 3-unit line just outside the hotspot's rect (grown by 4). |
+| `plugin.puzzle_room.spot.ring_shadow_color` | color | `"#1A1A1A"` | The 2-unit line inside the ring, so it shows on light pictures too. |
+
+Words (`[words.plugin.puzzle_room]`): `title` "Puzzle Room" (the save description), the
+hints `hint`, `hint_using`, `hint_using_only`, `hint_picker`, and `hint_combine` (`{item}` is
+the selected item's title), the buttons `items`, `back`, `use`, `combine`, and `put_away`
+("Put away {item}"), and the captions `need_item`, `no_use`, and `no_combine`; their
+defaults are in [minigames.md](minigames.md).
+
 **Flowchart (F20).** Set in `[theme.flowchart]` (sub-tables `[theme.flowchart.node]`, `.edge`,
 and the rest). Purposes, shapes, and words are in
 [F20 03-ui](../specs/F20-flowchart/03-ui.md), Theme tokens. The detail panel, Jump,
@@ -974,6 +994,8 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
   bar, header, message, bubble, name, divider, and typing-dot tokens), their defaults and
   clamped ranges (body width 360–600, header size 24–40, message size 24–36), their contrast
   on the defaults, and its four words.
+- 2026-11-02: F27 built (step 4): the puzzle room's `plugin.puzzle_room` tokens (the two
+  ring colors) and its fourteen words.
 - 2026-11-02: F20 built (step 9): no F20 entry is marked proposed: the flowchart viewport
   and detail panel region, the sidebar and title fit with Flowchart, the `flowchart` area and
   its tokens (with `[theme.flowchart]` and its sub-tables), the 18 `flowchart_*` words with

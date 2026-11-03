@@ -100,6 +100,11 @@ lock item fortune_slip "Fortune Slip" in "Things":
 lock item festival_map "Festival Map" in "Things":
     "Hana's map of the festival, drawn in pencil on the back of a flyer. The footbridge has a star on it."
     "In one corner, very small: {i}7:40 train. Don't be late!{/i}"
+# The puzzle room in the stall keeper's shed (chapter1.vns) hands out these two.
+lock item shed_key "Shed Key" in "Things":
+    "A small brass key on a loop of red cord. It hung on a nail by the shed door."
+lock item candles "Candles" in "Things":
+    "Four white candles tied with red string. Lantern candles burn longer than the cheap ones."
 
 # "label" names a scene. The story begins at the label called start. Once players
 # have saves, keep your label names: a save finds its line again inside its label, even

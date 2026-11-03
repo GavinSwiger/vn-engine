@@ -4,10 +4,10 @@ A minigame is a small game that runs inside the story: the story stops at a `min
 the player plays, and the story goes on with the result. Some minigames come with the engine;
 you can also write your own in Python.
 
-> **This guide is being written in parts.** It starts with three minigames that come with the
-> engine: the poem game (F24), the cross-examination (F25), and the phone chat (F26). The
-> `minigame` line itself, the Skip Game and Shift+F8 rules, and how to write your own
-> minigame plugin are added with F23's last steps.
+> **This guide is being written in parts.** It starts with four minigames that come with the
+> engine: the poem game (F24), the cross-examination (F25), the phone chat (F26), and the
+> puzzle room (F27). The `minigame` line itself, the Skip Game and Shift+F8 rules, and how to
+> write your own minigame plugin are added with F23's last steps.
 
 ## Poem game
 
@@ -671,3 +671,238 @@ placeholder = "Message"
 In a test run, the phone chat warns (W176) when the message font can't draw a character of
 the chat, such as an emoji or a letter of another alphabet: it would show as a box. Set
 `message.text_font` to a font that has it, or remove the character. The story still plays.
+
+## Puzzle room
+
+The puzzle room (`puzzle_room`) comes with the engine. A picture fills the screen, and the
+player explores it: hotspots on the picture can be looked at, picked up, used with an item,
+or clicked to leave. Two items can be combined into a third. The minigame ends each time the
+story's state would change, so the story reacts at once: to a pick-up, a right use, a
+combine, or the way out. The story gets a dictionary that says what happened, and passes it
+back in to play the room again from where the player left it.
+
+### The room, the state loop, and the result
+
+Write the room as a `define` dictionary. `"background"` is an image name, as `scene` takes
+it; `"hotspots"` names each hotspot and gives its fields; `"combine"` (optional) lists the
+recipes. Then play the room in a loop, passing its last result back as `state`. This is the
+whole scene. Copy it, then change the names, the places, and the texts:
+
+```
+lock item rusty_key "Rusty Key"
+lock item string "String"
+lock item magnet "Magnet"
+lock item magnet_string "Magnet on a String"
+lock item door_key "Door Key"
+
+define attic = {
+    "background": "bg attic",
+    "hotspots": {
+        "window": {"rect": [880, 90, 220, 260], "label": "Window", "look": "Snow, as far as you can see."},
+        "hook":   {"rect": [300, 260, 64, 96], "label": "Coat hook", "take": "rusty_key", "image": "attic key"},
+        "drawer": {"rect": [520, 420, 200, 90], "label": "Desk drawer", "use": "rusty_key", "look": "Locked.", "nope": "It doesn't fit."},
+        "magnet": {"rect": [590, 440, 60, 50], "label": "Magnet", "after": "drawer", "take": "magnet", "image": "attic magnet"},
+        "string": {"rect": [300, 470, 80, 60], "label": "Ball of string", "take": "string"},
+        "vent":   {"rect": [1000, 440, 160, 100], "label": "Vent", "use": "magnet_string", "look": "Something glints down there."},
+        "glint":  {"rect": [1040, 460, 80, 60], "label": "Key", "after": "vent", "take": "door_key"},
+        "door":   {"rect": [40, 120, 180, 420], "label": "Door", "use": "door_key", "look": "Locked tight."},
+        "out":    {"rect": [40, 120, 180, 420], "label": "Door", "after": "door", "exit": True},
+    },
+    "combine": {"magnet_string": ["magnet", "string"]},
+    }
+default attic_state = None
+
+label attic_room:
+    minigame puzzle_room skippable room=attic state=attic_state into attic_state
+    if attic_state["hotspot"] == "drawer":
+        "The key turns. Inside, a magnet."
+        lock item rusty_key
+    if attic_state["hotspot"] == "door":
+        lock item door_key
+    if attic_state["action"] == "exit":
+        jump hallway
+    jump attic_room
+
+label hallway:
+    "The hallway was even colder than the attic."
+    return
+```
+
+Each hotspot does one thing. A hotspot with only a `"look"` shows its caption in the hint
+bar. A `"take"` hotspot gives the player its item and disappears. A `"use"` hotspot waits for
+one of its items (pick it in Items, then click the hotspot); until then a click shows its
+`"look"`, and a wrong item shows its `"nope"`. An `"exit"` hotspot leaves. A hotspot with
+`"after"` appears only once that other hotspot is spent (taken from, or used), like the
+magnet in the drawer, and the open door that takes the locked door's place.
+
+What `into` gets is a dictionary with four keys:
+
+| Key | Holds |
+|---|---|
+| `"action"` | `"take"`, `"use"`, `"combine"`, `"exit"`, or `"click"` (a hotspot with no look, take, use, or exit) |
+| `"hotspot"` | The hotspot's name, or `None` for a combine |
+| `"item"` | The item taken, used, or made, or `None` |
+| `"gone"` | Every hotspot spent so far, in room order |
+
+The room gives the items: a take or a combine adds its item to the player's codex, with the
+usual "New item" notice, and a combine also takes the two items away. **The room never takes
+an item for a use**, because only your story knows whether the key is still needed. Write
+`lock item` after a use, as the loop above does for the rusty key and the door key.
+
+**Pass `state` back.** `state=attic_state` with the last result is what keeps the room as the
+player left it. Without it, every spent `use` hotspot comes back: the drawer is locked again
+and the magnet is gone. Taken things stay taken either way, because the player still holds
+their items, but pass `state` anyway. Start the variable at `None` with `default`.
+
+Each result ends the room, so the story can say something or change a meter before the loop
+plays it again. Only `"exit"` leaves for good here; a plain `"click"` hotspot also ends the
+room, so the story can react, then `jump` back.
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `room` | none (you must give it) | a dictionary with `"background"`, 1 to 40 `"hotspots"`, and up to 40 `"combine"` recipes | The picture, the hotspots, and the recipes |
+| `state` | `None` | `None`, or the room's last result (its `"gone"` is a list of up to 40 hotspot names) | Where the player left the room |
+
+A hotspot has a `"rect"` and a `"label"`, and some of these fields:
+
+| Field | Allowed | Meaning |
+|---|---|---|
+| `"rect"` | `[x, y, width, height]` in whole numbers, at least 32 × 32 and inside 1280 × 720 | Where it is, in screen units, whatever the window's size |
+| `"label"` | 1 to 40 characters on one line | Its name tag, shown on focus or hover |
+| `"look"` | 1 to 80 characters on one line | A caption shown in the hint bar on a click (not on a take or exit) |
+| `"take"` | an item name | The item the player picks up |
+| `"use"` | an item name, or a list of 1 to 8 | The items that work here |
+| `"nope"` | 1 to 80 characters on one line | The caption for a wrong item (needs `"use"`) |
+| `"exit"` | `True` or `False` | Leaves the room |
+| `"after"` | another hotspot with `"take"` or `"use"` | Shown only once that one is spent |
+| `"image"` | an image name of 1 to 64 characters | A picture drawn in the rect, fitted and centered, while the hotspot shows |
+
+A hotspot does one of take, use, or exit. The hotspot names are letters, digits, and `_`,
+starting with a letter; the player never sees them. Every room needs at least one hotspot
+with `"exit": True`.
+
+### Playing
+
+The picture fills the screen. Hotspots are invisible but for their `image`. Pointing at one,
+or reaching it with the arrow keys, Tab, the D-pad, or the left stick, shows a white ring
+around it and its label. A click, Enter, Space, or the gamepad's A button activates it.
+
+**Items** (top left) opens the player's items over the room. Picking one selects it: the
+hint says "Choose where to use Rusty Key", a **Put away** button appears, and the next
+hotspot the player activates gets the item. With an item selected, Items picks a second
+one to combine with it. Right click, Backspace, or B puts the item away (or closes Items).
+Esc and the gamepad's Start button open the game menu, as in every minigame.
+
+**Leave room between hotspots.** The arrow keys go to the nearest hotspot in that direction,
+so a small hotspot tucked between big ones can be hard to reach by arrows. Tab, Page Down,
+and the gamepad's RB step through every hotspot in room order (Shift+Tab, Page Up, and LB go
+back), so none is ever out of reach, but a room the arrows cover is easier to play. Where
+two hotspots overlap, the later one in room order gets the click, so keep a small hotspot out
+of a big one's rect, or the player can't click it. Keep hotspots out of the top left, where
+the buttons are, and above y 540, where the hint bar grows at larger text sizes.
+
+Saving in a room saves its start: loading plays the room again from its arguments, with the
+items the player holds. Looks, wrong tries, and the selected item aren't saved. Rolling back
+(the mouse wheel) goes back to the line before the room until the player activates anything;
+after that, the room holds its place.
+
+### When the arguments are refused
+
+The game checks the arguments when the story reaches the `minigame` line, before it shows
+anything. A problem stops the story with E272. The line in the loop writes two arguments
+(`room` and `state`), so the engine can't tell which one the reason is about, and the
+message starts with `puzzle_room can't use these arguments:`. A whole message looks like
+this:
+
+`puzzle_room can't use these arguments: hotspot "hook" has "takes", which isn't a hotspot field. Did you mean "take"?`
+
+Only the first problem is reported, so fix it and run again.
+
+| # | Reason | Fix |
+|---|---|---|
+| R1 | `room has "hotspot", which isn't background, hotspots, or combine. Did you mean "hotspots"?` | Spell the key as the example above does. |
+| R1 | `room must be a dictionary with "background" and "hotspots", but it is a list.` | Write the room in `{ }`, with `"background"` and `"hotspots"` keys. |
+| R2 | `background must be an image name such as "bg attic", but it is 3.` | Write the picture's name in quotes, as for `scene`. |
+| R3 | `hotspots must be a dictionary of 1 to 40 hotspots, but it has 45.` | Split the room in two rooms, joined by an exit. |
+| R3 | `"coat hook" can't be a hotspot name; use letters, digits, and _, starting with a letter.` | Name the hotspot with one word, such as `"coat_hook"`, and put the words in its label. |
+| R4 | `hotspot "hook" has "takes", which isn't a hotspot field. Did you mean "take"?` | Spell the field as the hotspot table above does. |
+| R5 | `the rect of "hook" must be [x, y, width, height] in whole numbers, at least 32 × 32 and inside 1280 × 720, but it is [300, 260].` | Give all four numbers, and keep the box on the 1280 × 720 screen. |
+| R6 | `the look of "window" is 95 characters long; a caption is 1 to 80 characters on one line.` | Shorten the caption, and say the rest in the story. |
+| R6 | `the label of "hook" is empty; a label is 1 to 40 characters on one line.` | Write the name the player sees, such as `"Coat hook"`. |
+| R7 | `hotspot "drawer" has both take and use; a hotspot does one of take, use, or exit.` | Split it in two hotspots, the second with `"after"` the first, like the magnet. |
+| R7 | `hotspot "hook" has both look and take; a hotspot that takes or leaves ends the run at once, so it has no look.` | Remove the look, and say it in the story after the take. |
+| R7 | `hotspot "window" has nope but no use; nope is the caption for a wrong item, so it needs use.` | Remove the nope, or give the hotspot a `"use"`. |
+| R8 | `the use of "drawer" must be an item name or a list of 1 to 8 item names, but it is 3.` | Write the item's name in quotes, or a list of names in `[ ]`. |
+| R9 | `hotspot "magnet" comes after "drawr", which isn't in hotspots. Did you mean "drawer"?` | Name a hotspot of this room. |
+| R9 | `hotspot "magnet" comes after "window", which has no take or use, so it is never spent.` | Point `"after"` at a hotspot the player takes from or uses something on. |
+| R10 | `the image of "hook" must be an image name such as "attic key", but it is True.` | Write the picture's name in quotes, or leave `"image"` out. |
+| R11 | `the exit of "out" must be True or False, but it is "yes".` | Write `True` (no quotes), or leave `"exit"` out. |
+| R11 | `room has no hotspot with "exit": True, so it can't be left.` | Add a way out, such as a door with `"exit": True`. |
+| R12 | `combine must map each made item to two different items, e.g. {"magnet_string": ["magnet", "string"]}, with at most 40 recipes.` | Write each recipe as the made item, then a list of the two items. |
+| R12 | `combine lists "magnet" and "string" twice.` | Keep one recipe for each pair of items. |
+| R13 | `state must be None or the room's last result, but it is a list.` | Pass `None`, or the variable the room's `into` filled. |
+| R13 | `state must be None or the room's last result, whose "gone" is a list of up to 40 hotspot names, but its "gone" is "hook".` | Don't build the state by hand; pass the room's last result. |
+| R14 | `the take of "hook" is "rusty_kye", but there is no item named "rusty_kye". Did you mean "rusty_key"?` | Spell the item as its `lock item` line does, or declare it. |
+| R14 | `the take of "hook" is "lanterns", which is a tip; only items can be held.` | Declare an item with `lock item`, and use its name. |
+
+Problems with the room itself come first (R1 to R3), then each hotspot in room order (R4 to
+R11), then the recipes, `state`, and the item names (R12 to R14).
+
+### Testing the room
+
+A headless run (an automated test that plays the story with no window) never shows the
+room. Unless its inputs have a `finish` for it, a headless run leaves by the first exit in
+room order, as if the player had walked out at once: with the room above,
+`{"action": "exit", "hotspot": "out", "item": None, "gone": []}`. Shift+F8 in a test run, and
+Skip Game (with `skippable`), do the same. So a loop like the one above always ends in a
+test. To test a pick-up, give it with `finish`, with the item the room would give, such as
+`finish {"action": "take", "hotspot": "hook", "item": "rusty_key", "gone": ["hook"]}; unlock item rusty_key`.
+
+While you test, the room checks itself as it opens, and warns once for each problem:
+
+- **W179**, when the player can't leave: no exit is shown, and nothing the player holds or
+  can find in the room works on the hotspots in the way. The check knows only this room:
+  **an item your script gives the player later is invisible to it**, so it can warn about a
+  room that waits for one. Give the item before the room, or ignore the warning there.
+- **W180**, when a hotspot is mostly under the Items row or the hint bar at the current text
+  size. The check uses the widest hint the screen can show, so a hotspot beside a short hint
+  can still warn. Move the hotspot up, or make it bigger.
+
+Neither warning stops the story, and neither shows in a release.
+
+### Changing the look and the words
+
+The ring around the focused hotspot takes its colors from `[theme.plugin.puzzle_room]` in
+`config.toml`; the buttons, the name tag, and the item picker use the game's own look. The
+tokens are listed in [ui-system.md](ui-system.md), §3, "Puzzle room". This makes the ring
+gold:
+
+```toml
+[theme.plugin.puzzle_room.spot]
+ring_color = "#FFD27A"
+ring_shadow_color = "#3A2400"
+```
+
+Every word the room shows can be changed in `[words.plugin.puzzle_room]`. `title` is also
+the save description, `{item}` is the selected item's title, and `hint_using_only` replaces
+`hint_using` in a room without `"combine"`:
+
+```toml
+[words.plugin.puzzle_room]
+title = "Puzzle Room"
+hint = "Look around. Pick an item in Items to use it."
+hint_using = "Choose where to use {item}, or combine it in Items."
+hint_using_only = "Choose where to use {item}."
+hint_picker = "Choose an item to use."
+hint_combine = "Choose an item to combine with {item}."
+items = "Items"
+back = "Back"
+use = "Use"
+combine = "Combine"
+put_away = "Put away {item}"
+need_item = "You need something for this."
+no_use = "That doesn't work."
+no_combine = "Those don't go together."
+```

@@ -41,13 +41,14 @@ VERSION = "0.1.0"
 # +7 for the prologue's full-screen lines, so each save stays at its line; F24-4: +2 for the
 # release's wish line and its reaction, after the poem, which has no checkpoint here;
 # F25-4: +1 for Hana's map line in the prologue, and +5 on the bridge for the line before
-# the cross-examination and the four of its won branch).
+# the cross-examination and the four of its won branch; F27-4: +1 after the stall for the
+# line before the shed's puzzle room, which has no checkpoint here).
 CHECKPOINTS = {
     "prologue.vnsave": 10,      # main.vns: "He said you'd get lost at least twice."
     "fortune.vnsave": 16,       # chapter1.vns, in the called draw_fortune: the slip is read
     "stall_menu.vnsave": 20,    # chapter1.vns: the nested "Red or white?" menu (called)
-    "talk_menu.vnsave": 34,     # daichi.vns: the "Talk" menu, the second time (called)
-    "release.vnsave": 42,       # daichi.vns, in the called lantern_release: "Make a wish."
+    "talk_menu.vnsave": 35,     # daichi.vns: the "Talk" menu, the second time (called)
+    "release.vnsave": 43,       # daichi.vns, in the called lantern_release: "Make a wish."
 }
 IGNORE = shutil.ignore_patterns("logs", "saves", "persistent", "settings", "characters",
                                 "__pycache__")

@@ -35,6 +35,7 @@ label riverbank:
         daichi "Small luck. Only Hana believes in those paper slips."
 
     call lantern_stall
+    call festival_shed
     # "at" after a show line says where the character stands: left, center, right, or a
     # place named in config.toml. Hana is back from the water's edge, on the left. A
     # number after a transition is its length in seconds: a slower dissolve here.
@@ -116,4 +117,49 @@ label lantern_stall:
             "I wrote her name small, in one corner, where she might not notice."
         "Not this year":
             "I put my coins away. Next year, maybe."
+    return
+
+# The stall keeper's shed: a puzzle room. puzzle_room is a minigame that comes with the
+# engine: a picture fills the screen, and the player looks at, picks up, or uses things on
+# its hotspots, then leaves by a door. The room is a dictionary. "background" is an image
+# name, as for "scene"; each hotspot has a "rect" (x, y, width, height on the 1280 × 720
+# screen) and a "label", shown when the pointer or the keys reach it. Keep hotspots apart:
+# where two overlap, the later one gets the click. Here the nail is right of the door.
+#   "look": a caption when clicked.     "take": an item the player picks up.
+#   "use": the item that works here.    "after": shown once that hotspot is spent.
+#   "exit": True leaves the room.       "image": a picture drawn in the rect while shown.
+define shed = {
+    "background": "bg festival_shed",
+    "hotspots": {
+        "window":  {"rect": [880, 110, 240, 200], "label": "Window", "look": "The festival lights, blurred by the dusty glass."},
+        "shelf":   {"rect": [420, 150, 300, 70], "label": "Shelf", "look": "Folded festival banners, older than me."},
+        "nail":    {"rect": [300, 250, 64, 96], "label": "Nail", "take": "shed_key", "image": "shed key"},
+        "chest":   {"rect": [520, 400, 220, 120], "label": "Wooden chest", "use": "shed_key", "look": "Locked. Someone carved a lantern on the lid.", "nope": "It doesn't fit."},
+        "candles": {"rect": [600, 352, 80, 60], "label": "Candles", "after": "chest", "take": "candles", "image": "shed candles"},
+        "door":    {"rect": [40, 120, 180, 420], "label": "Door", "exit": True},
+    },
+    }
+# The room's last result. Passing it back as state keeps what the player already did: a
+# taken key stays taken, an opened chest stays open.
+default shed_state = None
+
+label festival_shed:
+    "\"Candles are in the shed, if you want your lantern to last,\" the stall keeper said,
+        and nodded at a door behind the stall."
+    jump shed_room
+
+label shed_room:
+    # Each pick-up, right use, or exit ends the minigame and gives the story a dictionary:
+    # "action" ("take", "use", or "exit"), "hotspot", "item", and "gone" (what is spent).
+    # The story reacts, then plays the room again until the player leaves. "skippable" adds
+    # Skip Game to the game menu while the room is open; skipping leaves by the door.
+    minigame puzzle_room skippable room=shed state=shed_state into shed_state
+    if shed_state["hotspot"] == "chest":
+        "The key turned, and the lid creaked open on a bundle of candles."
+        # The room never takes items away: the story does, once the key has done its job.
+        lock item shed_key
+    if shed_state["action"] != "exit":
+        jump shed_room
+    if "candles" in codex.items:
+        "I tucked a candle into my sleeve for later."
     return

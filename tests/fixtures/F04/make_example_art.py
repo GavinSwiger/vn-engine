@@ -383,6 +383,99 @@ def item_lantern() -> pygame.Surface:
     return s
 
 
+def festival_shed() -> pygame.Surface:
+    """F27's puzzle room: the stall keeper's shed at night. Plank walls lit by one lantern,
+    the door on the left, a window onto the festival, a shelf of banners, a bare nail (its
+    key is the hotspot image ``shed key``), and a wooden chest with a lantern carved on the
+    lid. Each piece sits inside its hotspot's rect in ``chapter1.vns``."""
+    w, h = BG_SIZE[0] * SS, BG_SIZE[1] * SS
+    s = pygame.Surface((w, h))
+    floor = 560 * SS
+    _gradient(s, (0, 0, w, floor), [(0.0, (74, 50, 52)), (1.0, (112, 76, 70))])
+    for x in range(0, w, 96 * SS // 2):                      # wall planks
+        pygame.draw.line(s, (60, 40, 44), (x, 0), (x, floor), 4)
+    _gradient(s, (0, floor, w, h - floor), [(0.0, (92, 62, 58)), (1.0, (52, 36, 40))])
+    for y in range(floor, h, 40 * SS):                       # floor boards
+        pygame.draw.line(s, (44, 30, 34), (0, y), (w, y), 4)
+    pygame.draw.line(s, OUTLINE, (0, floor), (w, floor), 6)
+    _glow(s, (760 * SS, 120 * SS), 420 * SS, (255, 200, 140), 120)
+    pygame.draw.line(s, (70, 50, 60), (760 * SS, 0), (760 * SS, 50 * SS), 6)
+    _lantern(s, 760 * SS, 90 * SS, 34 * SS, (255, 196, 140), hanging=True)
+    # The door (40, 120, 180, 420): planks, a crack of light, a latch.
+    door = pygame.Rect(40 * SS, 120 * SS, 180 * SS, 420 * SS)
+    pygame.draw.rect(s, (98, 66, 58), door)
+    for x in range(door.left + 45 * SS, door.right, 45 * SS):
+        pygame.draw.line(s, (66, 44, 46), (x, door.top), (x, door.bottom), 5)
+    pygame.draw.line(s, (255, 214, 160), (door.right - 4 * SS, door.top + 10 * SS),
+                     (door.right - 4 * SS, door.bottom - 10 * SS), 3 * SS)
+    pygame.draw.rect(s, OUTLINE, door, 8)
+    pygame.draw.circle(s, (210, 180, 120), (door.right - 26 * SS, door.centery), 9 * SS)
+    # The window (880, 110, 240, 200): the festival outside.
+    win = pygame.Rect(880 * SS, 110 * SS, 240 * SS, 200 * SS)
+    _gradient(s, win, [(0.0, (34, 30, 70)), (1.0, (96, 70, 120))])
+    for k in range(6):
+        _lantern(s, win.left + (30 + k * 38) * SS, win.top + (120 + (k % 2) * 30) * SS,
+                 7 * SS, (255, 150, 170) if k % 2 else (255, 214, 150))
+    pygame.draw.line(s, OUTLINE, (win.centerx, win.top), (win.centerx, win.bottom), 8)
+    pygame.draw.line(s, OUTLINE, (win.left, win.centery), (win.right, win.centery), 8)
+    pygame.draw.rect(s, OUTLINE, win, 10)
+    # The shelf (420, 150, 300, 70) with folded banners.
+    pygame.draw.rect(s, (130, 92, 80), (420 * SS, 206 * SS, 300 * SS, 14 * SS))
+    pygame.draw.rect(s, OUTLINE, (420 * SS, 206 * SS, 300 * SS, 14 * SS), 4)
+    for k, color in enumerate(((196, 74, 120), (250, 196, 212), (86, 112, 168),
+                               (220, 204, 176), (196, 74, 120))):
+        _poly(s, color, [(p[0] * SS, p[1] * SS) for p in
+                         ((436 + k * 56, 206), (436 + k * 56, 164 + (k % 2) * 8),
+                          (484 + k * 56, 164 + (k % 2) * 8), (484 + k * 56, 206))], 4)
+    # The nail (in 300, 250, 64, 96), bare: the key hangs on it while the room shows it.
+    pygame.draw.circle(s, (180, 170, 160), (332 * SS, 262 * SS), 5 * SS)
+    pygame.draw.circle(s, OUTLINE, (332 * SS, 262 * SS), 5 * SS, 3)
+    # The chest (520, 400, 220, 120) with a lantern on the lid and a lock plate.
+    lid = pygame.Rect(520 * SS, 400 * SS, 220 * SS, 40 * SS)
+    box = pygame.Rect(520 * SS, 440 * SS, 220 * SS, 80 * SS)
+    _poly(s, (150, 104, 76), [lid.bottomleft, lid.topleft, lid.topright, lid.bottomright])
+    _poly(s, (128, 86, 66), [box.topleft, box.topright, box.bottomright, box.bottomleft])
+    for x in (box.left + 24 * SS, box.right - 24 * SS):
+        pygame.draw.line(s, (84, 58, 64), (x, lid.top), (x, box.bottom), 10)
+    _lantern(s, lid.centerx, lid.centery, 10 * SS, (214, 52, 64))
+    pygame.draw.rect(s, (210, 180, 120), (box.centerx - 14 * SS, box.top + 6 * SS,
+                                          28 * SS, 30 * SS))
+    pygame.draw.rect(s, OUTLINE, (box.centerx - 14 * SS, box.top + 6 * SS, 28 * SS, 30 * SS), 4)
+    return s
+
+
+def shed_key() -> pygame.Surface:
+    """The hotspot image ``shed key`` (64×96): a brass key on a loop of cord, hanging from
+    the nail's spot (its top center)."""
+    w, h = 64 * SS, 96 * SS
+    s = _layer((w, h))
+    pygame.draw.line(s, (196, 74, 120), (w / 2, 12 * SS), (w / 2 - 8 * SS, 34 * SS), 3 * SS)
+    pygame.draw.line(s, (196, 74, 120), (w / 2, 12 * SS), (w / 2 + 8 * SS, 34 * SS), 3 * SS)
+    _ellipse(s, (226, 186, 96), (w / 2 - 14 * SS, 30 * SS, 28 * SS, 24 * SS), 4)
+    pygame.draw.ellipse(s, (*OUTLINE, 0), (w / 2 - 6 * SS, 36 * SS, 12 * SS, 12 * SS))
+    _poly(s, (226, 186, 96), [(w / 2 - 4 * SS, 52 * SS), (w / 2 + 4 * SS, 52 * SS),
+                              (w / 2 + 4 * SS, 88 * SS), (w / 2 - 4 * SS, 88 * SS)], 4)
+    for y in (72, 82):
+        _poly(s, (226, 186, 96), [(w / 2 + 4 * SS, y * SS), (w / 2 + 14 * SS, y * SS),
+                                  (w / 2 + 14 * SS, (y + 6) * SS), (w / 2 + 4 * SS,
+                                                                    (y + 6) * SS)], 4)
+    return s
+
+
+def shed_candles() -> pygame.Surface:
+    """The hotspot image ``shed candles`` (80×60): a bundle of white candles tied with red
+    string, lying on the chest's lid once it is open."""
+    w, h = 80 * SS, 60 * SS
+    s = _layer((w, h))
+    for k in range(4):
+        y = (14 + k * 9) * SS
+        _poly(s, (250, 242, 230), [(10 * SS, y), (64 * SS, y), (64 * SS, y + 8 * SS),
+                                   (10 * SS, y + 8 * SS)], 3)
+        pygame.draw.line(s, OUTLINE, (64 * SS, y + 4 * SS), (72 * SS, y + 3 * SS), 3)
+    pygame.draw.line(s, (214, 52, 64), (36 * SS, 10 * SS), (36 * SS, 54 * SS), 3 * SS)
+    return s
+
+
 def _sprite(name: str) -> Callable[[], pygame.Surface]:
     tag = name.split()[0]
     return lambda: _figure(**(HANA if tag == "hana" else DAICHI), face=FACES[name])
@@ -395,6 +488,9 @@ ART: dict[str, tuple[Callable[[], pygame.Surface], tuple[int, int]]] = {
     "images/bg/bridge_night.png": (bridge_night, BG_SIZE),
     **{f"images/{name.replace(' ', '/')}.png": (_sprite(name), SPRITE_SIZE) for name in FACES},
     "images/items/lantern.png": (item_lantern, ITEM_SIZE),                  # F21
+    "images/bg/festival_shed.png": (festival_shed, BG_SIZE),                # F27
+    "images/shed/key.png": (shed_key, (64, 96)),                            # F27
+    "images/shed/candles.png": (shed_candles, (80, 60)),                    # F27
 }
 
 
