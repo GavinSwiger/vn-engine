@@ -71,3 +71,25 @@ BUILD_MAX_LEFT_OUT = 1_000              # [ref, reason] rows sent; the rest are 
 BUILD_MAX_DETAILS = 200                 # build_failed detail lines (the packer's last 200)
 BUILD_MAX_VALUES = 16                   # build_failed values (key → string or int)
 BUILD_NAME_MAX_CHARS = 1_024            # a folder, zip, exe or staging name; a value
+
+# --- F39 hot reload (F39 ``SPEC.md`` §5.2) -------------------------------------------------
+# Studio asks a running preview for its place and hands it to a fresh preview child. Studio →
+# the child's stdin (a pipe): one ASCII JSON line per message, ``{"v":1,"msg":"reload"}`` or
+# ``{"v":1,"msg":"held","errors":N}``; a resumed child's first stdin line is
+# ``{"v":1,"msg":"resume","bytes":B,"states":K,"lost":bool}`` (exactly those keys; ``K`` is 0
+# exactly when ``B`` is 0), followed directly by exactly ``B`` bytes. The child answers
+# ``reload`` with the report line ``{"v":1,"event":"state","bytes":B,"states":K,
+# "window":[x,y]|null}`` (exactly those keys), followed directly by exactly ``B`` bytes: ``K``
+# F11 state lines, newest first, each ending in ``\n``. Studio checks the header and relays
+# the body unchanged; it never parses a state. The game side is ``app/hot_reload.py``, the
+# Studio side ``tools/editor/preview.py`` and ``tools/editor/hotreload.py``.
+RELOAD_MESSAGES = ("reload", "held", "resume")
+STATE_EVENT = "state"
+RELOAD_MESSAGE = b'{"v":1,"msg":"reload"}\n'
+RELOAD_MESSAGE_MAX = 4_096              # one stdin line, newline not included
+RELOAD_STATES_MAX = 20                  # the checkpoint and up to 19 rollback steps
+RELOAD_FRAME_MAX = 32 * 1_048_576       # one state or resume body (32 MiB)
+RELOAD_STATE_LINE_MAX = 25_165_824      # one state line and its "\n" (24 MiB, F11's cap)
+RELOAD_WAIT_S = 5.0                     # how long either side waits for the other's body
+RELOAD_WINDOW_MAX = 100_000             # |x|, |y| of a window position
+RELOAD_HELD_MAX = 1_000_000_000         # a ``held`` count above this is a bad line

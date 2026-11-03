@@ -340,14 +340,14 @@ def test_forwarding_without_a_stdout_does_nothing(monkeypatch):
 
 # --- Spawning (04 §7.5; AC-F44-10 argv row, AC-F44-26 Popen row) ----------------------------
 
-def test_popen_gets_the_engine_root_devnull_a_pipe_and_utf8(runners):
+def test_popen_gets_the_engine_root_two_pipes_and_utf8(runners):
     runner = runners.make()
     runner.start(child("started_exit0"))
     run_until(runner, S.CLOSED)
     (argv, kwargs), = runners.calls
     assert argv == child("started_exit0")
     assert Path(kwargs["cwd"]) == engine_root()
-    assert kwargs["stdin"] is subprocess.DEVNULL and kwargs["stdout"] is subprocess.PIPE
+    assert kwargs["stdin"] is subprocess.PIPE and kwargs["stdout"] is subprocess.PIPE  # F39
     assert "stderr" not in kwargs                  # inherited: the log goes to the terminal
     assert kwargs["env"]["PYTHONIOENCODING"] == "utf-8:backslashreplace"
 
