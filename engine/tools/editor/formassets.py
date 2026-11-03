@@ -16,6 +16,7 @@ provider for a Studio window, built from what the Database shows:
 - sounds through the window's ``HelperHub`` (one at a time; ``changed()`` on its replies);
 - the condition builder's names (F47 P2): story and remembered variables
   (``persistent.<name>``), meters, codex tips and items, and routes, as declared;
+- F34-W4: the Lock/Unlock form's gallery pictures (each entry and its versions);
 - W9: the Meta file form's names from ``files/`` (F31's originals) and the Game UI form's
   styles from ``config.toml``'s open text (``[style.<name>]``, then ``off``).
 
@@ -31,6 +32,7 @@ from engine.core.paths import is_meta_name
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import files
+from engine.tools.editor import dbmodel
 from engine.tools.editor.dbmodel import looks_in
 from engine.tools.editor.fieldwidgets import THUMB_PX
 from engine.tools.editor.forms_files_ui import STYLE_OFF
@@ -93,6 +95,8 @@ class WindowAssets(FormAssets):
             if kind is not None:
                 name = f"persistent.{d.name}" if d.kind == dec.PERSISTENT else d.name
                 self.declared.setdefault(kind, []).append(name)
+        pictures = list(dict.fromkeys(dbmodel.gallery_pictures(decls)))
+        self.declared["gallery"] = sorted(pictures, key=str.casefold)
         project = getattr(self.win, "project", None)
         refs = project.file_refs("images") if project is not None else []
         self.image_refs = {}

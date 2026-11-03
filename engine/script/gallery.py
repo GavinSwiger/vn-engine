@@ -270,9 +270,8 @@ DOCS: Final = (
         fields=("cg river", "By the River")),
 )
 
-# The in-label lines' docs. Not registered yet: Insert opens a form for every in-label
-# ``lock``/``unlock`` doc, and the Lock/Unlock forms gain "Gallery picture" in F34-W4, which
-# adds these to ``DOCS`` with the form.
+# The in-label lines' docs: Insert opens Studio's Lock/Unlock form on "Gallery picture"
+# (F34-W4); registered with ``DOCS``.
 LABEL_DOCS: Final = (
     StatementDoc(
         WORD_LOCK, "Forget a gallery picture", "Story flow", "lock gallery <picture>",
@@ -291,7 +290,7 @@ def register_words() -> None:
     if LOCK_TARGETS.get(WORD_GALLERY) is GALLERY_TARGET:
         return
     register_target(GALLERY_TARGET)
-    for doc in DOCS:
+    for doc in (*DOCS, *LABEL_DOCS):
         register_doc(doc)
 
 

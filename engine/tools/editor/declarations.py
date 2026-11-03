@@ -19,7 +19,10 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
   [start n]``: one ``Decl`` per name, ``group`` the names sharing the line), ``TIP``/``ITEM``
   (``lock tip|item n "Title" [in "Category"] [image words][:]`` with one quoted paragraph per
   indented line), ``ROUTE`` (``lock route label "Title" [until a, b]``), ``TRANSITION``
-  (``define n = Dissolve(...)``, ``Fade(...)``, ``Mask(...)``). ``marks(texts)`` reads the
+  (``define n = Dissolve(...)``, ``Fade(...)``, ``Mask(...)``).
+- F34-W4: ``GALLERY`` (``lock gallery <picture> "Title"[:]`` with one picture name per
+  indented line, its versions): named by its picture, values ``{"title", "versions"}``.
+  ``gallery_uses(texts)`` finds the ``lock|unlock gallery <picture>`` lines in labels. ``marks(texts)`` reads the
   ``ending``/``chapter`` lines in labels (read-only ``ENDING``/``CHAPTER``), and
   ``position_rows(config_text)`` the ``[stage.positions]`` table with the built-ins.
 - Titles and categories are values as shown (``{{`` read as ``{``, written back doubled);
@@ -53,6 +56,8 @@ from engine.script.codex import PARAGRAPH_MAX as CODEX_PARAGRAPH_MAX
 from engine.script.codex import PARAGRAPHS_MAX as CODEX_PARAGRAPHS_MAX
 from engine.script.codex import TITLE_MAX as CODEX_TITLE_MAX
 from engine.script.effects import BUILTIN_TRANSITION_NAMES
+from engine.script.gallery import TITLE_MAX as GALLERY_TITLE_MAX
+from engine.script.gallery import VERSIONS_MAX as GALLERY_VERSIONS_MAX
 from engine.script.points import METER_NAME_MAX, POINTS_LIMIT, STATEMENT_PARTS
 from engine.script.routes import PERSISTENT_VIEWS, ROUTE_TITLE_MAX
 from engine.script.routes import UNTIL_MAX as ROUTE_UNTIL_MAX
@@ -76,8 +81,9 @@ TRANSITION: Final = "transition"  # define n = Dissolve(…) / Fade(…) / Mask(
 ENDING: Final = "ending"          # an ending line in a label (read-only: marks())
 CHAPTER: Final = "chapter"        # a chapter line in a label (read-only: marks())
 POSITION: Final = "position"      # a [stage.positions] key of config.toml (F04)
+GALLERY: Final = "gallery"        # lock gallery <picture> "Title" … : (F34)
 EDITABLE_KINDS: Final = frozenset((CHARACTER, COLOR, VARIABLE, PERSISTENT, METER, TIP, ITEM,
-                                   ROUTE, TRANSITION))
+                                   ROUTE, TRANSITION, GALLERY))
 # Kinds one form switches between (``declplan.plan_edit``'s ``kind``): the Variables form's
 # "Remembered across playthroughs" and the Codex form's Tips / Items.
 SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
@@ -86,7 +92,7 @@ SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
 _NAMESPACES: Final[Mapping[str, str]] = MappingProxyType({   # kinds sharing one set of names
     CHARACTER: "python", DEFINE: "python", VARIABLE: "python", TRANSITION: "python",
     PERSISTENT: "persistent", METER: "points", TIP: "codex", ITEM: "codex", ROUTE: "route",
-    COLOR: "image", IMAGE: "image"})
+    COLOR: "image", IMAGE: "image", GALLERY: "gallery"})
 
 # Meters (design §4.3): the values of a points declaration. None: not written (no range: the
 # engine's ±1,000,000,000; no start: 0, or low when 0 is outside the range).
@@ -96,6 +102,10 @@ METER_KEYS: Final = ("low", "high", "start")
 # as written.
 CODEX_KEYS: Final = ("title", "category", "image", "text")
 CODEX_INDENT: Final = "    "
+
+# Gallery (F34): the title as shown and the versions (picture names) in written order.
+GALLERY_KEYS: Final = ("title", "versions")
+_GALLERY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+gallery[ \t]+([^\n#\"]+?)[ \t]*(?:#.*)?$")
 
 # Transitions (design §4.3, docs/script-language.md "Your own transitions"): kind word →
 # constructor, and every values key with its default (the constructor's own).
@@ -583,10 +593,92 @@ def route_line(name: str, values: Mapping[str, object]) -> str:
     return f"{line} until {', '.join(until)}" if until else line
 
 
+# --- Gallery (F34 lock gallery) ---
+
+def gallery_ok(values: Mapping[str, object]) -> bool:
+    """True when ``values`` make a valid ``lock gallery`` (a 1–60 character title; up to 8
+    distinct versions, each a picture name)."""
+    title, versions = values.get("title"), values.get("versions")
+    if type(title) is not str or not title.strip() or len(title) > GALLERY_TITLE_MAX:
+        return False
+    if type(versions) not in (tuple, list) or len(versions) > GALLERY_VERSIONS_MAX \
+            or len(set(versions)) != len(versions):                  # type: ignore[arg-type]
+        return False
+    return all(type(v) is str and _image_name(v) == v for v in versions)  # type: ignore[union-attr]
+
+
+def _gallery_read(tokens: list[str], body: list[str]) -> tuple[str, dict[str, object]] | None:
+    """``<picture words> "Title" [:]`` and the block's picture lines."""
+    at = next((i for i, token in enumerate(tokens) if token.startswith('"')), None)
+    if not at:
+        return None
+    picture = _image_name(" ".join(tokens[:at]))
+    title = _title_token(tokens[at])
+    rest = tokens[at + 1:]
+    if picture is None or title is None or rest not in ([], [":"]) \
+            or bool(rest) != any(line.strip() for line in body):
+        return None
+    versions: list[str] = []
+    for line in body:
+        code, _comment = code_of([line])
+        if not code:
+            continue
+        name = _image_name(code) if '"' not in code and ":" not in code else None
+        if name is None:
+            return None
+        versions.append(name)
+    values = {"title": title, "versions": tuple(versions)}
+    return (picture, values) if gallery_ok(values) else None
+
+
+def gallery_lines(name: str, values: Mapping[str, object]) -> tuple[str, ...]:
+    """``lock gallery <picture> "Title"`` and, with versions, ``:`` and one indented picture
+    per line. Raises ValueError for bad values."""
+    if _image_name(name) != name or not gallery_ok(values):
+        raise ValueError("bad gallery picture")
+    head = f"lock gallery {name} {quote(written_text(str(values['title'])))}"
+    versions = tuple(values.get("versions") or ())                  # type: ignore[arg-type]
+    if not versions:
+        return (head,)
+    return (head + ":", *(CODEX_INDENT + v for v in versions))
+
+
+def gallery_title(picture: str) -> str:
+    """A new gallery picture's title from its name: ``cg festival_night`` → "Festival
+    Night" (the first word is the picture's tag when there are more)."""
+    words = picture.split()
+    words = words[1:] if len(words) > 1 else words
+    shown = " ".join(" ".join(words).replace("_", " ").split())
+    shown = " ".join(w[:1].upper() + w[1:] for w in shown.split(" ") if w)
+    return shown[:GALLERY_TITLE_MAX].strip() or picture[:GALLERY_TITLE_MAX]
+
+
+def gallery_uses(texts: Mapping[str, str]) -> tuple[tuple[str, str, int, bool], ...]:
+    """Every ``lock|unlock gallery <picture>`` line in a label: ``(picture, ref, line,
+    unlock)``, in ref order, then line order."""
+    found: list[tuple[str, str, int, bool]] = []
+    for ref in sorted(texts):
+        for number, line in enumerate(texts[ref].split("\n"), start=1):
+            match = _GALLERY_LINE.match(line)
+            if match is None:
+                continue
+            name = _image_name(match.group(2))
+            if name is not None:
+                found.append((name, ref, number, match.group(1) == "unlock"))
+    return tuple(found)
+
+
 def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None:
     count = _head_lines(lines)
     code, _comment = code_of(lines[:count])
     tokens = _split(code)
+    if tokens is not None and len(tokens) >= 3 and tokens[:2] == ["lock", GALLERY]:
+        found = _gallery_read(tokens[2:], lines[count:]) if count == 1 else None
+        if found is None:                  # read-only: Edit as script
+            words = [t for t in tokens[2:] if not t.startswith('"') and t not in (",", ":")]
+            name = _image_name(" ".join(words[:5])) if words else None
+            return None if name is None else Decl(GALLERY, name, ref, first, last, None)
+        return Decl(GALLERY, found[0], ref, first, last, found[1])
     if tokens is None or len(tokens) < 3 or tokens[0] != "lock" \
             or tokens[1] not in (TIP, ITEM, ROUTE):
         return None
@@ -944,6 +1036,8 @@ def lines_for(kind: str, name: str, values: Mapping[str, object]) -> tuple[str, 
     line per paragraph; every other kind: one line). Raises ValueError for bad values."""
     if kind in (TIP, ITEM):
         return codex_lines(kind, name, values)
+    if kind == GALLERY:
+        return gallery_lines(name, values)
     return (line_for(kind, name, values),)
 
 
@@ -960,7 +1054,7 @@ def _slug(shown: str) -> str:
 def name_problem(name: str, kind: str = CHARACTER) -> bool:
     """True when ``name`` can't be written as a ``kind`` script name (a reserved word, a
     keyword, an engine name, not a word…)."""
-    if kind == COLOR:
+    if kind in (COLOR, GALLERY):
         return _image_name(name) is None
     if kind == POSITION:
         try:
@@ -1020,12 +1114,13 @@ def taken_names(decls: Iterable[Decl], kind: str = CHARACTER) -> frozenset[str]:
 
 __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX_INDENT",
            "CODEX_KEYS", "COLOR", "DEFINE", "DISSOLVE", "EDITABLE_KINDS", "ENDING", "FADE",
-           "IMAGE", "ITEM", "KIND_TITLES", "MASK", "METER", "METER_KEYS", "NAME", "NUMBER",
+           "GALLERY", "GALLERY_KEYS", "IMAGE", "ITEM", "KIND_TITLES", "MASK", "METER", "METER_KEYS", "NAME", "NUMBER",
            "OPTION_DEFAULTS", "PERSISTENT", "POSITION", "ROUTE", "SWAPS", "TEXT", "TIP",
            "TRANSITION", "TRANSITION_DEFAULTS", "TRANSITION_KINDS", "TRANSITION_PARAMS",
            "VARIABLE", "VARIABLE_KINDS", "VARIABLE_STARTS", "YES_NO", "Decl", "PositionRow",
            "character_call", "character_values", "codex_lines", "codex_ok", "color_ok",
-           "find", "is_character_call", "is_transition_call", "line_for", "lines_for",
+           "find", "gallery_lines", "gallery_ok", "gallery_title", "gallery_uses",
+           "is_character_call", "is_transition_call", "line_for", "lines_for",
            "marks", "meter_line", "meter_ok", "meter_read", "meter_start", "name_problem",
            "position_point", "position_rows", "position_value", "read", "read_all",
            "route_line", "route_ok", "scan", "script_name", "shown_text", "statements",

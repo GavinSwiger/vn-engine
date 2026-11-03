@@ -13,7 +13,10 @@ positions go into `config.toml`.
   one sets up its [blinking and talking](#blinking-and-talking)), and the
   **Voice blip** (a sound with ▶, how often it plays, its pitch and volume).
 - **Pictures**: backgrounds, each character's looks, and colour backgrounds
-  (`image bg night = "#102040"`), as thumbnails.
+  (`image bg night = "#102040"`), as thumbnails. Turn on **In the gallery** to put a
+  picture in the [gallery](#gallery) (`lock gallery cg festival "Festival"`); its
+  **Gallery title** is made from the picture's name and you can change it.
+- **Gallery**: the gallery pictures, in the order players see them. See [Gallery](#gallery).
 - **Sounds**: by folder (music, sound effects, voices, blips); ▶ plays one, ■ stops it.
 - **Variables**: a name, a kind (Number, Text, Yes-No) and a starting value (`default`).
   Tick **Remembered across playthroughs** to keep it after the game ends
@@ -70,3 +73,30 @@ A declaration written in a way the form can't read, such as `Character(name)` wi
 variable, is listed but shown read-only, with **Edit as script**.
 
 Back to [Studio](scene-editor.md).
+
+## Gallery
+
+The gallery is the Extras page where players look again at the special pictures they've
+seen. A gallery picture unlocks by itself the first time it shows in the story (a Scene,
+Show or a line that changes a look), so there is nothing else to set up.
+
+- **+ Add pictures…** opens your pictures as thumbnails; click the ones you want (a tick
+  shows), then **Add**. They go at the end of the gallery, each with a title made from its
+  name. Only pictures not in the gallery yet are offered.
+- Click a picture to see its form: the **Picture**, the **Title** under its square, and
+  **More versions**: up to 8 more pictures in the same square (a close-up, a smile).
+  Players step through a square's versions in the viewer. **+ Add a version…** picks one;
+  **Remove** takes one out.
+- **◀ Move earlier** and **Move later ▶** change the order. Both pictures must be in the
+  same script file; when they aren't, the buttons say so and you move their lines in the
+  Editor.
+- A picture no line shows (and no Unlock gallery picture event names) is marked: players
+  can't get it yet. "Shown in N lines" lists where it shows.
+- **Remove from gallery** takes it out (Ctrl+Z in `database.vns` brings it back). It is
+  refused while a Lock or Unlock gallery picture event names it.
+- **▶ Preview the gallery** plays the game straight into Extras ▸ Gallery with every
+  picture unlocked. Nothing is saved.
+
+In Events, **Unlock** with **What: gallery** adds a picture to the player's gallery without
+showing it (`unlock gallery cg festival`), and **Lock** makes the game forget one. Game
+settings ▸ **Extras** has "Show locked pictures as ???" and the gallery's look.

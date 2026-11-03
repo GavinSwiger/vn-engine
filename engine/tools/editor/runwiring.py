@@ -307,6 +307,18 @@ class RunWiring:
                                        extra=("--playthrough", str(numbers[picked]))))
         self.apply_events(self.runner.poll())
 
+    def play_extras(self, page: str = "gallery") -> None:
+        """F34 Database ▸ Gallery's ▶ Preview the gallery: saves like ▶ Play, then runs the
+        game's dev ``run --extras <page>`` through the Play bar (Extras opens on ``page``
+        with everything in it unlocked in memory; nothing is saved). Start values and "Play
+        as a new player" don't apply."""
+        if self.closed or not self._save_before_play():
+            return
+        self._saved_refs = []               # a restart, not an update
+        self.hot.stop()
+        self.runner.start(preview_argv(self.paths.root, None, [], extra=("--extras", page)))
+        self.apply_events(self.runner.poll())
+
     def play_options(self) -> None:
         """Play options…: the start values and "Play as a new player", for this session."""
         answer = ask_play_options(self.root, self.start_values_text, self.play_fresh,

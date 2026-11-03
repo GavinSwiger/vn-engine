@@ -16,6 +16,9 @@ undo step per file), checked against the live texts right before it is applied.
   shared ``points`` line: that line without it, then its own line). ``plan_edit``'s ``kind``
   switches between ``declarations.SWAPS`` kinds (P2-D: a variable remembered across
   playthroughs, a tip that becomes an item).
+- **Moves** (F34-W4, reused by F35 and F37): ``plan_move`` swaps one declaration's lines
+  with a neighbour's in the same file (what lies between them stays between them); one
+  in another file is refused (``MOVE_ACROSS_FILES``).
 - **Positions** (P2-D) live in config.toml: ``plan_position``/``plan_position_remove`` are
   ``tomlpatch`` plans for ``[stage.positions]``.
 - **Stale-safe** (§7.1 step 4). Declarations sit outside F46's chunk digests, so each plan
@@ -62,8 +65,10 @@ KIND_WORDS: Final[Mapping[str, str]] = {
     dec.CHARACTER: "character", dec.COLOR: "colour background", dec.VARIABLE: "variable",
     dec.PERSISTENT: "remembered variable", dec.METER: "meter", dec.TIP: "tip",
     dec.ITEM: "item", dec.ROUTE: "route", dec.TRANSITION: "transition",
-    dec.POSITION: "position"}
+    dec.POSITION: "position", dec.GALLERY: "gallery picture"}
 SWAP_REFUSED: Final = "Studio can't turn that into another kind of entry."
+MOVE_ACROSS_FILES: Final = ("These pictures are in different script files. Move their lines in "
+                            "the text to reorder them.")
 
 _INCLUDE: Final = re.compile(r'include[ \t]+"([^"\n]*)"')
 _SINK_LIMIT: Final = 10_000
@@ -202,7 +207,7 @@ def _current(decl: dec.Decl, texts: Mapping[str, str]) -> list[str] | Refuse:
 def _comment(decl: dec.Decl, old: list[str]) -> str:
     """The trailing comment an edit keeps: a codex entry's head line's, else the
     statement's."""
-    return code_of(old[:1] if decl.kind in (dec.TIP, dec.ITEM) else old)[1]
+    return code_of(old[:1] if decl.kind in (dec.TIP, dec.ITEM, dec.GALLERY) else old)[1]
 
 
 def _others_line(decl: dec.Decl, old: list[str]) -> tuple[str, ...]:
@@ -278,6 +283,38 @@ def plan_delete(decl: dec.Decl, texts: Mapping[str, str]) -> DeclPlan | Refuse:
     plan = Plan(_title("Delete", decl.kind, decl.name),
                 (FilePlan(decl.ref, (), (LineEdit(decl.first, decl.last, others),)),))
     return DeclPlan(plan, guards, (), None, decl.kind, decl.name, decl.ref, None, count)
+
+
+def plan_move(decl: dec.Decl, neighbour: dec.Decl, texts: Mapping[str, str],
+              across: str = MOVE_ACROSS_FILES) -> DeclPlan | Refuse:
+    """Move ``decl`` past ``neighbour`` (the declaration just before or after it in the
+    order its list shows): their lines swap places, and the lines between them (blank
+    lines, comments, other statements) stay between them. Both must be in one file
+    (``across`` is the refusal's text otherwise; F35 and F37 pass their own). One
+    ``FilePlan``, so one undo step. A meter on a shared ``points`` line can't move."""
+    if decl.ref != neighbour.ref:
+        return Refuse(across)
+    if decl.group or neighbour.group or decl.place == neighbour.place:
+        return Refuse(COMPLEX)
+    lines = _current(decl, texts)
+    if isinstance(lines, Refuse):
+        return lines
+    other = _current(neighbour, texts)
+    if isinstance(other, Refuse):
+        return other
+    first, second = sorted((decl, neighbour), key=lambda d: d.first)
+    if first.last >= second.first:
+        return Refuse(COMPLEX)
+    old = lines[first.first - 1:second.last]
+    top = lines[first.first - 1:first.last]
+    middle = lines[first.last:second.first - 1]
+    bottom = lines[second.first - 1:second.last]
+    guards = tuple((decl.ref, first.first + k, text) for k, text in enumerate(old))
+    count = _count(texts[decl.ref], decl.kind, decl.name, decl.ref)
+    plan = Plan(_title("Move", decl.kind, decl.name),
+                (FilePlan(decl.ref, (), (LineEdit(first.first, second.last,
+                                                  (*bottom, *middle, *top)),)),))
+    return DeclPlan(plan, guards, (), None, decl.kind, decl.name, decl.ref, decl.values, count)
 
 
 # --- Positions (config.toml [stage.positions]; design §4.3, AC-F47-40) ----------------------
@@ -363,7 +400,8 @@ def verify_decl(decl_plan: DeclPlan, texts: Mapping[str, str]) -> bool:
 
 
 __all__ = ["BAD_NAME", "CANT_WRITE", "COMPLEX", "DATABASE_HEADER", "DATABASE_INCLUDE",
-           "DATABASE_REF", "DATABASE_TEXT", "KIND_WORDS", "NAME_CLASH", "NO_MAIN",
+           "DATABASE_REF", "DATABASE_TEXT", "KIND_WORDS", "MOVE_ACROSS_FILES", "NAME_CLASH",
+           "NO_MAIN",
            "POSITIONS_SECTION", "SWAP_REFUSED", "DeclPlan", "includes_database", "plan_delete",
-           "plan_edit", "plan_new", "plan_position", "plan_position_remove", "problems",
+           "plan_edit", "plan_move", "plan_new", "plan_position", "plan_position_remove", "problems",
            "verify_decl"]

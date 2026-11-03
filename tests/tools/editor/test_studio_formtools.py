@@ -203,10 +203,10 @@ def test_p2_form_dialogs_and_insert_picker(studio, tmp_path, helper, monkeypatch
 
     # Lock / Unlock: only the name field of "What".
     lock = dialog("lock", {"what": "tip", "tip": "river_god"})
-    assert lock.hidden() == {"route", "ending", "item"}
+    assert lock.hidden() == {"route", "ending", "item", "gallery"}
     assert lock.labels["tip"].winfo_manager() and not lock.labels["route"].winfo_manager()
     lock.vars["what"].set("route")
-    assert lock.hidden() == {"tip", "ending", "item"}
+    assert lock.hidden() == {"tip", "ending", "item", "gallery"}
     lock._pick(1)
 
     # A new Chapter's name: made from the title, unique; typing one stops that.

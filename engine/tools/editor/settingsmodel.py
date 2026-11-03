@@ -6,7 +6,8 @@ shows up in **All settings** with no change here (the "Settings key coverage" ru
 
 - ``PAGES``: the hand-picked pages (P1: Game, Title screen, Text box, Content warning; P2,
   ``P2_PAGES``: Choices, Saves & going back, Sound volumes, Effects & comfort, Chapters &
-  codex, Flowchart, Fourth wall, Button words) as rows of section paths and keys, then
+  codex, Flowchart, Fourth wall, F34's Extras, Button words) as rows of section paths and
+  keys (a row whose section the schema doesn't have yet is left out), then
   **Styles & playthrough looks** (W9: ``looks``, ``look_page``, ``new_look_change``) and
   **All settings**, both generated.
 - ``page(key)`` → a ``Page`` of ``Section``s of ``Field``s (key, label, widget, default,
@@ -345,6 +346,12 @@ PAGES: Final[tuple[PageDef, ...]] = (
                                            "ask_username_no", "settings_username")),
         Row("words", "Fake crash screen", ("fake_crash_message", "fake_crash_hint",
                                            "fake_crash_label", "settings_crash_label")))),
+    # F34 (design §7): the Extras screen's pages; F35-F37 add their rows here. A row whose
+    # section isn't in config_schema yet is left out (page()).
+    PageDef("extras", "Extras", (
+        Row("gallery", "Gallery"),
+        Row("theme.gallery.caption", "Gallery picture titles"),
+        Row("theme.gallery.viewer", "Gallery picture viewer"))),
     PageDef("words", "Button words", (
         Row("words", "Title screen and game menu", (
             "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
@@ -390,7 +397,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
     PageDef(ALL_SETTINGS, "All settings", ()),          # generated: all_settings()
 )
 P2_PAGES: Final = ("choices", "saves", "sound", "effects", "chapters", "flowchart",
-                   "fourth_wall", "words")
+                   "fourth_wall", "extras", "words")
 
 # Labels a key's name doesn't say well, by dotted path, then by key name.
 LABELS: Final[Mapping[str, str]] = MappingProxyType({
@@ -428,6 +435,7 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "meta.username": "Offer the player's user name",
     "meta.username_fallback": "Name shown otherwise",
     "words.plugin": "Minigames' own words", "theme.plugin": "Minigames' own look",
+    "gallery.show_locked": "Show locked pictures as ???",           # F34 §7
 })
 _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "id": "ID",
                  "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",
@@ -532,6 +540,8 @@ def page(key: str) -> Page:
         if found.key == key:
             sections: list[Section] = []
             for row in found.rows:
+                if section_class(row.path) is None:       # a later step adds it
+                    continue
                 if not row.rest:
                     sections.append(_section(row.path, row.title, row.keys))
                     continue

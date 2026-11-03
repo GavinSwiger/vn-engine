@@ -37,7 +37,9 @@ imports this module inside the function, as this one imports ``forms``), and the
     the dialog can call with the game's chapter names so a new one is unique).
   - **Lock** and **Unlock** (``lock|unlock route|ending|tip|item <name>`` in a label): what,
     then one name field per kind so each gets its own picker; the row word says what the
-    line does ("Give item", "Forget ending", …). There is no ``unlock ending``. The
+    line does ("Give item", "Forget ending", …). There is no ``unlock ending``. F34-W4
+    adds **Gallery picture** (``lock|unlock gallery <picture>``: a picture name of up to 5
+    words; its picker offers only gallery pictures, with a thumbnail). The
     top-level ``lock`` declarations are the Database's (``forms.DECLARATIONS_GROUP``).
 - P3-C (AC-F47-53), the design's Story map mark and Rollback forms. One form per
   ``flowchart`` doc, named as the game's Flowchart page names it (Insert, the rows and the
@@ -87,8 +89,9 @@ HOW_LONG: Final = ("burst", "on", "off")            # Glitch and Jitter characte
 PAGE_WORDS: Final = ("start", "new page", "end")    # Full-screen text: nvl on, clear, off
 _PAGE: Final = dict(zip(PAGE_WORDS, ("on", "clear", "off"), strict=True))
 CHAPTER_UNTITLED: Final = "untitled"                # chapter_name for a title with no words
-LOCK_WHAT: Final = ("route", "ending", "tip", "item")
-UNLOCK_WHAT: Final = ("route", "tip", "item")      # no ``unlock ending``: reach its line
+LOCK_WHAT: Final = ("route", "ending", "tip", "item", "gallery")
+UNLOCK_WHAT: Final = ("route", "tip", "item", "gallery")  # no ``unlock ending``: reach its line
+GALLERY_WHAT: Final = "gallery"                     # F34: its name is a picture (≤ 5 words)
 _HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 _NO_COLOUR: Final = frozenset(("cut", "dissolve", "glitch"))   # built-ins that take none
 
@@ -534,17 +537,20 @@ _LOCK_WORDS: Final = {
     ("lock", "route"): "Lock route", ("lock", "ending"): "Forget ending",
     ("lock", "tip"): "Forget tip", ("lock", "item"): "Take item",
     ("unlock", "route"): "Unlock route", ("unlock", "tip"): "Give tip",
-    ("unlock", "item"): "Give item"}
+    ("unlock", "item"): "Give item",
+    ("lock", "gallery"): "Forget gallery picture", ("unlock", "gallery"): "Unlock gallery picture"}
 
 
 def _lock_read(word: str, whats: tuple[str, ...]):
     def read(node: Statement, code: str) -> dict[str, str] | None:
         tokens = _tokens(code)
+        size = len(tokens) if getattr(node, "kind", None) == GALLERY_WHAT else 3
         if not isinstance(node, (Lock, CodexLock)) or node.unlock != (word == "unlock") \
-                or not tokens or len(tokens) != 3 or tokens[:2] != [word, node.kind] \
-                or node.kind not in whats or canonical_name(tokens[2]) != node.name:
+                or not tokens or not 3 <= len(tokens) == size or tokens[:2] != [word, node.kind] \
+                or node.kind not in whats \
+                or " ".join(canonical_name(t) for t in tokens[2:]) != node.name:
             return None
-        return {"what": node.kind, **dict.fromkeys(whats, ""), node.kind: tokens[2]}
+        return {"what": node.kind, **dict.fromkeys(whats, ""), node.kind: " ".join(tokens[2:])}
     return read
 
 
@@ -553,7 +559,7 @@ def _lock_write(word: str, whats: tuple[str, ...]):
         what = values.get("what") or whats[0]
         if what not in whats:
             raise ValueError(f"{word} can't take {what!r}")
-        return f"{word} {what} {values[what].strip()}"
+        return f"{word} {what} {' '.join(values[what].split())}"
     return write
 
 
@@ -569,7 +575,7 @@ def _lock_form(word: str, title: str, whats: tuple[str, ...],
 
 
 _LOCK_LABELS: Final = {"route": "Route", "ending": "Ending", "tip": "Codex tip",
-                       "item": "Item"}
+                       "item": "Item", "gallery": "Gallery picture"}
 
 
 # --- Flowchart marks, Rollback (P3-C: AC-F47-53) ----------------------------------------------
@@ -860,9 +866,11 @@ FORMS: tuple[CommandForm, ...] = (
     # AC-F47-33. A ``lock`` declaration (route, codex entry) is the Database's: its docs are
     # in the Declarations group, which ``forms.form_for_doc`` never gives a form.
     _lock_form("lock", "Lock", LOCK_WHAT,
-               (("lock", "lock route|ending"), ("lock", "lock tip|item"))),
+               (("lock", "lock route|ending"), ("lock", "lock tip|item"),
+                ("lock", "lock gallery"))),
     _lock_form("unlock", "Unlock", UNLOCK_WHAT,
-               (("unlock", "unlock route"), ("unlock", "unlock tip|item"))),
+               (("unlock", "unlock route"), ("unlock", "unlock tip|item"),
+                ("unlock", "unlock gallery"))),
     # P3-C: AC-F47-53
     CommandForm(
         "flow_scene", "Flowchart scene", "Flowchart scene",
@@ -919,5 +927,5 @@ FORMS: tuple[CommandForm, ...] = (
 
 __all__ = ["CHANGES", "CHAPTER_UNTITLED", "CRASH_PLAYER_NAME", "ENDING_NO_CARD", "EVERY_SOUND",
            "FORMS", "GAME_MESSAGE", "GAME_TITLE", "GLITCHES", "HIDDEN_TEXT", "HOW_LONG",
-           "LOCK_WHAT", "MARK_OWN_TITLE", "NO_JUMP_TEXT", "PAGE_WORDS", "ROLLBACK_PICKS",
+           "GALLERY_WHAT", "LOCK_WHAT", "MARK_OWN_TITLE", "NO_JUMP_TEXT", "PAGE_WORDS", "ROLLBACK_PICKS",
            "ROLLBACK_TEXTS", "UNLOCK_WHAT", "WHOLE_FLOWCHART", "chapter_name"]

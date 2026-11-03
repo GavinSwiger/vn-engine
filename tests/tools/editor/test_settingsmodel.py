@@ -99,13 +99,15 @@ def test_ac49_p2_pages_exist_and_list_real_keys():
     titles = {p.key: p.title for p in sm.pages()}
     assert [titles[key] for key in sm.P2_PAGES] == [
         "Choices", "Saves & going back", "Sound volumes", "Effects & comfort",
-        "Chapters & codex", "Flowchart", "Fourth wall", "Button words"]
+        "Chapters & codex", "Flowchart", "Fourth wall", "Extras", "Button words"]
     for found in sm.PAGES:                     # each listed key is a config_schema key
         for row in found.rows:
+            if found.key == "extras" and section_class(row.path) is None:
+                continue                       # F34-W4: [gallery] comes with F34-W3
             assert set(row.keys) <= set(config_fields(section_class(row.path))), row
     for key in sm.P2_PAGES:
         page = sm.page(key)
-        assert page.fields and {f.path for f in page.fields} <= set(sm.fields_by_path()), key
+        assert (page.fields or key == "extras") and {f.path for f in page.fields} <= set(sm.fields_by_path()), key
         assert len({f.path for f in page.fields}) == len(page.fields), key   # none twice
     paths = {key: {f.path for f in sm.page(key).fields} for key in sm.P2_PAGES}
     assert {"choice.show_locked", "theme.choice.locked.text_color"} <= paths["choices"]

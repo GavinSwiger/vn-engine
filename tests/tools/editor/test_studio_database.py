@@ -122,11 +122,12 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     assert win.current_tab() == "database"
     assert ed.tab_strip.words()[:3] == ["Editor", "Story map", "Database"]
     db = win.database
-    assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()][:10] == [
-        "Characters", "Pictures", "Sounds", "Variables", "Meters", "Codex",
-        "Endings & routes", "Chapters", "Transitions", "Positions"]   # P1, then W7's P2
+    assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()][:11] == [
+        "Characters", "Pictures", "Gallery", "Sounds", "Variables", "Meters", "Codex",
+        "Endings & routes", "Chapters", "Transitions", "Positions"]   # P1 (F34's Gallery), P2
     # 9 pictures: the sample's 6 looks and backgrounds plus Hana's 3 F38 frames.
-    assert db.counts() == {"character": 2, "picture": 9, "sound": 4, "variable": 1,
+    assert db.counts() == {"character": 2, "picture": 9, "gallery": 0, "sound": 4,
+                           "variable": 1,
                            "meter": 0, "codex": 0, "ending": 2, "chapter": 0,
                            "transition": 0, "position": 3}
     assert [r.text for r in db.visible_rows()] == ["Daichi", "Hana"]
@@ -157,8 +158,8 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     ed2 = studio(blank, mapped=True)
     db2 = open_database(ed2, "character")
     assert {k: v for k, v in db2.counts().items() if k != "position"} == dict.fromkeys(
-        ("character", "picture", "sound", "variable", "meter", "codex", "ending", "chapter",
-         "transition"), 0)
+        ("character", "picture", "gallery", "sound", "variable", "meter", "codex", "ending",
+         "chapter", "transition"), 0)
     for category, things in (("character", "characters"), ("picture", "pictures"),
                              ("sound", "sounds"), ("variable", "variables")):
         db2.select_category(category)

@@ -69,6 +69,7 @@ PREVIEW_HEADING = "Preview"
 PREVIEW_NOTE = "A still of how it looks in the game, with your unsaved changes."
 SEARCH_HINT = "Search settings…"
 NO_MATCH = "No setting matches “{text}”."
+EMPTY_PAGE = "Nothing to set here yet."
 RANGE = "{lo} to {hi}"
 OFF_RANGE = "0 (off), or {lo} to {hi}"
 NONE_FILE = "None"
@@ -90,6 +91,8 @@ INTRO: Mapping[str, str] = {
     "flowchart": "The players' map of the story, from the game menu.",
     "fourth_wall": "Moments where the game reaches outside itself.",
     "words": "Every word the game shows. Change one to rename or translate it.",
+    "extras": "The Extras screen players open from the title: the gallery of pictures "
+              "they've seen, and more.",
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
     sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
                "the story says so (a Game UI line). A playthrough look changes the title "
@@ -582,6 +585,9 @@ class SettingsPane:
             return
         for section in self.page.sections:
             self._build_section(body, section)
+        if not self.page.sections:
+            ttk.Label(body, text=EMPTY_PAGE, style="Hint.TLabel").pack(
+                anchor="w", pady=(self._px(8), 0))
 
     # --- Styles & playthrough looks (W9) -----------------------------------------------------
 

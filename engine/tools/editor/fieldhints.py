@@ -101,12 +101,16 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
                 "seconds": "How long the transition takes, in seconds.",
                 "colour": "The colour a fade passes through. Empty: black.",
                 "name": "Its name in the script. Empty: made from the title for you."},
-    "lock": {"what": "What to lock or take away: a route, an ending, a codex tip or an item.",
+    "lock": {"what": "What to lock or take away: a route, an ending, a codex tip, an item "
+                     "or a gallery picture.",
+             "gallery": "The gallery picture players forget (its tile is locked again).",
              "route": "The route to lock (players can't take it until it's unlocked).",
              "ending": "The ending players forget they've reached.",
              "tip": "The codex tip players lose.",
              "item": "The item players lose."},
-    "unlock": {"what": "What to open or give: a route, a codex tip or an item.",
+    "unlock": {"what": "What to open or give: a route, a codex tip, an item or a gallery "
+                       "picture.",
+               "gallery": "The picture that joins the player's gallery without being shown.",
                "route": "The route to open.",
                "tip": "The codex tip players get.",
                "item": "The item players get."},
