@@ -53,7 +53,7 @@ minigames.
 
 - **Ctrl+Space** lists the words and names that fit at the cursor: statements, labels,
   images, audio, characters, endings, routes, tips, meters, minigames and their arguments.
-  It also opens after a word such as `jump` and a space.
+  It also opens after `jump` and a space.
 - The **Insert** menu adds any statement's example on a new line and selects the part to
   change.
 - The **Help** pane explains the statement on the cursor's line, with an example and its
@@ -65,7 +65,7 @@ The **Story map** tab (Ctrl+2) draws each label as a box: arrows solid for `jump
 for `call`, dotted for a `menu` choice. Boxes are marked `start`, `not reached`, or `ends`;
 `ending` labels have a double border; boxes show chapters and minigames.
 
-The **Outline** tab (Ctrl+5) lists chapters, endings, routes, codex entries, meters,
+The **Outline** tab (Ctrl+6) lists chapters, endings, routes, codex entries, meters,
 minigames, and flowchart boxes; Enter opens one.
 
 Click a box, or press Enter on it, to open the scene beside the map; F6 reaches it and Esc
@@ -126,8 +126,8 @@ inside the double quotes.
 - Ctrl+N: new script file. Ctrl+Shift+O: Add files…
 - F2, Delete: rename or delete the selected **Project** file.
 - Ctrl+Space: completion. Ctrl+G: Go to label.
-- Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5: Editor, Story map, [Database](database.md),
-  Asset, Outline.
+- Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5, Ctrl+6: Editor, Story map,
+  [Database](database.md), [Game settings](game-settings.md), Asset, Outline.
 - Ctrl+=, Ctrl+-, Ctrl+0: zoom the text, or the map.
 - F5: play this scene. Shift+F5: from the start. Ctrl+F2: stop. F7: Check now.
 - F6, Shift+F6: next or previous area.

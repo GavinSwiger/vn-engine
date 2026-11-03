@@ -28,17 +28,18 @@ def menu_rows(menu: tk.Menu) -> list[tuple[str, str]]:
 def test_tabs_make_the_pages_the_strip_the_view_rows_and_the_keys(studio, studio_game):
     ed = studio(studio_game)
     win = ed.win
-    titles = ["Editor", "Story map", "Database", "Asset", "Outline"]     # F47 W2: Database
+    titles = ["Editor", "Story map", "Database", "Game settings", "Asset",     # F47 W2, W4
+              "Outline"]
     assert [tab.title for tab in window.TABS] == titles
     assert [win.notebook.tab(i, "text") for i in range(win.notebook.index("end"))] == titles
-    assert len(win.tab_strip.cells) == 5
-    assert menu_rows(win.view_menu)[:5] == [(t, f"Ctrl+{i}") for i, t in
+    assert len(win.tab_strip.cells) == 6
+    assert menu_rows(win.view_menu)[:6] == [(t, f"Ctrl+{i}") for i, t in
                                             enumerate(titles, 1)]
-    for digit in "12345":
+    for digit in "123456":
         assert win.root.bind_all(f"<Control-Key-{digit}>")
-    assert not win.root.bind_all("<Control-Key-6>")
+    assert not win.root.bind_all("<Control-Key-7>")
     win.select_tab("asset")
-    assert win.current_tab() == "asset" and win.notebook.index("current") == 3
+    assert win.current_tab() == "asset" and win.notebook.index("current") == 4
 
 
 def test_one_tabs_row_adds_a_tab(studio_game):

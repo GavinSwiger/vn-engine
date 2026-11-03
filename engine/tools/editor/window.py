@@ -201,6 +201,7 @@ TAB_EDITOR = "Editor"
 TAB_MAP = "Story map"
 TAB_ASSET = "Asset"
 TAB_DATABASE = "Database"               # F47 W2
+TAB_SETTINGS = "Game settings"          # F47 W4
 TAB_OUTLINE = "Outline"                 # 2026-11-02, AC-F45-54
 EDITOR_EMPTY_TITLE = "No story files yet"                       # 08 §9
 EDITOR_EMPTY_HINT = "Your story is written in script files."
@@ -243,6 +244,8 @@ TABS: tuple[Tab, ...] = (
         on_show="refresh_story_map"),
     Tab("database", TAB_DATABASE, "database", "_build_database_tab", "database.focus_widget",
         "database.empty", on_show="refresh_database"),
+    Tab("settings", TAB_SETTINGS, "settings", "_build_settings_tab", "settings.focus_widget",
+        "settings.empty", on_show="refresh_settings"),
     Tab("asset", TAB_ASSET, "image", "_build_asset_tab", "asset_pane.frame",
         "asset_pane.empty"),
     Tab("outline", TAB_OUTLINE, "outline", "_build_outline_tab", "outline_view.tree",
@@ -581,6 +584,16 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
     def refresh_database(self) -> None:
         if not self.closed:
             self.database.refresh()
+
+    def _build_settings_tab(self) -> tk.Widget:
+        """F47 W4: Game settings (``settingsview.SettingsPane``)."""
+        from engine.tools.editor.settingsview import SettingsPane
+        self.settings = SettingsPane(self, self.notebook)
+        return self.settings.frame
+
+    def refresh_settings(self) -> None:
+        if not self.closed:
+            self.settings.refresh()
 
     def _build_asset_tab(self) -> tk.Widget:
         self.asset_pane = AssetPane(self.notebook, scale=self.scale, on_add=self.add_files,

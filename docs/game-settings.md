@@ -1,0 +1,30 @@
+# Game settings
+
+The **Game settings** tab in Studio (Ctrl+4) changes how your game looks and behaves without
+editing `config.toml` by hand. Pick a page on the left; its fields are on the right.
+
+- **Game**: the game's title and version, and the window's size, fullscreen and icon.
+- **Title screen**: whether it shows, its buttons, background, logo, music and colours.
+- **Text box**: text speed, fonts, colours, size and padding, the name tab and the
+  click-to-continue mark.
+- **Content warning**: when it shows, its text and how long players wait.
+- **All settings**: every setting the engine has, by section. Type in the search box to
+  find one.
+
+A field is applied when you press Enter or leave it (a long text: when you leave it, or
+Ctrl+Enter). The change goes into `config.toml` in the Editor, unsaved, so Ctrl+S saves it
+and Ctrl+Z in `config.toml` takes it back. Changes you type in the Editor show here too.
+
+Each field says what it does, the values it takes, and its default. A blue bar at its left
+means you changed it; **Use default** removes your line so the engine's default applies.
+
+On **Text box** and **Title screen**, the preview shows a still of the game's real drawing
+with your unsaved changes, half a second after you stop typing. If it can't be drawn, it
+says why, for example a value the game refuses.
+
+If `config.toml` has a mistake, the tab shows only the line to fix and **Open in Editor**.
+A setting written in a way the form can't change, such as `textbox = { … }` on one line,
+says so and offers **Edit as script**. Lists of your own entries, such as stage positions,
+are edited in the Editor (**Open in Editor**).
+
+Back to [Studio](scene-editor.md).

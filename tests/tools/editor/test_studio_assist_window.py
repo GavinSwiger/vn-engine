@@ -396,7 +396,8 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
     ed = studio(studio_game, mapped=True)
     assert ed.root.title() == "my_game — vn-engine Studio"
     assert [ed.notebook.tab(t, "text") for t in ed.notebook.tabs()] == [
-        "Editor", "Story map", "Database", "Asset", "Outline"]   # Outline: AC-F45-54
+        "Editor", "Story map", "Database", "Game settings", "Asset",
+        "Outline"]                                       # Outline: AC-F45-54; F47 W2, W4
     bar = ed.menubar
     assert [bar.entrycget(i, "label") for i in range(bar.index("end") + 1)] == [
         "File", "Edit", "Insert", "Story", "View", "Run", "Help"]   # Story: AC-F46-33
@@ -412,7 +413,8 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         (ed.view_menu, "Editor", ed.text, "<Control-Key-1>", ("show_tab", 0)),
         (ed.view_menu, "Story map", ed.text, "<Control-Key-2>", ("show_tab", 1)),
         (ed.view_menu, "Database", ed.text, "<Control-Key-3>", ("show_tab", 2)),   # F47 W2
-        (ed.view_menu, "Asset", ed.text, "<Control-Key-4>", ("show_tab", 3)),
+        (ed.view_menu, "Game settings", ed.text, "<Control-Key-4>", ("show_tab", 3)),  # W4
+        (ed.view_menu, "Asset", ed.text, "<Control-Key-5>", ("show_tab", 4)),
         (ed.run_menu, "Play", ed.text, "<Shift-F5>", ("play_from_start",)),   # F47
         (ed.run_menu, "Play this scene", ed.text, "<F5>", ("play_scene",)),
         (ed.run_menu, "Stop", ed.text, "<Control-F2>", ("stop_game",)),
