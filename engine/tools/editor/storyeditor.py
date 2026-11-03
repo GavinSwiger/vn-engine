@@ -29,6 +29,7 @@ from typing import Any
 from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.menu import Menu
 from engine.script.messages import show
+from engine.script.statement_docs import StatementDoc
 from engine.tools.editor import assist, formdialogs, forms, scenes, scriptedit
 from engine.tools.editor.eventsview import EventsView
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, Row
@@ -387,10 +388,12 @@ class StoryEditor:
             assets.refresh()
         return assets
 
-    def insert(self, index: int | None = None) -> Plan | None:
+    def insert(self, index: int | None = None, doc: StatementDoc | None = None
+               ) -> Plan | None:
         """Insert… (the button, Insert, Enter on a ◆ row): the picker, then the doc's form
         (Cancel inserts nothing), or a text-only doc's example with its first field
-        selected in the Script page. It goes above the row (a ◆ row: its block's end)."""
+        selected in the Script page. It goes above the row (a ◆ row: its block's end).
+        ``doc`` skips the picker (F47's Guide: Show me for a choice or an ending)."""
         if self.guard() is None or not self.rows:
             return None
         if index is None:
@@ -399,7 +402,8 @@ class StoryEditor:
         if row is None or row.kind == "more":
             return None
         self.say("")
-        doc = formdialogs.pick_insert(self.win.root, assist.insert_menu())
+        if doc is None:
+            doc = formdialogs.pick_insert(self.win.root, assist.insert_menu())
         if doc is None:
             return None
         unit = self._unit()

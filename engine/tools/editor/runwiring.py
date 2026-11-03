@@ -83,11 +83,23 @@ class RunWiring:
         self.stop_button = self.play_bar.stop_button
         self.start_label = self.play_bar.scene_label
         self._played_marked = False
+        self._state_writable = True
         state = studiostate.read_state(self.paths.root)
         if isinstance(state, studiostate.StudioState):
             self.guide_shown = state.guide_open
             self._played_marked = state.played
+        elif state.link:                    # a link: never write there (studiostate)
+            self._state_writable = False
         self.play_bar.set_guide(self.guide_shown)
+
+    def save_studio_state(self, **changes: bool) -> None:
+        """Change ``.studio/studio.json``; after a link is found, nothing more is written
+        for this window."""
+        if not self._state_writable:
+            return
+        problem = studiostate.with_change(self.paths.root, **changes)
+        if problem is not None and problem.link:
+            self._state_writable = False
 
     # --- Start label (PR-F44-09, UI-F44-05) -------------------------------------------------
 
@@ -176,7 +188,7 @@ class RunWiring:
         pane itself (W6) listens through ``show_guide`` when the window has one."""
         self.guide_shown = not self.guide_shown
         self.play_bar.set_guide(self.guide_shown)
-        studiostate.with_change(self.paths.root, guide_open=self.guide_shown)
+        self.save_studio_state(guide_open=self.guide_shown)
         show = getattr(self, "show_guide", None)
         if callable(show):
             show(self.guide_shown)
@@ -224,7 +236,10 @@ class RunWiring:
             self.show_hint(NO_PROBLEMS)
             if not self._played_marked:     # Guide step 7: a Play reached the game window
                 self._played_marked = True
-                studiostate.with_change(self.paths.root, played=True)
+                self.save_studio_state(played=True)
+                played = getattr(self, "guide_played", None)
+                if callable(played):
+                    played()
         elif event.report is not None and event.state in (PreviewState.DIDNT_START,
                                                           PreviewState.STOPPED_ERROR):
             self.show_report(event.report)

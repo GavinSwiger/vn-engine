@@ -21,6 +21,7 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
+from engine.tools.editor.guide import GUIDE_TITLE
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.build.texts import MENU as BUILD_MENU
 
@@ -113,6 +114,7 @@ class StudioMenus:
             ]),
             ("Help", "help_menu", [
                 Item("Help for this line", command=self.focus_help),
+                Item(GUIDE_TITLE, command=self.toggle_guide),   # F47: shows or hides it
             ]),
         ]
 

@@ -15,11 +15,12 @@ import threading
 import tkinter as tk
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from tkinter import ttk
 
 from engine.core.errors import UserFacingError
 from engine.core.paths import GamePaths, engine_root
 from engine.script.messages import show
-from engine.tools.editor import files
+from engine.tools.editor import dialogs, files
 from engine.tools.editor.dialogs import (
     ask,
     ask_directory,
@@ -45,6 +46,71 @@ RENAME_BUTTONS = ("Rename", "Cancel")
 DELETE_BUTTONS = ("Delete", "Cancel")
 DELETE_DEFAULT = 1                      # a destructive button is never the default (UI-F45-06)
 ADD_POLL_MS = 50
+NEW_GAME_TITLE = "New game"             # F47 PR-F47-25: Start from, then the folder
+NEW_GAME_NEXT = "Choose a folder…"
+TEMPLATE_HINTS = {
+    files.TEMPLATE_SAMPLE: "Two characters, two places, music, a choice and two endings, "
+                           "ready for you to change.",
+    files.TEMPLATE_EMPTY: "One scene with two lines of text, for you to fill in.",
+}
+
+
+def ask_start_from(parent: tk.Misc) -> str | None:
+    """New game's first question (F47 §6.4): **Start from** the sample story (first, ticked:
+    the recommended way in) or an empty game, each with a line saying what it holds. The
+    ``files.TEMPLATES`` key for **Choose a folder…**, None for Cancel, Esc or the close
+    box. Up and Down move between the choices; Enter goes on."""
+    dialog = dialogs._dialog(parent)
+    dialog.title(NEW_GAME_TITLE)
+    result: list[str | None] = [None]
+    chosen = tk.StringVar(dialog, value=files.TEMPLATES[0][0])
+    body, scale = dialogs._body(dialog)
+    px = lambda value: round(value * scale)       # noqa: E731
+    style = ttk.Style(dialog)
+    for option in ("background", "foreground", "indicatorbackground", "indicatorforeground",
+                   "upperbordercolor", "lowerbordercolor", "indicatorsize", "indicatormargin",
+                   "focuscolor"):
+        value = style.lookup("Dialog.TCheckbutton", option)
+        if value not in ("", None):
+            style.configure("Dialog.TRadiobutton", **{option: value})
+    for option in ("background", "indicatorbackground", "upperbordercolor",
+                   "lowerbordercolor"):
+        found = style.map("Dialog.TCheckbutton", option)
+        if found:
+            style.map("Dialog.TRadiobutton", **{option: found})
+    ttk.Label(body, text=files.START_FROM, style="Dialog.TLabel").pack(anchor="w")
+    buttons: list[ttk.Radiobutton] = []
+    for key, label in files.TEMPLATES:
+        button = ttk.Radiobutton(body, text=label, value=key, variable=chosen,
+                                 style="Dialog.TRadiobutton")
+        button.pack(anchor="w", pady=(px(10), 0))
+        ttk.Label(body, text=TEMPLATE_HINTS.get(key, ""), style="Dialog.Hint.TLabel",
+                  wraplength=px(360), justify="left").pack(anchor="w", padx=(px(21), 0))
+        buttons.append(button)
+
+    def pick(index: int) -> None:
+        if index == 0:
+            result[0] = chosen.get()
+        dialog.destroy()
+
+    def move(step: int) -> str:
+        keys = [key for key, _label in files.TEMPLATES]
+        at = (keys.index(chosen.get()) + step) % len(keys)
+        chosen.set(keys[at])
+        buttons[at].focus_set()
+        return "break"
+
+    dialogs._buttons(dialog, body, (NEW_GAME_NEXT, "Cancel"), pick)
+    for button in buttons:
+        button.bind("<Up>", lambda _e: move(-1))
+        button.bind("<Down>", lambda _e: move(1))
+        for key in ("<Return>", "<KP_Enter>"):
+            button.bind(key, lambda _e: pick(0))
+    dialog.bind("<Escape>", lambda _e: pick(1))
+    dialog.protocol("WM_DELETE_WINDOW", lambda: pick(1))
+    dialog.ask_buttons = buttons        # type: ignore[attr-defined]  (tests read them)
+    dialogs._run(parent, dialog, buttons[0])
+    return result[0]
 
 
 def launch_studio(folder: Path) -> None:
@@ -305,14 +371,18 @@ class FileActions:
         return None
 
     def new_game(self) -> None:
-        """File ▸ New game…: create a game from the starter in a new or empty folder and
-        open it in its own Studio; this window stays open."""
+        """File ▸ New game…: **Start from** (the sample story, first and recommended, or an
+        empty game), then a new or empty folder; the game opens in its own Studio and this
+        window stays open (F47 PR-F47-25)."""
         if self.closed:
+            return
+        template = ask_start_from(self.root)
+        if template is None:
             return
         folder = ask_directory(self.root)
         if folder is None:
             return
-        result = files.new_game(folder)
+        result = files.new_game(folder, template=template)
         if isinstance(result, files.Refusal):
             show_error(self.root, result.text)
             return

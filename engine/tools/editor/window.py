@@ -32,6 +32,7 @@ applies a ``scriptedit.Plan`` (F46's story edits, F47's Database and Game settin
 - ``runwiring.RunWiring``: the Play bar (``playbar``), Play and Stop, and the poll loop
   (``join_runner``).
 - ``mapwiring.MapWiring``: the Story map tab, its side pane, the layout file, map undo.
+- ``guidepane.GuideWiring``: the Guide column at the right edge (F47 "Your first game").
 
 Imports only ``engine.core``, ``engine.script`` (through ``document`` and ``syntax``), and
 the standard library; never pygame (TR-F44-01).
@@ -137,6 +138,7 @@ from engine.tools.editor.fileactions import (  # re-exported: tests read window.
     launch_studio,
 )
 from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
+from engine.tools.editor.guidepane import GuideWiring
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
     STATUS_NOT_RUNNING,
@@ -317,7 +319,8 @@ class OpenFile:
         return self.doc is not None and self.doc.dirty
 
 
-class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring):
+class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring,
+                   GuideWiring):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""
@@ -517,6 +520,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._build_editor_area()
         self._build_side_pane()
         self._build_problems_panel()
+        self._build_guide()                 # F47: the Guide column, right of the tabs
 
     def _build_left_column(self) -> None:
         """The chrome-toned left column (08 §7): PROJECT's header with "+ Add files…" as a
