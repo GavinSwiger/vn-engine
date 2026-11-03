@@ -10,7 +10,7 @@ from pathlib import Path
 
 from engine.core.paths import engine_root
 from engine.core.redact import RedactRoot
-from engine.tools.build import procs, spec
+from engine.tools.build import procs, spec, texts
 
 REPO = Path(__file__).resolve().parents[3]
 HASH_RE = re.compile(r"--hash=sha256:[0-9a-f]{64}")
@@ -72,6 +72,7 @@ def test_ac_f42_24_missing_or_wrong_version_tool():
                                                          procs.PYINSTALLER_VERSION)
     assert procs.tool_status(version=lambda name: procs.PYINSTALLER_VERSION).ok
     assert "PyInstaller" not in sys.modules
+    assert {"B_NO_TOOL", "B_TOOL_VERSION"} <= set(texts.FAILURES)
 
 
 def test_ac_f42_39_build_side_children_spec_and_redaction(tmp_path, monkeypatch):

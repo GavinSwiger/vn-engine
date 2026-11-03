@@ -28,11 +28,11 @@ from typing import Final
 
 from engine.core.errors import EngineError
 from engine.core.paths import GamePaths, engine_data_dir
+from engine.tools.build.texts import BAD_ICON
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")   # no banner on a report stream
 import pygame  # noqa: E402
 
-BAD_ICON: Final = "BAD_ICON"             # texts.py field-message key
 SIZES: Final = (16, 32, 48, 256)
 MIN_SIDE: Final = 16
 ICON_MAX_BYTES: Final = 16 << 20
