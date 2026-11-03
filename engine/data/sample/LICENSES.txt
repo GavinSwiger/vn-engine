@@ -42,6 +42,21 @@ Author: vn-engine contributors
 Source: Daichi's sprite, grin, tests/fixtures/F04/make_example_art.py
 SHA-256: deeff7cc6420746deefa0013916b838beb916cab12457c2f3dd69b4c9ee0f618
 
+File: images/hana/happy_talk1.png
+Author: vn-engine contributors
+Source: Hana's sprite, happy, talking frame (F38), tests/fixtures/F04/make_example_art.py
+SHA-256: b3cc0852b9d358539e8bdadf2271bcc000bae28300b4f8f8df041ef435451c9d
+
+File: images/hana/sad_blink1.png
+Author: vn-engine contributors
+Source: Hana's sprite, sad, blink frame (F38), tests/fixtures/F04/make_example_art.py
+SHA-256: fd637b714aa5e6b1166b7eca6aecb8c749ba12b3e58b3910839d797538919d9e
+
+File: images/hana/sad_talk1.png
+Author: vn-engine contributors
+Source: Hana's sprite, sad, talking frame (F38), tests/fixtures/F04/make_example_art.py
+SHA-256: 76ec0f41abaec435ff92bb664edf9ca415e8cf16b6f1c589a94ad142d5544a7d
+
 File: audio/music/lantern_walk.wav
 License: CC0 1.0 (original)
 Author: vn-engine contributors

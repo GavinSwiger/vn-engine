@@ -64,10 +64,30 @@ it over the composite. A transition filters both pictures while PREPARING (one b
 after composing) and its kind draws from the filtered copies; its last frame is the filtered
 new composite. A filter change mid-transition re-prepares as a resize does. FAST frames and
 ``picture()`` stay plain.
+
+Sprite frames (F38 ``SPEC.md`` §5, ``07`` I-2 to I-7; ADR-0007 F38 amendment): ``show_frames``
+takes the animator's wishes (tag → blink or talking frame name; ``frames_of``, injected by
+``app``, names a look's frames). A frame is used once it is ready: its file is an image of
+exactly the look's size (else W217, once per file, and it is never drawn) and its FINAL
+variant at the sprite's size and flip is cached. A change repaints the composite inside that
+sprite's visible device rect only (``set_clip``): the background and every sprite in order,
+from cached variants only, so the result is the full compose's to the pixel and costs about
+1.3 ms at 1080p. At most one sprite is repainted per ``draw``, oldest change first (a tag's
+newer wish replaces its pending one in place). Frames don't change during a transition, under
+a title card, on a FAST frame, while a picture filter is set, before the stage is composed at
+this size, or for a sprite over ``CROP_AREA_FACTOR`` viewports (``oversized``); a filter set
+while a frame shows puts the plain looks back with one full compose. Every full compose draws
+plain looks, and frames come back once ready. A clipped repaint never scales: a frame not
+ready shows the look, and the shown looks' missing frames are asked of the prefetcher (with
+``rescale`` when only the variant is missing) whenever it is idle, a few rounds per compose;
+a file that can't be read is loaded once by ``assets.image`` so F01 logs it. Going back to the
+look when a variant in the clip was evicted is a full compose (one long frame, I-4). A second
+``AssetHold`` pins the shown looks' frame variants (I-6). ``picture()`` and F28's
+``draw_sprite_copy`` show the frame on screen (I-7).
 """
 
 import math
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Protocol
@@ -104,6 +124,7 @@ SPRITE_LABEL_WRAP: Final = 296
 SPRITE_BAND_FROM_TOP: Final = 192        # the band's center, below the placeholder's top
 CENTER: Final = "center"
 _EPSILON: Final = 1e-9
+FRAME_ASK_ROUNDS: Final = 3              # F38: prefetch asks for missing frames per compose
 # F09 §12: the lengths a ``with`` leaves out, per kind (``[effects]``); a kind with no key of
 # its own (a mask) takes the dissolve's.
 DEFAULT_SECONDS: Final = MappingProxyType({"dissolve": 0.5, "fade": 1.0})
@@ -139,6 +160,38 @@ class _Sprite:
     art: _Art
     x: float                              # the anchor (bottom center), canvas units
     y: float
+
+
+class SpriteFrames(Protocol):
+    """F38: a look's frame names (``script/spriteframes.LookFrames``)."""
+    blink: Sequence[str]
+    talk: Sequence[str]
+
+
+FramesOf = Callable[[str], SpriteFrames]
+
+
+def frame_size_text(frame: str, size: tuple[int, int], look: str,
+                    look_size: tuple[int, int]) -> str:
+    """W217 (F38 §3): a frame of another size than its look is never used. ``frame`` and
+    ``look`` are game-relative file refs (shown through ``echo``)."""
+    return (f"{echo(frame)} is {size[0]}\u00d7{size[1]}, but its look {echo(look)} is "
+            f"{look_size[0]}\u00d7{look_size[1]}, so it isn't used. Make the frame the same "
+            f"size as the look.")
+
+
+@dataclass(frozen=True, slots=True)
+class _Place:
+    """F38: where a sprite with a picture was composed at FINAL quality: its full device
+    rect, its variant's size and flip, and its look."""
+    rect: pygame.Rect
+    size: tuple[int, int]
+    flip: bool
+    look: ImageRef
+    name: str
+
+
+_Shown = tuple[str, ImageRef]           # F38: a frame's image name and its picture
 
 
 class _Admits(Protocol):
@@ -234,7 +287,8 @@ class StageView:
                  seconds: Mapping[str, float] = DEFAULT_SECONDS,
                  fade_color: RGB = (0, 0, 0),
                  locate: Callable[[str], str] | None = None,
-                 card_painter: CardPainter | None = None) -> None:
+                 card_painter: CardPainter | None = None,
+                 frames_of: FramesOf | None = None) -> None:
         self.assets = assets
         self.index = index
         self.art_height = art_height
@@ -272,6 +326,20 @@ class StageView:
         # F28: the picture filter (colorshift) and the look it was set at (04 §6.5).
         self._filter: PictureFilter | None = None
         self._filter_look: tuple[float, float] | None = None
+        # F38: a look's frames (injected by ``app``; None: no sprite animates), the frames in
+        # the composite and the changes waiting (oldest first), the sprites' places at the
+        # last FINAL compose (valid while ``_places_key`` is the composite's), the frame
+        # variants held, and the prefetch rounds asked since that compose.
+        self.frames_of = frames_of
+        self._shown: dict[str, _Shown] = {}
+        self._pending: dict[str, _Shown | None] = {}
+        self._places: dict[str, _Place] = {}
+        self._places_key: tuple | None = None
+        self._oversized: frozenset[str] = frozenset()
+        self._frame_hold: AssetHold | None = None
+        self._ask_rounds = FRAME_ASK_ROUNDS
+        self._frame_images: dict[str, ImageRef] = {}     # frame ref → its picture, once seen
+        self._warned_frames: set[str] = set()            # W217, once per file
 
     # --- commands ------------------------------------------------------------------------------
 
@@ -364,6 +432,8 @@ class StageView:
         if f is self._filter and look == self._filter_look:
             return
         self._filter, self._filter_look = f, look
+        if f is not None and self._shown and self._run is None:
+            self._composite_key = None            # F38 (07 I-2): plain looks, one compose
         run = self._run
         if run is not None:
             shift, units = run.shift, run.shift_units
@@ -421,7 +491,10 @@ class StageView:
         for name in cmd.sprites:
             entry = self.index.get(name)
             if isinstance(entry, ImageFile):
-                wanted.append(PrefetchRequest(entry.ref, self._sprite_target(name)))
+                target = self._sprite_target(name)
+                wanted.append(PrefetchRequest(entry.ref, target))
+                for _, ref in self._frame_files(name):       # F38 (PR-F38-09)
+                    wanted.append(PrefetchRequest(ref, target))
         prefetcher.request(wanted)
 
     def update(self) -> None:
@@ -445,6 +518,7 @@ class StageView:
         """F39: a rebuilt image index; the current stage is resolved again."""
         self.cancel()
         self.index = index
+        self._frame_images.clear()                # F38: frame files may have changed
         self._release(self._set(self.stage, self._card))
 
     @staticmethod
@@ -459,6 +533,254 @@ class StageView:
         if run is not None and self._composite_key is None and run.old_size is not None:
             return run.old
         return self._composite
+
+    # --- F38 sprite frames (module docstring; ADR-0007 F38 amendment) --------------------------
+
+    @property
+    def oversized(self) -> frozenset[str]:
+        """F38: the tags of sprites too big to animate (a variant over
+        ``CROP_AREA_FACTOR`` viewports at the last FINAL compose). Read only."""
+        return self._oversized
+
+    @property
+    def frames_held(self) -> bool:
+        """F38 (07 I-2): frames can't change now: a transition, a title card, a picture
+        filter, or the last draw was a FAST frame. Read only."""
+        return (self._run is not None or self._card is not None or self._filter is not None
+                or self._drawn_quality is not RenderQuality.FINAL)
+
+    @property
+    def shown_frames(self) -> Mapping[str, str]:
+        """F38: tag → the frame name drawn in the composite now. Read only."""
+        return MappingProxyType({tag: shown[0] for tag, shown in self._shown.items()})
+
+    def show_frames(self, wanted: Mapping[str, str]) -> None:
+        """F38: each sprite shows the frame ``wanted`` names for its tag once that frame is
+        ready, else its look; the next draws repaint the changes, one sprite each, oldest
+        first. Missing frames of the shown looks are asked of the idle prefetcher."""
+        self._ask_frames()
+        key = self._composite_key
+        if self.frames_held or key is None or key != self._places_key:
+            self._pending.clear()
+            return
+        pending = self._pending
+        for tag in list(pending):
+            if tag not in self._places:
+                del pending[tag]
+        for tag, place in self._places.items():
+            name = wanted.get(tag)
+            image = None if name is None else self._ready_frame(place, name)
+            shown = self._shown.get(tag)
+            if (None if shown is None else shown[0]) == (None if image is None else name):
+                pending.pop(tag, None)
+            else:
+                pending[tag] = None if image is None or name is None else (name, image)
+
+    def _frame_files(self, look: str) -> list[tuple[str, str]]:
+        """``look``'s frames that are image files: ``(frame name, file ref)``, play order."""
+        frames_of = self.frames_of
+        if frames_of is None:
+            return []
+        frames = frames_of(look)
+        out = []
+        for name in (*frames.blink, *frames.talk):
+            entry = self.index.get(name)
+            if isinstance(entry, ImageFile):
+                out.append((name, entry.ref))
+        return out
+
+    def _place_sprites(self, vw: int, vh: int) -> None:
+        """After a FINAL compose: each sprite's place, the oversized tags, and the second
+        ``AssetHold`` on the shown looks' frame variants (07 I-6); the prefetch asks start
+        again."""
+        places: dict[str, _Place] = {}
+        oversized: set[str] = set()
+        keys: list[tuple] = []
+        c = self._canvas
+        for sprite in self._sprites:
+            image = sprite.art.image
+            if image is None:
+                continue
+            tag, flip = sprite.state.tag, sprite.state.flip
+            rect, size = self._sprite_rect(c, image.size, sprite.x, sprite.y, sprite.state.zoom)
+            if size[0] * size[1] > CROP_AREA_FACTOR * vw * vh:
+                oversized.add(tag)
+                continue
+            places[tag] = _Place(pygame.Rect(rect.topleft, size), size, flip, image,
+                                 sprite.state.image)
+            for _, ref in self._frame_files(sprite.state.image):
+                keys.append(("img", ref) if size == image.size and not flip
+                            else self.assets.variant_key(ref, size, flip))
+        self._places, self._oversized = places, frozenset(oversized)
+        self._places_key = self._composite_key
+        old, self._frame_hold = self._frame_hold, AssetHold(self.assets.cache, keys)
+        self._release(old)
+        self._ask_rounds = 0
+
+    def _frame_image(self, ref: str) -> ImageRef | None:
+        """The frame file's picture once its source has been in the cache (no load)."""
+        image = self._frame_images.get(ref)
+        if image is None and self.assets.is_cached(ref):
+            image = self.assets.image(ref)        # a cache hit: nothing is read
+            if image.is_placeholder:
+                return None
+            self._frame_images[ref] = image
+        return image
+
+    def _ready_frame(self, place: _Place, name: str) -> ImageRef | None:
+        """The frame ``name``'s picture when it can be drawn at ``place`` now: an image file
+        of the look's size (else W217) whose variant there is cached."""
+        entry = self.index.get(name)
+        if not isinstance(entry, ImageFile):
+            return None
+        image = self._frame_image(entry.ref)
+        if image is None or not self._same_size(entry.ref, image, place):
+            return None
+        if self.assets.cached_variant(image, place.size, flip_x=place.flip) is None:
+            return None
+        return image
+
+    def _same_size(self, ref: str, image: ImageRef, place: _Place) -> bool:
+        """W217 once per file when the frame isn't its look's size."""
+        look = place.look
+        if image.size == look.size:
+            return True
+        if ref not in self._warned_frames:
+            self._warned_frames.add(ref)
+            _log.warning("%s", frame_size_text(ref, image.size, look.ref, look.size),
+                         extra={"code": "W217"})
+        return False
+
+    def _ask_frames(self) -> None:
+        """PR-F38-09: while the prefetcher is idle, ask it for the shown looks' frames whose
+        variant at the sprite's size and flip isn't cached (``rescale``: the source may be),
+        up to ``FRAME_ASK_ROUNDS`` times per compose. From the second round a file that
+        can't be read is loaded once by ``assets.image`` (F01 logs it). Under the ``pixel``
+        filter (never pre-scaled by the worker) one cached frame is scaled here per call
+        (nearest-neighbour, cheap)."""
+        if self._ask_rounds >= FRAME_ASK_ROUNDS:
+            return
+        prefetcher = self.prefetcher
+        if prefetcher is not None and prefetcher.pending:
+            return
+        assets = self.assets
+        wanted: list[PrefetchRequest] = []
+        for place in self._places.values():
+            for _, ref in self._frame_files(place.name):
+                image = self._frame_image(ref)
+                if image is not None:
+                    if not self._same_size(ref, image, place) or assets.cached_variant(
+                            image, place.size, flip_x=place.flip) is not None:
+                        continue
+                    if assets.scale_filter == "pixel":
+                        assets.variant(image, place.size, RenderQuality.FINAL,
+                                       flip_x=place.flip)
+                        return                    # one a frame; the round isn't counted
+                elif self._ask_rounds > 0 and assets.read_image_bytes(ref) is None:
+                    assets.image(ref)             # F01's one log line; the look shows
+                    continue
+                wanted.append(PrefetchRequest(ref, _frame_target(place), rescale=True))
+        self._ask_rounds = self._ask_rounds + 1 if wanted else FRAME_ASK_ROUNDS
+        if wanted and prefetcher is not None:
+            prefetcher.request(wanted)
+
+    def _repaint(self, canvas: Canvas) -> None:
+        """One pending change, oldest first: a change that can't be drawn now is dropped
+        (the next ``show_frames`` asks again) and the next one is tried."""
+        while self._pending:
+            tag = next(iter(self._pending))
+            want = self._pending.pop(tag)
+            if self._repaint_one(canvas, tag, want):
+                return
+
+    def _repaint_one(self, canvas: Canvas, tag: str, want: _Shown | None) -> bool:
+        """``tag`` shows ``want`` (None: its look): the composite is repainted inside the
+        sprite's visible rect from cached variants only. True when something was drawn."""
+        place = self._places.get(tag)
+        composite = self._composite
+        if place is None or composite is None:
+            return False
+        shown = dict(self._shown)
+        if want is None:
+            shown.pop(tag, None)
+        else:
+            shown[tag] = want
+        vw, vh = composite.get_size()
+        clip = place.rect.clip(pygame.Rect(0, 0, vw, vh))
+        if clip.width <= 0 or clip.height <= 0:
+            self._shown = shown                   # off screen: nothing to draw
+            return False
+        c = self._canvas
+        c.final_scale = canvas.final_scale
+        c.bind(composite, Viewport(CANVAS_SIZE[0], CANVAS_SIZE[1], vw, vh, 0, 0, vw, vh),
+               RenderQuality.FINAL)
+        target = c.surface
+        assert target is not None
+        try:
+            ops, miss = self._clip_ops(c, clip, shown, vw, vh)
+            if ops is not None:
+                target.set_clip(clip)
+                for op in ops:
+                    op(c, target)
+                target.set_clip(None)
+                self._shown = shown
+                return True
+        finally:
+            c.surface = None
+        if miss == "art":                         # a look's or the background's variant was
+            self._compose(canvas)                 # evicted: plain looks, one compose (I-4)
+            return True
+        return False                              # the frame waits
+
+    def _clip_ops(self, c: Canvas, clip: pygame.Rect, shown: Mapping[str, _Shown], vw: int,
+                  vh: int) -> "tuple[list[Callable[[Canvas, pygame.Surface], object]] | None, str]":
+        """The draws of a clipped repaint, in the full compose's order and through its own
+        code for the background and looks (so the pixels are the same), or ``(None, what)``
+        when a variant isn't cached: ``"art"`` (the background or a look) or ``"frame"``."""
+        final = RenderQuality.FINAL
+        background = self._background
+        if background.image is not None:
+            size = _cover_size(background.image.size, vw, vh)
+            dest = ((vw - size[0]) // 2, (vh - size[1]) // 2)
+            if not self._variant_cached(background.image, size, dest, False, vw, vh):
+                return None, "art"
+        ops: list[Callable[[Canvas, pygame.Surface], object]] = [
+            lambda cc, t: self._draw_background(cc, t, background, vw, vh, final)]
+        for sprite in self._sprites:
+            image = sprite.art.image
+            if image is None:                     # a solid color or a placeholder
+                ops.append(lambda cc, t, s=sprite: self._draw_sprite(cc, t, s, vw, vh, final))
+                continue
+            flip = sprite.state.flip
+            rect, size = self._sprite_rect(c, image.size, sprite.x, sprite.y, sprite.state.zoom)
+            full = pygame.Rect(rect.topleft, size)
+            if not full.colliderect(clip):
+                continue
+            frame = shown.get(sprite.state.tag)
+            if frame is None:
+                if not self._variant_cached(image, size, rect.topleft, flip, vw, vh):
+                    return None, "art"
+                ops.append(lambda cc, t, s=sprite: self._draw_sprite(cc, t, s, vw, vh, final))
+                continue
+            found = self.assets.cached_variant(frame[1], size, flip_x=flip)
+            if found is None:
+                return None, "frame"
+            art, offset = found
+            at = (full.x + offset[0], full.y + offset[1])
+            ops.append(lambda cc, t, art=art, at=at: t.blit(art, at))
+        return ops, ""
+
+    def _variant_cached(self, image: ImageRef, size: tuple[int, int], dest: tuple[int, int],
+                        flip: bool, vw: int, vh: int) -> bool:
+        """Whether ``_blit`` would find its variant (cropped like it) in the cache."""
+        full = pygame.Rect(dest, size)
+        visible = full.clip(pygame.Rect(0, 0, vw, vh))
+        if visible.width <= 0 or visible.height <= 0:
+            return True
+        crop = None
+        if size[0] * size[1] > CROP_AREA_FACTOR * vw * vh:
+            crop = (visible.x - full.x, visible.y - full.y, visible.width, visible.height)
+        return self.assets.cached_variant(image, size, flip_x=flip, crop=crop) is not None
 
     # --- drawing ---------------------------------------------------------------------------
 
@@ -492,6 +814,9 @@ class StageView:
         composed = key != (self.generation, size[0], size[1], canvas.quality)
         if composed:
             self._compose(canvas)
+        elif self._pending and self._filter is None and self._card is None \
+                and canvas.quality is RenderQuality.FINAL:
+            self._repaint(canvas)                 # F38: at most one sprite's rect
         composite = self._composite
         assert composite is not None
         f = self._filter
@@ -564,6 +889,16 @@ class StageView:
         if sprite is None or sprite.art.image is None:
             return False
         image = sprite.art.image
+        shown = self._shown.get(tag)              # F38: the frame on screen, never cropped
+        if shown is not None:
+            rect, size = self._sprite_rect(self._canvas, image.size, sprite.x, sprite.y,
+                                           sprite.state.zoom)
+            found = self.assets.cached_variant(shown[1], size, flip_x=sprite.state.flip)
+            if found is not None:
+                art, offset = found
+                surface.blit(art, (rect.x + offset[0] + offset_px[0],
+                                   rect.y + offset[1] + offset_px[1]))
+                return True
         rect, size = self._sprite_rect(self._canvas, image.size, sprite.x, sprite.y,
                                        sprite.state.zoom)
         full = pygame.Rect(rect.topleft, size)
@@ -733,8 +1068,11 @@ class StageView:
                                       self._sprites, self._card)
         vw, vh = surface.get_size()
         self._composite_key = (self.generation, vw, vh, canvas.quality)
+        self._shown = {}                          # F38 (07 I-3): plain looks
+        self._pending.clear()
         if canvas.quality is RenderQuality.FINAL:
             self._final.viewport = self._canvas.viewport
+            self._place_sprites(vw, vh)
 
     def _paint(self, canvas: Canvas, buffer: pygame.Surface | None, background: _Art,
                sprites: tuple[_Sprite, ...], card: TitleCard | None = None
@@ -869,6 +1207,11 @@ class StageView:
         self.stage = stage
         self._card = card
         self.generation += 1
+        self._shown = {}                          # F38: a new stage shows plain looks
+        self._pending.clear()
+        self._places, self._places_key, self._oversized = {}, None, frozenset()
+        self._release(self._frame_hold)
+        self._frame_hold = None
         held: list[tuple] = []
         background = _Art(rgb=self.empty_color) if stage.background is None \
             else self._resolve(stage.background, held)
@@ -916,6 +1259,18 @@ def _rgb(color: str) -> RGB:
     return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
 
+def _frame_target(place: _Place) -> Callable[[int, int], Target]:
+    """F38: a frame's pre-scaled variant is its look's (none for another size: W217)."""
+    look_size, size, flip = place.look.size, place.size, place.flip
+
+    def target(w: int, h: int) -> Target:
+        if (w, h) != look_size or (size == (w, h) and not flip):
+            return None
+        return size, flip
+
+    return target
+
+
 def _cover_size(source: tuple[int, int], vw: int, vh: int) -> tuple[int, int]:
     """A background's size covering ``vw × vh`` (UI-F04-03): scaled by the larger ratio,
     rounded up so every pixel is covered."""
@@ -925,5 +1280,6 @@ def _cover_size(source: tuple[int, int], vw: int, vh: int) -> tuple[int, int]:
 
 
 __all__ = ["CROP_AREA_FACTOR", "CardPainter", "DEFAULT_SECONDS", "FALLBACK_KIND",
-           "ImagePrefetcher", "MISSING_FILL", "PREFETCH_ONE_MAX", "PREFETCH_THREADED",
+           "FRAME_ASK_ROUNDS", "FramesOf", "ImagePrefetcher", "SpriteFrames",
+           "frame_size_text", "MISSING_FILL", "PREFETCH_ONE_MAX", "PREFETCH_THREADED",
            "PREFETCH_TOTAL_MAX", "PictureFilter", "StageView"]

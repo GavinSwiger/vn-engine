@@ -29,6 +29,9 @@ FROM_EXAMPLE = {
     "images/bg/bridge_night.png": "images/bg/bridge_night.png",
     "images/hana/happy.png": "images/hana/happy.png",
     "images/hana/sad.png": "images/hana/sad.png",
+    "images/hana/happy_talk1.png": "images/hana/happy_talk1.png",       # F38 frames
+    "images/hana/sad_blink1.png": "images/hana/sad_blink1.png",
+    "images/hana/sad_talk1.png": "images/hana/sad_talk1.png",
     "images/daichi/smile.png": "images/daichi/smile.png",
     "images/daichi/grin.png": "images/daichi/grin.png",
     "audio/music/lantern_walk.wav": "audio/bgm/lantern_walk.wav",

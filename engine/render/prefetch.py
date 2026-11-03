@@ -84,6 +84,9 @@ class PrefetchRequest:
 
     ref: str
     target: Callable[[int, int], Target] | None = None
+    # F38: decode again for the pre-scaled variant even when the source is cached (a frame
+    # whose variant at a new size or place is missing; the stage asks only when it is).
+    rescale: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,7 +240,8 @@ class ImagePrefetcher:
         seen: set[str] = set()
         for item in wanted:
             ref = item.ref
-            if ref in seen or ref == self._in_flight or self.assets.is_cached(ref):
+            if ref in seen or ref == self._in_flight or (
+                    self.assets.is_cached(ref) and not item.rescale):
                 continue
             seen.add(ref)
             queue_.append(item)
@@ -265,21 +269,23 @@ class ImagePrefetcher:
     def _adopt(self, done: Decoded) -> None:
         self._in_flight = None
         assets = self.assets
-        if done.source is None or assets.is_cached(done.ref):
-            return                    # failed (a later image() logs it), or loaded meanwhile
-        source = assets.convert(done.source)
+        if done.source is None:
+            return                    # failed (a later image() logs it)
+        cached = assets.is_cached(done.ref)       # loaded meanwhile, or an F38 rescale
         variants: dict[tuple, pygame.Surface] = {}
         if done.variant is not None and assets.scale_filter != "pixel":   # changed meanwhile
             key = assets.variant_key(done.ref, done.variant.get_size(), done.flip_x)
             variants[key] = assets.convert(done.variant)
-        assets.adopt(done.ref, source, variants)
+        if cached and not variants:
+            return
+        assets.adopt(done.ref, None if cached else assets.convert(done.source), variants)
 
     def _send_next(self) -> None:
         """At most one file read: cached refs are passed over without one."""
         assets = self.assets
         while self._queue:
             item = self._queue.popleft()
-            if assets.is_cached(item.ref):
+            if assets.is_cached(item.ref) and not item.rescale:
                 continue
             found = assets.read_image_bytes(item.ref)
             if found is None:

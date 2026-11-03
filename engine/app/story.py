@@ -77,6 +77,7 @@ interrupt is a real SIGINT to the main thread (``interrupt_main``), not only
 """
 
 import _thread
+import random
 import secrets
 import signal
 import sys
@@ -107,15 +108,16 @@ from engine.core.redact import echo
 from engine.render.effects import EffectLayer, EffectSettings, RefusalLog
 from engine.render.glitch import GlitchLayer
 from engine.render.prefetch import ImagePrefetcher
+from engine.render.spriteanim import AnimSettings, SpriteAnimator
 from engine.render.stage import StageView
-from engine.app.text_check import install_nvl, install_textbox
+from engine.app.text_check import install_nvl, install_sprite_anim, install_textbox
 from engine.runtime import limits
 from engine.runtime.commands import (AudioRestore, EndVoice, Event, Flash, Glitch,
                                      PlayMusic, PlaySound, PlayVoice, PrefetchImages,
                                      QueueMusic, RollbackView, Shake, ShowStage, StopMusic,
                                      StopSound, StopVoice, StoryEnded, StoryFailed, StoryWait)
 from engine.runtime.errors import StoryError, log_error, timeout_error
-from engine.runtime.images import BLACK, ImageIndex, SolidColor
+from engine.runtime.images import BLACK, ImageIndex, SolidColor, look_frames
 from engine.runtime.interpreter import Interpreter, RestoreOutcome, RestoreResult, Status
 from engine.runtime.limits import RUN_CHUNK_STEPS, RUN_SLICE_S
 from engine.runtime.state import GameState
@@ -500,7 +502,9 @@ def install_stage(app: "App", index: ImageIndex) -> StageScreen:
     screen on ``app.stage_screen`` (the bottom of ``bootstrap.in_game_screens``), and
     register ``ShowStage → StageScreen.show_stage``, ``PrefetchImages →
     StageView.prefetch``, F09's ``StoryWait``, ``Shake``, ``Flash``, and F28's ``Glitch``
-    (its ``GlitchLayer`` from ``[effects] glitch``/``glitch_size``). The launch's
+    (its ``GlitchLayer`` from ``[effects] glitch``/``glitch_size``). F38: one
+    ``SpriteAnimator`` (``[animation]``, the index's frames, its own ``random.Random()``) on
+    ``app.sprite_anim`` and the screen, fed by the textbox (``install_sprite_anim``). The launch's
     textbox (``install_textbox`` runs first) sends idle advances to ``StageScreen.press``.
     The view and the ``EffectLayer`` (``[effects]`` and ``[theme.effects]`` defaults) get
     the location formatter of W61/W62 (``ui`` and ``render`` import no ``script``);
@@ -520,6 +524,12 @@ def install_stage(app: "App", index: ImageIndex) -> StageScreen:
                      seconds={"dissolve": effects.dissolve, "fade": effects.fade,
                               "glitch": effects.glitch},             # F28 (07 I-10)
                      fade_color=theme.effects.fade_color, locate=locate)
+    # F38: frames by name (the picture names built once); presentation entropy, never the
+    # story's dice.
+    frames = look_frames(index)
+    view.frames_of = frames
+    anim = SpriteAnimator(frames, random.Random(), AnimSettings.from_config(config.animation))
+    app.sprite_anim = anim                                          # type: ignore[attr-defined]
     layer = EffectLayer(shake_seconds=effects.shake, shake_size=effects.shake_size,
                         flash_seconds=effects.flash, flash_color=theme.effects.flash_color,
                         empty_color=theme.stage.empty_color, refusals=RefusalLog(locate))
@@ -528,7 +538,8 @@ def install_stage(app: "App", index: ImageIndex) -> StageScreen:
                            refusals=layer.refusals, seed=time.monotonic_ns())
     # ``[effects] reduce``; F16 (step 3) replaces ``settings`` with config OR the player's.
     screen = StageScreen(app, view, effects=layer,
-                         settings=EffectSettings(reduce=effects.reduce), glitches=glitches)
+                         settings=EffectSettings(reduce=effects.reduce), glitches=glitches,
+                         anim=anim)
     app.stage_screen = screen
     router = app.router
     router.register(ShowStage, screen.show_stage)
@@ -540,6 +551,7 @@ def install_stage(app: "App", index: ImageIndex) -> StageScreen:
     textbox = getattr(app, "textbox", None)
     if textbox is not None:
         textbox.on_idle_advance = screen.press
+        install_sprite_anim(textbox, anim)                            # F38
     return screen
 
 

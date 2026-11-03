@@ -105,6 +105,7 @@ from engine.ui.builtin.textbox_screen import TextboxLook, TextboxScreen
 if TYPE_CHECKING:
     from engine.app.app import App
     from engine.core.config_schema import TextboxTheme
+    from engine.render.spriteanim import SpriteAnimator
 
 RGB = tuple[int, int, int]
 BLACK: RGB = (0, 0, 0)
@@ -308,6 +309,15 @@ def install_nvl(app: "App") -> None:
     if shell is None or textbox is None:
         return
     shell.add_in_game_reset(textbox.reset_nvl)
+
+
+def install_sprite_anim(screen: TextboxScreen, anim: "SpriteAnimator") -> None:
+    """F38 (SPEC §5): the sprite animator hears ``screen``'s lines (``on_say``: who talks,
+    restored lines never) and typing (mouths move with the letters, F17's NVL lines too),
+    like F06's blips. ``install_stage`` builds it (after ``install_textbox``) and calls
+    this."""
+    screen.add_say_listener(anim.on_say)
+    screen.add_listener(anim)
 
 
 def install_blips(app: "App", screen: TextboxScreen) -> BlipPlayer | None:
@@ -777,7 +787,7 @@ def fourthwall_warnings(program: object, *, offered: bool, fallback: str
 
 __all__ = ["NAME_MIN_RATIO", "TEXT_CHECK_CHARS", "TEXT_CHECK_CHUNK", "TEXT_MIN_RATIO", "W40_MAX_LINES",
            "W47_MAX_CHOICES", "W101_MAX_LINES", "TextLaunchCheck", "box_colors_warning", "box_contrast",
-           "character_warnings", "composite", "contrast_ratio", "fourthwall_warnings", "install_blips", "install_nvl", "install_textbox",
+           "character_warnings", "composite", "contrast_ratio", "fourthwall_warnings", "install_blips", "install_nvl", "install_sprite_anim", "install_textbox",
            "faces_from", "nvl_character_warning", "nvl_colors_warnings", "relative_luminance",
            "resolve_faces", "textbox_look",
            "text_launch_check", "w47_more"]

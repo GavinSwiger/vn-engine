@@ -125,7 +125,8 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()][:10] == [
         "Characters", "Pictures", "Sounds", "Variables", "Meters", "Codex",
         "Endings & routes", "Chapters", "Transitions", "Positions"]   # P1, then W7's P2
-    assert db.counts() == {"character": 2, "picture": 6, "sound": 4, "variable": 1,
+    # 9 pictures: the sample's 6 looks and backgrounds plus Hana's 3 F38 frames.
+    assert db.counts() == {"character": 2, "picture": 9, "sound": 4, "variable": 1,
                            "meter": 0, "codex": 0, "ending": 2, "chapter": 0,
                            "transition": 0, "position": 3}
     assert [r.text for r in db.visible_rows()] == ["Daichi", "Hana"]

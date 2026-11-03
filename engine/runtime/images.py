@@ -30,6 +30,8 @@ from engine.runtime.limits import IMAGE_SCAN_MAX_DEPTH, IMAGE_SCAN_MAX_FILES
 from engine.script.imagenames import (CHARACTERS, DOT, HYPHEN, IMAGE_NAME_MAX_WORDS, SPACE,
                                       STAGE_WORD, STATEMENT_WORD, TOO_MANY_WORDS, NameProblem,
                                       image_suffix, is_image_word, name_of, word_problem)
+# F38's frame rule lives in script/spriteframes.py; ``app`` reaches it through ``look_frames``.
+from engine.script.spriteframes import LookFrames, frames_of, picture_names
 
 # --- Limits (04 §12; the scan's two are in runtime/limits.py) -------------------------------
 DECLARATION_CHUNK = 256              # declared files located per step
@@ -323,8 +325,16 @@ def build_index(program: object, source: ImageSource) -> ImageIndex:
     return ImageScan(program, source).run()
 
 
+def look_frames(index: "ImageIndex") -> Callable[[str], LookFrames]:
+    """F38 (PR-F38-01): ``look → LookFrames`` over ``index``'s picture files (the name set
+    built once; a rebuilt index needs a new one)."""
+    names = picture_names(index.items())
+    return lambda look: frames_of(look, names)
+
+
 __all__ = ["BLACK", "DOT", "Duplicate", "HYPHEN", "IMAGE_NAME_MAX_WORDS", "IMAGE_SCAN_MAX_DEPTH",
            "IMAGE_SCAN_MAX_FILES", "IMAGES_DIR", "CHARACTERS", "Image", "ImageFile",
            "ImageIndex", "ImageScan", "ImageSource", "MissingDeclaration", "NameProblem",
            "SPACE", "STAGE_WORD", "STATEMENT_WORD", "SolidColor", "TOO_MANY_WORDS",
-           "build_index", "image_suffix", "is_image_word", "name_of", "word_problem"]
+           "build_index", "image_suffix", "is_image_word", "look_frames", "name_of",
+           "word_problem"]

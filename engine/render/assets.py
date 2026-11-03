@@ -283,12 +283,31 @@ class AssetManager:
             self._cache.put(key, (surface, offset), _surface_cost(surface), self.time.frame)
         return surface, offset
 
-    def adopt(self, ref: str, source: pygame.Surface,
+    def cached_variant(self, image: ImageRef, size_px: tuple[int, int], *, flip_x: bool = False,
+                       crop: tuple[int, int, int, int] | None = None
+                       ) -> tuple[pygame.Surface, tuple[int, int]] | None:
+        """F38 (ADR-0007 amendment): what ``variant(image, size_px, FINAL, …)`` would return,
+        but only when it is in the cache now (the source itself at 1:1 with no flip or
+        crop); None otherwise. Never loads, scales, or logs; a hit counts as a use."""
+        if image.is_placeholder:
+            return None
+        width, height = max(1, int(size_px[0])), max(1, int(size_px[1]))
+        frame = self.time.frame
+        if crop is None and not flip_x and (width, height) == image.size:
+            source = self._cache.get(image._key, frame)
+            return None if source is None else (source, (0, 0))
+        cached = self._cache.get(self._variant_key(image._key, (width, height), flip_x, crop),
+                                 frame)
+        return None if cached is None else (cached[0], cached[1])
+
+    def adopt(self, ref: str, source: pygame.Surface | None,
               variants: dict[tuple, pygame.Surface]) -> None:
         """F04 step 7 (prefetch): put a source decoded and converted elsewhere into the cache
         under ``("img", ref)``, and its pre-scaled variants under ``variant()``'s exact keys
-        (I-8), each charged like a load. Main thread only."""
-        self._cache.put(("img", ref), source, _surface_cost(source), self.time.frame)
+        (I-8), each charged like a load. Main thread only. ``source`` None (F38: a variant
+        made for a source already cached) adds the variants only."""
+        if source is not None:
+            self._cache.put(("img", ref), source, _surface_cost(source), self.time.frame)
         for key, surface in variants.items():
             self._cache.put(key, (surface, (0, 0)), _surface_cost(surface), self.time.frame)
 

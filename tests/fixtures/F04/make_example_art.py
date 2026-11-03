@@ -8,7 +8,8 @@ Everything is drawn here with pygame, so the art is original and can be redrawn 
 change: two 1280×720 backgrounds, the sprites of Hana and Daichi (400×680, drawn for the
 default ``art_height = 720``), one PNG per expression the script uses, and (F21 step 5) the
 codex picture of the paper lantern item (640×360, ``images/items/lantern.png``: the codex
-page scales it down to its 448×200 box). Shapes are drawn at
+page scales it down to its 448×200 box), and (F38) Hana's blink and talking frames
+(``FRAMES``). Shapes are drawn at
 twice the size and smooth-scaled down, which gives soft edges. Nothing is random but the
 stars, which use a fixed seed. Only ``<folder>/images/`` is written.
 
@@ -220,6 +221,11 @@ def _eye(s: pygame.Surface, cx: float, cy: float, kind: str, iris: Color, side: 
     if kind == "closed":                                     # ^ : laughing
         pygame.draw.arc(s, OUTLINE, (cx - 34, cy - 22, 68, 54), 0.35, math.pi - 0.35, 9)
         return
+    if kind == "shut":                                       # F38: a blink, lids down
+        pygame.draw.arc(s, OUTLINE, (cx - 34, cy - 34, 68, 44), math.pi + 0.3,
+                        2 * math.pi - 0.3, 9)
+        pygame.draw.line(s, OUTLINE, (cx + side * 32, cy - 6), (cx + side * 44, cy - 14), 6)
+        return
     if kind == "wide":
         _ellipse(s, WHITE, (cx - 34, cy - 46, 68, 92), 5)
         _ellipse(s, iris, (cx - 22, cy - 26, 44, 56), 0)
@@ -370,6 +376,16 @@ FACES = {
     "daichi sigh": dict(eyes="half", brows="flat", mouth="flat", sweat=True),
 }
 
+# F38 (07 I-9): Hana's blink and talking frames, each a copy of its look with only the eyes
+# or the mouth changed, at the look's size. ``happy`` already has laughing closed eyes, so
+# it only talks; ``sad`` blinks and talks. The sample game (``engine/data/sample``) ships
+# them as well.
+FRAMES = {
+    "hana happy_talk1": dict(FACES["hana happy"], mouth="smile"),
+    "hana sad_blink1": dict(FACES["hana sad"], eyes="shut"),
+    "hana sad_talk1": dict(FACES["hana sad"], mouth="o"),
+}
+
 
 def item_lantern() -> pygame.Surface:
     """F21's codex picture: the red paper lantern from the stall, lit, on a dusk backdrop."""
@@ -478,7 +494,8 @@ def shed_candles() -> pygame.Surface:
 
 def _sprite(name: str) -> Callable[[], pygame.Surface]:
     tag = name.split()[0]
-    return lambda: _figure(**(HANA if tag == "hana" else DAICHI), face=FACES[name])
+    face = FACES[name] if name in FACES else FRAMES[name]
+    return lambda: _figure(**(HANA if tag == "hana" else DAICHI), face=face)
 
 
 # --- The files ----------------------------------------------------------------------------
@@ -487,6 +504,8 @@ ART: dict[str, tuple[Callable[[], pygame.Surface], tuple[int, int]]] = {
     "images/bg/river_dusk.png": (river_dusk, BG_SIZE),
     "images/bg/bridge_night.png": (bridge_night, BG_SIZE),
     **{f"images/{name.replace(' ', '/')}.png": (_sprite(name), SPRITE_SIZE) for name in FACES},
+    **{f"images/{name.replace(' ', '/')}.png": (_sprite(name), SPRITE_SIZE)
+       for name in FRAMES},                                                  # F38
     "images/items/lantern.png": (item_lantern, ITEM_SIZE),                  # F21
     "images/bg/festival_shed.png": (festival_shed, BG_SIZE),                # F27
     "images/shed/key.png": (shed_key, (64, 96)),                            # F27

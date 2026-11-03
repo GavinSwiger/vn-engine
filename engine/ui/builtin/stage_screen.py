@@ -48,6 +48,16 @@ turns on, 07 I-6), ``settings`` (F16 replaces the whole ``EffectSettings``), ``w
 and ``changes`` (F15, read only), ``wait_id`` (F30's fake crash, read only), ``speed``
 (the transition clock's multiplier; F15 I-9 leaves it at 1.0).
 
+Sprite animation (F38 ``SPEC.md`` §5; ``07`` I-8): ``anim`` (``render/spriteanim``'s
+``SpriteAnimator``, built by ``install_stage``) learns each shown stage (``show_stage``; a
+restored one after ``reset``, so a load or rollback shows plain looks) and ticks in
+``update`` only while the clock runs, so under a menu or unfocused the sprites stay as they
+are. It holds still (plain looks) under reduced effects and while the view can't change
+frames (``StageView.frames_held``: a transition, a title card, a FAST frame, colorshift);
+sprites too big to repaint (``oversized``) hold too. Its wishes go to
+``StageView.show_frames`` each frame. ``clear`` and ``on_enter`` reset it; ``set_index``
+(F39) re-reads the frames.
+
 F30 (``04`` §6.2, G3): a fake crash is a ``StoryWait`` this screen owns, under a
 ``FakeCrashScreen`` that isn't ``in_game``, so the clock, the effects, and the glitches all
 freeze while it shows (a reduced fade shows the frozen picture).
@@ -60,11 +70,15 @@ from engine.render.effects import EffectLayer, EffectSettings, FlashLimiter
 from engine.render.glitch import GlitchLayer
 from engine.render.stage import StageView
 from engine.runtime.commands import WaitDone
+from engine.runtime.stage import EMPTY_STAGE
 from engine.ui.input import UiEvent
 from engine.ui.screen import Screen
 
 if TYPE_CHECKING:
+    from engine.render.spriteanim import SpriteAnimator
+    from engine.render.stage import FramesOf
     from engine.runtime.commands import Flash, Glitch, Shake, ShowStage, StoryWait
+    from engine.runtime.images import ImageIndex
 
 _EPSILON = 1e-9
 
@@ -79,9 +93,11 @@ class StageScreen(Screen):
 
     def __init__(self, app: object, view: StageView, *, effects: EffectLayer | None = None,
                  settings: EffectSettings | None = None,
-                 glitches: GlitchLayer | None = None) -> None:
+                 glitches: GlitchLayer | None = None,
+                 anim: "SpriteAnimator | None" = None) -> None:
         self.app = app
         self.view = view
+        self.anim = anim                 # F38: ``install_stage`` builds it from [animation]
         self.speed = 1.0                 # the transition clock's multiplier (F15 I-9: 1.0)
         self.now = 0.0                   # the effect clock: effects and the flash limit
         # ``install_stage`` builds both from config; F16 replaces ``settings`` whole.
@@ -109,6 +125,8 @@ class StageScreen(Screen):
         self.view.show(cmd, reduce=self.settings.reduce, limiter=self.limiter, now=self.now,
                        refusals=self.effects.refusals)
         self.glitches.stage_shown(cmd.stage)
+        if self.anim is not None:
+            self.anim.set_stage(cmd.stage)         # F38: kept blink timers, a closed mouth
 
     def start_wait(self, cmd: "StoryWait") -> None:
         """The ``StoryWait`` handler: hold the story until this wait is over (§6.3)."""
@@ -184,11 +202,28 @@ class StageScreen(Screen):
         self._reset()
         self.view.clear()
 
+    def set_index(self, index: "ImageIndex",
+                  frames_of: "FramesOf | None" = None) -> None:
+        """F39 (PR-F38-12): a rebuilt image index: the stage is resolved again and, given
+        the new ``frames_of``, the sprites' frames are read again (plain looks first; the
+        line's speaker talks again from its next letter)."""
+        self.view.set_index(index)
+        anim = self.anim
+        if frames_of is not None:
+            self.view.frames_of = frames_of
+            if anim is not None:
+                anim.frames_of = frames_of
+        if anim is not None:
+            anim.set_stage(EMPTY_STAGE)          # forget the old frames, keep the line
+            anim.set_stage(self.view.stage)
+
     def _reset(self) -> None:
         self.view.cancel()
         self.effects.clear()
         self.glitches.clear()
         self._wait = None
+        if self.anim is not None:
+            self.anim.reset()                      # F38: plain looks, no line talks
 
     def _done(self, wait: "StoryWait") -> None:
         self._wait = None
@@ -221,6 +256,7 @@ class StageScreen(Screen):
         self.view.set_filter(None if self._minigame_open()
                              else self.glitches.filter(self.settings.reduce))
         self.view.advance(dt * self.speed)
+        self._animate(dt)
         wait = self._wait
         if wait is None:
             return
@@ -233,6 +269,16 @@ class StageScreen(Screen):
                 self._done(wait)
         elif wait.seconds is not None and self._elapsed >= wait.seconds - _EPSILON:
             self._done(wait)
+
+    def _animate(self, dt: float) -> None:
+        """F38: the animator's frame, then its wishes to the view (holds: module
+        docstring)."""
+        anim = self.anim
+        if anim is None:
+            return
+        view = self.view
+        anim.tick(dt, still=self.settings.reduce or view.frames_held, held=view.oversized)
+        view.show_frames(anim.wanted())
 
     def draw(self, canvas: Canvas) -> None:
         """The stage at the shake's offset (device pixels, over the uncovered band), its
