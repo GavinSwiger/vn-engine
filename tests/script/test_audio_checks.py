@@ -13,6 +13,7 @@ from engine.script.codex import CodexLock
 from engine.script.effects import Flash, Pause, Shake
 from engine.script.fourthwall import CrashEffect, TitleEffect
 from engine.script.glitch import Effect
+from engine.script.metafiles import MetaFile
 from engine.script.limits import IDENTITY_YIELD_ITEMS, SCRIPT_AUDIO_WARN_LIMIT
 from engine.script.messages import format_message
 from engine.script.nodes import PythonLine, Say
@@ -94,7 +95,8 @@ def test_ac04_voice_transparent_statements():
                                  Lock,                           # F19 04 §2 Q3
                                  CodexLock,                      # F21 04 §3
                                  Effect,                         # F28 SR-F28-04
-                                 TitleEffect, CrashEffect}       # F30 04 §5.3
+                                 TitleEffect, CrashEffect,       # F30 04 §5.3
+                                 MetaFile}                       # F31 04 §2.2
     assert Voice not in VOICE_TRANSPARENT and Say not in VOICE_TRANSPARENT
     assert Ending not in VOICE_TRANSPARENT
 

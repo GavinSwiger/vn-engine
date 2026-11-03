@@ -7906,3 +7906,317 @@ code = "W207"
 needs = "load"
 where = "game"
 expect = { exact = '''config.toml: [style.ashes.theme.textbox] frame_image "gui/x.png" doesn't exist, so [theme.textbox] frame_image is used.''' }
+
+# --- F31 meta files (F31 06-acceptance.md AC-F31-09: template F31, S on line 6) -------------
+# ``file`` registers only inside these rows until F31 s3 (message_cases.run_case). The game
+# folder has files/hana.chr unless the row's setup says otherwise.
+
+[[case]]
+id = "F31-09-E309"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E309"
+needs = "load"
+each = [['''file''', '''file needs what to do and a file name, e.g. file delete "hana.chr". It takes write, delete, exists, or read.'''],
+        ['''file delete''', '''file delete needs a file name in quotes, e.g. file delete "hana.chr".'''],
+        ['''file write''', '''file write needs a file name in quotes, e.g. file write "hana.chr".'''],
+        ['''file exists''', '''file exists needs a file name in quotes, e.g. file exists "hana.chr" into hana_here.'''],
+        ['''file read''', '''file read needs a file name in quotes, e.g. file read "answer.txt" into answer.'''],
+        ['''file delte "hana.chr"''', '''"delte" isn't a file word. Did you mean "delete"? file takes write, delete, exists, or read.'''],
+        ['''file remove "hana.chr"''', '''"remove" isn't a file word. file takes write, delete, exists, or read.'''],
+        ['''file delete "hana.chr" now''', '''file delete takes one file name, but this line has "now" left over.'''],
+        ['''file write "a.txt" "x" y''', '''file write takes a file name and, if you like, the text in quotes, but this line has "y" left over.'''],
+        ['''file write "hana.chr" now''', '''file write takes a file name and, if you like, the text in quotes, but this line has "now" left over.''']]
+edit = { S = '<x>' }
+where = "6"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F31-09-E309-block"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E309"
+needs = "load"
+edit = { S = '''file delete "hana.chr":⏎[8]"x"''' }
+where = "6"
+expect = { exact = '''file doesn't take a block. Remove the ":" and un-indent the lines under it.''' }
+
+[[case]]
+id = "F31-09-E310-variable"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E310"
+needs = "load"
+edit = { S = '''file delete name''' }
+where = "6"
+expect = { exact = '''the file name must be written in quotes, such as "hana.chr", not a variable like name.''' }
+
+[[case]]
+id = "F31-09-E310"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E310"
+needs = "load"
+each = [['''file write "../x.chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "../x.chr" has a /.'''],
+        ['''file write "/x.chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "/x.chr" has a /.'''],
+        ['''file write "C:x.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "C:x.txt" has capital letters.'''],
+        ['''file write "\\\\srv\\s\\x.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "\\srv\s\x.txt" has a \.'''],
+        ['''file write "x/y.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "x/y.txt" has a /.'''],
+        ['''file write "x\\y.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "x\y.txt" has a \.'''],
+        ['''file write "hana.chr:s"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr:s" doesn't end in .chr or .txt.'''],
+        ['''file write "hana.chr."''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr." doesn't end in .chr or .txt.'''],
+        ['''file write "hana.chr "''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr " doesn't end in .chr or .txt.'''],
+        ['''file write "HANA~1.CHR"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "HANA~1.CHR" has capital letters.'''],
+        ['''file write "Hana.chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "Hana.chr" has capital letters.'''],
+        ['''file write "con.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "con.txt" is a name Windows keeps for itself.'''],
+        ['''file write "nul.chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "nul.chr" is a name Windows keeps for itself.'''],
+        ['''file write "com1.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "com1.txt" is a name Windows keeps for itself.'''],
+        ['''file write "lpt9.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "lpt9.txt" is a name Windows keeps for itself.'''],
+        ['''file write "ｈａｎａ.chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "ｈａｎａ.chr" has "ｈ" in it.'''],
+        ['''file write "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt" has 33 characters before the dot, but at most 32 are allowed.'''],
+        ['''file write ".chr"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". ".chr" has nothing before the dot.'''],
+        ['''file write "hana.exe"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.exe" ends in .exe.'''],
+        ['''file write "hana.chr.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr.txt" has more than one dot.'''],
+        ['''file write "a b.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "a b.txt" has " " in it.'''],
+        ['''file write "-a.txt"''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "-a.txt" starts with -.'''],
+        ['''file write ""''', '''a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "" doesn't end in .chr or .txt.''']]
+edit = { S = '<x>' }
+where = "6"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F31-09-E311-long"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E311"
+needs = "load"
+edit = { S = '''file write "read_me.txt" "<<a*8000>>⏎[8]<<a*8000>>"''' }
+where = "6"
+expect = { exact = '''the text for "read_me.txt" can be at most 16,000 characters, but this one has 16,001.''' }
+
+[[case]]
+id = "F31-09-E03"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E03"
+needs = "load"
+edit = { S = '''file write "a.txt" "a{U+0007}b"''' }
+where = "6:26"
+expect = { exact = '''this line contains an invisible character (U+0007). Delete it; it probably came from copied text.''' }
+
+[[case]]
+id = "F31-09-E312"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E312"
+needs = "load"
+each = [['''file exists "hana.chr"''', '''file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.'''],
+        ['''file read "answer.txt"''', '''file read needs into and a story variable, e.g. file read "answer.txt" into answer.'''],
+        ['''file exists "hana.chr" as hana_here''', '''file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.'''],
+        ['''file exists "hana.chr" into''', '''file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.'''],
+        ['''file exists "hana.chr" into persistent.hana''', '''into takes one story variable's name, such as into hana_here, but this has "persistent.hana". To keep it across playthroughs, write $ persistent.hana = hana_here on the next line.'''],
+        ['''file exists "hana.chr" into x[0]''', '''into takes one story variable's name, such as into hana_here, but this has "x[0]". Use a variable that has a default.'''],
+        ['''file read "answer.txt" into a b''', '''into takes one story variable's name, such as into answer, but this has "a b". Use a variable that has a default.'''],
+        ['''file exists "hana.chr" into hana_her''', '''there is no default named "hana_her". Did you mean "hana_here"?'''],
+        ['''file read "answer.txt" into zebra''', '''there is no default named "zebra". Add default zebra = None at the top level of a file, or use a variable that has one.'''],
+        ['''file exists "hana.chr" into hana''', '''"hana" is set by define, so the story can't change it. Use a variable that has a default.'''],
+        ['''file exists "hana.chr" into dice''', '''"dice" is a name the engine uses. Use a variable that has a default.''']]
+edit = { S = '<x>' }
+where = "6"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F31-09-E313-missing"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E313"
+needs = "load"
+setup = "no original"
+edit = { S = '''file write "hana.chr"''' }
+where = "6"
+expect = { exact = '''file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "…".''' }
+
+[[case]]
+id = "F31-09-E313-other"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E313"
+needs = "load"
+edit = { S = '''file write "other.chr"''' }
+where = "6"
+expect = { exact = '''file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "…".''' }
+
+[[case]]
+id = "F31-09-E313-large"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E313"
+needs = "load"
+setup = "large original"
+edit = { S = '''file write "hana.chr"''' }
+where = "6"
+expect = { exact = '''files/hana.chr is 5.2 MB, but an original can be at most 4 MB.''' }
+
+[[case]]
+id = "F31-09-E314"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E314"
+needs = "load"
+edit = { S = '''file write "n1.txt" "x"⏎file write "n2.txt" "x"⏎file write "n3.txt" "x"⏎file write "n4.txt" "x"⏎file write "n5.txt" "x"⏎file write "n6.txt" "x"⏎file write "n7.txt" "x"⏎file write "n8.txt" "x"⏎file write "n9.txt" "x"⏎file write "n10.txt" "x"⏎file write "n11.txt" "x"⏎file write "n12.txt" "x"⏎file write "n13.txt" "x"⏎file write "n14.txt" "x"⏎file write "n15.txt" "x"⏎file write "n16.txt" "x"⏎file write "n17.txt" "x"⏎file write "n18.txt" "x"⏎file write "n19.txt" "x"⏎file write "n20.txt" "x"⏎file write "n21.txt" "x"⏎file write "n22.txt" "x"⏎file write "n23.txt" "x"⏎file write "n24.txt" "x"⏎file write "n25.txt" "x"⏎file write "n26.txt" "x"⏎file write "n27.txt" "x"⏎file write "n28.txt" "x"⏎file write "n29.txt" "x"⏎file write "n30.txt" "x"⏎file write "n31.txt" "x"⏎file write "n32.txt" "x"⏎file write "n33.txt" "x"''' }
+where = "game"
+expect = { exact = '''This game uses 33 meta file names, but at most 32 are allowed. The first one over is "n33.txt" (script/main.vns, line 38).''' }
+
+[[case]]
+id = "F31-09-E315"
+ac = "AC-F31-09"
+feature = "F31"
+code = "E315"
+needs = "load"
+edit = { S = '''file read "hana.chr" into answer''' }
+where = "6"
+expect = { exact = '''file read reads text, so it works only on .txt files, not "hana.chr". To see whether hana.chr is there, use file exists.''' }
+
+# --- W196–W198 (run, app/metafiles.py, F31 s4) and W199, W200 (run, runtime/metafiles.py,
+# F31 s3): data until then. test_metafiles_parse.py formats each with the args its id
+# names (W198-<form>-<verb>, W200-<form>) and compares.
+
+[[case]]
+id = "F31-09-W196"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W196"
+needs = "load"
+where = "game"
+expect = { exact = '''<game>/characters isn't a real folder (it is a link or a file), so file lines do nothing this session and file exists gives False.''' }
+
+[[case]]
+id = "F31-09-W197"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W197"
+needs = "load"
+where = "game"
+expect = { exact = '''<game>/characters can't be written (the game may be installed in a read-only folder), so file write and file delete do nothing this session.''' }
+
+[[case]]
+id = "F31-09-W198-full-write"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't write <game>/characters/note.txt: the disk is full.''' }
+
+[[case]]
+id = "F31-09-W198-permission-delete"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't delete <game>/characters/hana.chr: no permission.''' }
+
+[[case]]
+id = "F31-09-W198-folder_at_name-write"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't write <game>/characters/note.txt: something that isn't a file is there.''' }
+
+[[case]]
+id = "F31-09-W198-original_missing-write"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't write <game>/characters/note.txt: its original in files/ is gone.''' }
+
+[[case]]
+id = "F31-09-W198-original_large-write"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't write <game>/characters/note.txt: its original in files/ is now over 4 MB.''' }
+
+[[case]]
+id = "F31-09-W198-busy-delete"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't delete <game>/characters/hana.chr: too many file changes are still being written, so this one was skipped.''' }
+
+[[case]]
+id = "F31-09-W198-other-write"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W198"
+needs = "load"
+where = "game"
+expect = { exact = '''couldn't write <game>/characters/note.txt: another program may be using it.''' }
+
+[[case]]
+id = "F31-09-W199"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W199"
+needs = "load"
+where = "game"
+expect = { exact = '''the story made 256 file changes this session, the most allowed, so later file write and file delete lines do nothing until the game restarts.''' }
+
+[[case]]
+id = "F31-09-W200-large"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W200"
+needs = "load"
+where = "game"
+expect = { exact = '''file read "answer.txt" found no text: the file is over 16 KB.''' }
+
+[[case]]
+id = "F31-09-W200-utf8"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W200"
+needs = "load"
+where = "game"
+expect = { exact = '''file read "answer.txt" found no text: it isn't UTF-8 text.''' }
+
+[[case]]
+id = "F31-09-W200-not_file"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W200"
+needs = "load"
+where = "game"
+expect = { exact = '''file read "answer.txt" found no text: it is a link or not a file.''' }
+
+[[case]]
+id = "F31-09-W200-hard_link"
+ac = "AC-F31-09"
+feature = "F31"
+time = "run"
+code = "W200"
+needs = "load"
+where = "game"
+expect = { exact = '''file read "answer.txt" found no text: it has another name elsewhere (a hard link).''' }

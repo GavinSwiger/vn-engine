@@ -38,6 +38,7 @@ from engine.script.glitch import Effect
 from engine.script.limits import IDENTITY_YIELD_ITEMS, SCRIPT_AUDIO_WARN_LIMIT
 from engine.script.messages import format_message
 from engine.script.menu import Menu
+from engine.script.metafiles import MetaFile
 from engine.script.nodes import If, Label, Node, PythonLine, Say, Statement
 from engine.script.nvl import Nvl
 from engine.script.points import PointsChange
@@ -49,10 +50,11 @@ from engine.script.stage import Hide, Scene, Show
 # statements, and F04's stage statements. Comments are no statements. Later features name
 # their statements here in their own specs (F09 C10: shake, flash, pause; F22 I-3: points;
 # F14 04 §2: rollback; F17 04 §3: nvl; F19: lock/unlock; F21 04 §3: codex lock/unlock;
-# F28 SR-F28-04: effect; F30 04 §5.3: effect window_title, effect crash).
+# F28 SR-F28-04: effect; F30 04 §5.3: effect window_title, effect crash; F31 04 §2.2: file).
 VOICE_TRANSPARENT: frozenset[type[Statement]] = frozenset(
     (PythonLine, PlayAudio, QueueMusic, StopAudio, Scene, Show, Hide, Shake, Flash, Pause,
-     PointsChange, Rollback, Nvl, Lock, CodexLock, Effect, TitleEffect, CrashEffect))
+     PointsChange, Rollback, Nvl, Lock, CodexLock, Effect, TitleEffect, CrashEffect,
+     MetaFile))
 
 _FILE_NODES = (PlayAudio, QueueMusic, StopAudio, Voice)
 

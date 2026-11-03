@@ -3672,3 +3672,162 @@ script/main.vns, line 5: the reason can be at most 200 characters, but this one 
 
 [F32-06-E321-3]
 script/main.vns, line 5: the reason is plain text, so it can't hold {b} or other tags. To show a {, write {{.
+
+[F31-09-E309-1]
+script/main.vns, line 6: file needs what to do and a file name, e.g. file delete "hana.chr". It takes write, delete, exists, or read.
+
+[F31-09-E309-2]
+script/main.vns, line 6: file delete needs a file name in quotes, e.g. file delete "hana.chr".
+
+[F31-09-E309-3]
+script/main.vns, line 6: file write needs a file name in quotes, e.g. file write "hana.chr".
+
+[F31-09-E309-4]
+script/main.vns, line 6: file exists needs a file name in quotes, e.g. file exists "hana.chr" into hana_here.
+
+[F31-09-E309-5]
+script/main.vns, line 6: file read needs a file name in quotes, e.g. file read "answer.txt" into answer.
+
+[F31-09-E309-6]
+script/main.vns, line 6: "delte" isn't a file word. Did you mean "delete"? file takes write, delete, exists, or read.
+
+[F31-09-E309-7]
+script/main.vns, line 6: "remove" isn't a file word. file takes write, delete, exists, or read.
+
+[F31-09-E309-8]
+script/main.vns, line 6: file delete takes one file name, but this line has "now" left over.
+
+[F31-09-E309-9]
+script/main.vns, line 6: file write takes a file name and, if you like, the text in quotes, but this line has "y" left over.
+
+[F31-09-E309-10]
+script/main.vns, line 6: file write takes a file name and, if you like, the text in quotes, but this line has "now" left over.
+
+[F31-09-E309-block]
+script/main.vns, line 6: file doesn't take a block. Remove the ":" and un-indent the lines under it.
+
+[F31-09-E310-variable]
+script/main.vns, line 6: the file name must be written in quotes, such as "hana.chr", not a variable like name.
+
+[F31-09-E310-1]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "../x.chr" has a /.
+
+[F31-09-E310-2]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "/x.chr" has a /.
+
+[F31-09-E310-3]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "C:x.txt" has capital letters.
+
+[F31-09-E310-4]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "\\srv\s\x.txt" has a \.
+
+[F31-09-E310-5]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "x/y.txt" has a /.
+
+[F31-09-E310-6]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "x\y.txt" has a \.
+
+[F31-09-E310-7]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr:s" doesn't end in .chr or .txt.
+
+[F31-09-E310-8]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr." doesn't end in .chr or .txt.
+
+[F31-09-E310-9]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr " doesn't end in .chr or .txt.
+
+[F31-09-E310-10]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "HANA~1.CHR" has capital letters.
+
+[F31-09-E310-11]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "Hana.chr" has capital letters.
+
+[F31-09-E310-12]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "con.txt" is a name Windows keeps for itself.
+
+[F31-09-E310-13]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "nul.chr" is a name Windows keeps for itself.
+
+[F31-09-E310-14]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "com1.txt" is a name Windows keeps for itself.
+
+[F31-09-E310-15]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "lpt9.txt" is a name Windows keeps for itself.
+
+[F31-09-E310-16]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "ｈａｎａ.chr" has "ｈ" in it.
+
+[F31-09-E310-17]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt" has 33 characters before the dot, but at most 32 are allowed.
+
+[F31-09-E310-18]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". ".chr" has nothing before the dot.
+
+[F31-09-E310-19]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.exe" ends in .exe.
+
+[F31-09-E310-20]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "hana.chr.txt" has more than one dot.
+
+[F31-09-E310-21]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "a b.txt" has " " in it.
+
+[F31-09-E310-22]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "-a.txt" starts with -.
+
+[F31-09-E310-23]
+script/main.vns, line 6: a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "" doesn't end in .chr or .txt.
+
+[F31-09-E311-long]
+script/main.vns, line 6: the text for "read_me.txt" can be at most 16,000 characters, but this one has 16,001.
+
+[F31-09-E03]
+script/main.vns, line 6, column 26: this line contains an invisible character (U+0007). Delete it; it probably came from copied text.
+
+[F31-09-E312-1]
+script/main.vns, line 6: file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.
+
+[F31-09-E312-2]
+script/main.vns, line 6: file read needs into and a story variable, e.g. file read "answer.txt" into answer.
+
+[F31-09-E312-3]
+script/main.vns, line 6: file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.
+
+[F31-09-E312-4]
+script/main.vns, line 6: file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.
+
+[F31-09-E312-5]
+script/main.vns, line 6: into takes one story variable's name, such as into hana_here, but this has "persistent.hana". To keep it across playthroughs, write $ persistent.hana = hana_here on the next line.
+
+[F31-09-E312-6]
+script/main.vns, line 6: into takes one story variable's name, such as into hana_here, but this has "x[0]". Use a variable that has a default.
+
+[F31-09-E312-7]
+script/main.vns, line 6: into takes one story variable's name, such as into answer, but this has "a b". Use a variable that has a default.
+
+[F31-09-E312-8]
+script/main.vns, line 6: there is no default named "hana_her". Did you mean "hana_here"?
+
+[F31-09-E312-9]
+script/main.vns, line 6: there is no default named "zebra". Add default zebra = None at the top level of a file, or use a variable that has one.
+
+[F31-09-E312-10]
+script/main.vns, line 6: "hana" is set by define, so the story can't change it. Use a variable that has a default.
+
+[F31-09-E312-11]
+script/main.vns, line 6: "dice" is a name the engine uses. Use a variable that has a default.
+
+[F31-09-E313-missing]
+script/main.vns, line 6: file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "…".
+
+[F31-09-E313-other]
+script/main.vns, line 6: file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "…".
+
+[F31-09-E313-large]
+script/main.vns, line 6: files/hana.chr is 5.2 MB, but an original can be at most 4 MB.
+
+[F31-09-E314]
+This game uses 33 meta file names, but at most 32 are allowed. The first one over is "n33.txt" (script/main.vns, line 38).
+
+[F31-09-E315]
+script/main.vns, line 6: file read reads text, so it works only on .txt files, not "hana.chr". To see whether hana.chr is there, use file exists.

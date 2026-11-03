@@ -103,6 +103,12 @@ F32 (s2) adds every F32 text (its ``01-design.md`` §5.2; ``04`` §5.1, §12; ``
 E319, E320, and E321 (``ui.py``); W204, W206, and W207 (``app/looks.py``, F32 s4) and W205
 (the restore, F32 s3). Forms ``01`` leaves open are drafts for the narrative designer.
 
+F31 (s2) adds every F31 text (its ``01-design.md`` §5.2; ``04`` §5.1, §5.2, §11): load E309–E312
+and E315 (``metafiles.py``), E312's target forms, E313, and E314 (``checks.py``); W196–W198
+(``app/metafiles.py``, F31 s4) and W199, W200 (``runtime/metafiles.py``, F31 s3); and the
+headless ``player deletes|restores <name>`` words in H-input (F31 ``07`` I-5). Forms ``01``
+leaves open are drafts for the narrative designer.
+
 Places (``Place``) are ``(file ref, line)`` pairs. Lists inside one message show at most
 ``SCRIPT_MESSAGE_LIST_ITEMS`` items, then "and N more" (SEC-F02-09).
 """
@@ -114,8 +120,11 @@ from collections.abc import Callable, Sequence
 
 from engine.core.constants import (CANVAS_SIZE, CRASH_MESSAGE_MAX, GLITCH_KINDS,
                                    GLITCH_SECONDS_RANGE, LAYER_RANGE, STAGE_COORD_RANGE,
-                                   UI_REASON_MAX, VALUE_ECHO_MAX_CHARS, WINDOW_TITLE_MAX,
-                                   ZOOM_RANGE)
+                                   KIB, MB, META_CHANGES_MAX, META_NAMES_MAX,
+                                   META_ORIGINAL_MAX_BYTES,
+                                   META_ORIGINALS_DIR, META_READ_MAX_BYTES, META_SHOWN,
+                                   META_TEXT_MAX_CHARS, UI_REASON_MAX, VALUE_ECHO_MAX_CHARS,
+                                   WINDOW_TITLE_MAX, ZOOM_RANGE)
 from engine.core.redact import echo, escape_controls, redact, truncate
 from engine.script.limits import (
     SCRIPT_E09_NAMES,
@@ -2377,6 +2386,191 @@ def _w207(table: str = "style.ashes.theme.textbox", key: str = "frame_image",
     return text
 
 
+# --- F31 meta files (01-design.md §5.2; 04 §5.1, §5.2, §11) ------------------------------------
+# Load E309–E312 and E315 (engine/script/metafiles.py's parser), E312's target forms, E313,
+# and E314 (checks.py, step 12; E314 whole game); W196–W198 (run, app/metafiles.py, F31 s4)
+# and W199, W200 (run, runtime/metafiles.py, F31 s3). Warnings name only META_SHOWN plus a
+# listed name and fixed words: never note text, a reason from the OS, or a real path
+# (SEC-F31-07). Drafts for the narrative designer (04 §11, 06 G10): E309's ``needs`` with a
+# verb and ``left`` after write, E310 ``long``/``chars``, E312 ``engine`` and ``no_default``
+# without a suggestion, and W198 ``folder_at_name``, ``original_missing``, ``original_large``,
+# ``busy``, ``other``.
+
+_FILE_VERBS = "write, delete, exists, or read"
+_META_BASE_MAX = 32                 # metafiles.NAME_BASE_MAX (META_NAME_RE's base)
+_META_NAME_RULE = ('a meta file name is in quotes: lowercase letters, digits, - or _, up to '
+                   f'{_META_BASE_MAX} of them, then .chr or .txt, such as "hana.chr".')
+_META_FOLDER = META_SHOWN.rstrip("/")
+# E312's example target per verb (``into hana_here``, ``into answer``).
+_INTO_EXAMPLE = {"exists": ('"hana.chr"', "hana_here"), "read": ('"answer.txt"', "answer")}
+
+
+def _e309(form: str = "needs", *args: object) -> str:
+    """``needs`` (the verb, or None for a bare ``file``); ``unknown`` (the word as written,
+    the suggestion or None); ``left`` (the verb, the first left-over item as written);
+    ``block``."""
+    if form == "unknown":
+        word = str(args[0]) if args else "delte"
+        hint = args[1] if len(args) > 1 else None
+        text = f'"{show(word)}" isn\'t a file word.'
+        if hint is not None:
+            text += " " + _did_you_mean(str(hint), word)
+        return f"{text} file takes {_FILE_VERBS}."
+    if form == "left":
+        verb = str(args[0]) if args else "delete"
+        leftover = str(args[1]) if len(args) > 1 else "now"
+        takes = ("a file name and, if you like, the text in quotes" if verb == "write"
+                 else "one file name")
+        return f'file {verb} takes {takes}, but this line has "{show(leftover)}" left over.'
+    if form == "block":
+        return ("file doesn't take a block. Remove the \":\" and un-indent the lines under "
+                "it.")
+    verb = args[0] if args else None
+    if verb in ("write", "delete"):
+        return f'file {verb} needs a file name in quotes, e.g. file {verb} "hana.chr".'
+    if verb in _INTO_EXAMPLE:
+        file, example = _INTO_EXAMPLE[str(verb)]
+        return (f"file {verb} needs a file name in quotes, e.g. file {verb} {file} into "
+                f"{example}.")
+    return ('file needs what to do and a file name, e.g. file delete "hana.chr". It takes '
+            f"{_FILE_VERBS}.")
+
+
+def _e310(form: str = "slash", name: str = "../hana.chr") -> str:
+    """``variable`` (the name word as written); else a name form (04 §5.1 step 2's order):
+    ``slash``, ``capitals``, ``ending``, ``reserved``, ``long``, ``chars`` with the name as
+    written."""
+    if form == "variable":
+        return ('the file name must be written in quotes, such as "hana.chr", not a variable '
+                f"like {show(name)}.")
+    shown = f'"{show(name)}"'
+    if form == "slash":
+        what = "/" if "/" in name else "\\"
+        return f"{_META_NAME_RULE} {shown} has a {what}."
+    if form == "capitals":
+        return f"{_META_NAME_RULE} {shown} has capital letters."
+    if form == "ending":
+        suffix = name[name.rfind("."):] if "." in name else ""
+        if re.fullmatch(r"\.[a-z0-9]{1,8}", suffix, re.ASCII):
+            return f"{_META_NAME_RULE} {shown} ends in {suffix}."
+        return f"{_META_NAME_RULE} {shown} doesn't end in .chr or .txt."
+    if form == "reserved":
+        return f"{_META_NAME_RULE} {shown} is a name Windows keeps for itself."
+    base = name.rsplit(".", 1)[0]
+    if form == "long":
+        return (f"{_META_NAME_RULE} {shown} has {len(base):,} characters before the dot, but "
+                f"at most {_META_BASE_MAX} are allowed.")
+    if not base:
+        return f"{_META_NAME_RULE} {shown} has nothing before the dot."
+    if base[0] in "-_":
+        return f"{_META_NAME_RULE} {shown} starts with {base[0]}."
+    if "." in base:
+        return f"{_META_NAME_RULE} {shown} has more than one dot."
+    bad = next((c for c in base if not (c.isascii() and (c.isalnum() or c in "-_"))), base[0])
+    return f'{_META_NAME_RULE} {shown} has "{show(bad)}" in it.'
+
+
+def _e311(form: str = "long", name: str = "read_me.txt", arg: object = 18_200) -> str:
+    """``long`` (the name, the count of code points); ``control`` (the name, the first
+    control character)."""
+    if form == "control":
+        char = str(arg) if arg else "\x07"
+        return (f'the text for "{show(name)}" has a control character ({codepoint(char[0])}). '
+                "Only \\n and \\t are allowed.")
+    count = int(arg) if isinstance(arg, int) else 18_200
+    return (f'the text for "{show(name)}" can be at most {META_TEXT_MAX_CHARS:,} characters, '
+            f"but this one has {count:,}.")
+
+
+def _e312(form: str = "needs", *args: object) -> str:
+    """``needs`` (the verb); ``one_name`` (the verb, the target as written); ``no_default``
+    (the target, the suggestion or None); ``define`` and ``engine`` (the target)."""
+    if form == "no_default":
+        name = str(args[0]) if args else "hana_her"
+        hint = args[1] if len(args) > 1 else None
+        text = f'there is no default named "{show_name(name)}".'
+        if hint is not None:
+            return f"{text} {_did_you_mean(str(hint), name)}"
+        return (f"{text} Add default {show_name(name)} = None at the top level of a file, or "
+                "use a variable that has one.")
+    if form == "define":
+        name = show_name(str(args[0])) if args else "hana"
+        return (f'"{name}" is set by define, so the story can\'t change it. Use a variable that '
+                "has a default.")
+    if form == "engine":
+        name = show_name(str(args[0])) if args else "dice"
+        return f'"{name}" is a name the engine uses. Use a variable that has a default.'
+    verb = str(args[0]) if args else "exists"
+    file, example = _INTO_EXAMPLE.get(verb, _INTO_EXAMPLE["exists"])
+    if form == "one_name":
+        written = str(args[1]) if len(args) > 1 else "persistent.hana"
+        text = (f"into takes one story variable's name, such as into {example}, but this has "
+                f'"{show(written)}".')
+        if re.fullmatch(r"persistent\.\w+", written):
+            return (f"{text} To keep it across playthroughs, write $ {show(written)} = "
+                    f"{example} on the next line.")
+        return f"{text} Use a variable that has a default."
+    return (f"file {verb} needs into and a story variable, e.g. file {verb} {file} into "
+            f"{example}.")
+
+
+def _e313(form: str = "missing", name: str = "hana.chr", size: int = 5_452_595,
+          cap: int = META_ORIGINAL_MAX_BYTES) -> str:
+    """``missing`` (the name); ``large`` (the name, its size and the cap in bytes)."""
+    shown = show(name)
+    if form == "large":
+        return (f"{META_ORIGINALS_DIR}/{shown} is {size / MB:.1f} MB, but an original can be "
+                f"at most {cap / MB:g} MB.")
+    return (f'file write "{shown}" copies {META_ORIGINALS_DIR}/{shown}, but there is no such '
+            f"file. Add it to the {META_ORIGINALS_DIR} folder, or give the text: file write "
+            f'"{shown}" "…".')
+
+
+def _e314(count: int = 33, name: str = "extra.txt", ref: str = "script/act3.vns",
+          line: int = 40) -> str:
+    return (f"This game uses {count:,} meta file names, but at most {META_NAMES_MAX} are "
+            f'allowed. The first one over is "{show(name)}" ({show(ref)}, line {line}).')
+
+
+def _e315(name: str = "hana.chr") -> str:
+    shown = show(name)
+    return (f'file read reads text, so it works only on .txt files, not "{shown}". To see '
+            f"whether {shown} is there, use file exists.")
+
+
+# W198's reasons (04 §6.4): fixed words, never the OS's text.
+_W198_REASONS = {
+    "full": "the disk is full",
+    "permission": "no permission",
+    "folder_at_name": "something that isn't a file is there",
+    "original_missing": "its original in files/ is gone",
+    "original_large": "its original in files/ is now over 4 MB",
+    "busy": "too many file changes are still being written, so this one was skipped",
+    "other": "another program may be using it",
+}
+
+
+def _w198(form: str = "permission", verb: str = "delete", name: str = "hana.chr") -> str:
+    """One change that failed (run): ``form`` a ``_W198_REASONS`` key, ``verb`` ``write`` or
+    ``delete``, ``name`` the listed name."""
+    reason = _W198_REASONS.get(form, _W198_REASONS["other"])
+    return f"couldn't {verb} {META_SHOWN}{show(name)}: {reason}."
+
+
+_W200_REASONS = {
+    "large": f"the file is over {META_READ_MAX_BYTES // KIB} KB",
+    "utf8": "it isn't UTF-8 text",
+    "not_file": "it is a link or not a file",
+    "hard_link": "it has another name elsewhere (a hard link)",
+}
+
+
+def _w200(form: str = "large", name: str = "answer.txt") -> str:
+    """A read that found no text (run, once per name): ``form`` a ``_W200_REASONS`` key."""
+    return (f'file read "{show(name)}" found no text: '
+            f"{_W200_REASONS.get(form, _W200_REASONS['not_file'])}.")
+
+
 # --- F18 chapters (F18 SPEC §3; 07 I-2) ----------------------------------------------------------
 # Load E220 (checks.py), E221–E223 (engine/script/chapter.py), E224 (checks.py, whole game).
 # Forms the SPEC leaves open are drafts for the narrative designer: E221's count for more than
@@ -3435,6 +3629,18 @@ def _h_finish(form: str = "needs", number: int = 4, text: str = "finish", *args:
     return f'{shown} needs a result, e.g. finish 3 or finish "red".'
 
 
+def _h_input(number: int = 2, text: str = "chose 2", form: str = "unknown") -> str:
+    """The headless runner's input that isn't one (``HeadlessInputError``, uncoded). F31
+    (``04`` §6.6, ``07`` I-5): ``player deletes|restores <name>``; ``form`` ``meta_name`` is
+    such an input naming a file no ``file`` line uses (drafted here)."""
+    shown = f'input {number} "{echo(str(text))}"'
+    if form == "meta_name":
+        return (f"{shown} names a file no file line uses. The player can delete or restore "
+                "only the files the story writes, such as hana.chr.")
+    return (f"{shown} isn't advance, choose N, back N, forward N (N from 1 to 1000), jump and "
+            "a box id, finish and a result, or player deletes or restores and a file name.")
+
+
 def _h_jump(form: str = "needs", number: int = 3, node_id: str = "scene:stall",
             reason: str = "scheme_mismatch", limit: int = 1_200) -> str:
     """F20 ``04`` §7.6's headless ``jump <id>`` refusals (``HeadlessInputError``, uncoded;
@@ -3854,6 +4060,26 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W205": _w205,
     "W206": _w206,
     "W207": _w207,
+    # F31 meta files (01 §5.2; 04 §11): load E309–E315 (metafiles.py, checks.py step 12; E314
+    # whole game); run W196–W198 (app/metafiles.py, F31 s4), W199, W200 (runtime/metafiles.py,
+    # F31 s3). Drafts per the section comment.
+    "E309": _e309,
+    "E310": _e310,
+    "E311": _e311,
+    "E312": _e312,
+    "E313": _e313,
+    "E314": _e314,
+    "E315": _e315,
+    "W196": lambda: (f"{_META_FOLDER} isn't a real folder (it is a link or a file), so file "
+                     "lines do nothing this session and file exists gives False."),
+    "W197": lambda: (f"{_META_FOLDER} can't be written (the game may be installed in a "
+                     "read-only folder), so file write and file delete do nothing this "
+                     "session."),
+    "W198": _w198,
+    "W199": lambda: (f"the story made {META_CHANGES_MAX} file changes this session, the most "
+                     "allowed, so later file write and file delete lines do nothing until the "
+                     "game restarts."),
+    "W200": _w200,
     # F12 persistent data (01 §5.4): run E180–E183 (engine/runtime/errors.py), load E184
     # (default.py, checks.py), launch E185 and W56 (engine/runtime/launch.py).
     "E180": _e180,
@@ -3974,9 +4200,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
         f"the story waited {count:,} times in a row with no line or choice, last at "
         f"{show(ref)}, line {line}, so the headless run stopped. A loop of pauses and "
         "transitions only ends when a player leaves it."),
-    "H-input": lambda number=2, text="chose 2": (
-        f"input {number} \"{echo(text)}\" isn't advance, choose N, back N, forward N "
-        "(N from 1 to 1000), jump and a box id, or finish and a result."),  # F23, F20
+    "H-input": _h_input,                                    # F23, F20, F31
 }
 
 

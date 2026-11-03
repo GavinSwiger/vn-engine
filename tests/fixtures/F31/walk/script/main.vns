@@ -1,0 +1,25 @@
+define hana = Character("Hana")
+default hana_here = False
+default answer = None
+label start:
+    "W0"
+    file write "hana.chr"
+    file write "read_me.txt" "Line one\nNoteMark7 {b}x{/b} {{"
+    file exists "hana.chr" into hana_here
+    hana "W1 {var=hana_here}"
+    file read "read_me.txt" into answer
+    "W2 {var=answer}"
+    file delete "hana.chr"
+    file delete "gone.chr"
+    file exists "hana.chr" into hana_here
+    "W3 {var=hana_here}"
+    file read "answer.txt" into answer
+    if answer == "yes":
+        "W4 yes"
+    else:
+        "W4 other {var=answer}"
+    file exists "hana.chr" into hana_here
+    if hana_here:
+        hana "W5 back"
+    else:
+        "W5 gone"

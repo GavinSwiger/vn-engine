@@ -388,7 +388,7 @@ def test_cases_are_well_formed():
         assert case.needs in ("parse", "load"), case.id
         assert case.feature in ("F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F12",
                                 "F14", "F17", "F18", "F19", "F20", "F21", "F22", "F23",
-                                "F28", "F29", "F30", "F32"), case.id
+                                "F28", "F29", "F30", "F31", "F32"), case.id
         assert case.ac.startswith(f"AC-{case.feature}-"), case.id
         assert case.time in ("load", "launch", "run"), case.id
         assert case.feature != "F02" or case.time == "load", case.id
@@ -422,6 +422,7 @@ def test_cases_are_well_formed():
     assert {"AC-F28-06", "AC-F28-07", "AC-F28-08"} <= acs        # F28 s2
     assert {"AC-F30-08", "AC-F30-09", "AC-F30-10"} <= acs        # F30 s2
     assert "AC-F32-06" in acs                                    # F32 s2
+    assert "AC-F31-09" in acs                                    # F31 s2
 
 
 def test_every_template_code_with_a_row_is_covered():

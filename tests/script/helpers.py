@@ -46,6 +46,8 @@ F30_TEMPLATE_DIR = FIXTURES.parent / "F30" / "template"
 F30_TEMPLATE = F30_TEMPLATE_DIR / "script" / "main.vns"
 F32_TEMPLATE_DIR = FIXTURES.parent / "F32" / "template"
 F32_TEMPLATE = F32_TEMPLATE_DIR / "script" / "main.vns"
+F31_TEMPLATE_DIR = FIXTURES.parent / "F31" / "template"
+F31_TEMPLATE = F31_TEMPLATE_DIR / "script" / "main.vns"
 
 # Template T (06 §0.4); "<S>" and "<T>" are the row slots.
 TEMPLATE = [
@@ -209,6 +211,15 @@ def template_f32(*, S: str | None = None, T: str | None = None,
     """F32's template U (``tests/fixtures/F32/template/script/main.vns``, F32 06 §0.3): **S**
     on line 5, **T** on line 8 at the top level, as ``template_f28``."""
     return _indented_slots(F32_TEMPLATE, S=S, T=T, replace=replace)
+
+
+def template_f31(*, S: str | None = None, T: str | None = None,
+                 replace: dict[int, str] | None = None) -> str:
+    """F31's template (``tests/fixtures/F31/template/``, F31 06 AC-F31-08/09: ``default
+    hana_here = True`` and ``default answer = None``, then ``label start:``): **S** on line 6,
+    **T** on line 8 at the top level, as ``template_f28``. The game folder has
+    ``files/hana.chr``."""
+    return _indented_slots(F31_TEMPLATE, S=S, T=T, replace=replace)
 
 
 def _indented_slots(path: Path, *, S: str | None, T: str | None,

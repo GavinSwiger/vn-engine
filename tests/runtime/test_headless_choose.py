@@ -62,7 +62,8 @@ def test_ac13_inputs_that_are_neither(program, bad):
         run_headless(program, seed=42, inputs=["advance", bad])
     error = caught.value
     assert error.message == (f'input 2 "{bad}" isn\'t advance, choose N, back N, forward N '
-                             '(N from 1 to 1000), jump and a box id, or finish and a result.')  # F14, F23, F20
+                             '(N from 1 to 1000), jump and a box id, finish and a result, or '
+                             'player deletes or restores and a file name.')  # F14, F23, F20, F31
 
 
 def test_ac13_the_error_is_user_facing_with_the_commands_so_far(program):
@@ -79,8 +80,9 @@ def test_ac13_a_long_input_is_cut_by_echo(program):
     message = caught.value.message
     # F23 (02 §4.2, 07 §2.1): the shared catch-all names finish too.
     assert message == (f'input 2 "{echo(bad)}" isn\'t advance, choose N, back N, forward N '
-                       '(N from 1 to 1000), jump and a box id, or finish and a result.')
-    assert len(message) < 250                   # F23's catch-all +34 characters, F20's +19
+                       '(N from 1 to 1000), jump and a box id, finish and a result, or '
+                       'player deletes or restores and a file name.')
+    assert len(message) < 290   # F23's catch-all +34 characters, F20's +19, F31's +44
 
 
 def test_ac13_same_seed_same_inputs_same_picks(program):

@@ -26,7 +26,8 @@ for; ``script/flowgraph.py``). F30 added ``username_fallback`` (``[meta] usernam
 through ``LoadOptions``: what ``{username}`` holds in the story) and ``window_titles`` (every
 ``effect window_title`` text, the titles a save may restore, ``07`` I-7). F32 added
 ``style_names`` (``LoadOptions.style_names``: the config's ``[style.<name>]`` names, which a
-restored ``ui style`` must be one of, W205; None when the load had no config).
+restored ``ui style`` must be one of, W205; None when the load had no config). F31 added
+``meta_files`` (every ``file`` line's name; the runtime's executor asserts its name is one).
 """
 
 import time
@@ -38,6 +39,7 @@ from typing import TYPE_CHECKING
 from engine.script.codex import CodexCategory, CodexEntry, CodexEntryDecl, build_entries
 from engine.script.fourthwall import TitleEffect
 from engine.script.identity import IDENTITY_SCHEME, IDENTITY_YIELD_ITEMS, iter_assign, walk_block
+from engine.script.metafiles import MetaFile
 from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
                                  ScriptFile, Statement)
 from engine.script.points import MeterSpec, PointsDecl
@@ -109,7 +111,9 @@ class Program:
     F30: ``username_fallback`` is the word ``{username}`` resolves to in the story (history,
     saves, goldens; the real name is only drawn); ``window_titles`` holds the shown text of
     every ``effect window_title "…"``, so a restore uses a saved title only if this script
-    writes it (SEC-F30-09, ``07`` I-7)."""
+    writes it (SEC-F30-09, ``07`` I-7).
+
+    F31: ``meta_files`` holds the name of every ``file`` line (at most 32, E314)."""
 
     files: tuple[ScriptFile, ...]                 # reading order
     labels: Mapping[str, Label]                   # read-only, reading order
@@ -135,6 +139,7 @@ class Program:
     username_fallback: str = "friend"                          # F30, see above
     window_titles: frozenset[str] = frozenset()                # F30, see above
     style_names: frozenset[str] | None = None                  # F32, see the module
+    meta_files: frozenset[str] = frozenset()                   # F31, see above
     define_names: frozenset[str] = field(default=frozenset(), init=False)
     default_names: frozenset[str] = field(default=frozenset(), init=False)
     persistent_default_names: frozenset[str] = field(default=frozenset(), init=False)
@@ -158,6 +163,7 @@ class Program:
             object.__setattr__(self, "persistent_reads",
                                MappingProxyType(dict(self.persistent_reads)))
         object.__setattr__(self, "persistent_writes", frozenset(self.persistent_writes))
+        object.__setattr__(self, "meta_files", frozenset(self.meta_files))
         object.__setattr__(self, "meters", tuple(self.meters))
         object.__setattr__(self, "endings", tuple(self.endings))
         object.__setattr__(self, "routes", tuple(self.routes))
@@ -265,7 +271,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     order; ``persistent_reads`` and ``persistent_writes`` from the bindings pass. F20:
     ``flow_marks`` are the checks' ``(target, FlowMark)`` pairs, keyed here by sid. F30:
     ``username_fallback`` from ``LoadOptions``; ``window_titles`` from the statements. F32:
-    ``style_names`` from ``LoadOptions``.
+    ``style_names`` from ``LoadOptions``. F31: ``meta_files`` from the statements.
     """
     nodes = list(nodes)
     labels: dict[str, Label] = {}
@@ -296,6 +302,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     index: dict[str, Statement] = {}
     speakers: dict[str, Say] = {}
     titles: set[str] = set()
+    meta_files: set[str] = set()
     statements = words = 0
     for node in labels.values():
         for stmt, _ in walk_block(node.block):
@@ -309,6 +316,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                 endings.append(stmt)
             elif isinstance(stmt, TitleEffect) and stmt.text is not None:       # F30
                 titles.add(stmt.text)
+            elif isinstance(stmt, MetaFile):                # F31
+                meta_files.add(stmt.name)
             if statements % IDENTITY_YIELD_ITEMS == 0:
                 yield
     codex, codex_categories = build_entries(decls)        # F21: after the sids
@@ -325,7 +334,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                    endings=tuple(endings), routes=tuple(routes), codex=codex,
                    codex_categories=codex_categories, flow_marks=MappingProxyType(marks),
                    username_fallback=username_fallback, window_titles=frozenset(titles),
-                   style_names=style_names, _index=index)
+                   style_names=style_names, meta_files=frozenset(meta_files), _index=index)
 
 
 def _mark_sid(target: Node) -> str:

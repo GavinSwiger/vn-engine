@@ -65,6 +65,11 @@ line 8; the game folder gets its ``config.toml``); they run inside ``scoped_regi
 ``LoadOptions.style_names`` from that config as the app gives it (``setup = "no styles"``: a
 config with no ``[style]`` table), as a release load except for warning rows. Their W204–W207
 rows (``time = "run" | "launch"``) are data; ``tests/script/test_ui_parse.py`` checks their texts.
+F31 rows (``feature = "F31"``; F31 ``06-acceptance.md`` AC-F31-09) edit F31's template (S is line
+6, T is line 8); the game folder gets its ``files/hana.chr`` (``setup = "no original"``: none;
+``"large original"``: a 5,452,595-byte one). They run inside ``scoped_registry()`` with
+``metafiles.register_words()`` (``file`` registers at import from F31 s3). Their W196–W200 rows
+(``time = "run"``) are data; ``tests/script/test_metafiles_parse.py`` checks their texts.
 
 Regenerate the golden file only with the reviewed command::
 
@@ -93,6 +98,7 @@ from tests.script.helpers import (
     F04_TEMPLATE_DIR,
     F08_TEMPLATE_DIR,
     F30_TEMPLATE_DIR,
+    F31_TEMPLATE_DIR,
     F32_TEMPLATE_DIR,
     FIXTURES,
     expand,
@@ -106,6 +112,7 @@ from tests.script.helpers import (
     template_f,
     template_f28,
     template_f30,
+    template_f31,
     template_f32,
     template_m,
     template_p,
@@ -245,7 +252,8 @@ def main_text(case: Case) -> str | bytes:
                      "F17": template_n, "F19": template_e,
                      "F21": template_c, "F23": template_g,
                      "F20": template_l, "F28": template_f28,
-                     "F30": template_f30, "F32": template_f32}.get(case.feature, template)
+                     "F30": template_f30, "F31": template_f31,
+                     "F32": template_f32}.get(case.feature, template)
             text = build(S=S, T=T, replace=replace)
     if "prefix_hex" in edit:
         return bytes.fromhex(edit["prefix_hex"]) + text.encode("utf-8")
@@ -295,8 +303,11 @@ class _UnreadablePaths(GamePaths):
 def _build_game(case: Case, tmp: Path) -> GamePaths:
     """The game folder of a load case under ``tmp`` (``tmp/outside`` is beside it)."""
     edit, setup = case.edit, case.setup or ""
-    if case.feature in ("F23", "F32") or (case.feature == "F20" and setup == "dev"):
+    original = case.feature == "F31" and setup != "no original"
+    large = case.feature == "F31" and setup == "large original"
+    if case.feature in ("F23", "F31", "F32") or (case.feature == "F20" and setup == "dev"):
         setup = ""          # F23: the setup picks the SIGS; F20: a dev load; F32: the styles
+                            # F31: files/hana.chr (below)
     root = tmp / "game"
     script = root / "script"
     outside = tmp / "outside"
@@ -318,6 +329,12 @@ def _build_game(case: Case, tmp: Path) -> GamePaths:
         folder = {"F04": F04_TEMPLATE_DIR, "F08": F08_TEMPLATE_DIR,
                   "F30": F30_TEMPLATE_DIR, "F32": F32_TEMPLATE_DIR}[case.feature]
         (root / "config.toml").write_bytes((folder / "config.toml").read_bytes())
+    if original:                                        # F31: files/hana.chr
+        (root / "files").mkdir()
+        with open(root / "files" / "hana.chr", "wb") as out:
+            out.write((F31_TEMPLATE_DIR / "files" / "hana.chr").read_bytes())
+            if large:
+                out.truncate(5_452_595)
     if "config" in edit:                                # F17: W100's theme rows
         (root / "config.toml").write_text(expand(edit["config"]) + "\n", encoding="utf-8")
     if edit.get("template", True):
@@ -354,7 +371,13 @@ def run_case(case: Case) -> Outcome:
     """Run a case: a parse case through the single-file parse, a load case through
     ``load_story`` on a game folder built in a temporary directory. F19 rows run with F19's
     words registered (module docstring); F28 and F30 rows with ``effect`` registered; F32
-    rows with ``ui`` registered."""
+    rows with ``ui`` registered; F31 rows with ``file`` registered."""
+    if case.feature == "F31":
+        from engine.script import metafiles
+
+        with scoped_registry():
+            metafiles.register_words()
+            return _run_case(case)
     if case.feature == "F32":
         from engine.script import ui
 

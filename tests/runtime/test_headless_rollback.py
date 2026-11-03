@@ -94,9 +94,9 @@ def test_ac27_headless_back_and_forward(monkeypatch):
             _run(["advance", "advance", text])
         assert str(caught.value) == format_message("H-input", (3, text)), text
         assert _shown(caught.value.commands)[-1] == ("Three {var=r}.", False)
-    assert format_message("H-input", (3, "back 0")) == (          # F23, F20: finish, jump
+    assert format_message("H-input", (3, "back 0")) == (   # F23, F20, F31: finish, jump, player
         'input 3 "back 0" isn\'t advance, choose N, back N, forward N (N from 1 to 1000), '
-        'jump and a box id, or finish and a result.')
+        'jump and a box id, finish and a result, or player deletes or restores and a file name.')
     # choose 2 at a landed fixed menu (one pickable choice): F07's out-of-range error.
     with pytest.raises(HeadlessInputError) as caught:
         run_headless(fixture("walls"), seed=1, inputs=["advance"] * 9 + ["choose 1", "back 1",

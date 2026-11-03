@@ -83,6 +83,13 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    E270 for an ``into`` target that is a define, an engine name, or no default
    (did-you-mean over the defaults). ``CheckInput.minigames`` None (read-only tools) skips the
    signature checks; the target checks are skipped when a file couldn't be read.
+12. F31 (``04-technical.md`` §5.2, ``_iter_meta_files``): per ``file`` line in reading order,
+   E312 for an ``into`` target that is a define, an engine name, or no default (did-you-mean
+   over the defaults; skipped when a file couldn't be read, F23's rule); E313 at the first
+   ``file write`` without text of each name whose original ``files/<name>`` isn't a regular
+   file in the game (``missing``) or is over ``META_ORIGINAL_MAX_BYTES`` (``large``), by
+   ``GamePaths.file_size`` (a stat: no content is read); E314 (whole game) at the first name
+   past ``META_NAMES_MAX`` distinct names. ``Program.meta_files`` is built by ``program.py``.
 
 Steps 3–5 are skipped when a file couldn't be read (``checks_skipped``, SR-F02-69); after a
 story limit (``limit_hit``) only step 1 runs. Errors go to the sink; did-you-mean
@@ -98,7 +105,8 @@ from collections import deque
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from engine.core.errors import EngineError
+from engine.core.constants import META_NAMES_MAX, META_ORIGINAL_MAX_BYTES, META_ORIGINALS_DIR
+from engine.core.errors import AssetRefError, EngineError
 from engine.core.minigame_types import REQUIRED, MinigameSig
 from engine.core.paths import GamePaths
 from engine.script import bindings, limits
@@ -115,6 +123,7 @@ from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.limits import IDENTITY_YIELD_ITEMS
 from engine.script.messages import MINIGAME_LIST_ITEMS, format_message, mixed_script
 from engine.script.flowchart import MarkTargets, iter_attach_marks
+from engine.script.metafiles import WRITE, MetaFile
 from engine.script.minigame import Minigame
 from engine.script.nodes import Default, Define, Label, Node, PersistentDefault, ScriptFile
 from engine.script.points import METERS_MAX
@@ -1035,6 +1044,70 @@ def _iter_minigames(inp: CheckInput) -> Generator[None, None, None]:
                 inp.sink.add(problem)
 
 
+# --- Step 12: meta files (F31) ------------------------------------------------------------
+
+def _meta_target(stmt: MetaFile, collected: Collected,
+                 defaults: _Names) -> Diagnostic | None:
+    """E312 for the ``into`` target: a define, an engine name, or no default (step 12)."""
+    target = stmt.target
+    if target is None or target in collected.default_defs:
+        return None
+    if target in collected.define_defs:
+        args: tuple = ("define", target)
+    elif target in ENGINE_NAMES:
+        args = ("engine", target)
+    else:
+        return LazyDiagnostic("E312", stmt.file, stmt.line, None, stmt=stmt.line,
+                              build=lambda: ("no_default", target, defaults.suggest(target)))
+    return Diagnostic("E312", stmt.file, stmt.line, None, args, stmt=stmt.line)
+
+
+def _meta_original(stmt: MetaFile, paths: GamePaths) -> Diagnostic | None:
+    """E313 for a copied name's original (step 12): one stat, never a read."""
+    try:
+        size = paths.file_size(f"{META_ORIGINALS_DIR}/{stmt.name}")
+    except (EngineError, AssetRefError):
+        args: tuple = ("missing", stmt.name)
+    else:
+        if size <= META_ORIGINAL_MAX_BYTES:
+            return None
+        args = ("large", stmt.name, size, META_ORIGINAL_MAX_BYTES)
+    return Diagnostic("E313", stmt.file, stmt.line, None, args, stmt=stmt.line)
+
+
+def _iter_meta_files(inp: CheckInput) -> Generator[None, None, None]:
+    """Step 12 (module docstring)."""
+    collected = inp.collected
+    defaults = _Names(collected.default_defs)
+    names: set[str] = set()
+    copied: set[str] = set()
+    first_over: tuple[str, str, int] | None = None
+    count = 0
+    for node in inp.nodes:
+        if not isinstance(node, Label):
+            continue
+        for stmt, _ in walk_block(node.block):
+            count += 1
+            if count % IDENTITY_YIELD_ITEMS == 0:
+                yield
+            if not isinstance(stmt, MetaFile):
+                continue
+            if stmt.name not in names:
+                names.add(stmt.name)
+                if len(names) > META_NAMES_MAX and first_over is None:
+                    first_over = (stmt.name, stmt.file.ref, stmt.line)
+            problem = None
+            if stmt.verb == WRITE and stmt.text is None and stmt.name not in copied:
+                copied.add(stmt.name)
+                problem = _meta_original(stmt, inp.paths)
+            if problem is None and not inp.checks_skipped:
+                problem = _meta_target(stmt, collected, defaults)
+            if problem is not None:
+                inp.sink.add(problem)
+    if first_over is not None:                       # the count is known only at the end
+        inp.sink.add(Diagnostic("E314", args=(len(names), *first_over)))
+
+
 # --- The checks ---------------------------------------------------------------------------
 
 def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
@@ -1094,6 +1167,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += yield from _iter_codex(inp, labels)               # F21
     yield
     yield from _iter_minigames(inp)                                   # F23
+    yield
+    yield from _iter_meta_files(inp)                                  # F31
     return out
 
 
