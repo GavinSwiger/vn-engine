@@ -26,7 +26,9 @@ Quick keys: F5 (no Ctrl/Alt/Meta) saves to the Quick page's rotation target with
 ``confirm_load`` (unless ``[saves] confirm_quick_load = false``). Both work only while an
 in-game screen is top (the overlay sits on F05's textbox; F07's choice screen passes them on).
 
-Quit (§7.8 step 5, C9): ``submit_final`` submits every encoded job; ``wait_final(until)``
+Quit (§7.8 steps 4–5, C9): the quit guard first encodes and submits every job still
+waiting (so a requested save isn't lost to the quit), then makes the quit save;
+``submit_final`` submits every encoded job; ``wait_final(until)``
 waits on the shared deadline and ``finish`` logs W83 for failures and jobs the quit didn't
 wait for.
 
@@ -656,11 +658,26 @@ class SaveService:
             self._request("auto")
 
     def quit_guard(self) -> bool:
-        """§7.8 step 4, after F10's guard (which asked first): in game with ``autosave_quit``
-        and ``can_save()``, ``autosave_now("quit")``. Always True: it never vetoes."""
+        """§7.8 step 4, after F10's guard (which asked first): first every save already
+        requested and still waiting to be encoded (an Auto save at a choice, an F5 held back
+        by the writer's backlog) is encoded in full and submitted, oldest first, so the
+        quit writes it instead of dropping it with W83; then, in game with
+        ``autosave_quit`` and ``can_save()``, ``autosave_now("quit")``. Always True: it
+        never vetoes."""
+        self._flush_jobs()
         if self._leave_autosaves(quitting=True):
             self.autosave_now("quit")
         return True
+
+    def _flush_jobs(self) -> None:
+        """At quit: each waiting job encoded now (no deadline, like ``autosave_now``) and
+        submitted in order; the writer writes them on its thread before the quit save."""
+        if not self.available or self.client is None or self._error_mode():
+            return
+        while self._jobs:
+            job = self._jobs.popleft()
+            self._encode(job, float("inf"), self._clock)
+            self._submit(job)
 
     def autosave_now(self, reason: Literal["quit", "jump"]) -> None:
         """An Auto save encoded in full now and submitted to the writer, which writes it on

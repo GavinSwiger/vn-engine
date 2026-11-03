@@ -688,7 +688,7 @@ def test_quit_submits_encoded_jobs_and_logs_the_rest(tmp_path, scripted_app, mon
         yield from wait(lambda: at_line(app, LINE6))
         post_key(pygame.K_F5)
         yield
-        yield
+        yield from wait(lambda: app.saves._sent)    # encoding may take a few frames
         out["sent"] = len(app.saves._sent)
 
     out = play(scripted_app, script)
@@ -703,6 +703,27 @@ def test_quit_submits_encoded_jobs_and_logs_the_rest(tmp_path, scripted_app, mon
         thread = scripted_app.apps[-1].writer._thread if scripted_app.apps else None
         if thread is not None:          # the abandoned writer ends inside this test
             thread.join(5)
+
+
+def test_quit_writes_a_save_still_waiting_to_be_encoded(tmp_path, scripted_app, unthreaded,
+                                                        monkeypatch):
+    """A save requested but not yet encoded when the quit comes (the frame slot held back,
+    as by the writer's backlog) is encoded and written at quit, not dropped with W83."""
+    game = make_game(tmp_path)
+    monkeypatch.setattr("engine.app.saves._PENDING_WRITES_MAX", 0)   # update never encodes
+
+    def script(app, out):
+        yield from wait(lambda: at_line(app, LINE6))
+        post_key(pygame.K_F5)
+        yield
+        yield
+        out["waiting"] = len(app.saves._jobs)
+
+    out = play(scripted_app, script)
+    assert launch(game) == 0
+    assert out["waiting"] == 1
+    assert full(game, quick(1)).status is SlotStatus.OK
+    assert not any("didn't wait" in m for m in save_log(game)), save_log(game)
 
 
 # --- AC-F11-04: the CI guard (real clock) ---------------------------------------------------------
