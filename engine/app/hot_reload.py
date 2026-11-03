@@ -8,8 +8,10 @@ Everything here is pure or thread-light, so W1 only wires it in:
 - **Messages** (Studio → child stdin, ASCII JSON lines of at most ``MESSAGE_LINE_MAX``
   bytes): ``reload`` and ``held`` (``parse_message``), and, only as a resume child's first
   line, the ``resume`` frame header followed by exactly ``bytes`` bytes (``parse_resume_header``).
-  Longer, non-ASCII, malformed, ``v`` ≠ 1 or unknown lines are dropped. Input is never logged
-  or echoed.
+  Longer, non-ASCII, malformed, duplicate-key, ``v`` ≠ 1 or unknown lines are dropped. Input is
+  never logged or echoed. F40 adds the ``console`` message (``ConsoleRequest``: typed data,
+  exact keys per ``do``; ``04`` §7.5), which ``handle_messages`` hands to its ``console``
+  callback (never in error mode); what it means is the console's business.
 - ``StdinReader``: a daemon thread that touches only its stream, a ``SimpleQueue`` and the
   frame slot (ADR-0007 thread note); the frame loop calls ``poll`` once per frame (W1:
   ``app/editor_link.py``'s ``EditorLink.listen`` and ``update``).
@@ -40,6 +42,9 @@ from queue import Empty, SimpleQueue
 from typing import TYPE_CHECKING, BinaryIO
 
 from engine.core.editorreport import (
+    CONSOLE_LABEL_MAX,
+    CONSOLE_MESSAGE,
+    CONSOLE_NAME_MAX,
     RELOAD_FRAME_MAX,
     RELOAD_HELD_MAX,
     RELOAD_MESSAGE_MAX,
@@ -108,6 +113,20 @@ class Held:
 
 
 @dataclass(frozen=True, slots=True)
+class ConsoleRequest:
+    """F40 (``04`` §7.5): ``{"v":1,"msg":"console","do":…}`` with exactly the keys of its
+    ``do``. ``open`` and ``values`` carry nothing; ``jump`` a ``label`` (1 to
+    ``CONSOLE_LABEL_MAX`` characters); ``set`` a ``name`` (1 to ``CONSOLE_NAME_MAX``) and a
+    ``value`` (literal text for F44's ``parse_literal``, never evaluated). Only the shape is
+    checked here: whether the label or name exists is the console's check (a refusal)."""
+
+    do: str
+    label: str | None = None
+    name: str | None = None
+    value: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ResumeFrame:
     """The resume frame. ``body`` is None when the frame was bad: a malformed header, a body
     over the caps, or a short body (EOF first). ``lost``: Studio got no state (N4)."""
@@ -128,13 +147,20 @@ def _is_int(value: object) -> bool:
     return type(value) is int
 
 
+def _no_duplicates(pairs: list[tuple[str, object]]) -> dict:
+    keys = {key for key, _ in pairs}
+    if len(keys) != len(pairs):
+        raise ValueError("duplicate key")
+    return dict(pairs)
+
+
 def _load_line(line: bytes) -> dict | None:
     """``line`` (no newline) as a JSON object with ``v`` 1 and a ``str`` ``msg``, else None.
-    Only short ASCII lines are decoded."""
+    Only short ASCII lines are decoded; an object with a repeated key is refused."""
     if len(line) > MESSAGE_LINE_MAX or not line.isascii():
         return None
     try:
-        obj = json.loads(line.decode("ascii"))
+        obj = json.loads(line.decode("ascii"), object_pairs_hook=_no_duplicates)
     except (ValueError, RecursionError):
         return None
     if type(obj) is not dict:
@@ -146,18 +172,43 @@ def _load_line(line: bytes) -> dict | None:
     return obj
 
 
-def parse_message(line: bytes) -> Reload | Held | None:
-    """A ``reload`` or ``held`` line (newline stripped), else None (dropped). Exact keys."""
+def parse_message(line: bytes) -> Reload | Held | ConsoleRequest | None:
+    """A ``reload``, ``held`` or ``console`` line (newline stripped), else None (dropped).
+    Exact keys."""
     obj = _load_line(line)
     if obj is None:
         return None
     msg = obj["msg"]
+    if msg == CONSOLE_MESSAGE:
+        return _console_request(obj)
     if msg == "reload" and obj.keys() == {"v", "msg"}:
         return Reload()
     if msg == "held" and obj.keys() == {"v", "msg", "errors"}:
         errors = obj["errors"]
         if _is_int(errors) and 1 <= errors <= HELD_ERRORS_MAX:
             return Held(errors)
+    return None
+
+
+def _text_field(value: object, most: int) -> bool:
+    return type(value) is str and 1 <= len(value) <= most
+
+
+def _console_request(obj: dict) -> ConsoleRequest | None:
+    """F40 SEC-F40-06: ``do`` one of the four, exactly its keys, every field an exact
+    ``str`` (never converted) within its length. Anything else is None (dropped)."""
+    do = obj.get("do")
+    keys = obj.keys()
+    if do in ("open", "values") and keys == {"v", "msg", "do"}:
+        return ConsoleRequest(do)
+    if do == "jump" and keys == {"v", "msg", "do", "label"}:
+        label = obj["label"]
+        if _text_field(label, CONSOLE_LABEL_MAX):
+            return ConsoleRequest("jump", label=label)
+    elif do == "set" and keys == {"v", "msg", "do", "name", "value"}:
+        name, value = obj["name"], obj["value"]
+        if _text_field(name, CONSOLE_NAME_MAX) and type(value) is str:
+            return ConsoleRequest("set", name=name, value=value)
     return None
 
 
@@ -186,13 +237,18 @@ def parse_resume_header(line: bytes) -> tuple[int, int, bool] | None:
 
 
 def handle_messages(messages: Sequence[object], *, error_mode: bool,
-                    notify: Callable[[str, str], None], reload: Callable[[], None]) -> bool:
+                    notify: Callable[[str, str], None], reload: Callable[[], None],
+                    console: Callable[[ConsoleRequest], None] | None = None) -> bool:
     """One frame's messages: ``held`` shows N5 (a problem notice), except in error mode,
     whose screen has no notices; ``reload`` calls ``reload`` once, whatever the count.
-    Returns True when a reload was asked for."""
+    F40: each ``ConsoleRequest`` goes to ``console`` in order, except in error mode or with
+    no ``console`` (then it is dropped, unanswered). Returns True when a reload was asked for."""
     asked = False
     for message in messages:
-        if type(message) is Held:
+        if type(message) is ConsoleRequest:
+            if console is not None and not error_mode:
+                console(message)
+        elif type(message) is Held:
             if not error_mode:
                 notify(held_note(message.errors), "problem")
         elif type(message) is Reload:
@@ -232,7 +288,7 @@ class StdinReader:
     def join(self, timeout: float | None = None) -> None:
         self._thread.join(timeout)
 
-    def poll(self) -> list[Reload | Held]:
+    def poll(self) -> list[Reload | Held | ConsoleRequest]:
         """The messages read since the last poll (never blocks)."""
         out = []
         while True:
@@ -662,8 +718,8 @@ def _label(state: "GameState") -> str:
     return "?"
 
 
-__all__ = ["FRAME_BYTES_MAX", "FRAME_STATES_MAX", "Held", "MESSAGE_LINE_MAX", "NOTE_LOST",
-           "NOTE_RESTARTED", "NOTE_UPDATED", "NOTE_WENT_BACK", "Pick", "RESUME_WAIT_S",
+__all__ = ["ConsoleRequest", "FRAME_BYTES_MAX", "FRAME_STATES_MAX", "Held",
+           "MESSAGE_LINE_MAX", "NOTE_LOST", "NOTE_RESTARTED", "NOTE_UPDATED", "NOTE_WENT_BACK", "Pick", "RESUME_WAIT_S",
            "Reload", "ResumeFrame", "ResumePorts", "ResumeScreen", "STATE_LINE_MAX",
            "StdinReader", "WINDOW_COORD_MAX", "collect_states", "encode_state_line",
            "fatal_states", "gather", "handle_messages", "held_note", "parse_message",

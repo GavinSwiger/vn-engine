@@ -61,10 +61,15 @@ SUBPACKAGES: dict[tuple[str, str], set[str]] = {("tools", "editor"): {"core", "s
                                                                       "runtime", "render",
                                                                       "ui", "audio"},
                                                 ("tools", "build"): {"core", "script",
-                                                                     ROOT_LAYER}}
+                                                                     ROOT_LAYER},
+                                                # F40 (04 §3, 07 I-3): never meta, persist,
+                                                # audio, minigames or another tools package.
+                                                ("tools", "console"): {"core", "script",
+                                                                       "runtime", "render",
+                                                                       "ui", "app"}}
 SUBPACKAGE_BANNED: dict[str, tuple[str, ...]] = {
     "engine.tools.helper": ("engine.runtime.interpreter",)}
-PYGAME_SUBPACKAGES = {"engine.tools.helper"}
+PYGAME_SUBPACKAGES = {"engine.tools.helper", "engine.tools.console"}
 # F42 (04 §3.4, 07 I-10): tools/build imports core, script, the stdlib and itself (and the
 # engine version, for the build marker, like the tools row); pygame only
 # in icon.py; never PyInstaller (it runs only as a child). tools/editor (Studio) may import
@@ -688,6 +693,32 @@ def test_ac_f31_26_meta_files_import_rows():
     app = _runtime_imports("engine/app/metafiles.py")
     assert all(typing for _, n, typing in app if n.split(".")[:2] == ["engine", "script"])
     assert scan(REPO / "engine") == []
+
+
+def test_f40_console_row(tmp_path):
+    """F40 (04 §3, 07 I-3): tools/console may import core, script, runtime, render, ui, app
+    and pygame; never meta, persist, audio, minigames, or another tools package."""
+    engine = tmp_path / "engine"
+    for package in ("core", "app", "persist", "audio", "minigames", "meta", "tools",
+                    "tools/console", "tools/editor", "tools/check"):
+        (engine / package).mkdir(parents=True)
+        (engine / package / "__init__.py").write_text("", encoding="utf-8")
+    (engine / "__init__.py").write_text("", encoding="utf-8")
+    (engine / "tools" / "console" / "ok.py").write_text(
+        "import pygame\nfrom engine.core import redact\nfrom engine.app import editor_link\n"
+        "from engine.tools.console import ok\n", encoding="utf-8")
+    (engine / "tools" / "console" / "bad.py").write_text(
+        "from engine.persist import saves\nimport engine.audio\nfrom engine.minigames import x\n"
+        "import engine.meta\nfrom engine.tools.editor import y\n"
+        "from engine.tools import check\n", encoding="utf-8")
+    assert scan(engine) == [
+        "engine/tools/console/bad.py:1: tools.console must not import engine.persist",
+        "engine/tools/console/bad.py:2: tools.console must not import engine.audio",
+        "engine/tools/console/bad.py:3: tools.console must not import engine.minigames",
+        "engine/tools/console/bad.py:4: tools.console must not import engine.meta",
+        "engine/tools/console/bad.py:5: tools.console must not import engine.tools.editor",
+        "engine/tools/console/bad.py:6: tools.console must not import engine.tools",
+    ]
 
 
 # --- F43 pure modules (04 §3, 07 "Shared contracts"): core/langtags and core/fontcmap import

@@ -24,7 +24,12 @@ with the argv and stdin bytes that ``update``'s ``restart`` gives (``hotreload.p
 both). No state within ``RELOAD_WAIT_S``, an exit without one, or a bad header or body is no
 answer: the child is terminated (then killed) and ``restart`` gets None.
 
-Imports only ``engine.core`` and the standard library; never pygame or ``engine.app``.
+F40 (developer console, ``04`` §7.5): a ``console`` report line is checked by
+``consoleclient.decode_console`` and kept for ``PreviewRunner.console_events``; Studio shows
+it only as escaped, cut display text.
+
+Imports only ``engine.core``, ``consoleclient`` (F40) and the standard library; never pygame
+or ``engine.app``.
 """
 
 import enum
@@ -42,6 +47,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from engine.core.editorreport import (
+    CONSOLE_EVENT,
     PHASES,
     RELOAD_FRAME_MAX,
     RELOAD_MESSAGE,
@@ -60,6 +66,7 @@ from engine.core.editorreport import (
 from engine.core.paths import engine_root
 from engine.core.redact import echo
 from engine.core.startvalues import parse_set_list
+from engine.tools.editor.consoleclient import ConsoleEvent, decode_console
 
 # --- Protocol (04 §3 "Report line", §6 item 3; I-4) -----------------------------------------
 # The marker and limits live in ``core/editorreport.py``, which the child side
@@ -136,6 +143,7 @@ def editor_report(*paragraphs: str, head: str | None = None) -> Report:
 
 STARTED = "started"                     # a decoded ``started`` line
 STATE = STATE_EVENT                     # F39: a ``state`` event and its body
+CONSOLE = CONSOLE_EVENT                 # F40: a decoded ``console`` answer (a ``ConsoleEvent``)
 
 
 @dataclass(frozen=True)
@@ -160,11 +168,12 @@ class StateFrame:
     window: tuple[int, int] | None
 
 
-def decode_report(line: bytes) -> "Report | StateHeader | str | None":
+def decode_report(line: bytes) -> "Report | StateHeader | tuple[str, ConsoleEvent] | str | None":
     """One stdout line without its line break → ``STARTED``, a ``Report``, a
-    ``StateHeader`` (F39), or None when it isn't a report line or its shape is wrong (§6 item
-    3: ASCII, at most 1 MiB, ``v`` 1, a known event, at most 60 items, every text at most
-    10,000 characters)."""
+    ``StateHeader`` (F39), ``(CONSOLE, ConsoleEvent)`` (F40: exact keys and types, see
+    ``consoleclient.decode_console``), or None when it isn't a report line or its shape is
+    wrong (§6 item 3: ASCII, at most 1 MiB, ``v`` 1, a known event, at most 60 items, every
+    text at most 10,000 characters)."""
     if not line.startswith(REPORT_MARKER) or len(line) > REPORT_MAX_BYTES:
         return None
     try:
@@ -174,7 +183,7 @@ def decode_report(line: bytes) -> "Report | StateHeader | str | None":
     return _checked(data)
 
 
-def _checked(data: object) -> "Report | StateHeader | str | None":
+def _checked(data: object) -> "Report | StateHeader | tuple[str, ConsoleEvent] | str | None":
     if not isinstance(data, dict):
         return None
     version = data.get("v")
@@ -185,6 +194,9 @@ def _checked(data: object) -> "Report | StateHeader | str | None":
         return STARTED
     if event == STATE:
         return _state_header(data)
+    if event == CONSOLE:
+        console = decode_console(data)
+        return None if console is None else (CONSOLE, console)
     if event != "error" or data.get("phase") not in PHASES:
         return None
     if not {"head", "items", "tail"} <= data.keys():
@@ -538,6 +550,7 @@ class PreviewRunner:
         self._events: list[PreviewEvent] = []
         self._base: list[str] = []                  # the argv of the last ``start``
         self._restart: Restart | None = None        # the update under way
+        self._console: list[ConsoleEvent] = []     # F40 answers read by ``poll``
 
     @property
     def state(self) -> PreviewState:
@@ -632,11 +645,19 @@ class PreviewRunner:
         events, self._events = self._events, []
         return events
 
+    def console_events(self) -> list[ConsoleEvent]:
+        """F40: the ``console`` answers the live child sent, read by ``poll`` (call it
+        after ``poll``), oldest first. Untrusted text: show them through
+        ``consoleclient``'s ``ConsoleTracker`` and ``shown``."""
+        events, self._console = self._console, []
+        return events
+
     def stop(self, timeout_s: float = KILL_AFTER_S) -> None:
         """End the preview (editor close, PR-F44-14): terminate, wait up to ``timeout_s``,
         then kill. Blocks for at most about twice ``timeout_s``."""
         self._pending = None
         self._restart = None
+        self._console.clear()
         child, self._child = self._child, None
         if child is None:
             return
@@ -709,6 +730,9 @@ class PreviewRunner:
                 child.eof = True
             elif child.superseded:
                 continue                            # an old child's news doesn't count
+            elif kind == CONSOLE:
+                if isinstance(payload, ConsoleEvent):
+                    self._console.append(payload)
             elif kind == STATE:
                 if child.asked_at is not None and not child.answered:
                     child.answered = True

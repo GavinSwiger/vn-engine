@@ -93,3 +93,27 @@ RELOAD_STATE_LINE_MAX = 25_165_824      # one state line and its "\n" (24 MiB, F
 RELOAD_WAIT_S = 5.0                     # how long either side waits for the other's body
 RELOAD_WINDOW_MAX = 100_000             # |x|, |y| of a window position
 RELOAD_HELD_MAX = 1_000_000_000         # a ``held`` count above this is a bad line
+
+# --- F40 the developer console (F40 ``04`` §7.5, ``05`` SEC-F40-06/-07/-09) ----------------
+# Studio → a running preview's stdin, on F39's channel and line rules (ASCII, at most
+# ``RELOAD_MESSAGE_MAX`` bytes, ``v`` 1, exact keys, no duplicate keys):
+#   ``{"v":1,"msg":"console","do":"open"|"values"}``
+#   ``{"v":1,"msg":"console","do":"jump","label":L}``      (a ``str``, an exact label key)
+#   ``{"v":1,"msg":"console","do":"set","name":N,"value":T}``  (``T`` goes only to F44's
+#   ``parse_literal``: Studio sends values and scene names, never code)
+# The game answers with one report line ``{"v":1,"event":"console","do":D,"ok":bool,
+# "text":str}``; a ``values`` answer adds ``"story":bool,"values":[[name,text],…],
+# "left_out":int``. Every string is redacted and escaped; the whole line fits
+# ``REPORT_MAX_BYTES`` (trailing ``values`` are dropped and counted in ``left_out``).
+# The game side is ``app/hot_reload.py`` (parse) and ``tools/console/answer.py``; Studio's is
+# ``tools/editor/consoleclient.py`` and ``tools/editor/preview.py`` (decode).
+CONSOLE_MESSAGE = "console"
+CONSOLE_EVENT = "console"
+CONSOLE_DO = ("open", "jump", "set", "values")
+CONSOLE_NAME_MAX = 255                  # a ``set`` name (and a ``values`` name)
+CONSOLE_LABEL_MAX = 1_024               # a ``jump`` label
+CONSOLE_TEXT_MAX = 2_000                # an answer's ``text``
+CONSOLE_VALUE_TEXT_MAX = 200            # one ``values`` value text
+CONSOLE_VALUES_MAX = 1_000              # names in one ``values`` answer; the rest are counted
+CONSOLE_SHOWN_MAX = 200                 # Studio shows at most this much of any event text
+CONSOLE_ANSWER_S = 2.0                  # Studio: no answer after this is "didn't answer"
