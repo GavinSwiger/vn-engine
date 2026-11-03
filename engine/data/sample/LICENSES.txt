@@ -1,0 +1,67 @@
+License records for the sample story's pictures and sounds.
+
+The sample story is a copy of a few files from vn-engine's example game, Paper
+Lanterns. Every file is original, made by the vn-engine contributors with Python
+scripts in the vn-engine repository.
+
+The sounds are dedicated to the public domain under CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/): use them in your own game
+with no credit needed. The pictures are the example game's drawings
+(tests/fixtures/F04/make_example_art.py).
+
+When you add pictures or sounds of your own, add an entry for each one here: who
+made it, where it came from, and its license.
+
+File: images/bg/river_dusk.png
+Author: vn-engine contributors
+Source: river_dusk(), tests/fixtures/F04/make_example_art.py
+SHA-256: dd31c0e6525ebb8e5c38d32ea3a060f3572f56ecd0437dd143d1bc4604bb4379
+
+File: images/bg/bridge_night.png
+Author: vn-engine contributors
+Source: bridge_night(), tests/fixtures/F04/make_example_art.py
+SHA-256: 0cc8b786c31e587d8e4dcbfbf976994a3b5fcf48915fe0c5d6f2cd3fa202141f
+
+File: images/hana/happy.png
+Author: vn-engine contributors
+Source: Hana's sprite, happy, tests/fixtures/F04/make_example_art.py
+SHA-256: fc0d7f1cdffa59f3d86d2107279af255e8defc6c25aca583e9425894a8dd272c
+
+File: images/hana/sad.png
+Author: vn-engine contributors
+Source: Hana's sprite, sad, tests/fixtures/F04/make_example_art.py
+SHA-256: bb0a94497254f5f8552383bbee16724624babb851b390facf16c4e640e67bf18
+
+File: images/daichi/smile.png
+Author: vn-engine contributors
+Source: Daichi's sprite, smile, tests/fixtures/F04/make_example_art.py
+SHA-256: 024340e12c2468704f0ab42a31760510a2626091bfd037005d4c7720a3dc9e25
+
+File: images/daichi/grin.png
+Author: vn-engine contributors
+Source: Daichi's sprite, grin, tests/fixtures/F04/make_example_art.py
+SHA-256: deeff7cc6420746deefa0013916b838beb916cab12457c2f3dd69b4c9ee0f618
+
+File: audio/music/lantern_walk.wav
+License: CC0 1.0 (original)
+Author: vn-engine contributors
+Source: example_music(), tests/fixtures/F08/make_audio.py
+SHA-256: b06221a5469a8a4737df787cae519aab41ea0ce20ada67e84cb3c75ae4d24e90
+
+File: audio/sound/chime.wav
+License: CC0 1.0 (original)
+Author: vn-engine contributors
+Source: example_chime(), tests/fixtures/F08/make_audio.py
+SHA-256: 91c101cb52327fcb94e0de22b8fa448ac3475227d8d349edabfc2328e0b17bd0
+
+File: audio/blips/hana.wav
+License: CC0 1.0 (original)
+Author: vn-engine contributors
+Source: example_blip(), a text blip, tests/fixtures/F08/make_audio.py
+SHA-256: f919ac9450eb44d07a81a4bb020cd94ca3cd35b209303c4feaabe447f80e3433
+
+File: audio/blips/daichi.wav
+License: CC0 1.0 (original)
+Author: vn-engine contributors
+Source: example_blip(), a text blip, tests/fixtures/F08/make_audio.py
+SHA-256: da8c0aef1576f46068159e716a0058b55f3173e91c4ec987b45139b1c3c6b344

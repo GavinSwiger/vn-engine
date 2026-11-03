@@ -573,7 +573,7 @@ def test_ac28_new_game_from_the_starter(tmp_path, monkeypatch):
         folder.parent.mkdir()
         if "empty" in str(folder.parent):
             folder.mkdir()
-        assert files.new_game(folder) == folder.absolute()
+        assert files.new_game(folder, template=files.TEMPLATE_EMPTY) == folder.absolute()
         config = tomllib.loads((folder / "config.toml").read_text(encoding="utf-8"))
         assert config["game"] == {"id": slugify(name), "title": name, "version": "0.1.0"}
         main = (folder / "script" / "main.vns").read_text().splitlines()

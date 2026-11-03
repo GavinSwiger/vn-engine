@@ -1,0 +1,7 @@
+# Settings for this game. Every key is optional; the title shows on the window and the
+# title screen. Studio's Game settings tab changes these for you.
+
+[game]
+id = "$id"
+title = $title
+version = "0.1.0"

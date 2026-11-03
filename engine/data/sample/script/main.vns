@@ -1,0 +1,48 @@
+# A short sample story. Press Play to see it, then change anything you like: a line of
+# text, a picture, a choice. The game starts at "label start" below.
+#
+# A line that starts with # is a note for you. The game skips it.
+
+# The characters and the story's variables are in database.vns.
+include "database.vns"
+
+# A "label" names a scene. Its lines are indented below it.
+label start:
+    # "scene" shows a background: "bg river_dusk" is images/bg/river_dusk.png.
+    # "with dissolve" blends it in.
+    scene bg river_dusk with dissolve
+    # "play music" starts a song from the audio folder. It repeats until another starts.
+    play music "music/lantern_walk.wav" fadein 1.0
+    # Text in quotes on its own is narration.
+    "The festival lanterns were already lit when I reached the river."
+    # "show" puts a character's picture on the stage: images/hana/happy.png.
+    show hana happy at left with dissolve
+    # A character's name before the text makes it dialogue.
+    hana "You came! Daichi said you'd get lost at least twice."
+    show daichi smile at right with dissolve
+    daichi "Only once. Well, twice."
+    hana "Everyone sends a paper lantern down the river tonight, with a wish on it."
+    # "menu" shows choices as buttons. The story goes on below the one the player picks.
+    menu:
+        "Write a wish and send one":
+            # A line that starts with $ changes a story variable.
+            $ sent_lantern = True
+            # A word before the text changes the picture: images/daichi/grin.png.
+            daichi grin "I'll get the matches."
+        "Just watch this year":
+            hana sad "Oh. That's all right. Next year, then."
+    jump bridge
+
+label bridge:
+    scene bg bridge_night with dissolve
+    # "play sound" plays a short sound once.
+    play sound "sound/chime.wav"
+    "From the footbridge, the river was a road of little lights."
+    show hana happy with dissolve
+    # "if" runs its lines only when the test is true.
+    if sent_lantern:
+        hana "Look, that one's yours. It's still the brightest."
+        # "ending" shows an ending card, then goes back to the title screen.
+        ending lantern "Good End" "Wishes on the Water"
+    hana "Promise you'll send one with us next year?"
+    ending next_year "Quiet End" "Next Year, Maybe"

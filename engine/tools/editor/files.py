@@ -66,6 +66,15 @@ TREE_MAX_ENTRIES = 10_000            # files per group, and folders per group (�
 TREE_MAX_DEPTH = 8                   # a group folder is depth 0
 KEEP_BOTH_MAX = 10_000               # stem_2 … stem_10001 before giving up
 STARTER_DIR = "starter"              # engine/data/starter
+SAMPLE_DIR = "sample"                # engine/data/sample (F47 PR-F47-25)
+TEMPLATE_SAMPLE = "sample"           # New game's "Start from" choices (F47 §6.4)
+TEMPLATE_EMPTY = "empty"
+TEMPLATES = ((TEMPLATE_SAMPLE, "A short sample story (recommended)"),
+             (TEMPLATE_EMPTY, "An empty game"))
+START_FROM = "Start from"
+CONFIG_TEMPLATE = "config.toml.in"
+SAMPLE_MAX_FILES = 64                # a template larger than this is a packaging mistake
+SAMPLE_MAX_BYTES = 4 * 1024 * 1024
 
 # --- Texts (design §6.3, edge cases; 04 C-1, C-2; G5, G6 wording chosen here) -----------
 
@@ -1040,10 +1049,59 @@ def starter_config(folder_name: str) -> bytes:
     return text.encode("utf-8")
 
 
-def new_game(folder: Path | str) -> Path | Refusal:
+def sample_dir() -> Path:
+    return engine_data_dir() / SAMPLE_DIR
+
+
+def _fill_config(template_dir: Path, folder_name: str) -> bytes:
+    """``template_dir``'s ``config.toml.in`` with ``$id`` and ``$title`` filled in, as
+    ``starter_config`` does."""
+    template = (template_dir / CONFIG_TEMPLATE).read_text(encoding="utf-8")
+    title = json.dumps(folder_name, ensure_ascii=False).replace("\x7f", "\\u007f")
+    text = string.Template(template).substitute(id=slugify(folder_name), title=title)
+    return text.encode("utf-8")
+
+
+def template_files(template: str, folder_name: str) -> dict[str, bytes]:
+    """Every file a new game from ``template`` gets, game ref → bytes, read before anything
+    is created. ``TEMPLATE_EMPTY`` is the F45 starter (``config.toml``, ``script/main.vns``);
+    ``TEMPLATE_SAMPLE`` is every regular file under ``engine/data/sample/`` (dot files and
+    ``__pycache__`` skipped), with ``config.toml.in`` filled in as ``config.toml``. Raises
+    ``ValueError`` for an unknown template and ``OSError`` when a file can't be read."""
+    if template == TEMPLATE_EMPTY:
+        return {CONFIG_REF: starter_config(folder_name),
+                MAIN_REF: (starter_dir() / "script" / "main.vns").read_bytes()}
+    if template != TEMPLATE_SAMPLE:
+        raise ValueError(f"unknown template {template!r}")
+    root = sample_dir()
+    found: dict[str, bytes] = {CONFIG_REF: _fill_config(root, folder_name)}
+    total = 0
+    for path in sorted(root.rglob("*")):
+        rel = path.relative_to(root)
+        if any(part.startswith(".") or part == "__pycache__" for part in rel.parts):
+            continue
+        if not path.is_file() or rel.as_posix() == CONFIG_TEMPLATE:
+            continue
+        data = path.read_bytes()
+        total += len(data)
+        if len(found) >= SAMPLE_MAX_FILES or total > SAMPLE_MAX_BYTES:
+            raise OSError(errno.EFBIG, "the sample template is too large")
+        found[rel.as_posix()] = data
+    if MAIN_REF not in found:
+        raise OSError(errno.ENOENT, "the sample template has no script/main.vns")
+    return found
+
+
+def new_game(folder: Path | str, template: str = TEMPLATE_SAMPLE) -> Path | Refusal:
     """Create a game in ``folder``: a missing folder whose parent is a real folder, or an
-    empty real folder. Creates the group folders, ``config.toml`` and ``script/main.vns``,
-    each exclusively, and nothing else (ADR-0008 Amendment 1, item 3)."""
+    empty real folder. Creates the group folders and ``template``'s files
+    (``template_files``), each exclusively, plus the folders those files sit in
+    (ADR-0008 Amendment 1, item 3; F47 PR-F47-25). Then Studio's ``.studio/studio.json``
+    is written with the Guide open (F47 PR-F47-26); that file is best effort and its
+    failure doesn't fail the new game. Nothing else is written. ``template`` is
+    ``TEMPLATE_SAMPLE`` (the default, "A short sample story") or ``TEMPLATE_EMPTY``."""
+    from engine.tools.editor import studiostate   # pure; imported here to keep files.py's head lean
+
     folder = Path(folder).absolute()
     name = show(folder.name)
     try:
@@ -1067,21 +1125,29 @@ def new_game(folder: Path | str) -> Path | Refusal:
         if not _is_real_dir(parent) or not _is_own_path(parent):
             return Refusal(NEW_GAME_PARENT.format(name=name))
     try:
-        main = (starter_dir() / "script" / "main.vns").read_bytes()
-        config = starter_config(folder.name)
+        contents = template_files(template, folder.name)
         if not exists:
             os.mkdir(folder)
+        made: set[str] = set()
         for group in ASSET_GROUPS:
             os.mkdir(folder / group.folder)
-        safefile.write_atomic(folder / CONFIG_REF, (config,), check=True, expected=None,
-                              mode=NEW_FILE_MODE, token=_temp_token)
-        safefile.write_atomic(folder / "script" / "main.vns", (main,), check=True,
-                              expected=None, mode=NEW_FILE_MODE, token=_temp_token)
+            made.add(group.folder)
+        for ref, data in contents.items():
+            parts = ref.split("/")[:-1]
+            for depth in range(1, len(parts) + 1):
+                sub = "/".join(parts[:depth])
+                if sub not in made:
+                    os.mkdir(folder / sub)
+                    made.add(sub)
+            safefile.write_atomic(folder / ref, (data,), check=True, expected=None,
+                                  mode=NEW_FILE_MODE, token=_temp_token)
     except (OSError, safefile.TargetChanged) as exc:
         locked = isinstance(exc, OSError) and (isinstance(exc, PermissionError)
                                                or exc.errno in _LOCK_ERRNOS)
         return Refusal(NEW_GAME_FAILED.format(
             name=name, reason=_REASON_LOCKED if locked else _REASON_SYSTEM))
+    studiostate.write_state(folder, studiostate.StudioState(
+        guide_open=True, sample=template == TEMPLATE_SAMPLE))
     return folder
 
 
@@ -1091,7 +1157,9 @@ def studio_argv(folder: Path) -> list[str]:
 
 
 __all__ = ["AddOutcome", "AddPlan", "GAME_GONE", "MAIN_FIXED", "ProjectTree", "Refusal",
-           "TreeNode", "add_summary", "content_problem", "delete_file", "fixed_reason",
+           "START_FROM", "TEMPLATES", "TEMPLATE_EMPTY", "TEMPLATE_SAMPLE", "TreeNode",
+           "add_summary", "content_problem", "delete_file", "fixed_reason",
            "group_of", "include_line", "include_position", "label_problem", "new_game",
            "new_script", "plan_add", "project_tree", "rename_file", "rename_plan",
-           "root_present", "run_add", "starter_config", "studio_argv", "takes", "takes_text"]
+           "root_present", "run_add", "sample_dir", "starter_config", "studio_argv", "takes",
+           "takes_text", "template_files"]

@@ -1,0 +1,13 @@
+# Made in Studio's Database. You can also edit it by hand.
+#
+# This file names the story's characters and variables. Studio's Database tab lists
+# them and writes new ones here; main.vns reads this file with its include line.
+
+# "define" names a character: Character("Hana") shows "Hana" above her lines, in her
+# colour. blip="..." plays a short sound from the audio folder while her text types.
+define hana = Character("Hana", color="#b03070", blip="blips/hana.wav", blip_pitch=0.1)
+define daichi = Character("Daichi", color="#3a6aa8", blip="blips/daichi.wav", blip_every=3, blip_volume=70)
+
+# "default" names a story variable and its starting value. The choice in main.vns
+# changes it, and the story checks it to pick an ending.
+default sent_lantern = False
