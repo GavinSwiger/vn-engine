@@ -31,13 +31,15 @@ once per launch by ``install_fourthwall`` (from ``install_story``):
   source and ``names_changed`` as the ``username_use`` listener. The Settings rows follow
   ``row_rules``: the name row iff ``[meta] username``, the label row iff the story has an
   ``effect crash``. ``UsernameGate`` answers the first-launch question (``due``/``answer``)
-  for the shell's pre-title slot.
+  for the shell's pre-title slot (``ShellPorts.username_question``, set here), and a quit
+  guard stores "Don't allow" when the window closes while the question is open.
 
 Only this module may import ``engine.meta.username``. Nothing here logs or stores the name.
 """
 
 import unicodedata
 from collections.abc import Callable
+from dataclasses import replace
 from typing import TYPE_CHECKING, Final
 
 from engine.core import redact
@@ -49,6 +51,7 @@ from engine.runtime.commands import FakeCrash, WaitDone, WindowTitle
 from engine.runtime.errors import format_message
 from engine.runtime.fourthwall import uses_crash
 from engine.ui.builtin.fake_crash import FakeCrashScreen, crash_text
+from engine.ui.builtin.username_question import UsernameQuestion
 from engine.ui.theme import Words
 
 if TYPE_CHECKING:
@@ -230,7 +233,8 @@ def install_fourthwall(app: "App", *, read: Callable[[], str | None] | None = No
     specific type, so ``StageScreen``'s ``StoryWait`` handler never sees a crash), and the
     title reset as a shell in-game reset. Step 5: the name's source (``read``: default this
     module's ``read_login_name``), the textbox and NVL seams, the ``username_use`` listener,
-    the Settings row rules, and the question's gate (``app.fourthwall``)."""
+    the Settings row rules, the question's gate (``app.fourthwall``, the shell's
+    ``username_question`` port), and its quit guard."""
     fourthwall = FourthWall(app)
     fourthwall.wire_name(read if read is not None else read_login_name)
     fourthwall.gate = UsernameGate(app)
@@ -256,7 +260,20 @@ def install_fourthwall(app: "App", *, read: Callable[[], str | None] | None = No
     shell = app.shell
     if shell is not None:
         shell.add_in_game_reset(fourthwall.reset_title)
+        # The first-launch question (04 §6.7): the shell's pre-title slot after F33's
+        # warning; closing the window while it is open stores "Don't allow" (Q6), before
+        # F16's settings are written at exit.
+        shell.ports = replace(shell.ports, username_question=fourthwall.gate)
+        app.add_quit_guard(lambda: _quit_answers(app))
     return fourthwall
+
+
+def _quit_answers(app: "App") -> bool:
+    """The question's quit guard: an open question answers "Don't allow"; never vetoes."""
+    for screen in list(app.screens):
+        if isinstance(screen, UsernameQuestion):
+            screen.answer_on_quit()
+    return True
 
 
 __all__ = ["FourthWall", "TERM_MIN_GRAPHEMES", "UsernameGate", "display_title",

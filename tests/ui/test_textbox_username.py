@@ -197,11 +197,155 @@ def test_ac_f30_27_who_may_read_and_w188(caplog):
 
 # --- AC-F30-32 -----------------------------------------------------------------------------------
 
-@pytest.mark.skip(reason="F30 s5: needs GameShell.clean_capture / scene_wanted / _clean in "
-                         "ui/shell.py (held by another builder); the textbox seam "
-                         "(set_clean_capture, name_drawn) is built and wired when it exists")
-def test_ac_f30_32_name_drawn_and_every_capture_path():
-    pass
+BG = (200, 200, 200)                                    # bg room, #c8c8c8
+BOX_PX = (160, 165)                                     # a thumbnail pixel inside the say box
+SCRIPT_32 = ('define hana = Character("Hana")\n'
+             'image bg room = "#c8c8c8"\n'
+             "label start:\n"
+             "    scene bg room\n"
+             '    hana "Hello."\n'
+             f'    hana "{L7}"\n'
+             "    menu:\n"
+             '        hana "Are you {username}?"\n'
+             '        "Yes":\n'
+             '            "End."\n')
+NVL_32 = ('define hana = Character("Hana")\n'
+          'image bg room = "#c8c8c8"\n'
+          "label start:\n"
+          "    scene bg room\n"
+          "    nvl on\n"
+          '    hana "Hello."\n'
+          f'    hana "{L7}"\n'
+          '    "Three."\n'
+          "    nvl clear\n"
+          '    "Four."\n'
+          '    "End."\n')
+
+
+def test_ac_f30_32_name_drawn_and_every_capture_path(tmp_path, monkeypatch):
+    from engine.ui import shell as shell_module
+    from engine.ui.nav import InputKind
+    from engine.ui.shell import GameShell
+
+    spy = {"thumbs": 0, "clean": [], "serve": 0, "scene": 0}
+    real_thumb = shell_module.make_thumbnail
+    real_clean, real_serve = GameShell.clean_capture, GameShell._serve_captures
+    real_scene = GameShell._scene_captured
+
+    def thumb(surface):
+        spy["thumbs"] += 1
+        return real_thumb(surface)
+
+    def clean(self, canvas):
+        real_clean(self, canvas)
+        spy["clean"].append(self._clean)
+
+    def serve(self, canvas):
+        spy["serve"] += 1
+        real_serve(self, canvas)
+
+    def scene(self, screen, surface):
+        spy["scene"] += 1
+        real_scene(self, screen, surface)
+
+    monkeypatch.setattr(shell_module, "make_thumbnail", thumb)
+    monkeypatch.setattr(GameShell, "clean_capture", clean)
+    monkeypatch.setattr(GameShell, "_serve_captures", serve)
+    monkeypatch.setattr(GameShell, "_scene_captured", scene)
+    monkeypatch.setattr(fourthwall_module, "read_login_name", reader(Z))
+
+    def launch(name: str, script: str, cps: int) -> Session:
+        root = make_text_game(tmp_path / name, script=script,
+                              config=(f"[textbox]\ncps = {cps}\n\n[saves]\nautosave_quit = "
+                                      "false\n\n[meta]\nusername = true\n"))
+        s = Session(root)
+        s.app.settings = SettingsService(LoadedSettings({"username_use": 2}, Outcome.OK),
+                                         s.app.config)
+        return s
+
+    def capture(s: Session, out: list):
+        """One capture request served in this frame: (picture, its clean thumbnail or None,
+        name_drawn)."""
+        pics: list = []
+        cleans = len(spy["clean"])
+        serves = spy["serve"]
+        s.app.shell.capture_scene(pics.append)
+        yield
+        assert spy["serve"] == serves + 1 and len(pics) == 1
+        made = [c for c in spy["clean"][cleans:] if c is not None]
+        out.append((pics[0], made[-1] if made else None, s.textbox.name_drawn()))
+
+    def kind(row) -> str:
+        picture, made, drawn = row
+        assert picture is not None
+        if made is not None:
+            assert picture is made and picture.get_at(BOX_PX)[:3] == BG    # no box, no name
+            return f"clean {drawn}"
+        assert picture.get_at(BOX_PX)[:3] != BG                            # the box shows
+        return f"normal {drawn}"
+
+    rows: list = []
+    out: dict = {}
+
+    def adv(s: Session):
+        def script_(s: Session):
+            yield from s.until_line("Hello.")
+            s.key(pygame.K_SPACE)
+            yield
+            s.key(pygame.K_SPACE)
+            yield from s.until_line(L7)
+            tb = s.textbox
+            out["glyph0"] = tb.typer.state is not TypeState.COMPLETE
+            yield from capture(s, rows)                              # L7 at glyph 0
+            yield from s.until(lambda: tb.typer.state is TypeState.COMPLETE)
+            yield from capture(s, rows)                              # L7 complete
+            thumbs = spy["thumbs"]
+            for _ in range(5):                                       # no capture: no shrink
+                yield
+            out["idle"] = (spy["thumbs"] - thumbs, tb.name_drawn())
+            s.app.shell.open_game_menu(InputKind.KEYS)               # the backdrop path
+            scenes = spy["scene"]
+            yield
+            yield
+            made = [c for c in spy["clean"] if c is not None]
+            out["kept"] = (spy["scene"] > scenes, s.app.shell.kept_thumbnail is made[-1])
+            s.key(pygame.K_ESCAPE)
+            yield from s.until(lambda: s.app.shell.game_menu() is None)
+            yield
+            s.app.settings.set("username_use", 1)                    # the row off
+            yield
+            yield from capture(s, rows)
+            s.app.settings.set("username_use", 2)
+            yield
+            s.key(pygame.K_SPACE)
+            yield from s.until_line("Are you {username}?")
+            yield from s.until(lambda: tb.typer.state is TypeState.COMPLETE)
+            yield from capture(s, rows)                              # a menu's question
+        s.play(script_, last=1500)
+
+    adv(launch("adv", SCRIPT_32, 30))
+    assert out["glyph0"]
+    assert [kind(r) for r in rows] == ["clean True", "clean True", "normal False",
+                                       "clean True"]
+    assert out["idle"] == (0, True)                  # make_thumbnail not called
+    assert out["kept"] == (True, True)               # _scene_captured kept the clean one
+
+    rows.clear()
+
+    def nvl(s: Session):
+        yield from s.until_line("Hello.")
+        for text in (L7, "Three."):
+            s.key(pygame.K_SPACE)
+            yield from s.until_line(text)
+        yield from capture(s, rows)                  # walk-nvl/: name on row 1, row 3 current
+        s.key(pygame.K_SPACE)
+        yield from s.until_line("Four.")
+        yield
+        yield from capture(s, rows)                  # a page with no flagged row
+
+    launch("nvl", NVL_32, 0).play(nvl, last=900)
+    assert [r[2] for r in rows] == [True, False]
+    assert rows[0][0] is rows[0][1] and rows[1][1] is None
 
 
 # --- AC-F30-33 -----------------------------------------------------------------------------------

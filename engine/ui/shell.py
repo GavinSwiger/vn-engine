@@ -9,7 +9,7 @@ own. ``app/menus.py: install_ui`` builds it once per launch with injected ports
 
 Flows (§7.7):
 - **Launch** (``initial_screens``): first the pre-title steps that are due, in a fixed
-  order (F33's content warning; F30's name question later), each in mode TITLE and none
+  order (F33's content warning, then F30's name question), each in mode TITLE and none
   with start options; then (``pre_title_done``), with start options (F44
   ``--start``/``--set``) or ``[title] enabled = false``, a new game starts at once;
   otherwise the title, fading in.
@@ -63,6 +63,11 @@ before it quits, still saves it), and a new game, the title, or a load drops it 
 (``_reset_in_game``). On the title and during a fade between title and game: None.
 F30 (``07`` I-5, I-6): while a ``private_picture`` screen (the fake crash) is anywhere on the
 stack no picture is taken or kept (None), and ``picture_private()`` tells F11's ``can_save``.
+F30's clean thumbnail (``04`` §6.6, SEC-F30-03): a textbox that shows the player's name calls
+``clean_capture(canvas)`` before it draws its box; when this frame captures (``scene_wanted``:
+a pending request, or a menu's backdrop not yet captured) the stage alone is shrunk into the
+frame's ``_clean``, which ``_serve_captures`` and ``_scene_captured`` use instead of the full
+canvas; ``draw_layer`` clears it. The name never reaches a save picture.
 
 A load (F11 C8, ``show_loaded_game``) restores first, under the menus, and closes them only
 when the restore succeeded: no closing fade, the in-game screens reset with F11's
@@ -157,6 +162,15 @@ class WarningPort(Protocol):
     def acknowledge(self) -> None: ...
 
 
+class QuestionPort(Protocol):
+    """F30 (04 §6.7): ``app/fourthwall.py``'s ``UsernameGate``. ``due()`` is True at most
+    once per session; ``answer(allow)`` stores the player's choice."""
+
+    def due(self) -> bool: ...
+
+    def answer(self, allow: bool) -> None: ...
+
+
 class CueLayer(Protocol):
     """F14 A3: the shell's one in-game cue layer (F14's ``LimitCue``)."""
 
@@ -172,7 +186,9 @@ class ShellPorts:
     in-game screens before a new game or the title (I-8). ``request_quit`` is
     ``App.request_quit()`` (not forced). ``skip_title``: ``App.start`` has a label or values.
     ``flush_persist``: F12's ``persist.flush_soon()`` (I-1), before the title or a quit.
-    ``content_warning``: F33's ``WarningGate`` (a pre-title step, ``initial_screens``)."""
+    ``content_warning``: F33's ``WarningGate`` (a pre-title step, ``initial_screens``).
+    ``username_question``: F30's ``UsernameGate`` (the next pre-title step;
+    ``install_fourthwall`` sets it after ``install_ui``)."""
 
     stack: ScreenStack
     assets: "AssetManager"
@@ -187,6 +203,7 @@ class ShellPorts:
     skip_title: bool = False
     flush_persist: Callable[[], None] | None = None
     content_warning: WarningPort | None = None
+    username_question: "QuestionPort | None" = None
 
 
 def reduce_motion_of(config: Config) -> bool:
@@ -233,6 +250,9 @@ class GameShell:
         # requests waiting for this frame's ``draw_layer``.
         self.kept_thumbnail: "pygame.Surface | None" = None
         self._captures: list[CaptureThen] = []
+        # F30 (04 §6.6): this frame's thumbnail of the stage drawn before a textbox showing
+        # the player's name (``clean_capture``); ``draw_layer`` clears it.
+        self._clean: "pygame.Surface | None" = None
         self._cue: CueLayer | None = None                          # F14 A3: layer 6
         # F23 I-8: the one thumbnail source (a running minigame's opening picture).
         self._thumbnail_source: "Callable[[], pygame.Surface | None] | None" = None
@@ -297,6 +317,7 @@ class GameShell:
         self._defer_pictures = False
         if self._captures:
             self._serve_captures(canvas)
+        self._clean = None                          # F30: this frame's only
         cue = self._cue
         if cue is not None and not self._game_covered():
             cue.draw(canvas)
@@ -367,6 +388,25 @@ class GameShell:
         save picture is taken and F11's ``can_save()`` is False unless quitting."""
         return any(getattr(screen, "private_picture", False) for screen in self.stack)
 
+    def scene_wanted(self) -> bool:
+        """F30 (04 §6.6 step 1): this frame takes a picture of the scene: a capture request
+        waits for ``draw_layer``, or a menu on the stack has a backdrop not yet captured."""
+        if self._captures:
+            return True
+        return any(isinstance(s, MenuScreen) and s.backdrop is not None
+                   and not s.backdrop.ready for s in self.stack)
+
+    def clean_capture(self, canvas: "Canvas") -> None:
+        """F30 (04 §6.6 step 2; SEC-F30-03): the textbox, before drawing a box that shows the
+        player's name. When this frame captures, the canvas as drawn so far (the stage and
+        its effects; no say window, choices, or quick menu) becomes this frame's ``_clean``
+        thumbnail; otherwise nothing (no shrink on frames that take no picture)."""
+        surface = canvas.surface
+        if surface is None or self.mode is not Mode.GAME or self.picture_private() \
+                or not self.scene_wanted():
+            return
+        self._clean = make_thumbnail(surface)
+
     def _source_picture(self) -> "pygame.Surface | None":
         source = self._thumbnail_source
         return source() if source is not None else None
@@ -380,6 +420,8 @@ class GameShell:
             picture = source                        # F23 I-8: a minigame's opening picture
         elif self._menu_open():
             picture = self.kept_thumbnail           # the menu itself is never in it
+        elif self._clean is not None:
+            picture = self._clean                   # F30: the stage without the name
         else:
             picture = make_thumbnail(surface)
         for then in pending:
@@ -404,7 +446,8 @@ class GameShell:
         screens = list(self.stack)
         index = next((i for i, s in enumerate(screens) if s is screen), 0)
         if index > 0 and screens[index - 1].in_game:
-            self.kept_thumbnail = make_thumbnail(scene)
+            clean = self._clean                     # F30: the stage without the name
+            self.kept_thumbnail = clean if clean is not None else make_thumbnail(scene)
 
     # -- F32 looks (04 §4.3, §6.3) --
 
@@ -461,7 +504,7 @@ class GameShell:
         """What shows once the story is installed: the first pre-title step that is due
         (F33's content warning), else ``_first_screens()``."""
         step = self._next_pre_title()
-        return [step] if step is not None else self._first_screens()
+        return step if step is not None else self._first_screens()
 
     def _first_screens(self) -> list[Screen]:
         """The game at once with start options or no title, else the title fading in from
@@ -476,11 +519,12 @@ class GameShell:
 
     # -- pre-title steps (F33 07 I-2) --
 
-    def _next_pre_title(self) -> Screen | None:
-        """The pre-title steps in their fixed order, the first that is due: F33's content
-        warning (F30's name question comes after it). Each runs in mode TITLE (quit with no
-        question, no game menu, no saves), holds notices, is skipped with start options,
-        and never calls ``new_game()``. No registry: a new step is a new line here."""
+    def _next_pre_title(self) -> list[Screen] | None:
+        """The pre-title steps in their fixed order, the screens of the first that is due:
+        F33's content warning, then F30's name question (``GroundScreen`` under
+        ``UsernameQuestion``, 04 §6.7). Each runs in mode TITLE (quit with no question, no
+        game menu, no saves), holds notices, is skipped with start options, and never calls
+        ``new_game()``. No registry: a new step is a new line here."""
         if self.ports.skip_title:
             return None
         warning = self.ports.content_warning
@@ -489,17 +533,25 @@ class GameShell:
 
             cw = self.config.content_warning
             self.mode = Mode.TITLE
-            return ContentWarningScreen(self, text=cw.text, min_seconds=cw.min_seconds,
-                                        on_continue=warning.acknowledge,
-                                        on_quit=self.ports.request_quit,
-                                        then=self.pre_title_done)
+            return [ContentWarningScreen(self, text=cw.text, min_seconds=cw.min_seconds,
+                                         on_continue=warning.acknowledge,
+                                         on_quit=self.ports.request_quit,
+                                         then=self.pre_title_done)]
+        question = self.ports.username_question
+        if question is not None and question.due():
+            from engine.ui.builtin.username_question import GroundScreen, UsernameQuestion
+
+            self.mode = Mode.TITLE
+            return [GroundScreen(self), UsernameQuestion(self, on_answer=question.answer,
+                                                         then=self.pre_title_done)]
         return None
 
     def pre_title_done(self) -> None:
-        """A pre-title step finished (F33: Continue, after its fade to black): the next due
-        step, else the title or the game (``new_game()`` runs only now)."""
+        """A pre-title step finished (F33: Continue, after its fade to black; F30: an
+        answer, once the question has closed): the next due step, else the title or the
+        game (``new_game()`` runs only now)."""
         step = self._next_pre_title()
-        self.stack.replace_all([step] if step is not None else self._first_screens())
+        self.stack.replace_all(step if step is not None else self._first_screens())
 
     def _title_screen(self) -> "TitleScreen":
         from engine.ui.builtin.title_screen import TitleScreen
@@ -861,5 +913,5 @@ def w66_empty_text(section: str, registered: list[str], names: "Sequence[str]" =
 
 __all__ = ["CONFIRM_KEYS", "STORY_AUDIO_FADE_S", "STORY_END_FADE_S", "AudioPort", "CueLayer",
            "GameShell", "Mode",
-           "MusicHandle", "ShellPorts", "WarningPort", "reduce_motion_of", "w66_empty_text",
+           "MusicHandle", "QuestionPort", "ShellPorts", "WarningPort", "reduce_motion_of", "w66_empty_text",
            "w66_text"]
