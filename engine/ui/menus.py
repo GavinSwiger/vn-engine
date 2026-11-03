@@ -11,10 +11,11 @@ title art from a script. None of them may edit F10's screens. So:
 - ``MenuRegistry.add(menu, MenuEntry(...))`` is called only from a feature's ``install_*``,
   once per id and menu. Screens call ``shown(menu)`` every time they open and read labels
   (``Words.get``) on every draw.
-- ``UiOverrides`` is presentation-only state (labels, hidden entries, title art and music):
-  never saved by F10 and never read by the runtime. F32 keeps its own story state and
-  re-applies it through these setters after a load or a new game. Refs are checked with the
-  config validators (``GuiImageRef``, ``AudioRef``), which work outside config loading.
+- ``UiOverrides`` is presentation-only state (labels and hidden entries): never saved by F10
+  and never read by the runtime. F32's looks (``ui/looks.py``) are the run-time title art,
+  music, and words: ``Words``' override hook asks ``UiOverrides`` first, then the look, and
+  ``MenuRegistry.title_entries`` gives the playthrough look's title buttons (F32 ``04`` §6.4;
+  its unused title-look setters were removed, main decision 2).
 
 Pure Python: no display, no pygame.
 """
@@ -23,12 +24,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final, Literal, Protocol
 
-from engine.core.config_schema import (
-    AudioRef,
-    GuiImageRef,
-    ValueProblem,
-    word_fields,
-)
+from engine.core.config_schema import ValueProblem, word_fields
 
 if TYPE_CHECKING:
     from engine.render.canvas import Canvas
@@ -58,7 +54,6 @@ OPT_IN: Final[dict[str, frozenset[str]]] = {"title": frozenset({"codex"})}
 MENU_NOUNS: Final[dict[str, str]] = {"title": "title-screen button",
                                      "game": "game-menu button",
                                      "quick": "quick-menu button"}
-TITLE_LOOK_PARTS: Final = ("background", "logo", "music")
 
 
 def _always() -> bool:
@@ -179,16 +174,6 @@ class PageHost(Protocol):
     def close_menu(self) -> None: ...
 
 
-class _Keep:
-    """``set_title_look``'s "leave this part as it is"."""
-
-    def __repr__(self) -> str:
-        return "KEEP"
-
-
-KEEP: Final = _Keep()
-
-
 class UiOverrides:
     """Run-time presentation changes (F32). ``None`` given to a setter removes that override,
     so the config value shows again. ``revision`` increases on every change; screens re-read
@@ -198,7 +183,6 @@ class UiOverrides:
         self.revision = 0
         self._words: dict[str, str] = {}
         self._hidden: dict[tuple[str, str], bool] = {}
-        self._look: dict[str, str] = {}
 
     # -- setters --
 
@@ -228,36 +212,10 @@ class UiOverrides:
             self._hidden[(menu, entry_id)] = bool(hidden)
         self.revision += 1
 
-    def set_title_look(self, *, background: "str | None | _Keep" = KEEP,
-                       logo: "str | None | _Keep" = KEEP,
-                       music: "str | None | _Keep" = KEEP) -> None:
-        """Title art and music: a ``gui/`` image ref, an audio ref inside ``audio/``, None for
-        the config's value again, or ``KEEP`` (unchanged). Every ref is checked first, so a
-        bad one changes nothing."""
-        given = {"background": background, "logo": logo, "music": music}
-        checked: dict[str, str | None] = {}
-        for part, value in given.items():
-            if value is KEEP:
-                continue
-            if value is not None:
-                validator = AudioRef() if part == "music" else GuiImageRef()
-                try:
-                    validator.check(value)
-                except ValueProblem:
-                    raise ValueError(f"title {part} must be {validator.expected}") from None
-            checked[part] = value                                  # type: ignore[assignment]
-        for part, value in checked.items():
-            if value is None:
-                self._look.pop(part, None)
-            else:
-                self._look[part] = value
-        self.revision += 1
-
     def clear(self) -> None:
-        """Every override removed: config labels, entries, and title look return."""
+        """Every override removed: config labels and entries return."""
         self._words.clear()
         self._hidden.clear()
-        self._look.clear()
         self.revision += 1
 
     # -- reads --
@@ -268,21 +226,19 @@ class UiOverrides:
     def hidden(self, menu: str, entry_id: str) -> bool | None:
         return self._hidden.get((menu, entry_id))
 
-    def title_look(self, part: str) -> str | None:
-        """The override for ``"background"``, ``"logo"``, or ``"music"``; None: the config's."""
-        assert part in TITLE_LOOK_PARTS, part
-        return self._look.get(part)
-
 
 class MenuRegistry:
     """The entries of the three menus. ``entries`` maps a menu to the author's list
-    (``[title] entries``, ``[quick_menu] entries``; None or empty: ``DEFAULT_ORDER``)."""
+    (``[title] entries``, ``[quick_menu] entries``; None or empty: ``DEFAULT_ORDER``).
+    ``title_entries`` (F32 ``04`` §6.4) is the current playthrough look's
+    ``title_entries``; when it gives a list, the title shows that list instead."""
 
     def __init__(self, *, entries: Mapping[str, Sequence[str] | None] | None = None,
                  overrides: UiOverrides | None = None) -> None:
         self._entries: dict[str, dict[str, MenuEntry]] = {menu: {} for menu in DEFAULT_ORDER}
         self._author = dict(entries or {})
         self.overrides = overrides if overrides is not None else UiOverrides()
+        self.title_entries: Callable[[], tuple[str, ...] | None] | None = None
 
     def add(self, menu: MenuName, entry: MenuEntry) -> None:
         """Register ``entry`` for ``menu`` (at install time). An id that isn't in
@@ -303,7 +259,16 @@ class MenuRegistry:
         return self._entries[menu].get(entry_id)
 
     def author_list(self, menu: str) -> tuple[str, ...] | None:
-        """The author's ``entries`` for ``menu`` as written (None: not set)."""
+        """The author's ``entries`` for ``menu`` as written (None: not set); for the title,
+        the playthrough look's ``title_entries`` when it has them (F32)."""
+        if menu == "title" and self.title_entries is not None:
+            look = self.title_entries()
+            if look is not None:
+                return tuple(look)
+        return self.config_list(menu)
+
+    def config_list(self, menu: str) -> tuple[str, ...] | None:
+        """The config's ``entries`` for ``menu`` (no look), as written; None: not set."""
         found = self._author.get(menu)
         return None if found is None else tuple(found)
 
@@ -345,6 +310,6 @@ def join_names(names: Sequence[str]) -> str:
     return ", ".join(names[:-1]) + f", and {names[-1]}"
 
 
-__all__ = ["DEFAULT_ORDER", "KEEP", "MENU_NOUNS", "OPT_IN", "EntryContext", "MenuEntry",
+__all__ = ["DEFAULT_ORDER", "MENU_NOUNS", "OPT_IN", "EntryContext", "MenuEntry",
            "MenuName",
            "MenuPage", "MenuPageBase", "MenuRegistry", "PageHost", "UiOverrides", "join_names"]

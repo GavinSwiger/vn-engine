@@ -465,7 +465,6 @@ def test_ac47_overrides_leave_the_checkpoint_unchanged(tmp_path, user_roots, scr
         overrides = app.shell.overrides
         overrides.set_word("quit", "Leave")
         overrides.set_hidden("title", "quit", True)
-        overrides.set_title_look(background="gui/x.png", logo="gui/y.png", music="z.ogg")
         overrides.clear()
         seen["after"] = story.checkpoint().to_json()
 

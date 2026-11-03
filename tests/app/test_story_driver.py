@@ -35,7 +35,8 @@ from engine.runtime.commands import (Advance, AudioRestore, Command, Flash, Glit
                                      PrefetchImages, Say,
                                      Shake, ShowMenu, ShowStage, StoryEnded, StoryFailed,
                                      StoryWait, ChapterStarted, NvlPage, CodexAdded,
-                                     StartMinigame, WindowTitle, FakeCrash)
+                                     StartMinigame, WindowTitle, FakeCrash,
+                                     UiStyle, UiBlocks, DeleteSaves)
 from engine.runtime.headless import run_headless
 from engine.runtime.interpreter import Interpreter, RestoreResult, Status, story_variables
 from engine.runtime.launch import LaunchJob, run_launch
@@ -393,6 +394,7 @@ def test_install_story_registers_one_handler_per_command(tmp_path):
                                              StartMinigame,           # F23 s4
                                              Glitch,                  # F28 s3
                                              WindowTitle, FakeCrash,  # F30 s3, s4
+                                             UiStyle, UiBlocks, DeleteSaves,  # F32 s4
                                              *story.AUDIO_COMMANDS}   # F08 step 3
         textbox = app.textbox                                    # F05: install_textbox
         assert isinstance(textbox, TextboxScreen) and app.router._handlers[Say] == textbox.show
@@ -540,6 +542,7 @@ def test_ac_f03_70_the_example_game_plays_to_the_end(tmp_path, user_roots, scrip
                                          StartMinigame,                           # F23
                                          Glitch,                                  # F28 s3
                                          WindowTitle, FakeCrash,                  # F30 s3, s4
+                                         UiStyle, UiBlocks, DeleteSaves,          # F32 s4
                                          *story.AUDIO_COMMANDS}                   # F08
     problems = [r for r in records(game / "logs" / "latest.log") if r[0] in ("WARNING", "ERROR")]
     assert problems == []

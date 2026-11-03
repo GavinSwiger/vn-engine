@@ -2,8 +2,8 @@
 ``vn check`` sentence and its W204–W207 rows). AC-F32-06's load messages are rows of
 ``tests/fixtures/F02/messages/cases.toml`` (``test_messages.py``).
 
-``ui`` has no executor until F32 s3, so it is registered only inside ``scoped_registry()`` here
-(F19 07 I-5); a real game gets F02's E32 until then (the AC-F02-25 row)."""
+``ui`` is registered at import since F32 s4; the ``ui_word`` fixture still registers it
+inside ``scoped_registry()`` (a no-op when it is registered, F19 07 I-5)."""
 
 import shutil
 
@@ -82,7 +82,7 @@ def test_ac_f32_05_ui_parses(ui_word, tmp_path):
                         T="default style = 1⏎default saves = 0")
     result = _load(tmp_path, text)
     assert result.errors == (), [e.format() for e in result.errors]
-    # No executor until F32 s3, so the run leaves the ui line out.
+    # The run leaves the ui line out (a headless run of it is F32 s3's golden).
     result = _load(tmp_path, template_f32(S='$ style += 1⏎$ delete = "x"',
                                           T="default style = 1⏎default saves = 0"))
     commands = run_headless(result.program, seed=42, image_files=IMAGES)

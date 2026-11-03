@@ -8,7 +8,7 @@ override leaves ``checkpoint()`` unchanged" run in ``tests/ui/test_title.py`` an
 
 import pytest
 
-from engine.ui.menus import DEFAULT_ORDER, KEEP, MenuEntry, MenuRegistry, UiOverrides, join_names
+from engine.ui.menus import DEFAULT_ORDER, MenuEntry, MenuRegistry, UiOverrides, join_names
 from engine.ui.shell import w66_empty_text, w66_text
 
 
@@ -78,7 +78,7 @@ def test_unknown_and_duplicate_ids_fail_at_install():
         registry.add("nope", MenuEntry("quit"))                 # type: ignore[arg-type]
 
 
-def test_overrides_words_hidden_look_and_clear():
+def test_overrides_words_hidden_and_clear():
     overrides = UiOverrides()
     start = overrides.revision
     overrides.set_word("quit", "Leave")
@@ -86,33 +86,23 @@ def test_overrides_words_hidden_look_and_clear():
     overrides.set_word("quit", None)
     assert overrides.word("quit") is None
     overrides.set_hidden("title", "quit", True)
-    overrides.set_title_look(background="gui/title_bg.png", music="other.ogg")
-    assert overrides.title_look("background") == "gui/title_bg.png"
-    assert overrides.title_look("music") == "other.ogg" and overrides.title_look("logo") is None
-    overrides.set_title_look(logo="gui/logo.png", background=KEEP)
-    assert overrides.title_look("background") == "gui/title_bg.png"
     overrides.set_word("new_game", "Begin")
     before = overrides.revision
     overrides.clear()
     assert overrides.revision == before + 1
     assert overrides.word("new_game") is None and overrides.hidden("title", "quit") is None
-    assert all(overrides.title_look(part) is None for part in ("background", "logo", "music"))
 
 
 @pytest.mark.parametrize("call", [
     lambda o: o.set_word("nope", "x"),
     lambda o: o.set_word("quit", "x" * 201),                    # [words] limit: 200
     lambda o: o.set_hidden("game", "bogus", True),
-    lambda o: o.set_title_look(background="images/bg.png"),     # not in gui/
-    lambda o: o.set_title_look(music="audio/title.ogg"),        # relative to audio/ (I-5)
-    lambda o: o.set_title_look(music="../x.ogg"),
-    lambda o: o.set_title_look(logo="gui/logo.png", music="title"),
 ])
 def test_bad_overrides_are_refused_and_change_nothing(call):
     overrides = UiOverrides()
     with pytest.raises(ValueError):
         call(overrides)
-    assert overrides.revision == 0 and overrides.title_look("logo") is None
+    assert overrides.revision == 0
 
 
 def test_a_long_message_word_is_accepted():

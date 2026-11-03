@@ -1058,8 +1058,8 @@ needs = "parse"
 # "chapter" when F18 built it (F18 step 1); "points" when F22 built it (F22 step 1); "nvl" when
 # F17 built it (F17 step 1); "ending", "lock", and "unlock" when F19 registered them at import
 # (F19 step 3, 07 I-5); "minigame" when F23 registered it at import (F23 s2); "effect" when
-# F28 registered it at import (F28 s3). F32's "ui" is here until F32 s3 registers it.
-each = ["window", "file", "cg", "ui"]
+# F28 registered it at import (F28 s3); "ui" when F32 registered it at import (F32 s4).
+each = ["window", "file", "cg"]
 edit = { S = '<x> hana' }
 where = "5"
 expect = { exact = '"<x>" is not available yet in this engine version. Remove the line or comment it out with # for now.' }

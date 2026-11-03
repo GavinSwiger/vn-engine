@@ -24,11 +24,9 @@ Identity (ADR-0006): ``("ui", form)``. Not a checkpoint type; each line is one s
 
 **Registration (F19 07 I-5).** ``register_words()`` adds the ``StatementSpec`` and the four
 ``StatementDoc``s; calling it again does nothing. The executor is registered since F32 s3
-(``runtime/ui.py``), but the app has no handler for its three commands until F32 s4
-(``app/looks.py``), so the word is still **not** registered at import: a ``ui`` line is F02's E32
-in a real game, and tests register it inside ``scoped_registry()``. F32 s4 adds the
-``register_words()`` call at the bottom of this module, with the handlers (and the AC-F02-25
-E32 row and ``UNBUILT`` drop ``ui``).
+(``runtime/ui.py``) and the app's handlers for its three commands since F32 s4
+(``app/looks.py``), so the word is registered at import (the call at the bottom of this
+module).
 """
 
 from dataclasses import dataclass
@@ -224,13 +222,16 @@ DOCS: Final = (
 
 
 def register_words() -> None:
-    """Register ``ui`` (spec and docs). F32 s4 calls it once at import, with the handlers;
+    """Register ``ui`` (spec and docs), once at import (F32 s4, with the app's handlers);
     calling it again while it is registered does nothing (F19's rule)."""
     if get_spec(WORD_UI) is SPEC:
         return
     register(SPEC)
     for doc in DOCS:
         register_doc(doc)
+
+
+register_words()                            # F32 s4 (F19 07 I-5)
 
 
 __all__ = ["DOCS", "FORMS", "HEADING", "SPEC", "UiStatement", "WORD_UI", "parse_ui",

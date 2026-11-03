@@ -418,16 +418,12 @@ def test_ac26_ac27_title_entries_and_w66(tmp_path, caplog):
 
 
 # --- AC-F10-47 — overrides while the title shows ----------------------------------------------
+# F32 removed ``UiOverrides.set_title_look``; the title-look row moved to
+# ``tests/ui/test_title_playthrough.py`` (AC-F32-14) as a ``[playthrough.0]`` table.
 
-def test_ac47_title_look_override_while_the_title_shows(tmp_path):
-    audio = AudioSpy()
-    rig = Rig(tmp_path, '[theme.title]\nmusic = "title.ogg"', art=True, audio=audio)
+def test_ac47_word_and_hidden_overrides_while_the_title_shows(tmp_path):
+    rig = Rig(tmp_path)
     rig.frames(FADE_IN_FRAMES + 1)
-    assert audio.calls == [("take_music", "title"), ("play", "title.ogg", True, 0.0)]
-    rig.shell.overrides.set_title_look(background="gui/title_bg.png", music="other.ogg")
-    rig.frame()
-    assert rig.px(1000, 600) == (40, 120, 200)
-    assert audio.calls[2:] == [("stop", 0.5), ("play", "other.ogg", True, 0.0)]
     rig.shell.overrides.set_hidden("title", "quit", True)
     rig.shell.overrides.set_word("new_game", "Begin")
     rig.frame()
@@ -435,8 +431,6 @@ def test_ac47_title_look_override_while_the_title_shows(tmp_path):
     rig.shell.overrides.clear()
     rig.frame()
     assert [b.label() for b in rig.title.buttons] == ["New Game", "Quit"]
-    assert close(rig.px(1000, 0), (0xFF, 0xF4, 0xF8))
-    assert audio.calls[-2:] == [("stop", 0.5), ("play", "title.ogg", True, 0.0)]
 
 
 def test_title_music_leaves_with_new_game_and_comes_back(tmp_path):

@@ -33,8 +33,18 @@ Flows (§7.7):
 Under reduced motion every fade is a cut in the frame it would start.
 
 The shell is also the ``MenuShell`` every ``MenuScreen`` uses (stack, assets, theme, words,
-painter, cursor, ``play_ui``) and holds the entry registry and F32's overrides
-(``ui/menus.py``). Notices (F11 C2): ``notify`` hands a message to the one ``NoticeLayer``
+painter, cursor, ``play_ui``) and holds the entry registry and F10's overrides
+(``ui/menus.py``).
+
+F32 looks (``04`` §4.3, §6.3, §6.4): ``theme`` is a property, the current look's ``UiTheme``
+once ``app/looks.py: install_looks`` gave the shell its ``Looks`` (``set_looks``), else the
+launch's base theme. The playthrough look is chosen (``_choose``) only at four moments: the
+launch (``set_looks``), a title opening, a new game (before ``new_game()``), and a load
+(before the in-game screens), so ``$ persistent.playthrough = 2`` mid-story changes nothing
+until then. The title's pictures and music are the current look's; a picture a new look
+names is never read in the frame that chose it (the title draws its fill colors there,
+under the fade-in's black, 07 G3), and the launch look's pictures are read in ``set_looks``,
+during the load screen. Notices (F11 C2): ``notify`` hands a message to the one ``NoticeLayer``
 (``ui/notice.py``); ``App`` calls ``update_layer`` after the screens' update and
 ``draw_layer`` after the screens are drawn and before the dev overlay, and
 ``show_fatal_error`` calls ``clear_notices``. ``forward_notices`` drains a service's
@@ -97,6 +107,7 @@ if TYPE_CHECKING:
     from engine.render.canvas import Canvas
     from engine.ui.builtin.quick_menu import QuickMenu
     from engine.ui.builtin.title_screen import TitleScreen
+    from engine.ui.looks import Looks
 
 _log = get_logger("ui")
 
@@ -191,7 +202,10 @@ class GameShell:
                  cursor: CursorKeeper | None = None) -> None:
         self.ports = ports
         self.config = ports.config
-        self.theme = theme
+        self.base_theme = theme                     # the launch's [theme] (F32: no layers)
+        self.looks: "Looks | None" = None           # F32 (set_looks)
+        self._playthrough: Callable[[], int] | None = None
+        self._defer_pictures = False                # F32 07 G3: the frame that chose a look
         self.overrides = UiOverrides()
         self.words = words
         words.override = self.overrides.word
@@ -229,6 +243,12 @@ class GameShell:
             play=self.play_ui)
 
     # -- MenuShell --
+
+    @property
+    def theme(self) -> UiTheme:
+        """The current look's ``UiTheme`` (F32), else the launch's base theme."""
+        looks = self.looks
+        return looks.current().theme if looks is not None else self.base_theme
 
     @property
     def stack(self) -> ScreenStack:
@@ -272,7 +292,9 @@ class GameShell:
         """``App.present``, after the screens and before the dev overlay: this frame's scene
         captures first (C3), then the cue layer while the game isn't covered (F14 A3,
         ui-system layer 6), then the notices (so neither is ever part of a thumbnail, scene
-        picture, or backdrop)."""
+        picture, or backdrop). A look chosen this frame may read its title pictures from the
+        next frame on (F32 07 G3)."""
+        self._defer_pictures = False
         if self._captures:
             self._serve_captures(canvas)
         cue = self._cue
@@ -384,6 +406,32 @@ class GameShell:
         if index > 0 and screens[index - 1].in_game:
             self.kept_thumbnail = make_thumbnail(scene)
 
+    # -- F32 looks (04 §4.3, §6.3) --
+
+    def set_looks(self, looks: "Looks", playthrough: Callable[[], int]) -> None:
+        """``install_looks``: the session's ``Looks`` and how to read the playthrough number.
+        Words ask the look after F10's overrides, the title's buttons come from the look,
+        and the launch's playthrough look is chosen now (before ``initial_screens``, so F33's
+        warning has it) with its title pictures read here, during the load screen."""
+        self.looks = looks
+        self._playthrough = playthrough
+        self.words.override = looks.word
+        self.menus.title_entries = looks.title_entries
+        self._choose()
+        self._defer_pictures = False
+        for part in ("background", "logo"):
+            self.title_image(part)
+
+    def _choose(self) -> None:
+        """Choose the playthrough look from persistent data (one of the four moments)."""
+        looks, read = self.looks, self._playthrough
+        if looks is None or read is None:
+            return
+        before = looks.revision
+        looks.choose(read())
+        if looks.revision != before:
+            self._defer_pictures = True
+
     # -- seams --
 
     def add_in_game_reset(self, fn: Callable[[], None]) -> None:
@@ -419,6 +467,7 @@ class GameShell:
         """The game at once with start options or no title, else the title fading in from
         black."""
         if self.ports.skip_title or not self.config.title.enabled:
+            self._choose()                          # F32: before new_game()
             self.ports.new_game()
             self.mode = Mode.GAME
             return list(self.ports.in_game_screens())
@@ -455,6 +504,7 @@ class GameShell:
     def _title_screen(self) -> "TitleScreen":
         from engine.ui.builtin.title_screen import TitleScreen
 
+        self._choose()                              # F32: every title opening
         return TitleScreen(self, fade_in=True)
 
     # -- New Game (§7.7.2) --
@@ -479,6 +529,7 @@ class GameShell:
     def _new_game_cut(self) -> None:
         self._release_title_music()
         self._reset_in_game()
+        self._choose()                              # F32: before new_game()
         self.ports.new_game()
         self.mode = Mode.GAME
         self.stack.replace_all(self.ports.in_game_screens())
@@ -494,6 +545,7 @@ class GameShell:
         kept thumbnail goes. The restored line shows at the next pump, under the fade."""
         if self.mode is Mode.TITLE:
             self.leave_title()
+        self._choose()                              # F32: before the in-game screens
         self._reset_in_game()
         self.mode = Mode.GAME
         screens = list(self.ports.in_game_screens())
@@ -674,19 +726,26 @@ class GameShell:
     # -- title look and music (§7.9) --
 
     def title_image(self, part: str) -> "ImageRef | None":
-        """The title's ``"background"`` or ``"logo"``: F32's override if set (a missing file
-        is F01's log line and no art), else the image ``resolve_theme`` checked (W64)."""
-        ref = self.overrides.title_look(part)
+        """The title's ``"background"`` or ``"logo"`` of the current look (F32): the base
+        ref gives the image ``resolve_theme`` checked (W64); another ref (a playthrough
+        table's, checked at launch, W207) is read once on first draw, never in the frame
+        that chose the look (None there: the fill colors show, 07 G3)."""
+        base = self.base_theme
+        ref = getattr(self.theme.cfg.title, f"{part}_image")
+        if ref == getattr(base.cfg.title, f"{part}_image"):
+            return base.background if part == "background" else base.logo
         if ref is None:
-            return self.theme.background if part == "background" else self.theme.logo
+            return None
         if ref not in self._images:
+            if self._defer_pictures:
+                return None
             image = self.assets.image(ref)
             self._images[ref] = None if image.is_placeholder else image
         return self._images[ref]
 
     def title_music_file(self) -> str | None:
-        override = self.overrides.title_look("music")
-        return override if override is not None else self.theme.cfg.title.music
+        """The current look's ``[theme.title] music`` (F32)."""
+        return self.theme.cfg.title.music
 
     def title_entered(self) -> None:
         """``TitleScreen.on_enter``: the title takes the music stream and plays its music
@@ -702,8 +761,9 @@ class GameShell:
         self._music_file = file
 
     def title_look_changed(self) -> None:
-        """F32 changed the title look while the title shows: restart the music if it
-        changed (the art is re-read on the next draw)."""
+        """The title look changed while the title shows: restart the music if it changed
+        (the art is re-read on the next draw). F32 calls it nowhere (a new look shows when a
+        title opens, 04 §6.4)."""
         if self.mode is not Mode.TITLE or self._music_stopping:
             return
         file = self.title_music_file()
@@ -748,19 +808,22 @@ class GameShell:
         if self.entries_checked:
             return
         self.entries_checked = True
-        for menu, section in ENTRY_SECTIONS.items():
+        lists = [(menu, section, "entries", self.menus.config_list(menu))
+                 for menu, section in ENTRY_SECTIONS.items()]
+        lists += [("title", f"playthrough.{n}", "title_entries", table.title_entries)
+                  for n, table in sorted(self.config.playthrough.items())]     # F32
+        for menu, section, key, author in lists:
             registered = self.menus.registered(menu)
-            author = self.menus.author_list(menu)
             if author is None or not registered:
                 continue
             if not any(name in registered for name in author):
                 # Empty, or naming no button of this menu: the defaults show (AC-F10-27).
-                _log.warning("%s", w66_empty_text(section, registered, author, menu=menu),
-                             extra={"code": "W66"})
+                _log.warning("%s", w66_empty_text(section, registered, author, menu=menu,
+                                                  key=key), extra={"code": "W66"})
                 continue
             for name in author:
                 if name not in registered:
-                    _log.warning("%s", w66_text(section, menu, name, registered),
+                    _log.warning("%s", w66_text(section, menu, name, registered, key=key),
                                  extra={"code": "W66"})
         known = set(self.words.keys())                # a later id brings its word (I-10)
         shown = {menu: [e.id for e in self.menus.shown(menu) if e.id in known]
@@ -768,10 +831,11 @@ class GameShell:
         warn_label_cuts(self.theme, self.words, self.assets, dev=self.dev, menus=shown)
 
 
-def w66_text(section: str, menu: str, name: str, registered: list[str]) -> str:
+def w66_text(section: str, menu: str, name: str, registered: list[str], *,
+             key: str = "entries") -> str:
     """W66: a name in ``entries`` that isn't a button of that menu (G7 drafts the
-    ``[title]`` form and the list join)."""
-    text = (f'config.toml: [{section}] entries has "{echo(name)}", which isn\'t a '
+    ``[title]`` form and the list join). F32: ``[playthrough.N] title_entries`` too."""
+    text = (f'config.toml: [{section}] {key} has "{echo(name)}", which isn\'t a '
             f"{MENU_NOUNS[menu]}.")
     close = did_you_mean(name, registered)
     if close is not None:
@@ -780,7 +844,7 @@ def w66_text(section: str, menu: str, name: str, registered: list[str]) -> str:
 
 
 def w66_empty_text(section: str, registered: list[str], names: "Sequence[str]" = (), *,
-                   menu: str = "title") -> str:
+                   menu: str = "title", key: str = "entries") -> str:
     """W66's empty-list form (G1 draft): an empty list, or one naming no button of the menu
     (``names``, as written), shows the defaults."""
     example = ", ".join(f'"{name}"' for name in registered)
@@ -790,9 +854,9 @@ def w66_empty_text(section: str, registered: list[str], names: "Sequence[str]" =
         what = f"has no {MENU_NOUNS[menu]} ({listed}{more})"
     else:
         what = "is empty"
-    return (f"config.toml: [{section}] entries {what}, so the default buttons are shown: "
+    return (f"config.toml: [{section}] {key} {what}, so the default buttons are shown: "
             f"{join_names(registered)}. List the buttons to show, e.g. "
-            f"entries = [{example}].")
+            f"{key} = [{example}].")
 
 
 __all__ = ["CONFIRM_KEYS", "STORY_AUDIO_FADE_S", "STORY_END_FADE_S", "AudioPort", "CueLayer",

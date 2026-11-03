@@ -592,9 +592,6 @@ script/main.vns, line 5: "file" is not available yet in this engine version. Rem
 [25-E32-3]
 script/main.vns, line 5: "cg" is not available yet in this engine version. Remove the line or comment it out with # for now.
 
-[25-E32-4]
-script/main.vns, line 5: "ui" is not available yet in this engine version. Remove the line or comment it out with # for now.
-
 [25-E32-only-1]
 script/main.vns, line 9: "window" is not available yet in this engine version. Remove the line or comment it out with # for now.
 

@@ -149,6 +149,11 @@ class Looks:
             parts[name] = self._builders[name](self._current.theme.cfg)
         return parts[name]
 
+    def look(self, key: LookKey) -> Look:
+        """The ``Look`` of ``key``, built or cached, without making it current (F32 s4: the
+        launch's W67 rows check one look per table)."""
+        return self._look(key)
+
     # -- building --
 
     def _set(self, key: LookKey) -> None:

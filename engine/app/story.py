@@ -57,6 +57,8 @@ launch (``app/loading.py`` calls it after the launch phase). Seams, one line eac
 - F30 s4 (``04`` §6.1, §6.2): ``install_fourthwall`` registers ``WindowTitle`` (the window's
   title bar) and ``FakeCrash`` (the fake error page over the stage's wait), and the title
   reset among the shell's in-game resets, right after ``install_nvl``.
+- F32 s4 (``04`` §6.2): ``install_looks`` right after ``install_ui``: the shell's ``Looks``,
+  W207/W67/W206, and the ``UiStyle``, ``UiBlocks``, ``DeleteSaves`` handlers.
 
 The watchdog (§7.7; the thread rule of ``docs/architecture.md``, ``07`` §3.3): author code
 runs only on the main thread, between ``guard.enter()`` and ``guard.exit()``. The watchdog's
@@ -92,6 +94,7 @@ from engine.app.flowchart import install_flowchart
 from engine.app.flowchart_ui import install_flowchart_page
 from engine.app.fourthwall import install_fourthwall
 from engine.app.history import install_history
+from engine.app.looks import install_looks
 from engine.app.menus import install_ui
 from engine.app.minigames import install_minigames
 from engine.app.points import install_points
@@ -443,6 +446,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_stage(app, images if images is not None else builtin_images())   # after it (F09)
     install_choices(app, textbox)                            # F07: ShowMenu; app.choices
     shell = install_ui(app)                                  # F10 (C9): sets app.shell
+    install_looks(app, interp)                               # F32 s4: right after install_ui
     # Installs that register menu entries (app.shell.menus.add) go here: F11, F13, F15, F16.
     install_history(app)                                     # F13 (I-6): History
     install_saves(app)                                       # F11 (04 §7.1): App.saves

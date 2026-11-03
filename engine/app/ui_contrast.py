@@ -9,18 +9,25 @@ the check lives here) and the worse backdrop is named. A pair whose background i
 a usable ``frame_image`` (or a logo or title picture) isn't checked. AC-F10-17 measures the
 defaults with ``pair_ratios``.
 
+F32 (``04`` §6.7): ``LOOK_PAIRS`` adds the in-game areas a ``[style.<name>]`` table may
+restyle (text box, choices, NVL), and ``contrast_warnings(theme, pairs=, section=, only=)``
+checks one look's pairs that use a token its table sets, naming the table
+(``[style.ashes.theme.textbox]``). NVL colors that follow the text box are resolved as
+``nvl_look`` resolves them.
+
 The message forms are 03-ui's two W67 examples; the opaque and black-screen forms and every
 "needs at least" noun are drafted here for the narrative designer's review.
 """
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from typing import Final
 
 from engine.app.text_check import BLACK, WHITE, composite, contrast_ratio, relative_luminance
 from engine.core.config_schema import ThemeConfig
 from engine.core.logsetup import get_logger
+from engine.render.nvllayout import nvl_look
 from engine.ui.builtin.flowchart_page import FOLLOWS, flow_color
 from engine.ui.theme import UiTheme
 
@@ -138,14 +145,57 @@ PAIRS: Final[tuple[Pair, ...]] = (
 )
 
 
+def _no_frame(table: str) -> Callable[[UiTheme], bool]:
+    """F32: drawn while ``[theme.<table>] frame_image`` is unset (a look's unusable ref was
+    already dropped, W207)."""
+    def drawn(theme: UiTheme) -> bool:
+        node: object = theme.cfg
+        for part in table.split("."):
+            node = getattr(node, part)
+        return getattr(node, "frame_image", None) is None
+    return drawn
+
+
+# F32 (04 §6.7): the in-game areas a style restyles. "needs" nouns drafted.
+LOOK_PAIRS: Final[tuple[Pair, ...]] = (
+    Pair("textbox.text_color", "textbox.fill_color", "textbox.fill_opacity", TEXT,
+         "text box text needs", _no_frame("textbox")),
+    Pair("choice.text_color", "choice.fill_color", "choice.fill_opacity", TEXT,
+         "choice text needs", _no_frame("choice")),
+    Pair("choice.text_color", "choice.focused.fill_color", "choice.fill_opacity", TEXT,
+         "choice text needs", _no_frame("choice.focused")),
+    Pair("nvl.text_color", "nvl.fill_color", "nvl.fill_opacity", TEXT, "NVL text needs"),
+)
+# NVL tokens that follow the text box's when unset (``nvl_look``).
+_NVL_FOLLOWS: Final = {"nvl.fill_color": "textbox.fill_color",
+                       "nvl.text_color": "textbox.text_color"}
+
+
 def _token(cfg: ThemeConfig, path: str) -> object:
     """The token's value; F20's ``flowchart.*`` colors that follow another token (None) are
-    resolved as the page resolves them (``flow_color``)."""
+    resolved as the page resolves them (``flow_color``), F17's NVL colors as ``nvl_look``."""
     node: object = cfg
     for part in path.split("."):
         node = getattr(node, part)
     if node is None and path in FOLLOWS:
         return flow_color(cfg, path)
+    if node is None and path in _NVL_FOLLOWS:
+        return getattr(nvl_look(cfg), path.split(".", 1)[1])
+    return node
+
+
+def _source(cfg: ThemeConfig, path: str) -> str:
+    """The token whose value ``path`` shows (an unset NVL color: the text box's)."""
+    follows = _NVL_FOLLOWS.get(path)
+    if follows is not None and _token_raw(cfg, path) is None:
+        return follows
+    return path
+
+
+def _token_raw(cfg: ThemeConfig, path: str) -> object:
+    node: object = cfg
+    for part in path.split("."):
+        node = getattr(node, part)
     return node
 
 
@@ -162,17 +212,25 @@ def pair_ratios(cfg: ThemeConfig, pair: Pair) -> tuple[float, float]:
             contrast_ratio(fg, composite(bg, opacity, WHITE)))
 
 
-def contrast_warnings(theme: UiTheme) -> list[str]:
-    """W67's text for each drawn pair of ``theme`` under its minimum, in ``PAIRS`` order."""
+def contrast_warnings(theme: UiTheme, *, pairs: tuple[Pair, ...] = PAIRS,
+                      section: str = "theme", only: "Collection[str] | None" = None
+                      ) -> list[str]:
+    """W67's text for each drawn pair of ``theme`` under its minimum, in ``pairs`` order.
+    F32: ``only`` keeps the pairs showing a token in it (a look table's own tokens), and
+    ``section`` names that table (``style.ashes.theme``)."""
     out = []
-    for pair in PAIRS:
+    for pair in pairs:
         if not pair.drawn(theme):
+            continue
+        if only is not None and not any(
+                path is not None and path != LOADING_SCREEN and _source(theme.cfg, path) in only
+                for path in (pair.fg, pair.bg, pair.opacity)):
             continue
         over_black, over_white = pair_ratios(theme.cfg, pair)
         ratio, backdrop = (over_black, "black") if over_black <= over_white else \
             (over_white, "white")
         if ratio < pair.minimum:
-            out.append(w67_text(theme.cfg, pair, ratio, backdrop))
+            out.append(w67_text(theme.cfg, pair, ratio, backdrop, section=section))
     return out
 
 
@@ -206,10 +264,12 @@ def _shade(fg: RGB, bg: RGB, minimum: float) -> str:
     return "darker" if contrast_ratio(BLACK, bg) >= contrast_ratio(WHITE, bg) else "lighter"
 
 
-def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str) -> str:
+def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str, *,
+             section: str = "theme") -> str:
     """W67 for ``pair`` at ``ratio`` (the worse one; ``backdrop`` ``"black"`` or ``"white"``).
     Keys are named under the table the two colors share, e.g. ``[theme.button]
-    disabled.text_color … on fill_color``; a key outside it carries its own table."""
+    disabled.text_color … on fill_color``; a key outside it carries its own table. F32:
+    ``section`` is the table path the keys are under (``style.ashes.theme``)."""
     fg_table, fg_key = pair.fg.rsplit(".", 1)
     bg_table = pair.bg.rsplit(".", 1)[0] if pair.bg else ""
     common: list[str] = []
@@ -223,12 +283,12 @@ def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str) -> str:
         if path.startswith(head + "."):
             return path[len(head) + 1:]
         table, key = path.rsplit(".", 1)
-        return f"[theme.{table}] {key}"
+        return f"[{section}.{table}] {key}"
 
     fg: RGB = _token(cfg, pair.fg)                                       # type: ignore
     bg = _bg_color(cfg, pair)
     fg_name = name(pair.fg)
-    start = f"config.toml: [theme.{head}] {fg_name} {_hex(fg)}"
+    start = f"config.toml: [{section}.{head}] {fg_name} {_hex(fg)}"
     need = f"{pair.needs} at least {pair.minimum:g}:1"
     if pair.bg == LOADING_SCREEN:
         return (f"{start} on the black loading screen gives {_floored(ratio)}:1; {need}. "
@@ -244,4 +304,4 @@ def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str) -> str:
             f"over a {backdrop} picture; {need}. Pick colors further apart.")
 
 
-__all__ = ["PAIRS", "Pair", "contrast_warnings", "pair_ratios", "w67_text", "warn_contrast"]
+__all__ = ["LOOK_PAIRS", "PAIRS", "Pair", "contrast_warnings", "pair_ratios", "w67_text", "warn_contrast"]
