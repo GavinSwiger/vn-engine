@@ -688,3 +688,20 @@ def test_ac_f31_26_meta_files_import_rows():
     app = _runtime_imports("engine/app/metafiles.py")
     assert all(typing for _, n, typing in app if n.split(".")[:2] == ["engine", "script"])
     assert scan(REPO / "engine") == []
+
+
+# --- F43 pure modules (04 §3, 07 "Shared contracts"): core/langtags and core/fontcmap import
+# the standard library only; render/linebreak imports the stdlib and engine.core, no pygame ---
+
+F43_ROWS = {"engine/core/langtags.py": (), "engine/core/fontcmap.py": (),
+            "engine/render/linebreak.py": ("engine.core",)}
+
+
+def test_f43_pure_modules_import_only_their_rows():
+    import sys
+
+    for ref, allowed in F43_ROWS.items():
+        for _, name, _ in _runtime_imports(ref):
+            top = name.split(".")[0]
+            assert (top != "engine" and top in sys.stdlib_module_names) or any(
+                name == k or name.startswith(k + ".") for k in allowed), (ref, name)
