@@ -49,7 +49,7 @@ def wired(settings: SettingsService, read=None, *, crash: bool = False) -> Fourt
 
 
 def test_ac_f30_28_the_setting_and_its_row():
-    assert KEYS["username_use"] == IntKey(0, 2) and FORMAT == 3
+    assert KEYS["username_use"] == IntKey(0, 2) and FORMAT >= 3
     s = service()
     assert s.value("username_use") == 0 and s.value("crash_label") is False
     # Older files (F33's format 2, F16's format 1) read with their values kept.
@@ -78,7 +78,7 @@ def test_ac_f30_28_the_setting_and_its_row():
     assert wall.name() == Z and read.calls == 1
     row.set(False)
     assert s.value("username_use") == 1 and wall.name() is None
-    assert json.loads(encode_settings(s.stored)) == {"format": 3,
+    assert json.loads(encode_settings(s.stored)) == {"format": FORMAT,
                                                      "values": {"username_use": 1}}
     # Reset: 0, the name forgotten (the next draw is the fallback), no read until a new
     # opt-in, and the question is due at the next launch (a new session's gate).

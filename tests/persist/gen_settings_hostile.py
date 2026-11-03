@@ -29,19 +29,21 @@ FILES = Path(__file__).resolve().parents[1] / "fixtures" / "F16" / "files"
 MAX_DEPTH = 1000
 
 # 04 §4's example, byte for byte as ``encode_settings`` writes it.
-EXAMPLE = (b'{\n  "format": 3,\n  "values": {\n    "music_volume": 40,\n'
+EXAMPLE = (b'{\n  "format": 4,\n  "values": {\n    "music_volume": 40,\n'
            b'    "reduce_motion": true,\n    "text_size_pct": 130,\n'
            b'    "window_size": [1280, 720]\n  }\n}\n')
 EXAMPLE_VALUES = {"music_volume": 40, "reduce_motion": True, "text_size_pct": 130,
                   "window_size": (1280, 720)}
 
-# One out-of-range value per key (AC-F16-31's 18 W71 lines; F33 added warning_seen, F30 its two keys: 20 lines).
+# One out-of-range value per key (AC-F16-31's 18 W71 lines; F33 added warning_seen, F30 its
+# two keys, F43 language: 21 lines).
 EVERY_BAD = {
     "text_cps": 5, "text_size_pct": 400, "auto_scale_pct": 24, "auto_wait_voice": "yes",
     "skip_all": 1, "master_volume": -1, "music_volume": 101, "sound_volume": None,
     "voice_volume": 12345678, "text_blips": {}, "voice_sustain": [], "audio_unfocused": 0,
     "audio_minimized": "no", "mono": 1.5, "fullscreen": "true", "reduce_motion": "yes",
     "window_size": [1, 2], "warning_seen": 1001, "username_use": 3, "crash_label": "on",
+    "language": "Japanese",
 }
 MARK = "ZZMARK"
 
@@ -63,7 +65,7 @@ FIXTURES: dict[str, Callable[[], bytes]] = {
     "valid.json": lambda: EXAMPLE,
     "bad_brace.json": lambda: b"{",
     "bom.json": lambda: b"\xef\xbb\xbf" + EXAMPLE,
-    "newer.json": lambda: dumps({"format": 4, "values": {"music_volume": 40, "new_key": 1}}),
+    "newer.json": lambda: dumps({"format": 5, "values": {"music_volume": 40, "new_key": 1}}),
     "mixed.json": lambda: dumps({"format": 1, "values": {"text_cps": 40, "music_volume": 400,
                                                           "foo": 1, "bar": 2}}),
     "every_bad.json": lambda: dumps({"format": 1, "values": EVERY_BAD}),

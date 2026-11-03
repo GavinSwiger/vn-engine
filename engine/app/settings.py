@@ -51,6 +51,7 @@ from engine.core.logsetup import get_logger
 from engine.core.settings_schema import (
     CRASH_LABEL_DEFAULT,
     KEYS,
+    LANGUAGE_NOT_CHOSEN,
     USERNAME_USE_DEFAULT,
     SizeKey,
     Value,
@@ -220,6 +221,9 @@ def config_defaults(config: "Config") -> dict[str, Value]:
         # F30 (SEC-F30-07): engine constants, never from config.toml; no apply group.
         "username_use": USERNAME_USE_DEFAULT,
         "crash_label": CRASH_LABEL_DEFAULT,
+        # F43: "" = not chosen; the language service (W4) runs the first-launch rule and
+        # stores its result; Reset clears it, so the rule runs again. No apply group.
+        "language": LANGUAGE_NOT_CHOSEN,
     }
 
 

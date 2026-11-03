@@ -97,7 +97,7 @@ def test_ac_f33_03_settings_key():
     loaded = parse_settings(b'{"format": 1, "values": {"warning_seen": 2, "mono": true}}')
     assert loaded.outcome is Outcome.OK and loaded.writable
     assert dict(loaded.values) == {"warning_seen": 2, "mono": True}
-    assert b'"format": 3' in encode_settings({"warning_seen": 2})
+    assert b'"format": 4' in encode_settings({"warning_seen": 2})
     # Not on the Settings page; Reset clears it (so the warning shows at the next launch).
     assert "warning_seen" not in {row[1] for _, rows in GROUPS for row in rows}
     service = service_from({"warning_seen": 3, "music_volume": 40})

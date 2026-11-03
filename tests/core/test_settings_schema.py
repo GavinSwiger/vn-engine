@@ -13,14 +13,17 @@ from engine.core import settings_schema
 from engine.core.settings_schema import (
     FORMAT,
     KEYS,
+    LANGUAGE_CODE_MAX,
     BoolKey,
     IntKey,
+    LanguageKey,
     LongNumber,
     Problem,
     SizeKey,
     check,
     effective_text_size,
     found_word,
+    is_language_code,
 )
 from tests.fakes.username import no_real_username  # noqa: F401  (name guard, AC-F30-07)
 
@@ -42,13 +45,14 @@ def found(key: str, value: object) -> str:
 # --- AC-F16-01 --------------------------------------------------------------------------------
 
 def test_ac_f16_01_key_table_checks_and_found_words():
-    """AC-F16-01: the 20 keys (F33's ``warning_seen``, then F30's two last), each key's range/type checks, the must phrases, and that the
+    """AC-F16-01: the 21 keys (F33's ``warning_seen``, F30's two, F43's ``language`` last), each key's range/type checks, the must phrases, and that the
     found word is only digits or a fixed word."""
     assert list(KEYS) == [
         "text_cps", "text_size_pct", "auto_scale_pct", "auto_wait_voice", "skip_all",
         "master_volume", "music_volume", "sound_volume", "voice_volume", "text_blips",
         "voice_sustain", "audio_unfocused", "audio_minimized", "mono", "fullscreen",
-        "reduce_motion", "window_size", "warning_seen", "username_use", "crash_label"]
+        "reduce_motion", "window_size", "warning_seen", "username_use", "crash_label",
+        "language"]
     assert KEYS["text_cps"] == IntKey(10, 200, zero=True)
     assert KEYS["text_size_pct"] == IntKey(100, 150)
     assert KEYS["auto_scale_pct"] == IntKey(25, 400)
@@ -160,6 +164,7 @@ KEYS_BY_FORMAT = {
 KEYS_BY_FORMAT[2] = {**KEYS_BY_FORMAT[1], "warning_seen": ("int", 1, 1000, True)}   # F33
 KEYS_BY_FORMAT[3] = {**KEYS_BY_FORMAT[2], "username_use": ("int", 0, 2, False),      # F30
                      "crash_label": ("bool",)}
+KEYS_BY_FORMAT[4] = {**KEYS_BY_FORMAT[3], "language": ("language", 12)}             # F43
 
 
 def _snapshot() -> dict[str, tuple]:
@@ -169,6 +174,8 @@ def _snapshot() -> dict[str, tuple]:
             out[key] = ("int", spec.lo, spec.hi, spec.zero)
         elif isinstance(spec, BoolKey):
             out[key] = ("bool",)
+        elif isinstance(spec, LanguageKey):
+            out[key] = ("language", LANGUAGE_CODE_MAX)
         else:
             out[key] = ("size", *spec.w, *spec.h)
     return out

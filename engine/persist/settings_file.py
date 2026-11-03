@@ -7,17 +7,23 @@ player's settings, never the game (PR-F16-22, 23). Writing must produce a file t
 reader accepts (TR-F16-01). The App's settings service (``app/settings.py``) logs W70–W75
 from the ``LoadedSettings`` returned here; this module never logs.
 
-The file (``format`` 1) is ASCII JSON, keys sorted at both levels, ``indent=2``::
+The file (``format`` is ``FORMAT``, 4 since F43) is ASCII JSON, keys sorted at both levels,
+``indent=2``::
 
     {
-      "format": 1,
+      "format": 4,
       "values": {
+        "language": "ja",
         "music_volume": 40,
         "window_size": [1280, 720]
       }
     }
 
 Only the keys the player changed are stored; each must pass ``settings_schema.check``.
+Values are ints, booleans, the ``window_size`` pair, and (format 4, F43) ``language``, the
+one text value: an ASCII language code such as ``"pt-BR"``, so the file stays ASCII. A
+file of an older format (1–3) reads as current, with the keys it lacks absent (``language``
+absent = not chosen yet); the next write gives it ``FORMAT``.
 
 Parsing: at most ``MAX_FILE_BYTES``; strict UTF-8 (a BOM is not JSON); ``json.loads`` with
 hooks refusing duplicate keys and NaN/Infinity, and turning integers of more than

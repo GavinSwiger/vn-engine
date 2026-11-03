@@ -3,13 +3,15 @@
 Why this module exists: ``persist`` (checking ``settings.json``) and ``ui`` (slider ranges)
 both need the one table, and neither may import the other, so it lives in ``core``.
 
-``KEYS`` holds the 18 stored keys in the design's order (W71 lines follow it); F33's
+``KEYS`` holds the stored keys in the design's order (W71 lines follow it); F33's
 ``warning_seen`` (the content warning ``version`` the player continued past, 0 = none) is
-last, not on the Settings page. Each key is an ``IntKey`` (whole numbers in a fixed range; ``text_cps`` also allows 0), a ``BoolKey``, or
-the one ``SizeKey`` (``window_size``, two whole numbers). Types are exact: ``true`` is not
-a number and ``1`` is not a boolean. ``found_word`` names a refused value for W71 without
-ever echoing text from the file: an integer of at most 7 characters, ``true``/``false``,
-or a fixed kind word (07 G4).
+not on the Settings page; F30's two keys and F43's ``language`` follow it. Each key is an
+``IntKey`` (whole numbers in a fixed range; ``text_cps`` also allows 0), a ``BoolKey``, the
+one ``SizeKey`` (``window_size``, two whole numbers), or the one ``LanguageKey``
+(``language``, a language code: F43, format 4, the first text value). Types are exact:
+``true`` is not a number and ``1`` is not a boolean. ``found_word`` names a refused value
+for W71 without ever echoing text from the file: an integer of at most 7 characters,
+``true``/``false``, or a fixed kind word (07 G4); a refused language is "text".
 
 **Adding a key bumps ``FORMAT``** (07 G6, I-7). A key is never removed or retyped; a retype
 needs a new name. A snapshot test pins ``KEYS`` to ``FORMAT``.
@@ -17,14 +19,15 @@ needs a new name. A snapshot test pins ``KEYS`` to ``FORMAT``.
 Standard library only; imports nothing from ``engine``; no side effects.
 """
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final
 
-Value = int | bool | tuple[int, int]
+Value = int | bool | tuple[int, int] | str
 
-FORMAT: Final = 3                       # 2: F33's warning_seen; 3: F30's two keys
+FORMAT: Final = 4                       # 2: F33's warning_seen; 3: F30's two; 4: F43's language
 MAX_FILE_BYTES: Final = 65_536          # 64 KiB read cap (PR-F16-22)
 MAX_INT_DIGITS: Final = 20              # longer integers parse as "a long number"
 MAX_FOUND_CHARS: Final = 7              # TR-F16-03: no file text longer than 7 characters
@@ -32,6 +35,12 @@ TEXT_SIZE_MAX: Final = 48               # F05's largest text size (TEXT_SIZE_RAN
 # F30 (SEC-F30-07): the consent defaults are engine constants, never read from config.toml.
 USERNAME_USE_DEFAULT: Final = 0         # 0 never answered, 1 don't allow, 2 allow
 CRASH_LABEL_DEFAULT: Final = False      # "Label fake error screens" off
+# F43 (07 I-10): a language code is ASCII, 2-3 lower-case letters, optionally "-" and 2-8
+# letters or digits (ja, pt-BR, zh-Hans), so at most 12 characters. core/langtags.py holds
+# the same pattern (a test keeps them equal); this module imports nothing from engine.
+LANGUAGE_CODE_RE: Final = re.compile(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?", re.ASCII)
+LANGUAGE_CODE_MAX: Final = 12
+LANGUAGE_NOT_CHOSEN: Final = ""         # the default: no language stored (first launch rule)
 
 LONG_NUMBER: Final = "a long number"
 
@@ -88,7 +97,27 @@ class SizeKey:
                 and self.w[0] <= width <= self.w[1] and self.h[0] <= height <= self.h[1])
 
 
-KeySpec = IntKey | BoolKey | SizeKey
+@dataclass(frozen=True, slots=True)
+class LanguageKey:
+    """A language code (F43 PR-F43-01): ASCII text matching ``LANGUAGE_CODE_RE``, at most
+    ``LANGUAGE_CODE_MAX`` characters. Whether the game has that language is the app's
+    question (W255), not the file's."""
+
+    @property
+    def must(self) -> str:
+        return "a language code such as ja, pt-BR or zh-Hans"
+
+    def accepts(self, value: object) -> bool:
+        return (type(value) is str and len(value) <= LANGUAGE_CODE_MAX
+                and LANGUAGE_CODE_RE.fullmatch(value) is not None)
+
+
+def is_language_code(value: object) -> bool:
+    """True for a value ``language`` may hold."""
+    return LanguageKey().accepts(value)
+
+
+KeySpec = IntKey | BoolKey | SizeKey | LanguageKey
 
 KEYS: Final[Mapping[str, KeySpec]] = MappingProxyType({
     "text_cps": IntKey(10, 200, zero=True),
@@ -111,6 +140,7 @@ KEYS: Final[Mapping[str, KeySpec]] = MappingProxyType({
     "warning_seen": IntKey(1, 1000, zero=True),       # F33 (format 2)
     "username_use": IntKey(0, 2),                     # F30 (format 3): 2 = allowed
     "crash_label": BoolKey(),                         # F30 (format 3)
+    "language": LanguageKey(),                        # F43 (format 4): absent = not chosen
 })
 
 
@@ -163,7 +193,8 @@ def found_word(value: object) -> str:
 def check(key: str, value: object) -> Problem | None:
     """None if ``value`` may be stored for ``key``, else W71's ``Problem``. Types are exact
     (an int key refuses ``true`` and ``40.0``; ``window_size`` takes a list or tuple of
-    exactly two ints). ``ValueError`` for a key not in ``KEYS`` (a programmer error)."""
+    exactly two ints; ``language`` only a ``str`` code). ``ValueError`` for a key not in
+    ``KEYS`` (a programmer error)."""
     spec = KEYS.get(key)
     if spec is None:
         raise ValueError("not a settings key")
@@ -177,6 +208,8 @@ def effective_text_size(base: int, pct: int) -> int:
     return min(TEXT_SIZE_MAX, (2 * base * pct + 100) // 200)
 
 
-__all__ = ["BoolKey", "CRASH_LABEL_DEFAULT", "FORMAT", "IntKey", "KEYS", "KeySpec", "LONG_NUMBER", "LongNumber",
-           "MAX_FILE_BYTES", "MAX_FOUND_CHARS", "MAX_INT_DIGITS", "Problem", "SizeKey",
-           "TEXT_SIZE_MAX", "USERNAME_USE_DEFAULT", "Value", "check", "effective_text_size", "found_word"]
+__all__ = ["BoolKey", "CRASH_LABEL_DEFAULT", "FORMAT", "IntKey", "KEYS", "KeySpec",
+           "LANGUAGE_CODE_MAX", "LANGUAGE_CODE_RE", "LANGUAGE_NOT_CHOSEN", "LONG_NUMBER",
+           "LanguageKey", "LongNumber", "MAX_FILE_BYTES", "MAX_FOUND_CHARS", "MAX_INT_DIGITS",
+           "Problem", "SizeKey", "TEXT_SIZE_MAX", "USERNAME_USE_DEFAULT", "Value", "check",
+           "effective_text_size", "found_word", "is_language_code"]

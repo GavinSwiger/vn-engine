@@ -234,7 +234,7 @@ def test_ac_f33_05_seen_record_and_quit(tmp_path):
     service.update(clock.now)                       # debounce over: written
     service.update(clock.now)
     data = json.loads((root / "settings" / FILE_NAME).read_text(encoding="utf-8"))
-    assert data == {"format": 3, "values": {"warning_seen": 1}}
+    assert data == {"format": 4, "values": {"warning_seen": 1}}
     relaunch = Rig(tmp_path, "", root=root, settings=real_settings(root, clock))
     assert relaunch.types == [TitleScreen]          # seen: straight to the title
 

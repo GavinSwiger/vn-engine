@@ -188,7 +188,7 @@ def test_ac11_reset_settings(tmp_path):
     assert window.calls == ["set_windowed"] and window.fullscreen is False
     service.update(1.0)
     [(_, job)] = writer.fake.submitted
-    assert json.loads(job.pieces[0]) == {"format": 3, "values": {}}
+    assert json.loads(job.pieces[0]) == {"format": 4, "values": {}}
 
 
 # --- AC-F16-16 — settings are not story state -----------------------------------------------------
