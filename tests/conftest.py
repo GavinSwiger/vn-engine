@@ -26,6 +26,10 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 
 def pytest_collection_modifyitems(config, items):
+    # Reference runs (AC-F04-48 is four 600 s runs) and human checks have no time limit.
+    for item in items:
+        if item.get_closest_marker("perf") or item.get_closest_marker("manual"):
+            item.add_marker(pytest.mark.timeout(0))
     marks = config.getoption("-m") or ""
     for mark, env in (("slow", "VN_SLOW"), ("perf", "VN_PERF")):
         if os.environ.get(env) == "1" or mark in marks:

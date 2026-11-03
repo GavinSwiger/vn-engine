@@ -13,7 +13,7 @@ requires-python = ">=3.12"
 dependencies = ["pygame-ce>=2.5.2,<2.6"]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-xdist"]
+test = ["pytest", "pytest-xdist", "pytest-timeout"]
 
 [tool.setuptools.dynamic]
 version = { attr = "engine.__version__" }
@@ -27,6 +27,9 @@ engine = ["data/**/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# A hung test fails after 5 minutes instead of stalling the run; perf and manual tests
+# have no limit (tests/conftest.py).
+timeout = 300
 markers = [
     "display: needs pygame with SDL_VIDEODRIVER=dummy (set in tests/conftest.py)",
     "perf: needs a real display and hardware; never runs in CI",
