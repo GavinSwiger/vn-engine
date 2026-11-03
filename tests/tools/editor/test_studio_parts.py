@@ -28,17 +28,17 @@ def menu_rows(menu: tk.Menu) -> list[tuple[str, str]]:
 def test_tabs_make_the_pages_the_strip_the_view_rows_and_the_keys(studio, studio_game):
     ed = studio(studio_game)
     win = ed.win
-    titles = ["Editor", "Story map", "Asset", "Outline"]
+    titles = ["Editor", "Story map", "Database", "Asset", "Outline"]     # F47 W2: Database
     assert [tab.title for tab in window.TABS] == titles
     assert [win.notebook.tab(i, "text") for i in range(win.notebook.index("end"))] == titles
-    assert len(win.tab_strip.cells) == 4
-    assert menu_rows(win.view_menu)[:4] == [(t, f"Ctrl+{i}") for i, t in
+    assert len(win.tab_strip.cells) == 5
+    assert menu_rows(win.view_menu)[:5] == [(t, f"Ctrl+{i}") for i, t in
                                             enumerate(titles, 1)]
-    for digit in "1234":
+    for digit in "12345":
         assert win.root.bind_all(f"<Control-Key-{digit}>")
-    assert not win.root.bind_all("<Control-Key-5>")
+    assert not win.root.bind_all("<Control-Key-6>")
     win.select_tab("asset")
-    assert win.current_tab() == "asset" and win.notebook.index("current") == 2
+    assert win.current_tab() == "asset" and win.notebook.index("current") == 3
 
 
 def test_one_tabs_row_adds_a_tab(studio_game):
@@ -55,11 +55,12 @@ def test_one_tabs_row_adds_a_tab(studio_game):
     try:
         root.withdraw()
         win = Extra(root, GamePaths.for_game(studio_game), check_runner=FakeChecks())
-        assert win.notebook.tab(4, "text") == "Extra"
-        assert len(win.tab_strip.cells) == 5
-        assert ("Extra", "Ctrl+5") in menu_rows(win.view_menu)
-        assert root.bind_all("<Control-Key-5>")
-        win.show_tab(4)
+        extra = len(window.TABS)
+        assert win.notebook.tab(extra, "text") == "Extra"
+        assert len(win.tab_strip.cells) == extra + 1
+        assert ("Extra", f"Ctrl+{extra + 1}") in menu_rows(win.view_menu)
+        assert root.bind_all(f"<Control-Key-{extra + 1}>")
+        win.show_tab(extra)
         assert win.current_tab() == "extra" and win._tab_widget() is win.extra_frame
         win.close()
     finally:

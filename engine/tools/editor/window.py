@@ -196,6 +196,7 @@ PROJECT_HEADING = "Project"
 TAB_EDITOR = "Editor"
 TAB_MAP = "Story map"
 TAB_ASSET = "Asset"
+TAB_DATABASE = "Database"               # F47 W2
 TAB_OUTLINE = "Outline"                 # 2026-11-02, AC-F45-54
 EDITOR_EMPTY_TITLE = "No story files yet"                       # 08 §9
 EDITOR_EMPTY_HINT = "Your story is written in script files."
@@ -236,6 +237,8 @@ TABS: tuple[Tab, ...] = (
     Tab("editor", TAB_EDITOR, "editor", "_build_editor_tab", "text", "editor_empty"),
     Tab("map", TAB_MAP, "storymap", "_build_map_tab", "map_canvas", "story_map.empty",
         on_show="refresh_story_map"),
+    Tab("database", TAB_DATABASE, "database", "_build_database_tab", "database.focus_widget",
+        "database.empty", on_show="refresh_database"),
     Tab("asset", TAB_ASSET, "image", "_build_asset_tab", "asset_pane.frame",
         "asset_pane.empty"),
     Tab("outline", TAB_OUTLINE, "outline", "_build_outline_tab", "outline_view.tree",
@@ -562,6 +565,16 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         once the fonts and the bottom panes exist."""
         self.editor_frame = ttk.Frame(self.notebook)
         return self.editor_frame
+
+    def _build_database_tab(self) -> tk.Widget:
+        """F47 W2/W3: the Database (``database.DatabasePane``)."""
+        from engine.tools.editor.database import DatabasePane
+        self.database = DatabasePane(self, self.notebook)
+        return self.database.frame
+
+    def refresh_database(self) -> None:
+        if not self.closed:
+            self.database.refresh()
 
     def _build_asset_tab(self) -> tk.Widget:
         self.asset_pane = AssetPane(self.notebook, scale=self.scale, on_add=self.add_files,

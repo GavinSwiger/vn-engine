@@ -13,7 +13,7 @@ import queue
 import subprocess
 import threading
 import tkinter as tk
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from engine.core.errors import UserFacingError
@@ -81,12 +81,18 @@ class FileActions:
             return node.group, node.ref.rsplit("/", 1)[0]
         return node.group, node.ref
 
-    def add_files(self, sources: Sequence[Path] | None = None) -> None:
+    def add_files(self, sources: Sequence[Path] | None = None, *,
+                  target: tuple[str, str] | None = None,
+                  on_done: Callable[[list[str]], object] | None = None) -> None:
         """Add files…: pick files, plan them, settle names and clashes in dialogs, then copy
-        them on a worker thread; the summary shows when the last one is done."""
+        them on a worker thread; the summary shows when the last one is done. ``target``
+        (group key, folder ref) replaces the project panel's selection (F47's Database);
+        ``on_done`` gets the added refs after the summary."""
         if self.closed or self.adding or not self.file_ops_enabled():
             return
-        target = self._target_folder()
+        self._add_on_done = on_done
+        if target is None:
+            target = self._target_folder()
         if target is None:
             show_error(self.root, PICK_FOLDER)
             return
@@ -170,6 +176,9 @@ class FileActions:
         if added:
             self.project_view.select(added[-1])
         show_info(self.root, files.add_summary(self._add_outcomes))
+        on_done, self._add_on_done = getattr(self, "_add_on_done", None), None
+        if on_done is not None:
+            on_done(added)
 
     def new_script_file(self, parent: tk.Misc | None = None) -> str | None:
         """Ctrl+N: a new ``.vns`` file in ``script/`` (or the selected script subfolder),

@@ -786,10 +786,12 @@ def add_summary(outcomes: Sequence[AddOutcome]) -> str:
 
 # --- New script file (§7.5 New script, PR-F45-04, C-2) -------------------------------------
 
-def new_script(paths: GamePaths, folder_ref: str, name: str) -> str | Refusal:
-    """Create ``folder_ref/name`` (under ``script/``) holding ``label <stem>:``. Refuses a
-    name that isn't a ``.vns`` file name, fails ``check_ref``, clashes up to case, or whose
-    stem isn't a label name."""
+def new_script(paths: GamePaths, folder_ref: str, name: str,
+               text: str | None = None) -> str | Refusal:
+    """Create ``folder_ref/name`` (under ``script/``) holding ``label <stem>:``, or ``text``
+    when given (F47: the Database's ``database.vns``, whose stem needn't be a label name).
+    Refuses a name that isn't a ``.vns`` file name, fails ``check_ref``, clashes up to case,
+    or (without ``text``) whose stem isn't a label name."""
     if folder_ref != SCRIPT_FOLDER and not folder_ref.startswith(SCRIPT_FOLDER + "/"):
         raise ValueError(f"{folder_ref!r} is not under script/")
     group = group_by_key("script")
@@ -804,7 +806,7 @@ def new_script(paths: GamePaths, folder_ref: str, name: str) -> str | Refusal:
     except AssetRefError as exc:
         return Refusal(BAD_REF.format(name=show(name), reason=exc.reason))
     stem = name[:-len(".vns")]
-    problem = label_problem(stem)
+    problem = label_problem(stem) if text is None else None
     if problem is not None:
         return Refusal(problem)
     folder = _folder(paths, folder_ref, create=True)
@@ -814,7 +816,8 @@ def new_script(paths: GamePaths, folder_ref: str, name: str) -> str | Refusal:
     if names is None or _clash(names, name) is not None:
         return Refusal(EXISTS.format(ref=show(ref)))
     try:
-        safefile.write_atomic(folder.path / name, (f"label {stem}:\n".encode("utf-8"),),
+        body = f"label {stem}:\n" if text is None else text
+        safefile.write_atomic(folder.path / name, (body.encode("utf-8"),),
                               check=True, expected=None, mode=NEW_FILE_MODE,
                               replace_tries=_REPLACE_TRIES, token=_temp_token)
     except safefile.TargetChanged:
@@ -822,6 +825,38 @@ def new_script(paths: GamePaths, folder_ref: str, name: str) -> str | Refusal:
     except OSError as exc:
         return _failure("create", ref, exc)
     return ref
+
+
+def ensure_folder(paths: GamePaths, folder_ref: str) -> Refusal | None:
+    """Make ``folder_ref`` (a group folder, or one folder inside one: ``images/rin``) when it
+    is missing, the group folder first (F47 PR-F47-11: the Database adds looks to
+    ``images/<tag>/`` and sounds to ``audio/<folder>/``). None once the folder is there."""
+    head, _, rest = folder_ref.partition("/")
+    if group_of(head) is None or "/" in rest or "\\" in rest:
+        raise ValueError(f"{folder_ref!r} is not a group folder or one folder inside one")
+    top = _folder(paths, head, create=True)
+    if isinstance(top, Refusal):
+        return top
+    if not rest:
+        return None
+    shown = show(folder_ref)
+    try:
+        check_ref(folder_ref)
+        found = paths.real_dir(folder_ref)
+    except AssetRefError:
+        return Refusal(NOT_A_FOLDER.format(folder=shown))
+    if isinstance(found, RealDir):
+        return None
+    if found.kind != "missing" or found.other_case is not None:
+        return Refusal(NOT_A_FOLDER.format(folder=shown))
+    try:
+        os.mkdir(top.path / rest)
+    except FileExistsError:
+        pass
+    except OSError as exc:
+        return _failure("create", folder_ref + "/", exc)
+    paths.invalidate_listings()
+    return None
 
 
 def label_problem(stem: str) -> str | None:
@@ -1158,7 +1193,7 @@ def studio_argv(folder: Path) -> list[str]:
 
 __all__ = ["AddOutcome", "AddPlan", "GAME_GONE", "MAIN_FIXED", "ProjectTree", "Refusal",
            "START_FROM", "TEMPLATES", "TEMPLATE_EMPTY", "TEMPLATE_SAMPLE", "TreeNode",
-           "add_summary", "content_problem", "delete_file", "fixed_reason",
+           "add_summary", "content_problem", "delete_file", "ensure_folder", "fixed_reason",
            "group_of", "include_line", "include_position", "label_problem", "new_game",
            "new_script", "plan_add", "project_tree", "rename_file", "rename_plan",
            "root_present", "run_add", "sample_dir", "starter_config", "studio_argv", "takes",

@@ -155,7 +155,7 @@ def test_ac_f45_54_outline_tab_and_map_drawing(studio, studio_game, monkeypatch)
     opened = []
     monkeypatch.setattr(ed.outline_view, "on_open", lambda f, n: opened.append((f, n)))
     ed.win.check_names = NAMES
-    ed.press(ed.text, "<Control-Key-4>")
+    ed.press(ed.text, "<Control-Key-5>")
     assert tab(ed) == "Outline"
     view = ed.outline_view
     assert "riverbank   script/ch2.vns:2" in view.texts()

@@ -2105,6 +2105,7 @@ GLYPHS: dict[str, tuple[str, str]] = {   # name -> (Fluent code point, fallback;
     "warning": ("\uE7BA", "⚠"),
     "script": ("\uE8A5", ""),
     "events": ("\uE9D5", ""),           # F46: the side pane's Events tab (Checklist)
+    "database": ("\uE8F1", ""),         # F47: the Database tab (Library)
 }
 
 

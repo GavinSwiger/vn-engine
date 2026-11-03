@@ -132,7 +132,7 @@ def build_window(game_dir):
     win.tree.selection_set("images/bg/room.png")          # the asset preview
     win.tree.focus("images/bg/room.png")
     root.update()
-    assert win.notebook.index("current") == 2
+    assert win.current_tab() == "asset"
     win.tree.selection_set("script/main.vns")
     win.tree.focus("script/main.vns")
     root.update()
