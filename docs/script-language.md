@@ -1230,6 +1230,31 @@ lists any file that breaks these, with a name to rename it to. The example game'
 are in `game/images/`.
 
 **Art scale.** Sprites are drawn at their own size on a screen 720 high. If your art was
+**Blinking and talking.** A character blinks, and moves her mouth while her lines type,
+when her picture has frames next to it: copies of the same picture, the same size, with only
+the eyes or the mouth changed. Name them after the look, with `_blink` or `_talk` and a
+number from 1 to 9; no code is needed.
+```
+game/images/hana/happy.png            →  show hana happy
+game/images/hana/happy_blink1.png     eyes half closed
+game/images/hana/happy_blink2.png     eyes closed
+game/images/hana/happy_talk1.png      mouth open
+```
+Frames play in number order, then back again (`1, 2, 1`), then the plain look; a missing
+number is skipped, and a frame with no number plays first. Hana blinks every few seconds;
+while `hana "…"` types, her mouth opens and closes, and it stops when the text stops (a
+`{pause}`, the end of the line, or a click). A look with only blink frames only blinks. A
+picture named in an `image` line works too: `image hana festival = "art/yukata.png"` takes
+`image hana festival_blink1 = "art/yukata_blink.png"`. Timings are in `config.toml`, and
+reduce motion holds every sprite still:
+```toml
+[animation]
+enabled = true             # false: no blinking or talking
+blink_every = 4.0          # about every 4 seconds (1 to 30), each gap random
+blink_frame = 0.08         # seconds per blink frame (0.02 to 0.5)
+talk_frame = 0.1           # seconds per talking frame (0.03 to 0.5)
+```
+
 drawn for a 1920×1080 screen, say so once in `game/config.toml`. Backgrounds always fill
 the screen, whatever their size.
 ```toml

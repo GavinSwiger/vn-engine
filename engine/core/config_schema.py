@@ -1800,6 +1800,24 @@ class MetaConfig:
         "what {username} shows when the name is off, not allowed, or can't be read"))
 
 
+@dataclass(frozen=True)
+class AnimationConfig:
+    """``[animation]`` (F38 ``SPEC.md`` §3): blinking and talking sprites, from frames named
+    after their looks (``script/spriteframes.py``). Presentation only: the runtime never
+    reads it; ``render/spriteanim.py``'s ``AnimSettings`` is built from it. Reduce motion
+    (``[effects] reduce`` or F16's setting) holds sprites still whatever ``enabled`` says."""
+    enabled: bool = field(default=True, metadata=spec(Bool(),
+        "characters on the stage blink and move their mouths, when their pictures have "
+        "blink and talking frames"))
+    blink_every: float = _effect_seconds(4.0, 1, 30,
+        doc="about how many seconds pass between blinks (each gap is random, from half to "
+            "one and a half times this)")
+    blink_frame: float = _effect_seconds(0.08, 0.02, 0.5,
+        doc="how many seconds each blink frame shows")
+    talk_frame: float = _effect_seconds(0.1, 0.03, 0.5,
+        doc="how many seconds each talking frame shows")
+
+
 # --- [style.<name>] and [playthrough.N] (F32 04 §3, §6.1, §10) -------------------------------
 # Sparse layers over [theme] and [words]: a table holds only the keys it sets, each checked by
 # the [theme]/[words]/[title] key's own validator (config.py ``_Walk.looks``). A style changes
@@ -1883,6 +1901,7 @@ class Config:
     content_warning: ContentWarningConfig = field(                      # F33
         default_factory=ContentWarningConfig)
     meta: MetaConfig = field(default_factory=MetaConfig)                # F30
+    animation: AnimationConfig = field(default_factory=AnimationConfig) # F38
     # F32: the valid [style.<name>] tables by name and [playthrough.N] tables by N.
     style: Mapping[str, LookTable] = field(default_factory=_no_looks)
     playthrough: Mapping[int, LookTable] = field(default_factory=_no_looks)
@@ -1919,6 +1938,7 @@ SECTIONS: dict[str, type] = {
     "flowchart": FlowchartConfig,
     "content_warning": ContentWarningConfig,
     "meta": MetaConfig,
+    "animation": AnimationConfig,
 }
 
 
@@ -1950,6 +1970,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "flowchart": "the Flowchart page",
     "content_warning": "a content warning shown before the title",
     "meta": "showing the player's computer user name in the story",
+    "animation": "characters blinking and moving their mouths while they talk",
     "style": "a named look the story can switch to while it plays",
     "playthrough": "a different title screen for players from a given playthrough on",
 })
