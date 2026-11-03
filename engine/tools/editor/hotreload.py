@@ -314,10 +314,13 @@ class HotReload:
         return HELD_SUFFIX if self.held is not None else ""
 
     def stop(self) -> None:
-        """The window closing (``join_runner``): forget any update; the preview runner is
-        stopped by the window."""
+        """The window closing (``join_runner``), or Play/Stop restarting or ending the
+        preview: forget any update and any hold, so a restart isn't reported as "Updated";
+        the preview runner is stopped or restarted by the window."""
         self.phase = Phase.IDLE
         self.again = False
+        self.held = None
+        self.status = None
 
     # -- internals --
 

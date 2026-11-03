@@ -7,7 +7,9 @@ finished check heads the Problems panel (a summary, then one row per item), sets
 markers on Tk marks that move with edits, drives the status bar's check items, and keeps the
 last good check's name index and label links (``check_names``, ``check_links``,
 ``check_stale``). Then every callback in ``win.on_check_done`` runs with the result (F47:
-Database, Guide and Game settings refresh there; F42's relayed build checks too).
+Database, Guide and Game settings refresh there; F42's relayed build checks too). Every
+check event also goes to F39's ``win.hot`` gate, with whether that check carried unsaved
+text; ``request_saved_check`` is the gate's check of the saved files only.
 """
 
 from __future__ import annotations
@@ -139,6 +141,9 @@ class CheckWiring:
     """Check requests and results, gutter markers, the name index, and the Problems
     panel."""
 
+    _check_overlay = False              # the newest request carried unsaved text (F39)
+    _saved_only_check = False           # the newest request is F39's saved-files check
+
     def focus_problems(self) -> None:
         """A click on the status bar's check items: the keyboard focus to Problems."""
         if not self.closed:
@@ -205,10 +210,30 @@ class CheckWiring:
             ref: dict(index.digests) for ref, index in self.scene_indexes.items()})
         overlay, unsaved = self._overlay()
         self._check_unsaved = unsaved
+        self._check_overlay = overlay is not None
+        self._saved_only_check = False
         self._check_serial = self.edit_serial
         self.check_running = True
         self._check_failure = None
         self.check_runner.request(overlay, self.edit_serial, launch=self.armed)
+        self._update_check_status()
+
+    def request_saved_check(self) -> None:
+        """F39's gate: a full (armed) check of the files as saved, without the unsaved text
+        of open files (the status says so while there is any). Once it is done, the usual
+        check with that text follows."""
+        if self.closed:
+            return
+        self._cancel_debounce()
+        self.armed = True
+        self._check_snapshot = None         # its links aren't the editor text's
+        self._check_unsaved = bool(self.dirty_files())
+        self._check_overlay = False
+        self._saved_only_check = True
+        self._check_serial = self.edit_serial
+        self.check_running = True
+        self._check_failure = None
+        self.check_runner.request(None, self.edit_serial, launch=True)
         self._update_check_status()
 
     def _overlay(self) -> tuple[bytes | None, bool]:
@@ -276,6 +301,14 @@ class CheckWiring:
                 self._check_failure = (CHECK_TIMEOUT_TEXT if state is CheckState.TIMEOUT
                                        else CHECK_CRASHED_TEXT)
             changed = True
+            saved_only = self._saved_only_check
+            self._saved_only_check = False
+            hot = getattr(self, "hot", None)
+            if hot is not None and not self.closed:     # F39's gate (it may ask again)
+                hot.check_event(event, overlay=self._check_overlay)
+                self._sync_hot_suffix()         # held, or no longer: the summary's end
+            if saved_only and not self._saved_only_check and self.dirty_files():
+                self._schedule_auto_check()     # back to checking the editor's text
         if changed and not self.closed:
             self._update_check_status()
 
@@ -461,7 +494,8 @@ class CheckWiring:
         result = self.check_result
         if result is None:
             return []
-        entries: list[tuple[str, object, bool, int]] = [(check_summary(result), None, False, 0)]
+        summary = check_summary(result) + self.hot_suffix()     # F39: an update held
+        entries: list[tuple[str, object, bool, int]] = [(summary, None, False, 0)]
         everything = self.show_warnings.get()
         for item in result.problems:
             if everything or item.severity == "error":

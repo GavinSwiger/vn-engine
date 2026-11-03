@@ -680,7 +680,7 @@ def test_ac26_f5_plays_the_real_game_from_the_cursor(editors, route_game):
     assert argv[3:8] == ["run", str(ed.paths.root), "--report-to-editor", "--start",
                          "club_poem"]
     assert [parse_set(arg) for arg in argv[9::2]] == [("sayo_points", 1), ("seen", ["x"])]
-    assert kwargs["stdin"] is subprocess.DEVNULL
+    assert kwargs["stdin"] is subprocess.PIPE                     # F39: reload messages
     end = time.monotonic() + 10
     while "print: probe" not in log_text(route_game) and time.monotonic() < end:
         ed.root.update()

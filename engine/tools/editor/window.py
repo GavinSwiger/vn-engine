@@ -422,6 +422,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
         self._make_fonts()
         self._build_layout()
+        self._build_hot_reload()            # F39: before the Run menu's toggle row
         self._build_menus()
         self._bind_keys()
         self.refresh_project()
@@ -1464,14 +1465,17 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             show_error(self.root, error.message)
             return False
         self._update_marks()
+        self._saved_refs.append(record.ref)     # F39: ``after_saves`` updates the game
         return True
 
     def save_current(self) -> bool:
-        """Ctrl+S: save the file on screen. Arms the window and asks for a check."""
+        """Ctrl+S: save the file on screen. Arms the window and asks for a check, then
+        updates a running game (F39)."""
         self.armed = True
         saved = self.current is None or self.save_record(self.current)
         if saved:
             self.request_check()
+            self.after_saves()
         return saved
 
     def save_all(self) -> bool:
@@ -1482,6 +1486,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             if not self.save_record(record):
                 return False
         self.request_check()
+        self.after_saves()
         return True
 
     def on_close(self) -> None:

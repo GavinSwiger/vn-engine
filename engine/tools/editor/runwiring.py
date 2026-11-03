@@ -11,6 +11,13 @@ first Play that reaches the game window marks ``played`` in ``studiostate`` (the
 step 7). One poll loop (every ``POLL_INTERVAL_MS``) polls the game runner, the check runner,
 then every runner joined with ``join_runner`` (``win.runners``: F47's ``HelperRunner``,
 F42's ``BuildRunner``, F39's hot reload), each in its own handler.
+
+F39 (``specs/F39-hot-reload/SPEC.md`` §4.2, W2): ``win.hot`` (``hotreload.HotReload``)
+updates the running game when a ``.vns`` file or ``config.toml`` is saved (Run ▸ "Update the
+game on save", on by default) or on Ctrl+R (Run ▸ "Update the running game"), after a check
+of the saved files; its texts (S1-S4) replace F44's in the status bar while an update is
+under way, and the Problems summary gets its suffix while an update is held. Play and Stop
+forget any update, so a restart is never reported as "Updated".
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from engine.tools.editor import studiostate
+from engine.tools.editor.hotreload import HotReload, HotReloadEvent
 from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
     BEGINNING,
     START_VALUES_HEADING,
@@ -37,17 +45,24 @@ from engine.tools.editor.preview import (
 from engine.tools.editor.syntax import LABEL_LINE
 from engine.tools.editor.checkwiring import NO_PROBLEMS
 from engine.tools.editor.studiolook import TAG_JUMP, line_of, plural
+from engine.tools.editor.views import set_entry_enabled
 
 STATUS_NOT_RUNNING = "Not running."
 STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_text(n)
     PreviewState.NOT_RUNNING: STATUS_NOT_RUNNING,
     PreviewState.STARTING: "Starting…",
     PreviewState.RUNNING: "Running. F5 restarts it.",
+    PreviewState.UPDATING: "Updating…",            # F39 S1 (HotReload's text wins)
     PreviewState.CLOSED: "Closed.",
     PreviewState.STOPPED_ERROR: "Stopped with an error, listed in Problems.",
     PreviewState.STOPPED_UNEXPECTED: "Stopped unexpectedly.",
 }
-LIVE = (PreviewState.STARTING, PreviewState.RUNNING)
+LIVE = (PreviewState.STARTING, PreviewState.RUNNING, PreviewState.UPDATING)
+# F39: the game can be updated in these states (the error screen too, while it is open).
+UPDATABLE = (*LIVE, PreviewState.STOPPED_ERROR)
+UPDATE_MENU = "Update the running game"         # Run menu, Ctrl+R (F39 §4.2)
+UPDATE_ON_SAVE_MENU = "Update the game on save"     # Run menu check, on by default (D2)
+PREVIEW_GLYPH = "▶ "                    # the status item's prefix; F39's texts start with it
 
 
 def didnt_start_text(count: int) -> str:
@@ -69,6 +84,19 @@ class RunWiring:
     play_fresh = False                  # Play options' "Play as a new player"
     guide_shown = False
     _scene_tab = ""
+
+    @property
+    def runner(self) -> Any:
+        """The game runner (``preview.PreviewRunner``; tests put a fake here). Setting it
+        also points the hot reload at it."""
+        return self._runner
+
+    @runner.setter
+    def runner(self, value: Any) -> None:
+        self._runner = value
+        hot = self.__dict__.get("hot")
+        if hot is not None:
+            hot.runner = value
 
     def _build_play_bar(self) -> None:
         """The Play bar under the menu bar, across the window (PR-F47-07). Packed before
@@ -134,6 +162,64 @@ class RunWiring:
                 return name
         return self.start_label_name()
 
+    # --- Hot reload (F39 §4.2, W2) ----------------------------------------------------------
+
+    def _build_hot_reload(self) -> None:
+        """``self.hot`` on the game runner, joined to the poll loop, and the Run menu's
+        "Update the game on save" variable (on, per window, not remembered: D2). Built
+        before the menus."""
+        self.update_on_save = tk.BooleanVar(master=self.root, value=True)
+        self._saved_refs: list[str] = []
+        self._hot_suffix_shown = ""
+        self.hot = HotReload(self.runner, start_check=self.request_saved_check,
+                             check_running=self._check_under_way)
+        self.join_runner(self.hot, self._on_hot_events)
+
+    def _check_under_way(self) -> bool:
+        """A check is asked for or running (its event will come)."""
+        running = getattr(self.check_runner, "running", None)
+        return bool(self.check_running if running is None else running)
+
+    def update_game(self) -> None:
+        """Run ▸ Update the running game (Ctrl+R): check the saved files, then restart
+        the game at the same place. Nothing happens without a running game."""
+        if self.closed or self.preview_state not in UPDATABLE:
+            return
+        self.hot.request()
+        self._on_hot_events(self.hot.poll())        # ▶ Updating… now, not at the next tick
+
+    def toggle_update_on_save(self) -> None:
+        self.hot.update_on_save = bool(self.update_on_save.get())
+
+    def after_saves(self) -> None:
+        """After a save and its own check request: each saved ``.vns`` file or
+        ``config.toml`` updates the running game (when the toggle is on)."""
+        refs, self._saved_refs = self._saved_refs, []
+        if self.closed or self.preview_state not in UPDATABLE:
+            return
+        for ref in refs:
+            if self.hot.saved(ref):
+                break                       # one update covers every file saved
+        self._on_hot_events(self.hot.poll())
+
+    def _on_hot_events(self, events: Sequence[HotReloadEvent]) -> None:
+        for event in events:
+            if self.closed:
+                return
+            self.status_label.configure(text=event.status.removeprefix(PREVIEW_GLYPH))
+        self._sync_hot_suffix()
+
+    def _sync_hot_suffix(self) -> None:
+        """Redraw Problems when its summary's suffix (an update held) changes."""
+        if not self.closed and self.hot.problems_suffix() != self._hot_suffix_shown:
+            self.render_panel()
+
+    def hot_suffix(self) -> str:
+        """The Problems summary's F39 suffix now; remembered as shown."""
+        hot = self.__dict__.get("hot")
+        self._hot_suffix_shown = hot.problems_suffix() if hot is not None else ""
+        return self._hot_suffix_shown
+
     def _update_scene_name(self) -> None:
         """The muted name after Play this scene: what F5 would play now."""
         self.play_bar.set_scene(self.scene_to_play())
@@ -166,6 +252,8 @@ class RunWiring:
             self.show_event(PreviewEvent(PreviewState.DIDNT_START,
                                          start_values_report(problems)))
             return
+        self._saved_refs = []               # a restart, not an update
+        self.hot.stop()
         self.runner.start(preview_argv(self.paths.root, label, args, fresh=self.play_fresh))
         self.apply_events(self.runner.poll())
 
@@ -173,6 +261,7 @@ class RunWiring:
         """■ Stop and Ctrl+F2: end the game child (only while it runs)."""
         if self.closed or self.preview_state not in LIVE:
             return
+        self.hot.stop()
         self.runner.stop()
         self.show_event(PreviewEvent(PreviewState.CLOSED))
 
@@ -230,8 +319,12 @@ class RunWiring:
         panel, Didn't start and Stopped with an error show the report, and the others leave
         it as it is."""
         self.preview_state = event.state
-        self.status_label.configure(text=status_text(event))
+        text = self.hot.preview_event(event)        # F39: S1/S2 while an update runs
+        self.status_label.configure(text=status_text(event) if text is None
+                                    else text.removeprefix(PREVIEW_GLYPH))
         self.play_bar.set_running(event.state in LIVE)
+        set_entry_enabled(self.run_menu, UPDATE_MENU, event.state in UPDATABLE)
+        self._sync_hot_suffix()
         if event.state is PreviewState.RUNNING:
             self.show_hint(NO_PROBLEMS)
             if not self._played_marked:     # Guide step 7: a Play reached the game window

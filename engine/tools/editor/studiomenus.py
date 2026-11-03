@@ -3,7 +3,9 @@
 ``Item(label, accelerator, command)`` (``guarded``: through ``views.menu_command``, so a
 disabled entry does nothing), ``Check(label, variable, command)``, or ``SEPARATOR``; Insert
 and Story are built from the doc registry and ``story_actions``. View's tab rows come from
-``window.TABS``. F47 adds Run and Help rows; F42 a File row after Save all.
+``window.TABS``. F47 adds Run and Help rows; F42 a File row after Save all; F39 the Run
+menu's "Update the running game" (Ctrl+R, on while a game runs) and "Update the game on
+save".
 
 macOS shows ``menubar`` as the native bar; elsewhere ``views.MenuBar`` posts the same menus
 from a dark bar inside the window (``08`` D5).
@@ -21,6 +23,7 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
+from engine.tools.editor.runwiring import UPDATE_MENU, UPDATE_ON_SAVE_MENU
 from engine.tools.editor.guide import GUIDE_TITLE
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.build.texts import MENU as BUILD_MENU
@@ -110,6 +113,9 @@ class StudioMenus:
                 Item(STOP_MENU, f"{key}+F2", self.stop_game),
                 Item(PLAY_OPTIONS, command=self.play_options),
                 SEPARATOR,
+                Item(UPDATE_MENU, f"{key}+R", self.update_game, guarded=True),
+                Check(UPDATE_ON_SAVE_MENU, self.update_on_save, self.toggle_update_on_save),
+                SEPARATOR,
                 Item("Check now", "F7", self.check_now),
             ]),
             ("Help", "help_menu", [
@@ -137,6 +143,7 @@ class StudioMenus:
             setattr(self, attribute, menu)
             bar.add_cascade(label=label, menu=menu)
         self.file_ops = tuple(file_ops)
+        set_entry_enabled(self.run_menu, UPDATE_MENU, False)    # on while a game runs
         self.menubar = bar
         if self.mod == "Command":
             self.root.configure(menu=bar)

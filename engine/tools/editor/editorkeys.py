@@ -80,6 +80,8 @@ class EditorKeys:
             (("<F5>",), lambda _e: brk(self.play_scene), MAIN),
             (("<Shift-F5>",), lambda _e: brk(self.play_from_start), MAIN),
             ((f"<{mod}-F2>",), lambda _e: brk(self.stop_game), MAIN),
+            # F39: Ctrl+R updates the running game (the saved files, same place).
+            (both("r"), lambda _e: brk(self.update_game), MAIN),
             (("<F6>",), lambda _e: brk(self.cycle_focus, 1), MAIN),
             (("<Shift-F6>",), lambda _e: brk(self.cycle_focus, -1), MAIN),
         ]
