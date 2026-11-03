@@ -15,17 +15,23 @@ place, such as a meter or a bundled minigame).
   child, or ``[flowchart] enabled = false``), the scene titles (``flowchart_scene``).
 - **Meta files** (F31) lists each name the story's ``file`` lines use (``meta_file_use``),
   with one row per line; an original in ``files/`` that no line uses shows ``(not used)``.
+- **Looks** (F32, AC-F32-25; only when the game has one) lists each ``[style.<name>]`` of
+  config.toml with the ``ui style`` lines that use it (``style_use``), each
+  ``[playthrough.N]`` look at its table, and each ``ui delete saves`` line marked
+  ``deletes saves`` (``ui_delete``).
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Final
 
 NO_OUTLINE: Final = "No outline yet. It is read from the last check that loaded the script."
 SECTIONS: Final = ("Chapters", "Endings", "Routes", "Codex", "Meters", "Minigames",
-                   "Flowchart", "Meta files")
+                   "Flowchart", "Meta files", "Looks")     # Looks: only when there are some
 NOT_USED: Final = "(not used)"
 UNCATEGORIZED: Final = "(no category)"
+DELETES_SAVES: Final = "deletes saves"          # F32: a ui delete saves line's mark
+STYLE_OFF: Final = "off"                        # the ``style`` rows' last word (no style)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,13 +104,35 @@ def outline(names: Mapping[str, Iterable[object]]) -> tuple[Row, ...]:
     meta = [Row(f"{name} ({len(rows)})", children=tuple(rows)) if rows
             else Row(f"{name} {NOT_USED}") for name, rows in lines.items()]
 
-    return (_section("Chapters", chapters), _section("Endings", ending_rows),
-            _section("Routes", routes), Row(f"Codex ({sum(len(g) for g in groups.values())})",
-                                            children=tuple(codex)),
-            _section("Meters", meters), _section("Minigames", games),
-            _section("Flowchart", [Row(name, file, line) for name, file, line in
-                                   get("flowchart_node") or get("flowchart_scene")]),
-            _section("Meta files", meta))
+    sections = (_section("Chapters", chapters), _section("Endings", ending_rows),
+                _section("Routes", routes),
+                Row(f"Codex ({sum(len(g) for g in groups.values())})", children=tuple(codex)),
+                _section("Meters", meters), _section("Minigames", games),
+                _section("Flowchart", [Row(name, file, line) for name, file, line in
+                                       get("flowchart_node") or get("flowchart_scene")]),
+                _section("Meta files", meta))
+    looks = _looks(get)
+    return (*sections, _section("Looks", looks)) if looks else sections
 
 
-__all__ = ["NOT_USED", "NO_OUTLINE", "Row", "SECTIONS", "UNCATEGORIZED", "outline"]
+def _looks(get: Callable[[str], list[tuple[str, str | None, int | None]]]) -> list[Row]:
+    """F32's Looks rows: each style with the lines using it, each playthrough look, each
+    ``ui delete saves`` line marked "deletes saves". Empty when the game has none."""
+    uses: dict[str, list[Row]] = {}
+    for name, file, line in get("style_use"):
+        uses.setdefault(name, []).append(Row(f"ui style {name}", file, line))
+    rows = []
+    for name, file, line in get("style"):
+        if name == STYLE_OFF:
+            continue
+        lines = uses.get(name, [])
+        rows.append(Row(f"style {name} ({len(lines)})", file, line, tuple(lines)) if lines
+                    else Row(f"style {name} {NOT_USED}", file, line))
+    rows += [Row(f"playthrough {n}", file, line) for n, file, line in get("playthrough")]
+    rows += [Row(f"ui delete saves: {DELETES_SAVES}", file, line)
+             for _name, file, line in get("ui_delete")]
+    return rows
+
+
+__all__ = ["DELETES_SAVES", "NOT_USED", "NO_OUTLINE", "Row", "SECTIONS", "UNCATEGORIZED",
+           "outline"]

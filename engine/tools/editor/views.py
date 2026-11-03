@@ -48,6 +48,7 @@ from engine.tools.editor.storymap import (
     PLACE_STEP,
     ROW_STEP,
     LINK_KINDS,
+    MARK_DELETES_SAVES,
     MARK_ENDING,
     MARK_START,
     Box,
@@ -659,6 +660,7 @@ LINK_COLOR = THEME["map.link"]
 ENDING_COLOR = THEME["map.ending"]
 CHAPTER_COLOR = THEME["map.chapter"]
 MINIGAME_COLOR = THEME["map.minigame"]
+WARNING_COLOR = THEME["marker.warning"]  # F32: "deletes saves" under a box
 CHIP_FILL = THEME["map.chip"]           # F46: a choice arrow's text chip (08 §8, 04 §4.1)
 CHIP_BORDER = THEME["map.chipBorder"]
 CHIP_TEXT = THEME["map.chipText"]
@@ -1229,6 +1231,16 @@ class StoryMapView:
                                         fill=START_COLOR, outline="",
                                         tags=(*tags, f"startbar{index}"))
             tag_x = x0
+            box_marks = tuple(m for m in box.marks if m != MARK_DELETES_SAVES)
+            if MARK_DELETES_SAVES in box.marks:     # F32: a warning tag under the box
+                item = canvas.create_text(tag_x + 4 * s, y1 + 3 * s, anchor="nw",
+                                          text=f"⚠ {MARK_DELETES_SAVES}",
+                                          font=self.detail_font, fill=WARNING_COLOR,
+                                          tags=(*tags, f"wipe{index}"))
+                bx0, by0, bx1, by1 = canvas.bbox(item)
+                canvas.create_rectangle(bx0 - 3 * s, by0 - 1, bx1 + 3 * s, by1 + 1,
+                                        outline=WARNING_COLOR, tags=(*tags,))
+                tag_x = bx1 + 6 * s
             for game in box.minigames[:2]:   # small tags under the box (in the row gap)
                 item = canvas.create_text(tag_x + 4 * s, y1 + 3 * s, anchor="nw",
                                           text=f"▶ {game}", font=self.detail_font,
@@ -1243,7 +1255,7 @@ class StoryMapView:
                                tags=(*tags, f"name{index}"))
             if box.scene is not None:   # F20: the scene title after the name, elided
                 left = x0 + 2 * pad + self.name_font.measure(box.name)
-                marks = self.detail_font.measure(", ".join(box.marks)) + pad if box.marks else 0
+                marks = self.detail_font.measure(", ".join(box_marks)) + pad if box_marks else 0
                 shown = elide(f"“{box.scene}”", int(x1 - pad - marks - left),
                               self.detail_font.measure)
                 if shown:
@@ -1261,7 +1273,8 @@ class StoryMapView:
                                font=self.detail_font, fill=MUTED, tags=(*tags, f"where{index}"))
             # The marks give way to the name (step 5: long scene names), cut with "…".
             room = int(x1 - x0 - 3 * pad - self.name_font.measure(box.name))
-            marks = elide(", ".join(box.marks), room, self.detail_font.measure)                 if box.marks and box.scene is None else ", ".join(box.marks)
+            marks = elide(", ".join(box_marks), room, self.detail_font.measure) \
+                if box_marks and box.scene is None else ", ".join(box_marks)
             if marks:
                 canvas.create_text(x1 - pad, y0 + 4 * s, anchor="ne", text=marks,
                                    font=self.detail_font, fill=MUTED,

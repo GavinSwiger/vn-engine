@@ -20,7 +20,8 @@ boxes and edges at canvas positions, and the window draws them. Deterministic an
   label line above, same file). A box shows its chapter and minigames; a label with an
   ``ending`` line is marked ``ending`` and drawn as an end box. F20 s2 (2026-11-02,
   AC-F45-61): a ``flowchart_scene`` row (the scene mark, the label's first line) gives the
-  box its Flowchart scene title.
+  box its Flowchart scene title. F32 (AC-F32-25): a ``ui_delete`` row (a ``ui delete
+  saves`` line) marks its label ``deletes saves``.
 - ``neighbour`` is the arrow keys (the nearest box in a 90° cone); ``targets`` and
   ``cycle_target`` are Tab (the focused box's outgoing edges, in link order).
 - F46 (``04`` §3.4, §6.1.7, §6.4): an edge carries its first link's ``choice`` text and
@@ -65,6 +66,7 @@ MARK_NOT_REACHED: Final = "not reached"
 MARK_ENDS: Final = "ends"
 MARK_ENDING: Final = "ending"                   # the label holds an ``ending`` line (F19)
 MARK_OUT_OF_DATE: Final = "out of date"         # F46: the scene's text doesn't parse now
+MARK_DELETES_SAVES: Final = "deletes saves"     # F32: the label holds ``ui delete saves``
 CHIP_CHARS: Final = 24                          # F46: a choice chip's characters before "…"
 LINK_KINDS: Final = ("jump", "call", "menu")
 _ENDING_LINKS = frozenset({"jump", "menu"})     # a label with none of these ends the story
@@ -109,6 +111,7 @@ class Notes:
     endings: tuple[str, ...] = ()
     minigames: tuple[str, ...] = ()
     scene: str | None = None
+    deletes_saves: bool = False                 # F32: a ``ui delete saves`` line
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,7 +189,7 @@ def label_notes(labels: Iterable[object],
     for rows in starts.values():
         rows.sort()
     found: dict[str, dict[str, list[str]]] = {}
-    for kind in ("chapter", "ending", "minigame_use", "flowchart_scene"):
+    for kind in ("chapter", "ending", "minigame_use", "flowchart_scene", "ui_delete"):
         for entry in names.get(kind, ()):
             what, where, line = _label_row(entry)
             rows = starts.get(where) if where is not None else None
@@ -198,7 +201,8 @@ def label_notes(labels: Iterable[object],
             found.setdefault(rows[at][1], {}).setdefault(kind, []).append(what)
     return {label: Notes(next(iter(kinds.get("chapter", ())), None),
                          tuple(kinds.get("ending", ())), tuple(kinds.get("minigame_use", ())),
-                         next(iter(kinds.get("flowchart_scene", ())), None))
+                         next(iter(kinds.get("flowchart_scene", ())), None),
+                         bool(kinds.get("ui_delete")))
             for label, kinds in found.items()}
 
 
@@ -256,6 +260,8 @@ def layout(links: Iterable[object], labels: Iterable[object], *,
         note = notes.get(name, Notes())
         if note.endings:
             marks.append(MARK_ENDING)
+        if note.deletes_saves:
+            marks.append(MARK_DELETES_SAVES)
         if name in stale:
             marks.append(MARK_OUT_OF_DATE)
         placed.append(Box(name, where, line, column, row, COLUMN_STEP * column,

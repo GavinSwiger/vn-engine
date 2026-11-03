@@ -45,7 +45,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import BinaryIO
 
-from engine.core.config import load_config
+from engine.core.config import KeyLocator, load_config
 from engine.core.config_schema import Config
 from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES, META_ORIGINALS_DIR
 from engine.core.editorreport import (
@@ -99,7 +99,11 @@ from engine.script.pluginsigs import PluginSig, dict_keys, plugin_sigs
 from engine.script.program import Program
 from engine.script.stage import At, Scene, Show
 from engine.script.texttags import NameMark, TaggedText, VarMark
+from engine.script.ui import DELETE as UI_DELETE
 from engine.script.ui import FORMS as UI_FORMS
+from engine.script.ui import SAVES as UI_SAVES
+from engine.script.ui import STYLE as UI_STYLE
+from engine.script.ui import UiStatement
 
 SCRIPT_PREFIX = "script/"
 SCRIPT_SUFFIX = ".vns"
@@ -351,6 +355,43 @@ def _style_names(ctx: CheckContext) -> Iterable[NameRow] | None:
     """F32 (07 I-10): the ``[style.<name>]`` names of config.toml, then ``off``
     (``ui style <style>``)."""
     return [(name, None, None) for name in (*ctx.config.style, WORD_OFF)]
+
+
+def _style_uses(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F32 (AC-F32-25, the Outline "Looks"): each ``ui style <name>`` line's style, at its
+    line (``ui style off`` is no style's use)."""
+    if ctx.program is None:
+        return None
+    return [(s.style, *_where(s)) for s in _statements(ctx.program)
+            if isinstance(s, UiStatement) and s.form == UI_STYLE and s.style is not None]
+
+
+def _ui_delete_lines(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F32 (AC-F32-25): each ``ui delete saves`` line, at its line (the Outline's and the
+    story map's "deletes saves")."""
+    if ctx.program is None:
+        return None
+    return [(UI_SAVES, *_where(s)) for s in _statements(ctx.program)
+            if isinstance(s, UiStatement) and s.form == UI_DELETE]
+
+
+def _playthrough_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F32 (AC-F32-25): each ``[playthrough.N]`` look's N, at its table's line of
+    config.toml (no place when the file can't be read again)."""
+    keys = sorted(ctx.config.playthrough)
+    if not keys:
+        return []
+    try:
+        text = ctx.paths.read_file(CONFIG_FILENAME, max_bytes=CONFIG_MAX_BYTES).decode(
+            "utf-8-sig")
+        locator: KeyLocator | None = KeyLocator(text)
+    except (UserFacingError, AssetNotFile, AssetTooLarge, AssetUnreadable, ValueError):
+        locator = None
+    rows: list[NameRow] = []
+    for key in keys:
+        line = locator.line_of("playthrough", str(key)) if locator is not None else None
+        rows.append((str(key), CONFIG_FILENAME if line is not None else None, line))
+    return rows
 
 
 def _defines_whose_value(ctx: CheckContext, kind: type) -> list[NameRow]:
@@ -758,6 +799,9 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "glitch": _glitch_names,                # F28: effect's kind words and off
     "ui": _ui_names,                        # F32: what ui changes
     "style": _style_names,                  # F32: config's style names and off
+    "style_use": _style_uses,               # F32: each ui style <name> line
+    "ui_delete": _ui_delete_lines,          # F32: each ui delete saves line
+    "playthrough": _playthrough_names,      # F32: each [playthrough.N] look, at its table
     "sprite": _sprite_names,                # F28: sprite tags (effect jitter <sprite>)
     "variable": _variable_names,            # F47: each default, at its line
     "character_use": _uses("character_use"),   # F47: each line a character speaks or is named
