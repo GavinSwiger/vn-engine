@@ -263,8 +263,9 @@ DOCS: Final = (
         "Declares an achievement: a reward kept across playthroughs, shown with a notice and "
         "listed on the Achievements page in Extras. With when, it unlocks by itself once "
         "the condition is true.",
-        'lock achievement first_steps "First Steps" "Finish the prologue."', DOCS_HEADING,
-        "F37", fields=("first_steps", "First Steps", "Finish the prologue.")),
+        'lock achievement first_steps "First Steps" "Play the story twice." '
+        "when persistent.playthrough >= 2", DOCS_HEADING,
+        "F37", fields=("first_steps", "First Steps", "Play the story twice.")),
 )
 
 # The in-label line's doc: Insert opens Studio's Unlock form on "Achievement" (F37-S3
