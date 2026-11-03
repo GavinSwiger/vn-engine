@@ -1,0 +1,173 @@
+{
+ "commands": [
+  {
+   "reason": "new_game",
+   "state": {
+    "music": [],
+    "sounds": []
+   },
+   "type": "AudioRestore"
+  },
+  {
+   "stage": {
+    "background": "bg room",
+    "sprites": []
+   },
+   "type": "ShowStage"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Start.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/af953cad70a2",
+   "speaker": null,
+   "text": "Start.",
+   "type": "Say"
+  },
+  {
+   "name": "ashes",
+   "type": "UiStyle"
+  },
+  {
+   "load": false,
+   "load_reason": null,
+   "save": true,
+   "save_reason": "There's nothing left to keep.",
+   "type": "UiBlocks"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "The river is dark.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/0e526328816b",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "The river is dark.",
+   "type": "Say"
+  },
+  {
+   "load": true,
+   "load_reason": null,
+   "save": true,
+   "save_reason": "There's nothing left to keep.",
+   "type": "UiBlocks"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Don't look back.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": "Hana",
+   "name_color": null,
+   "sid": "start/98b3bbf7358e",
+   "speaker": "hana",
+   "speaker_tag": "hana",
+   "text": "Don't look back.",
+   "type": "Say"
+  },
+  {
+   "name": null,
+   "type": "UiStyle"
+  },
+  {
+   "load": true,
+   "load_reason": null,
+   "save": false,
+   "save_reason": null,
+   "type": "UiBlocks"
+  },
+  {
+   "load": false,
+   "load_reason": null,
+   "save": false,
+   "save_reason": null,
+   "type": "UiBlocks"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "Morning.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/7b2b16daf83c",
+   "speaker": null,
+   "text": "Morning.",
+   "type": "Say"
+  },
+  {
+   "type": "DeleteSaves"
+  },
+  {
+   "attributes": [],
+   "body": {
+    "pieces": [
+     {
+      "style": {
+       "type": "Style"
+      },
+      "text": "End.",
+      "type": "Span"
+     }
+    ],
+    "type": "TaggedText"
+   },
+   "name": null,
+   "name_color": null,
+   "sid": "start/54b507257aa0",
+   "speaker": null,
+   "text": "End.",
+   "type": "Say"
+  },
+  {
+   "type": "StoryEnded"
+  }
+ ],
+ "fixture": "walk",
+ "image_files": [
+  "images/bg/room.png"
+ ],
+ "seed": 42
+}

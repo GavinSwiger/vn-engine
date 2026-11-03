@@ -1,0 +1,27 @@
+[game]
+id = "f32-template"
+title = "Paper Test"
+version = "1.0"
+[theme.textbox]
+fill_color = "#202830"
+[playthrough.2]
+title_entries = ["new_game", "settings", "quit"]
+[playthrough.2.theme.title]
+background_image = "gui/title_ashes.png"
+music = "title_quiet.ogg"            # audio refs are inside audio/ (06 §0.3 wrote audio/…)
+[playthrough.2.words]
+new_game = "Again?"
+history = "Before"
+menu = "Pause"
+[style.ashes.theme.textbox]
+fill_color = "#1E1A1C"
+text_color = "#EDE3E8"
+border_color = "#5A3848"
+text_size = 30
+[style.ashes.words]
+save = "Keep"
+saving_off = "Not now."
+[style.calm.theme.textbox]
+frame_image = "gui/frame_calm.png"
+[style.calm.theme.choice]
+fill_color = "#334455"

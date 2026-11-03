@@ -44,6 +44,9 @@ normalisation, never evaluated, no file name built), and the held state is resto
 accepted, as F11's confirm). No id, an unknown id, no state, or a refused state is a
 ``HeadlessInputError`` whose text passes ``echo()``. A jump releases what the windowed jump's
 restore does (TR-F20-06) and reaches no node (PR-F20-07).
+
+F32 (its ``04`` §2.2; 07 G1): a ``DeleteSaves`` (``ui delete saves``) deletes nothing here; each
+one logs ``runtime.ui.DELETE_PREVIEW_TEXT`` once at INFO (the run's ``runtime`` logger).
 """
 
 import re
@@ -56,8 +59,8 @@ from engine.core.minigame_types import CodexChange, MeterChange, MinigameSig, Ou
 from engine.core.startvalues import StartOptions, parse_literal
 from engine.runtime import flowchart as flowchart_mod
 from engine.runtime import minigame as minigame_mod
-from engine.runtime.commands import (Advance, Choose, Command, Event, MinigameDone, StepBack,
-                                     StepForward, StoryFailed, WaitDone)
+from engine.runtime.commands import (Advance, Choose, Command, DeleteSaves, Event, MinigameDone,
+                                     StepBack, StepForward, StoryFailed, WaitDone)
 from engine.runtime.errors import StoryError
 from engine.runtime.flowchart import FlowStates
 from engine.runtime.images import ImageSource
@@ -66,6 +69,7 @@ from engine.runtime.launch import run_launch
 from engine.runtime.persistent import PersistentStore
 from engine.runtime.points import UnknownMeter
 from engine.runtime.rollback import DEFAULT_DEPTH, DEPTH_MAX
+from engine.runtime.ui import DELETE_PREVIEW_TEXT
 from engine.runtime.values import freeze
 from engine.script.diagnostics import ScriptErrorGroup
 from engine.script.menu import Menu
@@ -159,7 +163,7 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
     while True:
         if interp.busy:                                     # F14: a forward chain too
             interp.run(RUN_STEPS)
-        commands.extend(interp.take_commands(_ALL))
+        _take(interp, commands)
         if interp.busy:
             continue
         if interp.status is Status.WAITING and interp.waiting_for is not None:
@@ -192,8 +196,17 @@ def run_headless(program: Program, *, seed: int, inputs: Iterable[str] = (),
             interp.post(_event(interp, current, at_menu, answer, number, commands))
         else:
             break
-    commands.extend(interp.take_commands(_ALL))
+    _take(interp, commands)
     return commands
+
+
+def _take(interp: Interpreter, commands: list[Command]) -> None:
+    """The released commands onto ``commands``; F32: a ``DeleteSaves`` logs its INFO line."""
+    taken = interp.take_commands(_ALL)
+    for cmd in taken:
+        if type(cmd) is DeleteSaves:
+            interp.log.info("%s", DELETE_PREVIEW_TEXT)
+    commands.extend(taken)
 
 
 class _Inputs:

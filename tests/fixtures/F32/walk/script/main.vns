@@ -1,0 +1,16 @@
+define hana = Character("Hana")
+label start:
+    scene bg room
+    "Start."
+    ui style ashes
+    ui saving off "There's nothing left to keep."
+    hana "The river is dark."
+    ui loading off
+    hana "Don't look back."
+    ui style off
+    ui saving on
+    ui loading on
+    "Morning."
+    $ persistent.playthrough = 2
+    ui delete saves
+    "End."

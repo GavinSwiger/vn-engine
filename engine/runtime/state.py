@@ -38,6 +38,7 @@ from engine.runtime.nvl import EMPTY_NVL, NvlState
 from engine.runtime.points import EMPTY_POINTS, PointsState, saved_name_ok
 from engine.runtime.rollback import ROLLBACK_ON, RollbackState
 from engine.runtime.stage import EMPTY_STAGE, StageInvalid, StageState
+from engine.runtime.ui import EMPTY_UI, UiState
 from engine.runtime.values import (Unsaveable, Value, freeze_untrusted, new_item_budget,
                                    plain_copy, same_value)
 from engine.script.identity import IDENTITY_SCHEME
@@ -52,9 +53,10 @@ _REQUIRED_KEYS: Final = frozenset(("format", "identity_scheme", "position", "cal
                                    "variables", "dice"))
 _OPTIONAL_KEYS: Final = frozenset(("stage", "audio", "choices", "history", "chapter",
                                    "points", "rollback", "nvl", "items", "minigame", "flow",
-                                   "glitch", "window_title"))
+                                   "glitch", "window_title", "ui_style", "save_block",
+                                   "load_block"))
 # later features: one key each (F04, F08, F07, F13, F18, F22, F14, F17, F21, F23, F20, F28,
-# F30)
+# F30); F32's ``ui`` is three keys (its 04 §3, C6)
 ITEMS_HELD_MAX: Final = 1_000               # F21: names in a saved ``items`` (declared + hidden)
 # F03's engine names, frozen here (F22 07 I-9, F14 07 I-1): a name the engine reserves after a
 # save was made never makes that save unreadable, so from_json never reads the live
@@ -146,6 +148,7 @@ class GameState:
     flow: FlowState = EMPTY_FLOW            # F20 (04 §4): no node reached before F20
     glitch: GlitchState = EMPTY_GLITCH      # F28 (04 §3): no lasting glitch before F28
     window_title: str | None = None         # F30 (04 §3): None is ``[game] title``
+    ui: UiState = EMPTY_UI                  # F32 (04 §3): no style, nothing blocked
 
     def __post_init__(self) -> None:
         if type(self.variables) is dict:    # a builder's private dict
@@ -189,7 +192,7 @@ class GameState:
             "minigame": self.minigame.to_json(),                # F23: always written
             "flow": self.flow.to_json(),                        # F20: always written
             "glitch": self.glitch.to_json(),                    # F28: always written
-        } | _title_json(self.window_title)                      # F30: only when set
+        } | _title_json(self.window_title) | self.ui.to_json()  # F30, F32: only when set
 
     def save_problem(self) -> str | None:
         """F11 C11: a reason word (``^[a-z_]{1,40}$``) if this state, written out and read
@@ -228,7 +231,9 @@ class GameState:
         ``glitch`` (F28) needs none: its kinds and sizes come from the parsed script, its tags
         from the stage's, and ``GlitchState`` keeps one entry per key (04 §6.3).
         ``window_title`` (F30) needs none: it is a ``TitleEffect``'s text, bounded at load
-        (a lone surrogate round-trips as an escape).
+        (a lone surrogate round-trips as an escape). ``ui`` (F32) is ``UiState.save_problem``:
+        ``ui_style`` for a style name ``from_json`` refuses (only a load given no style names
+        lets one through); its reasons are bounded at load.
 
         Changes nothing. The value walk goes one nesting level at a time with C-level
         passes, so its Python work is per level, not per value: about 6-40 ms at 600,000
@@ -260,6 +265,9 @@ class GameState:
         if problem is not None:
             return problem
         problem = self.minigame.save_problem()              # F23
+        if problem is not None:
+            return problem
+        problem = self.ui.save_problem()                    # F32
         if problem is not None:
             return problem
         if not _names_valid(variables.keys()):
@@ -389,12 +397,14 @@ def _from_json(obj: object) -> GameState:
                                      or len(window_title) > WINDOW_TITLE_MAX):
         raise StateInvalid("window_title")      # the program-literal rule is restore's
 
+    ui = UiState.from_json(obj)             # F32: absent keys are EMPTY_UI; StateInvalid with
+                                            # the key's name only
     return GameState(position=position, position_at=position_at, call_stack=call_stack,
                      variables=MappingProxyType(variables), dice=int(dice, 16),
                      identity_scheme=scheme, stage=stage, audio=audio, choices=choices,
                      history=history, chapter=chapter, points=points, rollback=rollback,
                      nvl=nvl, items=items, minigame=minigame, flow=flow, glitch=glitch,
-                     window_title=window_title)
+                     window_title=window_title, ui=ui)
 
 
 def _sid_entry(entry: object, reason: str) -> tuple[str, Hint]:

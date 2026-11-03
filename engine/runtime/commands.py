@@ -342,6 +342,37 @@ class FakeCrash(StoryWait):
     body: TaggedText | None = None
 
 
+# --- F32 dynamic UI (F32 04-technical.md §3, §4.3, §5.2; 07 I-1) -------------------------------
+
+@dataclass(frozen=True, slots=True)
+class UiStyle(Command):
+    """F32: ``ui style <name>`` / ``ui style off``, or a restore of the saved style. ``name``
+    is a ``[style.<name>]`` table of ``config.toml``; None: the normal look. Handler:
+    ``app/looks.py`` (F32 s4)."""
+
+    name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class UiBlocks(Command):
+    """F32: ``ui saving|loading off|on``, or a restore of the saved blocks: the whole new
+    state of both. A reason is the text as shown (``{{`` already ``{``); None with a block:
+    ``[words] saving_off`` / ``loading_off``. Handler: ``app/looks.py`` (F11's
+    ``set_blocked``, F32 s4)."""
+
+    save: bool
+    save_reason: str | None
+    load: bool
+    load_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DeleteSaves(Command):
+    """F32: ``ui delete saves`` ran live (never on F14's quiet forward re-run, never in a
+    restore burst). Handler: ``app/looks.py`` (F11's ``delete_all``; a preview deletes
+    nothing); headless logs one INFO line and deletes nothing."""
+
+
 @dataclass(frozen=True, slots=True)
 class ChapterStarted(Command):
     """F18: a ``chapter`` ran (held in run order, card or not, before its ``ShowStage``).
@@ -538,11 +569,12 @@ class RollbackView:
 
 
 __all__ = ["Advance", "AudioRestore", "BASE_STYLE", "BlipSpec", "Change", "ChapterStarted",
-           "Choose", "CodexAdded", "CodexChange", "Command", "EMPTY_TEXT", "EndVoice", "Event",
+           "Choose", "CodexAdded", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
            "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MeterChange", "MeterView", "MinigameBase",
            "MinigameDone", "MinigameUsed", "NameMark", "NvlLine", "NvlPage", "PauseMark", "PlayMusic", "PlaySound", "PlayVoice", "PrefetchImages", "QueueMusic",
            "RollbackView", "Say", "Shake", "ShowMenu", "ShowStage", "ShownChoice", "Span",
            "StartMinigame", "StepBack", "StepForward", "StopMusic", "StoryNames",
            "StopSound", "StopVoice", "StoryEnded", "StoryFailed", "StoryWait", "Style",
-           "TaggedText", "TextEffect", "TitleCard", "TransitionSpec", "VarMark", "WaitDone", "WaitMark",
+           "TaggedText", "TextEffect", "TitleCard", "TransitionSpec", "UiBlocks", "UiStyle",
+           "VarMark", "WaitDone", "WaitMark",
            "WindowTitle"]

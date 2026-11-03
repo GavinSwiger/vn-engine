@@ -155,6 +155,13 @@ isn't None. ``_hold_restored`` holds it right after F28's ``Glitch``. ``begin_wa
 builds the wait command (``StoryWait``; F30's ``FakeCrash``). The ``TitleEffect`` and
 ``CrashEffect`` executors are ``runtime/fourthwall.py``'s, registered here.
 
+F32's (its ``04`` §3, §5.2; 07 I-1): ``interp.ui`` is the ``ui style`` and the Save/Load blocks
+(story state, runtime-held like F30's title: the next checkpoint stores it, restore commits the
+saved one, a style the config no longer has dropped with W205, new game sets ``EMPTY_UI``);
+``_ui_sent`` (runtime-only) is the state last held, so a restore or landing holds ``UiStyle``
+and ``UiBlocks`` by 04 §4.3's rule. ``_hold_restored`` holds them right after F30's
+``WindowTitle``. The ``UiStatement`` executor is ``runtime/ui.py``'s, registered here.
+
 ``restore`` (§7.5) is a transaction: it checks the state and fills missing defaults
 before it changes anything, so every result but ``OK`` leaves the interpreter as it was.
 ``restore(..., check_only=True)`` (F11 C10) runs only its scheme and position checks.
@@ -186,6 +193,7 @@ from engine.runtime import nvl as nvl_mod
 from engine.runtime import points as points_mod
 from engine.runtime import rollback as rollback_mod
 from engine.runtime import stage as stage_mod
+from engine.runtime import ui as ui_mod
 from engine.runtime.audio import EMPTY_AUDIO, AudioBurst, AudioState
 from engine.runtime import effects as effects_mod
 from engine.runtime.chapters import ChapterIndex, ChapterState, chapter_state
@@ -214,6 +222,7 @@ from engine.runtime.points import Points, PointsState
 from engine.runtime.rollback import DEFAULT_DEPTH, ROLLBACK_ON, RollbackState, Timeline
 from engine.runtime.state import GameState, ItemsState, reserved_since_save
 from engine.runtime.text import resolve_body
+from engine.runtime.ui import EMPTY_UI, UiState
 from engine.runtime.values import Unsaveable, freeze, kind_words
 from engine.script import nodes
 from engine.script.diagnostics import ScriptWarning
@@ -233,6 +242,7 @@ from engine.script.points import PointsChange
 from engine.script.rollback import Rollback
 from engine.script.routes import Ending, Lock
 from engine.script.stage import Hide, Scene, Show
+from engine.script.ui import UiStatement
 from engine.script.words import ENGINE_NAMES
 
 
@@ -485,6 +495,10 @@ class Interpreter:
         # restore's commit: it is what the window shows).
         self.window_title: str | None = None
         self._title_sent: str | None = None
+        # F32 (04 §3, §5.2): the style and blocks (story state, runtime-held like the title)
+        # and, runtime-only, the state last held (never reset by a restore's commit).
+        self.ui: UiState = EMPTY_UI
+        self._ui_sent: UiState = EMPTY_UI
 
     # --- Commands (I-3: the one place to hold and the one place to release) ------------
 
@@ -560,6 +574,8 @@ class Interpreter:
         self.glitch = EMPTY_GLITCH                          # F28 (04 §6.3): no glitch on
         self.window_title = None                            # F30 (04 §6.1): the game title,
         self._title_sent = None                             # applied by the shell's reset
+        self.ui = EMPTY_UI                                  # F32 (04 §5.2): likewise, by
+        self._ui_sent = EMPTY_UI                            # the shell's in-game reset
         # 07 I-5: nothing sent yet (F04: the stage goes with the first line; F07: no menu, no
         # kept line), no wait or effect (F09, F18); F14: the timeline empty (TR-F14-03).
         self._reset_runtime(stage_shown=None, kept_line=None, menu_open=None)
@@ -1071,7 +1087,8 @@ class Interpreter:
                   minigame: MinigameState | None = None,
                   flow: FlowState | None = None,
                   glitch: GlitchState | None = None,
-                  window_title: object = _MISSING) -> GameState:
+                  window_title: object = _MISSING,
+                  ui: UiState | None = None) -> GameState:
         """Steps 3 and 4 of the checkpoint routine: the frozen state at ``stmt`` (may raise
         E85e). Changes nothing, so restore can build it inside its transaction (``stage``,
         ``audio``, F07's ``choices``, F13's ``history``, F18's ``chapter``, F22's ``points``,
@@ -1081,7 +1098,7 @@ class Interpreter:
         ``self.rollback_state``, ``self.nvl``, ``self.codex.state()``, and the wait at a
         ``Minigame``; F20's ``flow``, default ``self.flow``; F28's ``glitch``, default
         ``self.glitch``; F30's ``window_title``, default ``self.window_title``, where None is a
-        value). Nothing is copied but the
+        value; F32's ``ui``, default ``self.ui``). Nothing is copied but the
         variables: every other field is a frozen value shared with the live one (and the
         history's entries with every earlier state)."""
         variables = self._freeze_variables(stmt)            # 3. may raise E85e
@@ -1107,6 +1124,7 @@ class Interpreter:
             glitch=self.glitch if glitch is None else glitch,                     # F28
             window_title=(self.window_title if window_title is _MISSING           # F30
                           else window_title),                 # type: ignore[arg-type]
+            ui=self.ui if ui is None else ui,                                     # F32
         )
 
     def _settle(self, stmt: Statement, state: GameState, *, release: bool = True) -> None:
@@ -1214,6 +1232,7 @@ class Interpreter:
                 # refuses the restore instead of failing the story half-restored.
                 try:
                     cmd = PRESENTERS[type(pos)](self, pos, state)
+                    ui, w205 = ui_mod.restored_ui(state.ui, program)    # F32 (04 §5.2)
                     snapshot = self._snapshot(pos, call_stack, stage=state.stage,
                                               audio=state.audio, choices=choices,
                                               history=state.history, chapter=state.chapter,
@@ -1224,7 +1243,10 @@ class Interpreter:
                                               flow=state.flow,           # F20 (07 §3.2)
                                               glitch=state.glitch,       # F28 (04 §6.3)
                                               window_title=fourthwall_mod.restored_title(
-                                                  program, state))       # F30 (04 §6.1)
+                                                  program, state),       # F30 (04 §6.1)
+                                              ui=ui)                     # F32
+                    if w205 is not None:                # logged only if the restore commits
+                        self.note_restore_warning(ScriptWarning(w205, code="W205"))
                 except StoryError as e:
                     error = e
                 except Exception as e:          # noqa: BLE001 (saved values are untrusted)
@@ -1303,7 +1325,8 @@ class Interpreter:
         """Restore step 7, the one place that holds a restore burst (F14 07 I-5: its
         landings reuse it; F17 I-3): [F08 AudioRestore] [F17 NvlPage(on, page)] [F04
         ShowStage(restored)] [F28 Glitch(restored), only when the saved set isn't empty] [F30
-        WindowTitle, iff the restored or the shown title isn't None] [F08
+        WindowTitle, iff the restored or the shown title isn't None] [F32 UiStyle, iff the
+        restored or the shown style isn't None] [F32 UiBlocks, iff either has a block] [F08
         PlayVoice(restored)] [F07
         Say(question or kept line, restored)] ``cmd`` [F04 PrefetchImages], then checkpoint
         steps 4-6. ``attached`` is what the presenter held (F07 ``present_menu``: the
@@ -1322,6 +1345,7 @@ class Interpreter:
             self._hold(Glitch(state.glitch, restored=True))
         fourthwall_mod.hold_restored(self, state.window_title,     # F30 (04 §6.1): the
                                      snapshot.window_title)        # title_ok'd one, committed
+        ui_mod.hold_restored(self, snapshot.ui)             # F32 (07 I-1): W205's, committed
         if attached is None:                                # F08 I-1: the line's voice
             attached = audio_mod.voice_attached(cmd)
         for extra in attached:                              # F07: present_menu's
@@ -1632,6 +1656,8 @@ register_executor(Effect, glitch_mod.run_effect)
 # a checkpoint type; a crash is a story wait.
 register_executor(TitleEffect, fourthwall_mod.run_title)
 register_executor(CrashEffect, fourthwall_mod.run_crash)
+# F32 (04 §5.2): ``ui`` lines (runtime/ui.py). Not a checkpoint type; each line is one step.
+register_executor(UiStatement, ui_mod.run_ui)
 
 
 # --- Event handlers -----------------------------------------------------------------------
