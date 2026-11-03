@@ -567,7 +567,8 @@ def _lock_form(word: str, title: str, whats: tuple[str, ...],
                docs: tuple[tuple[str, str], ...]) -> CommandForm:
     return CommandForm(
         word, title, title, docs, (Lock, CodexLock),
-        (Field("what", "What", "pick", options=whats),
+        (Field("what", "What", "pick", options=whats,
+               shown=tuple(_LOCK_LABELS[what] for what in whats)),
          *(Field(what, _LOCK_LABELS[what], "name", what, optional=True) for what in whats)),
         _lock_read(word, whats), _lock_write(word, whats),
         lambda v: v.get(v.get("what") or whats[0], ""),

@@ -423,6 +423,8 @@ class FormDialog:
                                   style="Dialog.TCheckbutton")
             return box, var
         var = tk.StringVar(parent, value=value)
+        if field.kind == "pick" and field.shown:
+            return self._shown_pick(parent, field, var), var
         if field.kind == "pick":
             return ttk.Combobox(parent, textvariable=var, values=field.options,
                                 state="readonly", width=FIELD_CHARS), var
@@ -442,6 +444,28 @@ class FormDialog:
             return name_box.box, var
         width = NUMBER_CHARS if field.kind == "number" else FIELD_CHARS
         return ttk.Entry(parent, textvariable=var, width=width), var
+
+    def _shown_pick(self, parent: tk.Misc, field: Field, var: tk.StringVar) -> ttk.Combobox:
+        """A pick that lists plain words (``field.shown``) while ``var`` keeps the script word:
+        the two follow each other both ways."""
+        words = tk.StringVar(parent, value=field.shown_for(var.get()))
+        box = ttk.Combobox(parent, textvariable=words, values=field.shown,
+                           state="readonly", width=FIELD_CHARS)
+        box.shown_var = words          # type: ignore[attr-defined]  # keeps the Tk variable
+
+        def to_script(*_a: object) -> None:
+            option = field.option_for(words.get())
+            if var.get() != option:
+                var.set(option)
+
+        def to_words(*_a: object) -> None:
+            shown = field.shown_for(var.get())
+            if words.get() != shown:
+                words.set(shown)
+
+        words.trace_add("write", to_script)
+        var.trace_add("write", to_words)
+        return box
 
     # --- Pictures, sounds and colour dots (W5) --------------------------------------------
 

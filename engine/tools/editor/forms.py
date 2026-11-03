@@ -104,7 +104,8 @@ _ELSE_HEAD = re.compile(r"else[ \t]*:")
 
 @dataclass(frozen=True, slots=True)
 class Field:
-    """One form field. ``name_kind``: the F45 name kind its picker offers."""
+    """One form field. ``name_kind``: the F45 name kind its picker offers. ``shown``: a pick's
+    plain words, one per option (the list shows these; the values keep the script words)."""
 
     key: str
     label: str
@@ -112,6 +113,19 @@ class Field:
     name_kind: str | None = None
     options: tuple[str, ...] = ()
     optional: bool = False
+    shown: tuple[str, ...] = ()
+
+    def shown_for(self, option: str) -> str:
+        """The plain words the list shows for ``option`` (the option itself without any)."""
+        if self.shown and option in self.options:
+            return self.shown[self.options.index(option)]
+        return option
+
+    def option_for(self, shown: str) -> str:
+        """The script word for the plain words ``shown`` (``shown`` itself without any)."""
+        if self.shown and shown in self.shown:
+            return self.options[self.shown.index(shown)]
+        return shown
 
 
 @dataclass(frozen=True, slots=True)

@@ -207,7 +207,19 @@ def test_p2_form_dialogs_and_insert_picker(studio, tmp_path, helper, monkeypatch
     assert lock.labels["tip"].winfo_manager() and not lock.labels["route"].winfo_manager()
     lock.vars["what"].set("route")
     assert lock.hidden() == {"tip", "ending", "item", "gallery"}
+    # Plain words in the list ("Codex tip", "Gallery picture"); the line keeps script words.
+    what = lock.widgets["what"]
+    assert tuple(what.cget("values")) == ("Route", "Ending", "Codex tip", "Item",
+                                          "Gallery picture")
+    assert what.get() == "Route"
+    what.set("Gallery picture")
+    assert lock.vars["what"].get() == "gallery" and lock.hidden() == {
+        "route", "ending", "tip", "item"}
+    lock.vars["gallery"].set("cg festival")
+    assert card(lock) == "lock gallery cg festival"
     lock._pick(1)
+    assert tuple(dialog("unlock", {}).widgets["what"].cget("values")) == (
+        "Route", "Codex tip", "Item", "Gallery picture")
 
     # A new Chapter's name: made from the title, unique; typing one stops that.
     names = dict(story.names(), chapter=["the_old_footbridge"])
