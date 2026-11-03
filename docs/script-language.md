@@ -888,6 +888,50 @@ playthroughs**; players reset them with "delete persistent data" in Settings.
 and **`lock replay scene`** (no title) makes the game forget it, so its square is locked
 again. Neither line waits.
 
+**The Endings page.** Extras also has an **Endings** page: every `ending` of the story in the
+order of its lines, the reached ones by heading and title, the rest `???`, under a count
+("Endings reached: 2 / 5"). Picking a reached ending replays it: the label holding the
+`ending` line plays from its first line, as a replay. If a `lock replay` line declares that
+label, its `to` and starting values apply there too. Each page shows once it has something
+to show (a reached ending, an unlocked replay), and the **Extras** button with it.
+
+| Setting | Default | What it changes |
+|---|---|---|
+| `[endings] list` | true | false: no Endings page in Extras |
+| `[endings] replay` | true | false: the Endings page lists endings but doesn't replay them |
+
+**During a replay** the game menu works as usual, with these differences:
+- **Nothing is saved or loaded.** Save and Load leave the game menu and the quick menu (so
+  does the Flowchart), F5, F9 and the auto-saves do nothing, and `ui saving on` and `ui
+  loading on` don't change that.
+- **Main Menu reads End Replay** and goes straight back to Extras, with no question: nothing
+  can be lost.
+- **Progress is put back** when the replay ends, however it ends: endings, routes, tips,
+  gallery pictures, seen lines and choices, the title's looks, and `persistent` values are as
+  they were before it, and the persistent file isn't written meanwhile. Two things are kept:
+  music-room tracks heard and achievements earned in a replay (their notices showed). Changes
+  in Settings are kept too; Settings' "delete persistent data" is off.
+- **The player's files and saves are safe.** `file write`, `file delete` (section 23) and `ui
+  delete saves` (section 26) are skipped, with a warning in dev runs (below); `file read` and
+  `file exists` work. Text on the screen is the story's as usual: `{var=…}` shows the
+  starting values.
+- Rollback, skip, auto and History work; rolling back stops at the replay's first line.
+
+When the replay ends (by its own rules above, an ending's card, or End Replay), its sound
+stops, the screen fades to black, and Extras comes back on the page it was started from.
+
+To try a replay while you work, run **`python -m engine run game --replay scene`** (dev runs
+only): the scene's replay starts at once, with no title (a `lock replay` of it gives its `to`
+and starting values; any label works), and the game closes when it ends. It can't be used
+with `--start`, `--extras` or `--try-stdin`. Studio's Database, "Scene replays", has a Play
+replay button that does the same.
+
+**Words**: `endings` "Endings", `endings_count` "Endings reached", `ending_locked` "???",
+`ending_replay` "Replay", `replays` "Scenes", `replay_end` "End Replay", and
+`replay_no_saving` "Saving and loading are off during a replay.", each changed under
+`[words]`. The Endings page uses the `list.*`, `button.*` and `panel.*` settings; the Scenes
+page uses the gallery's squares.
+
 `replay` and `to` are still free as names: they mean something only right after `lock
 replay` or `unlock replay`.
 
@@ -899,6 +943,7 @@ replay` or `unlock replay`.
 | `the replay title is empty.` / `the replay title has 75 characters; keep it to 60.` / `replay titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".` / `this replay has 40 starting values; keep it to 32.` | Plain titles of 1–60 characters; up to 32 starting values. |
 | `there is no scene "festivl". Did you mean "festival"?` / `to festival names the replay's own scene. Name the scene where the replay should stop, or leave out to.` / `there is no replay of "festivl". Did you mean "festival"? Declare it at the top level, e.g. lock replay festivl "Title".` | Use the name of a label, and a declared replay in `unlock replay` and `lock replay` lines. |
 | `coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.` / `a starting value is a number, text in quotes, True, False, or None, but this has "coins + 1".` / `coins has two starting values here; keep one.` | Give each `default` variable at most one plain value. |
+| `file delete "hana.chr" doesn't run during a replay, so the player's files stay as they are.` (`file write` likewise) / `ui delete saves doesn't run during a replay, so the player's saves stay as they are.` (warning, dev runs, once per line) | Nothing to fix: the line runs as usual outside replays. |
 
 ### flowchart (the story map)
 ```
@@ -4007,3 +4052,6 @@ story goes on after a warning.
 - 2026-11-03: F36 W1: section 7's "lock replay (scene replays)" (the declaration with
   `image`, `to` and starting values, unlock on arrival, `unlock replay` and `lock replay` in
   a label, E348 to E352).
+- 2026-11-03: F36 W5: "lock replay (scene replays)" gains the Endings page, `[endings] list`
+  and `replay`, the rules during a replay (no saves, End Replay, progress put back with
+  tracks and achievements kept, W229's skipped lines), `run --replay`, and the seven words.

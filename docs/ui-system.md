@@ -635,7 +635,23 @@ one of its pages has something unlocked. The Gallery page is 4 × 3 tiles of 188
 `#FFF4F8`). Tiles reuse `button.border_*`, `button.focused.border_*`, and `panel.*`. The
 viewer fills the canvas and fits the picture; pictures crossfade over 200 ms (cuts under
 reduced motion). Layout, input, and words are in
-[F34 01-design](../specs/F34-cg-gallery/01-design.md) §6. Set in `[theme.gallery]`
+[F34 01-design](../specs/F34-cg-gallery/01-design.md) §6.
+**Endings and Scenes (F36)** add no tokens. The Endings page (`endings`, under `[endings]
+list`) is a count line ("`endings_count`: 2 / 5") in `panel.text_*` over an F10
+`ScrollList` at (416, 164), 808×500: a reached ending's heading in
+`panel.heading.text_color` and its title in `button.text_*`, with `ending_replay`
+right-aligned in `button.marker.fill_color` (6.59:1 on `#FFF4F8`) while `[endings] replay`
+is on; an unreached one is `ending_locked` in `button.disabled.text_color` (5.64:1) and
+never takes focus. The Scenes page (`replays`) is the Gallery's tile grid, captioned with
+each replay's title, `???` while locked, with no viewer. A replay starts with New Game's
+fade and ends with the story-end fade back to Extras, its row or tile focused (cuts under
+reduced motion). During a replay the game menu's Main Menu reads `replay_end` ("End
+Replay") and leaves at once, with no question; Save, Load, and Flowchart are hidden (and
+the quick menu's Save, Q.Save, Q.Load), and saving and loading are blocked with
+`replay_no_saving`; nothing the player keeps changes, except music-room tracks and
+achievements earned in it. Layout and rules are in
+[F36 01-design](../specs/F36-ending-list/01-design.md) §6.
+The gallery is set in `[theme.gallery]`
 (sub-tables `[theme.gallery.caption]`, `[theme.gallery.viewer]`):
 
 | Token | Type | Default | Purpose |
@@ -1070,3 +1086,5 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - 2026-11-02: F32 built (step 6): run-time looks under "Where authors set them"
   (`[playthrough.N]` and `[style.<name>]` layers, `GameShell.theme` following the current
   look, player settings winning, what changes at once on a style switch).
+- 2026-11-03: F36 W5: the Extras paragraph gains the Endings and Scenes pages (no new
+  tokens) and the game menu during a replay.

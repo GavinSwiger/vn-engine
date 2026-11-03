@@ -2252,3 +2252,104 @@ def test_ac_f34_35_gallery_docs_and_example(tmp_path):
         run_headless(program, seed=seed, image_files=images, persistent=store, inputs=inputs,
                      minigames=corpus.example_minigames())
         assert gallery.unlocked(program, store) == unlocked, seed
+
+
+# --- AC-F36-35: endings and scene replays in docs/script-language.md and the example game -------
+
+F36_HEADING = "lock replay (scene replays)"
+F36_MESSAGES = {"E348": (), "E349": (), "E350": (), "E351": (), "E352": (), "W229": (),
+                "W229 saves": ("saves",)}
+F36_WORDS = {"endings": "Endings", "endings_count": "Endings reached", "ending_locked": "???",
+             "ending_replay": "Replay", "replays": "Scenes", "replay_end": "End Replay",
+             "replay_no_saving": "Saving and loading are off during a replay."}
+
+
+def test_ac_f36_35_replay_docs_and_example(tmp_path):
+    """``script-language.md`` section 7's replay section: the Endings page and its two
+    ``[endings]`` keys, the rules during a replay (no saves, End Replay, progress put back with
+    tracks and achievements kept, skipped meta-file and ``ui delete saves`` lines), ``run
+    --replay``, the seven words at their defaults, and every message's first form (W229's
+    both); its code blocks load in dev with no error or warning; ``ui-system.md``'s Extras
+    paragraph has both pages. The example game declares three replays (``to`` and a starting
+    value, an ``image``, an ending's label), loads and launches warning-free, a normal
+    playthrough unlocks all three, and each replay (and the good ending's) plays and leaves
+    the store as it was."""
+    from engine.core.config_schema import EndingsConfig, WordsConfig
+    from engine.persist.fileformat import decode, encode_bytes, parse
+    from engine.runtime.commands import Say, StoryEnded
+    from engine.runtime.headless import run_headless
+    from engine.runtime.images import ImageSource
+    from engine.runtime.launch import run_launch
+    from engine.runtime.persistent import PersistentStore
+    from engine.runtime.replay import REPLAY_KIND, ReplayRun, run_for
+    from engine.script import load_story
+    from engine.script.loader import LoadOptions
+    from engine.script.messages import format_message
+    from tests.runtime import corpus
+    from tests.runtime.menu_story import write_game
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _subsection(text, F36_HEADING)
+    flat = " ".join(section.split())
+    for words in ("**The Endings page.**", "`[endings] list` | true", "`[endings] replay` | true",
+                  "**Nothing is saved or loaded.**", "**Main Menu reads End Replay**",
+                  "**Progress is put back**", "music-room tracks heard and achievements earned",
+                  "`file write`, `file delete` (section 23) and `ui delete saves` (section 26) "
+                  "are skipped", "rolling back stops at the replay's first line",
+                  "**`python -m engine run game --replay scene`** (dev runs only)"):
+        assert words in flat, words
+    for key, word in F36_WORDS.items():
+        assert f'`{key}` "{word}"' in flat, key
+    defaults = {f.name: f.default for f in dataclasses.fields(WordsConfig)}
+    assert {key: defaults[key] for key in F36_WORDS} == F36_WORDS
+    assert (EndingsConfig().list, EndingsConfig().replay) == (True, True)
+    for code, args in F36_MESSAGES.items():
+        assert format_message(code.split()[0], args) in section, code
+    blocks = re.findall(r"^```([a-z]*)\n(.*?)^```", section, re.M | re.S)
+    assert len(blocks) == 2 and all(lang == "" for lang, _ in blocks)
+    story = ("\n".join(body for _, body in blocks)
+             + '\nlabel start:\n    call letter\n    jump festival\nlabel festival:\n'
+               '    "Festival {var=coins}."\nlabel river:\n    jump fireworks\n'
+               'label fireworks:\n    "Fireworks."\n')
+    result = load_story(write_game(tmp_path / "replays", story), LoadOptions(dev=True))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    launch = run_launch(result.program, dev=True,
+                        images=ImageSource.from_files(("images/cg/river.png",)))
+    assert launch.namespace is not None and launch.warnings == (), launch.warnings
+    extras = " ".join(UI.read_text(encoding="utf-8").split())
+    assert "**Endings and Scenes (F36)** add no tokens." in extras
+    assert "Main Menu reads `replay_end`" in extras
+
+    program, images = corpus.example_program(), corpus.example_images()
+    assert [(e.label, e.title, e.image, e.tile_picture, e.to, e.values)
+            for e in program.replays] == [
+        ("bridge", "The Old Footbridge", None, "bg bridge_night", "hana_testimony",
+         (("hana_name", "Hana"),)),
+        ("shed_room", "The Stall Keeper's Shed", "bg festival_shed", None, None, ()),
+        ("river_end", "The Walk Home", None, "cg last_lantern_ashes", None,
+         (("hana_name", "Hana"),))]
+    assert run_for(program, "river_end") == ReplayRun("river_end", None, (("hana_name", "Hana"),))
+    dev = corpus.load_example()
+    assert dev.errors == () and dev.warnings == (), dev.warnings
+    store = PersistentStore(identity_scheme=program.identity_scheme)   # the sad ending
+    inputs = corpus.play(program, 1, images, corpus.EXAMPLE_PICKS[1]).inputs
+    run_headless(program, seed=1, image_files=images, persistent=store, inputs=inputs,
+                 minigames=corpus.example_minigames())
+    assert set(store.unlocked(REPLAY_KIND)) == {"bridge", "shed_room", "river_end"}
+    assert store.unlocked("ending") == ("sad",)
+    before = parse(decode(encode_bytes(store)))
+    for label, first, last in (
+            ("bridge", "The old footbridge creaked",
+             "That wasn't what Daichi had said on the phone."),        # ends at the call
+            ("shed_room", None, None),                                 # the room's test exit
+            ("river_end", "We walked Hana home", "Six fifty. I set three alarms"),
+            ("festival_end", "Then come on!", "We ran down into the crowd.")):
+        commands = run_headless(program, seed=1, image_files=images, persistent=store,
+                                replay=label, minigames=corpus.example_minigames(), dev=True)
+        says = [c for c in commands if type(c) is Say]
+        assert type(commands[-1]) is StoryEnded, label
+        if first is not None:
+            assert says[0].text.startswith(first) and says[-1].text.startswith(last), label
+        if label in ("bridge", "river_end"):     # their starting value names Hana's plate
+            assert "Hana" in {c.name for c in says}, label
+        assert not store.in_sandbox and parse(decode(encode_bytes(store))) == before, label

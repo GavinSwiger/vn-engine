@@ -123,6 +123,28 @@ lock gallery cg big_lantern "The Big Lantern"
 lock gallery cg last_lantern "The Last Lantern":
     cg last_lantern_ashes
 
+# "lock replay" adds a scene to Scenes, another page of Extras, where players watch a
+# scene again. The label comes first, then the title in quotes shown under its square.
+# A scene unlocks the first time the player reaches it, and stays unlocked across
+# playthroughs. A replay is a throwaway game: nothing can be saved in it, and when it
+# ends, Extras comes back with the player's progress as it was. A replay starts with
+# every story variable at its default, so the lines indented under one set the values
+# the scene needs: here Hana's name plate, which reads "???" until the prologue sets it.
+# The square shows the first picture a "scene" line in the label shows (the bridge).
+# Without "to", a replay ends when the story leaves its label; "to hana_testimony"
+# ends this one as the story reaches the cross-examination, by its "call".
+lock replay bridge "The Old Footbridge" to hana_testimony:
+    hana_name = "Hana"
+# shed_room has no "scene" line (the puzzle room draws its own picture), so "image"
+# picks the square's picture. The room jumps back to shed_room itself until the player
+# leaves, and a jump to the replay's own label goes on: it ends when the room returns.
+lock replay shed_room "The Stall Keeper's Shed" image bg festival_shed
+# The Endings page of Extras lists the endings and replays the ones the player reached,
+# from the top of their label. An ending whose label has a "lock replay" line, like the
+# walk home here (endings.vns), uses its starting values there too.
+lock replay river_end "The Walk Home":
+    hana_name = "Hana"
+
 # "label" names a scene. The story begins at the label called start. Once players
 # have saves, keep your label names: a save finds its line again inside its label, even
 # after you add lines around it.
