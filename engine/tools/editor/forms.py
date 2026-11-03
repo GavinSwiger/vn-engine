@@ -71,19 +71,23 @@ PLUGIN_REASON: Final = "Plugin code is written in Python (docs/minigames.md)."
 TEXT_ONLY_REASONS: Final = (PYTHON_CODE_REASON, PYTHON_VALUES_REASON, INCLUDE_REASON,
                             STORY_MAP_REASON, PLUGIN_REASON)
 # Not in §4.8 (F47 P2-A): declarations the Database writes, and statements whose form is a
-# later F47 step (P2-B chapter, nvl, lock, unlock; minigame; W9 file (F31), ui (F32); P3
-# flowchart, rollback). Each later step drops its keys.
-DATABASE_REASON: Final = "Made in the Database: variables, pictures and meters."
+# later F47 step (P2-E minigame; W9 file (F31), ui (F32); P3 flowchart, rollback). Each
+# later step drops its keys.
+DATABASE_REASON: Final = (
+    "Made in the Database: variables, pictures, meters, codex entries and routes.")
 NO_FORM_YET_REASON: Final = "No form for this yet: it goes in as a script line."
 
-# Doc key → its reason. ``points`` is the declaration; ``points <name> +=`` has the Change
-# meter form. ``missing_forms`` fails on a key with an empty reason.
+# Doc key → its reason, for the key's docs with no form. ``points`` is the declaration
+# (``points <name> +=`` has the Change meter form); ``lock``'s are the route and codex
+# declarations (``lock route|ending``/``lock tip|item <name>`` have the Lock form: P2-B).
+# ``missing_forms`` fails on a key with an empty reason.
 TEXT_ONLY: Final[Mapping[str, str]] = MappingProxyType({
     "at": STORY_MAP_REASON, "label": STORY_MAP_REASON,
     "define": PYTHON_VALUES_REASON, "include": INCLUDE_REASON,
-    "default": DATABASE_REASON, "image": DATABASE_REASON, "points": DATABASE_REASON,
-    **dict.fromkeys(("chapter", "nvl", "lock", "unlock", "minigame", "file", "ui",
-                     "flowchart", "rollback"), NO_FORM_YET_REASON)})
+    **dict.fromkeys(("default", "image", "points", "lock"), DATABASE_REASON),
+    **dict.fromkeys(("minigame", "file", "ui", "flowchart", "rollback"), NO_FORM_YET_REASON)})
+# A doc in this group is a top-level declaration, never an Events row: it has no form.
+DECLARATIONS_GROUP: Final = "Declarations"
 
 _SHAPE_SKIP: Final = frozenset(("file", "line", "end_line", "column", "sid", "label", "path",
                                 "code", "comment_free", "block"))
@@ -640,7 +644,11 @@ def form_by_key(key: str) -> CommandForm | None:
 
 
 def form_for_doc(doc: StatementDoc) -> CommandForm | None:
-    """The form that inserts ``doc`` (the Choice form for ``menu``), or None."""
+    """The form that inserts ``doc`` (the Choice form for ``menu``), or None (always for a
+    ``DECLARATIONS_GROUP`` doc: ``lock tip|item <name> "title"`` starts like the Lock form's
+    ``lock tip|item <name>``)."""
+    if doc.group == DECLARATIONS_GROUP:
+        return None
     for form in all_forms():
         for key, prefix in form.docs:
             if doc.key == key and doc.syntax.startswith(prefix):
@@ -1081,7 +1089,8 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
 __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "CONTINUES",
            "ChoiceItem", "ChoiceValues", "CommandForm", "END_WORD", "FORMS", "Field", "IN_TEXT",
            "MORE_TEXT", "NOTHING", "NO_QUESTION", "Patch", "Row", "TEXT_ONLY",
-           "TEXT_ONLY_REASONS", "DATABASE_REASON", "NO_FORM_YET_REASON", "all_forms",
+           "TEXT_ONLY_REASONS", "DATABASE_REASON", "DECLARATIONS_GROUP", "NO_FORM_YET_REASON",
+           "all_forms",
            "choice_lines",
            "choice_patches", "choice_summary", "code_of", "form_by_key", "form_for_doc",
            "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape"]

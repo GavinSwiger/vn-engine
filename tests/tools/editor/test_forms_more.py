@@ -1,5 +1,5 @@
 """F47's command forms, pure half (F47 ``01-design.md`` §4.5, §4.8, PR-F47-06, PR-F47-19;
-``04-technical.md`` P2-A: AC-F47-27, 28, 29, 31). No Tk.
+``04-technical.md`` P2-A: AC-F47-27, 28, 29, 31; P2-B: 32, 33). No Tk.
 
 Each table row is a line, the values its form reads, and the Events row text. The row must
 come from ``forms.rows`` (so it passed the gate), write back the same line, and parse back
@@ -7,9 +7,11 @@ to the same shape; the "stays a Script row" lists are shapes the form can't writ
 
 from collections.abc import Mapping
 
+import pytest
+
 import engine.script  # noqa: F401  registers every statement
 from engine.script.statement_docs import all_docs
-from engine.tools.editor import forms
+from engine.tools.editor import forms, forms_more
 from engine.tools.editor.forms import form_by_key, form_for_doc, missing_forms, rows, shape
 from engine.tools.editor.scenes import parse_chunk
 
@@ -57,17 +59,18 @@ def test_ac_f47_27_text_only_is_a_reason_map(monkeypatch):
     text_only = forms.TEXT_ONLY
     assert isinstance(text_only, Mapping) and "define" in text_only
     assert all(isinstance(reason, str) and reason.strip() for reason in text_only.values())
-    allowed = {**dict.fromkeys(("default", "image", "points"), forms.DATABASE_REASON),
-               **dict.fromkeys(("chapter", "nvl", "lock", "unlock", "minigame", "file", "ui",
-                                "flowchart", "rollback"), forms.NO_FORM_YET_REASON)}
+    allowed = {**dict.fromkeys(("default", "image", "points", "lock"), forms.DATABASE_REASON),
+               **dict.fromkeys(("minigame", "file", "ui", "flowchart", "rollback"),
+                               forms.NO_FORM_YET_REASON)}
     for key, reason in text_only.items():
         assert reason in forms.TEXT_ONLY_REASONS or allowed.get(key) == reason, key
     assert missing_forms() == []
     for doc in all_docs():
         if doc.insert:
             assert form_for_doc(doc) is not None or text_only.get(doc.key), doc.key
-    # P2-A's statements left the map.
-    assert not {"with", "shake", "flash", "effect", "queue", "voice"} & set(text_only)
+    # P2-A's and P2-B's statements left the map (``lock`` keeps its declarations' reason).
+    assert not {"with", "shake", "flash", "effect", "queue", "voice", "chapter", "nvl",
+                "unlock"} & set(text_only)
     # An empty reason is no reason.
     monkeypatch.setattr(forms, "TEXT_ONLY", {**text_only, "define": ""})
     assert missing_forms() == ["define"]
@@ -227,3 +230,93 @@ def test_ac_f47_31_voice_play_next_and_stop_forms():
     ], None)
     _scripts('queue music "a.ogg" once', 'queue music "a.ogg" volume 40',
              'queue music "a.ogg" fadein 2 once')
+
+
+# --- AC-F47-32 --------------------------------------------------------------------------------
+
+def test_ac_f47_32_full_screen_text_and_chapter_forms():
+    """AC-F47-32: Full-screen text (Start / New page / End) and Chapter (heading, title, card
+    seconds, transition, fade colour; the name made from the title) read and write every
+    shape; Insert's ``nvl`` and ``chapter`` open them."""
+    assert form_for_doc(_docs("nvl")[0]) is form_by_key("nvl")
+    assert form_for_doc(_docs("chapter")[0]) is form_by_key("chapter")
+    _check([
+        ("nvl", "nvl on", {"page": "start"}, "Full-screen text  start"),
+        ("nvl", "nvl clear", {"page": "new page"}, "Full-screen text  new page"),
+        ("nvl", "nvl off", {"page": "end"}, "Full-screen text  end"),
+    ], None)
+    blank = {"name": "", "heading": "", "title": "", "hold": "", "transition": "",
+             "seconds": "", "colour": ""}
+    _check([
+        ("chapter", 'chapter prologue "Prologue"', {"name": "prologue", "title": "Prologue"},
+         "Chapter  Prologue"),
+        ("chapter", 'chapter festival "Chapter 2" "The Lantern Festival"',
+         {"name": "festival", "heading": "Chapter 2", "title": "The Lantern Festival"},
+         "Chapter  Chapter 2: The Lantern Festival"),
+        ("chapter", 'chapter river "Chapter 3" "By the River" 5 with dissolve 1.5',
+         {"name": "river", "heading": "Chapter 3", "title": "By the River", "hold": "5",
+          "transition": "dissolve", "seconds": "1.5"},
+         "Chapter  Chapter 3: By the River · 5 s · dissolve 1.5 s"),
+        ("chapter", 'chapter quiet "Quiet" 0', {"name": "quiet", "title": "Quiet", "hold": "0"},
+         "Chapter  Quiet · no card"),
+        ("chapter", 'chapter dusk "Dusk" with fade 2 "#ffe08a"',
+         {"name": "dusk", "title": "Dusk", "transition": "fade", "seconds": "2",
+          "colour": "#ffe08a"}, "Chapter  Dusk · fade 2 s #ffe08a"),
+        ("chapter", "chapter dawn \"Dawn\" with fade white",
+         {"name": "dawn", "title": "Dawn", "transition": "fade", "colour": "white"},
+         "Chapter  Dawn · fade white"),
+        ("chapter", 'chapter wave "Say \\"hi\\" {{wave}"',
+         {"name": "wave", "title": 'Say "hi" {wave}'}, 'Chapter  Say "hi" {wave}'),
+    ], blank)
+    # An empty name is made from the title; a colour on a transition that takes none, or
+    # with no transition, is never written.
+    chapter = form_by_key("chapter")
+    assert chapter.write({**blank, "title": "The Old Footbridge", "hold": "4"}) \
+        == 'chapter the_old_footbridge "The Old Footbridge" 4'
+    assert chapter.write({**blank, "name": "x", "title": "T", "transition": "dissolve",
+                          "colour": "red"}) == 'chapter x "T" with dissolve'
+    assert chapter.write({**blank, "name": "x", "title": "T", "colour": "red"}) \
+        == 'chapter x "T"'
+    taken = ("chapter_2", "the_end", "the_end_2")
+    for title, name in (("Chapter 2", "chapter_2_2"), ("The End!", "the_end_3"),
+                        ("2 Days Later", "chapter_2_days_later"), ("If", "chapter_if"),
+                        ("…", "untitled"), ("Ça va – été", "ça_va_été"),
+                        ("x" * 80, "x" * 64)):
+        assert forms_more.chapter_name(title, taken) == name, title
+    _scripts('chapter x "T" with fade black 1')
+
+
+# --- AC-F47-33 --------------------------------------------------------------------------------
+
+def test_ac_f47_33_lock_and_unlock_forms():
+    """AC-F47-33: Lock and Unlock cover route, ending, tip and item (each with its own name
+    picker; no ``unlock ending``); Insert's in-label ``lock``/``unlock`` docs open them, and
+    the route and codex declarations stay the Database's."""
+    lock, unlock = form_by_key("lock"), form_by_key("unlock")
+    for doc in _docs("lock") + _docs("unlock"):
+        want = None if doc.group == "Declarations" else form_by_key(doc.key)
+        assert form_for_doc(doc) is want, doc.syntax
+    assert forms.TEXT_ONLY["lock"] == forms.DATABASE_REASON
+    assert [(f.key, f.name_kind) for f in lock.fields[1:]] == [
+        ("route", "route"), ("ending", "ending"), ("tip", "tip"), ("item", "item")]
+    assert lock.fields[0].options == ("route", "ending", "tip", "item")
+    assert unlock.fields[0].options == ("route", "tip", "item")
+    _check([
+        ("lock", "lock route promise", {"what": "route", "route": "promise"},
+         "Lock route  promise"),
+        ("lock", "lock ending sad", {"what": "ending", "ending": "sad"}, "Forget ending  sad"),
+        ("lock", "lock tip lanterns", {"what": "tip", "tip": "lanterns"},
+         "Forget tip  lanterns"),
+        ("lock", "lock item red_lantern", {"what": "item", "item": "red_lantern"},
+         "Take item  red_lantern"),
+    ], {"route": "", "ending": "", "tip": "", "item": ""})
+    _check([
+        ("unlock", "unlock route promise", {"what": "route", "route": "promise"},
+         "Unlock route  promise"),
+        ("unlock", "unlock tip lanterns", {"what": "tip", "tip": "lanterns"},
+         "Give tip  lanterns"),
+        ("unlock", "unlock item red_lantern", {"what": "item", "item": "red_lantern"},
+         "Give item  red_lantern"),
+    ], {"route": "", "tip": "", "item": ""})
+    with pytest.raises(ValueError):
+        unlock.write({"what": "ending", "ending": "sad"})

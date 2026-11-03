@@ -29,23 +29,38 @@ imports this module inside the function, as this one imports ``forms``), and the
   - **Voice** (``voice "<file>"``, or Stop voice with an optional fade), **Play next**
     (``queue music "<file>" [fadein <s>]``, Insert's "Queue music") and **Stop sound** (every
     sound, or one file; optional fade; no doc of its own: the ``stop`` doc is Stop music's).
+- P2-B (AC-F47-32, 33):
+  - **Full-screen text** (``nvl``): start, new page or end (``on``, ``clear``, ``off``).
+  - **Chapter** (``chapter <name> ["heading"] "title" [seconds] [with ...]``): Ending's
+    fields read the same way (``_card_read``), plus a fade colour as the Transition form's.
+    The name is kept as read; an empty one is made from the title (``chapter_name``, which
+    the dialog can call with the game's chapter names so a new one is unique).
+  - **Lock** and **Unlock** (``lock|unlock route|ending|tip|item <name>`` in a label): what,
+    then one name field per kind so each gets its own picker; the row word says what the
+    line does ("Give item", "Forget ending", …). There is no ``unlock ending``. The
+    top-level ``lock`` declarations are the Database's (``forms.DECLARATIONS_GROUP``).
 
 Pure: no Tk.
 """
 
 import re
+from collections.abc import Collection
 from dataclasses import replace
 from typing import Final
 
 from engine.core.constants import (
     COLOR_WORDS, GLITCH_KINDS, GLITCH_SIZES, SHAKE_DIRECTIONS, SHAKE_SIZES)
 from engine.script.audio import QueueMusic, StopAudio, Voice
+from engine.script.codex import CodexLock
 from engine.script.effects import Flash, Shake
 from engine.script.fourthwall import CrashEffect, TitleEffect
 from engine.script.glitch import JITTER, Effect
-from engine.script.nodes import Statement
-from engine.script.routes import Ending
+from engine.script.limits import CHAPTER_NAME_MAX
+from engine.script.nodes import Chapter, Statement
+from engine.script.nvl import Nvl
+from engine.script.routes import Ending, Lock
 from engine.script.stage import Hide, Scene, Show
+from engine.script.words import canonical_name, check_name
 from engine.tools.editor.forms import (
     CommandForm, Field, Values, _NUMBER, _dot, _hide_read, _hide_write, _join, _one_line,
     _scene_read, _scene_write, _secs, _show_read, _show_write, _tail, _tokens, _transition,
@@ -59,6 +74,11 @@ EVERY_SOUND: Final = "every sound"                  # Stop sound with no file
 CHANGES: Final = ("background", "show", "hide")     # the Transition form's Change
 GLITCHES: Final = tuple(kind for kind in GLITCH_KINDS if kind != JITTER)
 HOW_LONG: Final = ("burst", "on", "off")            # Glitch and Jitter character
+PAGE_WORDS: Final = ("start", "new page", "end")    # Full-screen text: nvl on, clear, off
+_PAGE: Final = dict(zip(PAGE_WORDS, ("on", "clear", "off"), strict=True))
+CHAPTER_UNTITLED: Final = "untitled"                # chapter_name for a title with no words
+LOCK_WHAT: Final = ("route", "ending", "tip", "item")
+UNLOCK_WHAT: Final = ("route", "tip", "item")      # no ``unlock ending``: reach its line
 _HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 _NO_COLOUR: Final = frozenset(("cut", "dissolve", "glitch"))   # built-ins that take none
 
@@ -69,29 +89,48 @@ def _card_text(text: str) -> str:
 
 
 def _ending_read(node: Statement, code: str) -> dict[str, str] | None:
+    return _card_read(node, code, "ending", Ending)
+
+
+def _card_read(node: Statement, code: str, word: str, kind: type[Statement],
+               colour: bool = False) -> dict[str, str] | None:
+    """``<word> <name> ["heading"] "title" [seconds] [with ...]`` (Ending, Chapter) read
+    against ``node``; with ``colour``, the ``with`` may end in a fade colour (a "colour" key
+    is added)."""
     tokens = _tokens(code)
-    if not isinstance(node, Ending) or not tokens or len(tokens) < 3 or tokens[0] != "ending" \
+    if not isinstance(node, kind) or not tokens or len(tokens) < 3 or tokens[0] != word \
             or tokens[1].startswith('"'):
         return None
-    texts = 2 if node.heading is not None else 1
+    found = ""
+    clause = getattr(node, "with_clause", None)
+    if colour and clause is not None and clause.color is not None:
+        found = _colour_read(tokens[-1]) or ""      # _tail takes no colour: strip it
+        if not found or _colour_hex(found) != clause.color:
+            return None
+        tokens = tokens[:-1]
+        node = replace(node, with_clause=replace(clause, color=None))
+    texts = 2 if node.heading is not None else 1    # type: ignore[attr-defined]
     if not all(token.startswith('"') for token in tokens[2:2 + texts]):
         return None
-    shown = [node.heading, node.title] if node.heading is not None else [node.title]
+    heading, title = node.heading, node.title       # type: ignore[attr-defined]
+    shown = [heading, title] if heading is not None else [title]
     if [_card_text(text) for text in shown] != tokens[2:2 + texts]:   # escapes we don't write
         return None
     rest = tokens[2 + texts:]
     hold = ""
+    seconds = node.seconds                          # type: ignore[attr-defined]
     if rest and _NUMBER.fullmatch(rest[0]):
-        if node.seconds is None:
+        if seconds is None:
             return None
         hold, rest = rest[0], rest[1:]
-    elif node.seconds is not None:
+    elif seconds is not None:
         return None
     tail = _tail(rest, node, allow_at=False)
     if tail is None:
         return None
-    return {"name": tokens[1], "heading": node.heading or "", "title": node.title,
-            "hold": hold, "transition": tail["transition"], "seconds": tail["seconds"]}
+    got = {"name": tokens[1], "heading": heading or "", "title": title,
+           "hold": hold, "transition": tail["transition"], "seconds": tail["seconds"]}
+    return {**got, "colour": found} if colour else got
 
 
 def _ending_write(values: Values) -> str:
@@ -101,17 +140,24 @@ def _ending_write(values: Values) -> str:
                  _write_tail(values, allow_at=False))
 
 
-def _ending_summary(values: Values) -> str:
+def _card_hold(values: Values) -> str:
     hold = values.get("hold", "")
-    card = ""
-    if hold:
-        try:
-            card = ENDING_NO_CARD if float(hold) == 0 else _secs(hold)
-        except ValueError:
-            card = _secs(hold)
+    if not hold:
+        return ""
+    try:
+        return ENDING_NO_CARD if float(hold) == 0 else _secs(hold)
+    except ValueError:
+        return _secs(hold)
+
+
+def _card_texts(values: Values) -> str:
     title = values.get("title", "")
     heading = values.get("heading", "")
-    return _dot(values.get("name", ""), f"{heading}: {title}" if heading else title, card,
+    return f"{heading}: {title}" if heading else title
+
+
+def _ending_summary(values: Values) -> str:
+    return _dot(values.get("name", ""), _card_texts(values), _card_hold(values),
                 _transition(values))
 
 
@@ -420,6 +466,102 @@ def _stop_sound_write(values: Values) -> str:
     return _join("stop sound", quote(file) if file else "", _faded("fadeout", values))
 
 
+# --- Full-screen text, Chapter (AC-F47-32) ----------------------------------------------------
+
+def _nvl_read(node: Statement, code: str) -> dict[str, str] | None:
+    tokens = _tokens(code)
+    if not isinstance(node, Nvl) or tokens != ["nvl", node.action]:
+        return None
+    return {"page": next(page for page, action in _PAGE.items() if action == node.action)}
+
+
+def _nvl_write(values: Values) -> str:
+    return f"nvl {_PAGE[values.get('page') or PAGE_WORDS[0]]}"
+
+
+def chapter_name(title: str, taken: Collection[str] = ()) -> str:
+    """A chapter name made from ``title`` (design §4.5: "the name is made from the title"):
+    its words in lower case joined by ``_`` ("The Old Footbridge" → ``the_old_footbridge``),
+    a valid name (``chapter_`` before one that starts with a digit or is a reserved word,
+    ``untitled`` for no words) of at most 64 characters, with ``_2``, ``_3``, … added until
+    it isn't in ``taken`` (the game's chapter names)."""
+    name = "_".join(re.findall(r"[^\W_]+", title.casefold()))
+    if not name:
+        name = CHAPTER_UNTITLED
+    elif check_name(name) is not None:
+        name = f"chapter_{name}"
+    name = name[:CHAPTER_NAME_MAX].rstrip("_")
+    used = {canonical_name(word) for word in taken}
+    base, number = name, 2
+    while canonical_name(name) in used:
+        end = f"_{number}"
+        name = base[:CHAPTER_NAME_MAX - len(end)].rstrip("_") + end
+        number += 1
+    return name
+
+
+def _chapter_write(values: Values) -> str:
+    heading, title = values.get("heading", ""), values.get("title", "")
+    colour, transition = values.get("colour", "").strip(), values.get("transition", "")
+    line = _join("chapter", values.get("name", "").strip() or chapter_name(title),
+                 _card_text(heading) if heading else "", _card_text(title),
+                 values.get("hold", ""), _write_tail(values, allow_at=False))
+    if colour and transition and transition not in _NO_COLOUR:
+        line = _join(line, _colour_write(colour))
+    return line
+
+
+def _chapter_summary(values: Values) -> str:
+    colour = values.get("colour", "") if values.get("transition") else ""
+    return _dot(_card_texts(values), _card_hold(values),
+                _join(_transition(values), colour))
+
+
+# --- Lock, Unlock (AC-F47-33) -----------------------------------------------------------------
+
+# The Events row word for each (form, what): plain words for what the line does.
+_LOCK_WORDS: Final = {
+    ("lock", "route"): "Lock route", ("lock", "ending"): "Forget ending",
+    ("lock", "tip"): "Forget tip", ("lock", "item"): "Take item",
+    ("unlock", "route"): "Unlock route", ("unlock", "tip"): "Give tip",
+    ("unlock", "item"): "Give item"}
+
+
+def _lock_read(word: str, whats: tuple[str, ...]):
+    def read(node: Statement, code: str) -> dict[str, str] | None:
+        tokens = _tokens(code)
+        if not isinstance(node, (Lock, CodexLock)) or node.unlock != (word == "unlock") \
+                or not tokens or len(tokens) != 3 or tokens[:2] != [word, node.kind] \
+                or node.kind not in whats or canonical_name(tokens[2]) != node.name:
+            return None
+        return {"what": node.kind, **dict.fromkeys(whats, ""), node.kind: tokens[2]}
+    return read
+
+
+def _lock_write(word: str, whats: tuple[str, ...]):
+    def write(values: Values) -> str:
+        what = values.get("what") or whats[0]
+        if what not in whats:
+            raise ValueError(f"{word} can't take {what!r}")
+        return f"{word} {what} {values[what].strip()}"
+    return write
+
+
+def _lock_form(word: str, title: str, whats: tuple[str, ...],
+               docs: tuple[tuple[str, str], ...]) -> CommandForm:
+    return CommandForm(
+        word, title, title, docs, (Lock, CodexLock),
+        (Field("what", "What", "pick", options=whats),
+         *(Field(what, _LOCK_LABELS[what], "name", what, optional=True) for what in whats)),
+        _lock_read(word, whats), _lock_write(word, whats),
+        lambda v: v.get(v.get("what") or whats[0], ""),
+        lambda v: _LOCK_WORDS.get((word, v.get("what") or whats[0]), title))
+
+
+_LOCK_LABELS: Final = {"route": "Route", "ending": "Ending", "tip": "Codex tip",
+                       "item": "Item"}
+
+
 _SIZE_PICK: Final = Field("size", "Size", "pick", options=("", *GLITCH_SIZES), optional=True)
 _HOW_LONG_FIELDS: Final = (
     _SIZE_PICK,
@@ -515,7 +657,30 @@ FORMS: tuple[CommandForm, ...] = (
          Field("fade", "Fade out (seconds)", "number", optional=True)),
         _stop_sound_read, _stop_sound_write,
         lambda v: _dot(v.get("file", "") or EVERY_SOUND, _fade_text("out", v))),
+    # P2-B: AC-F47-32
+    CommandForm(
+        "nvl", "Full-screen text", "Full-screen text", (("nvl", ""),), Nvl,
+        (Field("page", "Full-screen text", "pick", options=PAGE_WORDS),),
+        _nvl_read, _nvl_write, lambda v: v.get("page") or PAGE_WORDS[0]),
+    CommandForm(
+        "chapter", "Chapter", "Chapter", (("chapter", ""),), Chapter,
+        (Field("heading", "Heading", "text", optional=True),
+         Field("title", "Title", "text"),
+         Field("hold", "Card seconds", "number", optional=True),
+         Field("transition", "Transition", "name", "transition", optional=True),
+         Field("seconds", "Transition seconds", "number", optional=True),
+         Field("colour", "Fade colour", "text", optional=True),
+         Field("name", "Name (made from the title)", "text", optional=True)),
+        lambda node, code: _card_read(node, code, "chapter", Chapter, colour=True),
+        _chapter_write, _chapter_summary),
+    # AC-F47-33. A ``lock`` declaration (route, codex entry) is the Database's: its docs are
+    # in the Declarations group, which ``forms.form_for_doc`` never gives a form.
+    _lock_form("lock", "Lock", LOCK_WHAT,
+               (("lock", "lock route|ending"), ("lock", "lock tip|item"))),
+    _lock_form("unlock", "Unlock", UNLOCK_WHAT,
+               (("unlock", "unlock route"), ("unlock", "unlock tip|item"))),
 )
 
-__all__ = ["CHANGES", "CRASH_PLAYER_NAME", "ENDING_NO_CARD", "EVERY_SOUND", "FORMS",
-           "GAME_MESSAGE", "GAME_TITLE", "GLITCHES", "HOW_LONG"]
+__all__ = ["CHANGES", "CHAPTER_UNTITLED", "CRASH_PLAYER_NAME", "ENDING_NO_CARD", "EVERY_SOUND",
+           "FORMS", "GAME_MESSAGE", "GAME_TITLE", "GLITCHES", "HOW_LONG", "LOCK_WHAT",
+           "PAGE_WORDS", "UNLOCK_WHAT", "chapter_name"]
