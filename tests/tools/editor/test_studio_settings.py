@@ -146,11 +146,13 @@ def wait(ed, pred, seconds: float = 30.0) -> bool:
     return pred()
 
 
-def test_ac_f47_20_previews_come_from_the_look_child_with_unsaved_text(studio, tmp_path):
+def test_ac_f47_20_previews_come_from_the_look_child_with_unsaved_text(studio, tmp_path,
+                                                                      request):
     game = sample_game(tmp_path)
     ed = studio(game, mapped=True)
     win = ed.win
     hub = helperhub.hub_for(win)                     # the real helper child
+    request.addfinalizer(hub.runner.stop)            # the fixture only destroys the root
     sent: list[tuple[float, str, bytes]] = []
     real_still = hub.runner.still
 
