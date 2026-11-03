@@ -303,7 +303,7 @@ def test_window_sizes_and_resizing(make_editor, route_game):
     assert abs(ed.left.winfo_width() - 240) <= 2
     before = {
         "left": ed.left.winfo_width(),
-        "values": ed.start_values.winfo_height(),
+        "bar": ed.play_bar.frame.winfo_height(),
         "problems": ed.problems_frame.winfo_height(),
         "list": ed.tree.winfo_height(),
         "editor": (ed.text.winfo_width(), ed.text.winfo_height()),
@@ -311,7 +311,7 @@ def test_window_sizes_and_resizing(make_editor, route_game):
     root.geometry("1400x900")
     root.update()
     assert abs(ed.left.winfo_width() - before["left"]) <= 1
-    assert abs(ed.start_values.winfo_height() - before["values"]) <= 1
+    assert abs(ed.play_bar.frame.winfo_height() - before["bar"]) <= 1
     assert abs(ed.problems_frame.winfo_height() - before["problems"]) <= 1
     assert ed.tree.winfo_height() > before["list"]
     assert ed.text.winfo_width() > before["editor"][0]
@@ -1022,9 +1022,10 @@ def test_the_start_label_follows_edits(make_editor, route_game):
 # --- AC-F44-32: moving between areas by keyboard ----------------------------------------------
 
 def test_f6_cycles_the_five_areas(make_editor, route_game):
-    """Amended by F45 (AC-F44-32): start values → problems → help → project → editor."""
+    """Amended by F45 (AC-F44-32) and F47 (the Play bar replaced start values): ▶ Play →
+    problems → help → project → editor."""
     ed = make_editor(route_game, mapped=True)
-    order = [ed.start_values, ed.problems, ed.help_text, ed.tree, ed.text]
+    order = [ed.play_button, ed.problems, ed.help_text, ed.tree, ed.text]
     widget = ed.text
     for expected in order:
         ed.press(widget, "<F6>")
@@ -1034,7 +1035,7 @@ def test_f6_cycles_the_five_areas(make_editor, route_game):
         ed.press(widget, "<Shift-F6>")
         widget = ed.focus()
         assert widget is expected
-    ed.press(ed.preview_button, "<F6>")
+    ed.press(ed.play_bar.options_button, "<F6>")
     assert ed.focus() is ed.problems
 
 
@@ -1044,22 +1045,23 @@ def test_tab_indents_in_the_editor_and_moves_focus_elsewhere(make_editor, route_
     ed.press(ed.text, "<Tab>")
     assert ed.focus() is ed.text
     assert ed.text.get("6.0", "6.end") == "        \"Opening line.\""
-    ed.press(ed.start_values, "<Tab>")
-    assert ed.focus() is ed.preview_button
-    ed.press(ed.preview_button, "<Shift-Tab>")
-    assert ed.focus() is ed.start_values
-    ed.press(ed.preview_button, "<Tab>")
+    ed.press(ed.play_button, "<Tab>")                       # F47: ▶ Play replaced start
+    assert ed.focus() is ed.problems                         # values and Preview
+    ed.press(ed.problems, "<Shift-Tab>")
+    assert ed.focus() is ed.play_button
+    ed.press(ed.play_button, "<Shift-Tab>")
+    assert ed.focus() is ed.text
+    ed.press(ed.play_bar.options_button, "<Tab>")
     assert ed.focus() is ed.problems
     ed.press(ed.problems, "<Tab>")
     assert ed.focus() is ed.tree
     ed.press(ed.tree, "<Tab>")
     assert ed.focus() is ed.text
-    ed.press(ed.start_values, "<Shift-Tab>")
-    assert ed.focus() is ed.text
+    ed.press(ed.play_button, "<Right>")                      # along the bar
+    assert ed.focus() is ed.play_bar.scene_button
     if ed.root.tk.call("tk", "windowingsystem") == "x11":
-        ed.press(ed.preview_button, "<ISO_Left_Tab>")       # X11's Shift+Tab
-        assert ed.focus() is ed.start_values
-    assert ed.body(ed.start_values) == ""
+        ed.press(ed.problems, "<ISO_Left_Tab>")              # X11's Shift+Tab
+        assert ed.focus() is ed.play_button
 
 
 def test_no_key_binding_in_the_main_window_reacts_to_escape(make_editor, route_game):

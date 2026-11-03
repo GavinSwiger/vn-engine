@@ -40,7 +40,9 @@ def test_ac_f44_37_page_is_short():
 
 def test_ac_f44_37_page_covers_the_editor():
     flat = _flat(_text())
-    for needed in ("python -m engine edit", "F5", "**Preview**", "Shift+F5", "**Start values**",
+    for needed in ("python -m engine edit", "F5", "**▶ Play**", "Shift+F5", "**Start values**",
+                   "**▶ Play this scene**", "**■ Stop**", "**Play options…**",
+                   "**Play as a new player**",
                    "**Problems**", RTL_SENTENCE, "E26b", "E26c"):
         assert needed in flat, needed
 
@@ -81,7 +83,7 @@ def test_ac_f44_37_page_is_linked_from_the_language_reference():
 
 # AC-F45-46's keys, each named in the page's key list.
 STUDIO_KEYS = ("Ctrl+N", "Ctrl+Shift+O", "F2", "Delete", "Ctrl+S", "Ctrl+Shift+S",
-               "Ctrl+Space", "Ctrl+G", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "F5", "Shift+F5", "F7",
+               "Ctrl+Space", "Ctrl+G", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "F5", "Shift+F5", "Ctrl+F2", "F7",
                "F6", "Shift+F6", "Ctrl+=", "Ctrl+-", "Ctrl+0")
 
 
@@ -141,7 +143,7 @@ def test_ac_f45_48_page_names_the_window_texts():
     flat = _flat(_text())
     for name in (window.ADD_BUTTON, *window.CLASH_BUTTONS, window.SHOW_WARNINGS,
                  window.TAB_EDITOR, window.TAB_MAP, window.TAB_ASSET,
-                 window.START_VALUES_HEADING, window.PROBLEMS_HEADING, window.STARTS_AT):
+                 window.START_VALUES_HEADING, window.PROBLEMS_HEADING):
         assert name in flat, name
     menus = inspect.getsource(window.EditorWindow.menu_table)     # studiomenus' table
     for name in ("New game…", "New script file", "Rename", "Delete", "Check now",
@@ -179,6 +181,6 @@ def test_ac_f46_44_the_story_map_page():
                    "Python code that names the scene", scriptedit.RENAME_SAVES,
                    "`.studio/storymap.json`", "The game never reads it",
                    "version control is your choice", "screen-reader", "**Change target…:**",
-                   "**Delete scene:**", "**New file…**", "**Preview from this scene:**"):
+                   "**Delete scene:**", "**New file…**", "**Play from this scene:**"):
         assert needed in flat, needed
     assert "proposed" not in flat

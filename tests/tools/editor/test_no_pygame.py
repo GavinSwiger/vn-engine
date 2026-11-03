@@ -161,7 +161,7 @@ def build_window(game_dir):
     assert (game_dir / ".studio" / "storymap.json").is_file()
     for name in ("scenes", "forms", "eventsview", "scriptedit", "formdialogs",
                  "layoutfile", "storyeditor", "studiolook", "fileactions", "checkwiring",
-                 "runwiring", "mapwiring", "studiomenus", "editorkeys"):
+                 "runwiring", "mapwiring", "studiomenus", "editorkeys", "playbar"):
         assert "engine.tools.editor." + name in sys.modules, name
     done.append(win)
     root.destroy()

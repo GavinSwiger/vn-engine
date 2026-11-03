@@ -403,8 +403,9 @@ def test_ac50_the_status_bar(studio, studio_game):
     assert frame.winfo_width() == root.winfo_width()
     assert frame.winfo_y() + frame.winfo_height() == root.winfo_height()
     assert frame.winfo_height() >= 22
-    texts = [str(w.cget("text")) for w in ed.left.winfo_children() if w.winfo_class() == "TLabel"]
-    assert window.STARTS_AT in texts and "Not running." not in texts      # moved to the bar
+    texts = [str(w.cget("text")) for w in ed.play_bar.frame.winfo_children()
+             if w.winfo_class() == "TLabel"]                # F47: the Play bar names the scene
+    assert "Not running." not in texts                      # the state is on the status bar
 
     def shown():
         return [item.shown() for item in bar.items if item.shown()]

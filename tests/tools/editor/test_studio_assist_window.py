@@ -303,9 +303,9 @@ def test_ac70_the_map_opens_the_editor_beside_it(studio, studio_game):
     ed.press(side, "<Control-s>")
     text = (studio_game / "script/ch2.vns").read_text(encoding="utf-8")
     assert text.splitlines()[9] == "x" + before and not ed.current.dirty
-    ed.press(side, "<F6>")                               # F6: side editor → start values
-    assert ed.focus() is ed.start_values
-    ed.press(ed.start_values, "<Shift-F6>")
+    ed.press(side, "<F6>")                               # F6: side editor → ▶ Play (F47)
+    assert ed.focus() is ed.play_button
+    ed.press(ed.play_button, "<Shift-F6>")
     assert ed.focus() is side
     ed.press(side, "<Escape>")                           # Esc: closed, focus on the map
     assert ed.side_text is None and ed.focus() is canvas
@@ -384,8 +384,8 @@ def test_ac45_the_image_preview(studio, studio_game, monkeypatch):
 # --- AC-F45-46: menus, keys and tabs -----------------------------------------------------------
 
 HANDLERS = ("new_script_file", "add_files", "rename_selected", "delete_selected",
-            "save_current", "save_all", "complete", "go_to_label", "show_tab", "preview",
-            "check_now")
+            "save_current", "save_all", "complete", "go_to_label", "show_tab", "play_scene",
+            "play_from_start", "stop_game", "check_now")
 
 
 def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
@@ -412,8 +412,9 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         (ed.view_menu, "Editor", ed.text, "<Control-Key-1>", ("show_tab", 0)),
         (ed.view_menu, "Story map", ed.text, "<Control-Key-2>", ("show_tab", 1)),
         (ed.view_menu, "Asset", ed.text, "<Control-Key-3>", ("show_tab", 2)),
-        (ed.run_menu, "Preview", ed.text, "<F5>", ("preview",)),
-        (ed.run_menu, "Preview from start", ed.text, "<Shift-F5>", ("preview", False)),
+        (ed.run_menu, "Play", ed.text, "<Shift-F5>", ("play_from_start",)),   # F47
+        (ed.run_menu, "Play this scene", ed.text, "<F5>", ("play_scene",)),
+        (ed.run_menu, "Stop", ed.text, "<Control-F2>", ("stop_game",)),
         (ed.run_menu, "Check now", ed.text, "<F7>", ("check_now",)),
     ]
     for menu, entry, widget, key, call in rows:

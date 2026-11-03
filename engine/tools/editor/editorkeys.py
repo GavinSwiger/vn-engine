@@ -73,8 +73,10 @@ class EditorKeys:
             ((f"<{mod}-minus>", f"<{mod}-KP_Subtract>"),
              lambda _e: brk(self.zoom_view, -FONT_STEP_PX), MAIN),
             ((f"<{mod}-0>", f"<{mod}-KP_0>"), lambda _e: brk(self.zoom_view, 0), MAIN),
-            (("<F5>",), lambda _e: brk(self.preview), MAIN),
-            (("<Shift-F5>",), lambda _e: brk(self.preview, False), MAIN),
+            # The Play bar (F47 §6.1): F5 this scene, Shift+F5 from the start, Ctrl+F2 Stop.
+            (("<F5>",), lambda _e: brk(self.play_scene), MAIN),
+            (("<Shift-F5>",), lambda _e: brk(self.play_from_start), MAIN),
+            ((f"<{mod}-F2>",), lambda _e: brk(self.stop_game), MAIN),
             (("<F6>",), lambda _e: brk(self.cycle_focus, 1), MAIN),
             (("<Shift-F6>",), lambda _e: brk(self.cycle_focus, -1), MAIN),
         ]
@@ -93,11 +95,12 @@ class EditorKeys:
                 except tk.TclError:
                     pass                    # a keysym this Tk doesn't know
 
-        # Tab order outside the editor (03 §4): project → editor → start values → Preview
-        # → problems → project. Tab in the editor indents instead.
+        # Tab order outside the editor (03 §4; F47): project → editor → ▶ Play → problems
+        # → project. Tab in the editor indents instead; the Play bar's other buttons are
+        # reached with Left and Right from ▶ Play.
         order: list[Callable[[], tk.Widget]] = [
-            lambda: self.tree, lambda: self.text, lambda: self.start_values,
-            lambda: self.preview_button, lambda: self.problems]
+            lambda: self.tree, lambda: self.text, lambda: self.play_button,
+            lambda: self.problems]
         for index, get in enumerate(order):
             if index == 1:
                 continue
@@ -109,6 +112,14 @@ class EditorKeys:
                     widget.bind(key, lambda _e, b=back: self._move_focus(b()))
                 except tk.TclError:
                     pass
+        self._guard_stop_key(self.root)
+        for widget in self.play_bar.buttons[1:]:        # the rest of the bar Tabs as ▶ Play
+            widget.bind("<Tab>", lambda _e: self._move_focus(self.problems))
+            for key in ("<Shift-Tab>", "<ISO_Left_Tab>"):
+                try:
+                    widget.bind(key, lambda _e: self._move_focus(self.text))
+                except tk.TclError:
+                    pass
         # The Help pane is reached by F6; Tab from it goes on to the project panel.
         self.help_text.bind("<Tab>", lambda _e: self._move_focus(self.tree))
         for key in ("<Shift-Tab>", "<ISO_Left_Tab>"):
@@ -116,6 +127,19 @@ class EditorKeys:
                 self.help_text.bind(key, lambda _e: self._move_focus(self.problems))
             except tk.TclError:
                 pass
+
+    def _guard_stop_key(self, widget: tk.Misc) -> None:
+        """Ctrl+F2 is Stop everywhere: a widget's own F2 binding (Rename on the map, the
+        project tree, the Events list) would also take Ctrl+F2, so each such widget gets
+        a Ctrl+F2 binding of its own that stops the game instead."""
+        try:
+            if "<Key-F2>" in widget.bind():
+                widget.bind(f"<{self.mod}-F2>", lambda _e: self._break(self.stop_game))
+            children = widget.winfo_children()
+        except tk.TclError:
+            return
+        for child in children:
+            self._guard_stop_key(child)
 
     def _in_main(self, event: tk.Event) -> bool:
         """Global keys act only in the editor's own window, not in a dialog."""
@@ -137,21 +161,21 @@ class EditorKeys:
         return "break"
 
     def cycle_focus(self, step: int) -> None:
-        """F6 / Shift+F6: Project → Editor area → Start values → Problems → Help →
-        Project (UI-F45-02, amended AC-F44-32; the editor area is the current tab's
+        """F6 / Shift+F6: Project → Editor area → Play bar → Problems → Help → Project
+        (UI-F45-02, amended AC-F44-32 and by F47; the editor area is the current tab's
         widget, then the Story map's side pane's shown page while it is open)."""
         areas: list[tk.Widget] = [self.tree, self._tab_widget()]
         side = self._side_active()
         page = self._side_page_widget()
         if side is not None and page is not None:
             areas.append(page)              # F46: the side pane's shown page
-        areas += [self.start_values, self.problems, self.help_text]
+        areas += [self.play_button, self.problems, self.help_text]
         try:
             focus = self.root.focus_get()
         except (KeyError, tk.TclError):
             focus = None
-        if focus is self.preview_button:
-            target = self.problems if step > 0 else self.start_values
+        if focus in self.play_bar.buttons:
+            target = self.problems if step > 0 else areas[areas.index(self.play_button) - 1]
         else:
             pages = [self._attr(tab.focus) for tab in self.tabs if tab.name != "editor"]
             if focus in self._editor_widgets() or focus in pages \

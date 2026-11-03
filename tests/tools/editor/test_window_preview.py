@@ -142,8 +142,8 @@ def panel_text(ed: Editor) -> str:
 
 
 def set_box(ed: Editor, text: str) -> None:
-    ed.start_values.delete("1.0", "end")
-    ed.start_values.insert("1.0", text)
+    """F47: the start values live in Play options (session only)."""
+    ed.win.start_values_text = text
 
 
 def paragraph_point(ed: Editor, index: int) -> tuple[int, int]:
@@ -220,7 +220,7 @@ def test_f5_saves_then_starts_at_the_cursors_label(make_editor, route_game):
     assert ed.statuses == [STARTING, RUNNING, CLOSED]
     assert panel_text(ed) == "No problems."
     assert ed.rows()[:2] == ["main.vns", "chapter2.vns"]
-    assert ed.start_values.get("1.0", "end-1c") == box
+    assert ed.win.start_values_text == box
     assert ed.focus() is ed.text                                 # focus stays (03 §4)
 
 
@@ -240,11 +240,11 @@ def test_shift_f5_and_a_cursor_above_every_label_pass_no_start(make_editor, rout
     assert "--start" not in ed.launcher.argvs[1]
 
 
-def test_the_preview_button_enter_and_space_do_what_f5_does(make_editor, route_game):
+def test_the_play_button_enter_and_space_do_what_shift_f5_does(make_editor, route_game):
     ed = make_editor(route_game, mapped=True, children=("exit3",))
-    ed.press(ed.preview_button, "<Return>")
+    ed.press(ed.play_button, "<Return>")
     pump(ed, lambda: status(ed) == UNEXPECTED)
-    ed.press(ed.preview_button, "<space>")
+    ed.press(ed.play_button, "<space>")
     pump(ed, lambda: len(ed.launcher.argvs) == 2 and status(ed) == UNEXPECTED)
     assert ed.launcher.argvs[0] == ed.launcher.argvs[1]
     assert "--start" not in ed.launcher.argvs[0]                # main.vns line 1
@@ -393,7 +393,7 @@ def test_f6_selects_the_first_clickable_error_and_up_down_move_it(make_editor, r
     ed = make_editor(route_game, mapped=True)
     ed.show_report(LOAD_ERRORS)
     ed.press(ed.text, "<F6>")
-    ed.press(ed.start_values, "<F6>")
+    ed.press(ed.play_button, "<F6>")
     assert ed.focus() is ed.problems
     panel = ed.problems
 

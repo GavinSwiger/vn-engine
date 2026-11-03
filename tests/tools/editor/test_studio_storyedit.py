@@ -271,7 +271,7 @@ def test_ac_f46_09_rows_and_text_stay_in_step_and_f6(studio, lanterns, monkeypat
     assert events.texts()[-3:] == ["Wait  1 s", "Return", "◆"]
     assert events.selected() == row                      # the cursor's row, still
     # F6 with Events shown
-    order = [ed.tree, canvas, events.tree, ed.start_values, ed.problems, ed.help_text]
+    order = [ed.tree, canvas, events.tree, ed.play_button, ed.problems, ed.help_text]
     seen = [ed.tree]
     ed.press(ed.tree, "<F6>")
     for _ in range(len(order)):
@@ -1035,7 +1035,7 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     assert view.focused_name() == "festival"
     assert shown() == [("New scene", "normal"), ("Go to scene…", "normal"),
                        ("Rename scene", "normal"), ("Delete scene", "normal"),
-                       ("Move box", "normal"), ("Preview from this scene", "normal")]
+                       ("Move box", "normal"), ("Play from this scene", "normal")]
     win.last_context = None
     ed.press(canvas, "<Shift-F10>")
     assert [label for label, _ in shown()][:2] == ["New scene", "Go to scene…"]
@@ -1057,7 +1057,8 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     ed.root.update()
     assert events.selected() == 0
     assert [label for label, _ in shown()] == [
-        "Insert command…", "Edit command", "Move up", "Move down", "Delete command"]
+        "Insert command…", "Edit command", "Move up", "Move down", "Delete command",
+        "Play from this scene"]                          # F47 PR-F47-08
 
     # Tab on stall: its arrows in out_edges order; Enter: the target; Esc: back to stall.
     view.focus_box(view.layout.index_of("stall"))
@@ -1328,7 +1329,7 @@ def test_ac_f46_42_new_file(studio, lanterns, monkeypatch):
     assert view.layout.index_of("shop_front") is not None
 
 
-def test_ac_f46_43_preview_from_this_scene(studio, lanterns, monkeypatch):
+def test_ac_f46_43_play_from_this_scene(studio, lanterns, monkeypatch):
     patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
     ed = studio_l(studio, lanterns)
     win, view = ed.win, ed.story_map
@@ -1336,7 +1337,7 @@ def test_ac_f46_43_preview_from_this_scene(studio, lanterns, monkeypatch):
     monkeypatch.setattr(win.runner, "start", lambda argv: started.append(list(argv)))
     monkeypatch.setattr(win.runner, "poll", lambda: [])
     view.focus_box(view.layout.index_of("river"))
-    win.context_menu("box").invoke("Preview from this scene")
+    win.context_menu("box").invoke("Play from this scene")       # F47 PR-F47-08
     assert len(started) == 1
     argv = started[0]
     assert argv[argv.index("--start") + 1] == "river"

@@ -23,7 +23,7 @@ The basics of the map (box marks, arrow styles, the Outline) are in
   `start` scene keeps its name.
 - **Delete scene:** press Delete on the box. The question says how many arrows lead there;
   those lines show an error until you change them. `start` can't be deleted.
-- **Preview from this scene:** right-click the box.
+- **Play from this scene:** right-click the box, or a row in **Events**.
 
 ## Arrows and choices
 

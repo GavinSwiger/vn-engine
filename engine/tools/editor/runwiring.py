@@ -1,19 +1,31 @@
-"""Studio's preview: start values, the Preview button, start, poll and status (F44 ``03``
-§2.2, ``04`` §7.6 "Preview (F5)"), as the ``RunWiring`` mixin of ``window.EditorWindow``.
+"""Studio's Play bar wiring (F47 ``01`` PR-F47-07..09, ``04`` §7.4; F44 ``03`` §2.2, ``04``
+§7.6 "Preview (F5)"), as the ``RunWiring`` mixin of ``window.EditorWindow``.
 
-Preview (F5, Shift+F5, the button) saves every unsaved file, checks the start values, and
-hands argv to ``preview.PreviewRunner``. One poll loop (every ``POLL_INTERVAL_MS``) polls the
-preview runner, the check runner, then every runner joined with ``join_runner`` (``win.runners``:
-F47's ``HelperRunner``, F42's ``BuildRunner``, F39's hot reload), each in its own handler.
+``playbar.PlayBar`` sits under the menu bar. Play (Shift+F5, the primary button) plays from
+the game's ``start``; Play this scene (F5) plays from the selected story-map box while the
+Story map shows, else from the label above the editor's cursor; Play from this scene (a
+box's or an Events row's context menu) plays from that scene; Stop (Ctrl+F2) ends the game
+child. Every Play saves every unsaved file, checks the start values (kept for the session in
+Play options, with "Play as a new player"), and hands argv to ``preview.PreviewRunner``. The
+first Play that reaches the game window marks ``played`` in ``studiostate`` (the Guide's
+step 7). One poll loop (every ``POLL_INTERVAL_MS``) polls the game runner, the check runner,
+then every runner joined with ``join_runner`` (``win.runners``: F47's ``HelperRunner``,
+F42's ``BuildRunner``, F39's hot reload), each in its own handler.
 """
 
 from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable, Sequence
-from tkinter import ttk
 from typing import Any
 
+from engine.tools.editor import studiostate
+from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
+    BEGINNING,
+    START_VALUES_HEADING,
+    PlayBar,
+    ask_play_options,
+)
 from engine.tools.editor.preview import (
     POLL_INTERVAL_MS,
     PreviewEvent,
@@ -22,32 +34,10 @@ from engine.tools.editor.preview import (
     start_value_args,
     start_values_report,
 )
-from engine.tools.editor.syntax import LABEL_LINE, PLAIN_COLOR
-from engine.tools.editor.views import autohide, panel_header
+from engine.tools.editor.syntax import LABEL_LINE
 from engine.tools.editor.checkwiring import NO_PROBLEMS
-from engine.tools.editor.studiolook import (
-    COLUMN_PAD,
-    CURSOR_COLOR,
-    CURSOR_WIDTH,
-    FOCUS_BORDER,
-    INACTIVE_SELECTION,
-    INPUT_BACKGROUND,
-    INPUT_BORDER,
-    LEFT_WIDTH,
-    PANEL_INSET,
-    SELECTION_BACKGROUND,
-    START_VALUES_ROWS,
-    TAG_JUMP,
-    TEXT_PAD,
-    line_of,
-    plural,
-)
+from engine.tools.editor.studiolook import TAG_JUMP, line_of, plural
 
-START_VALUES_HEADING = "Start values"
-START_VALUES_HINT = "One per line, e.g. sayo_points = 1"
-PREVIEW_BUTTON = "Preview (F5)"
-STARTS_AT = "Preview starts at:"
-BEGINNING = "the beginning"
 STATUS_NOT_RUNNING = "Not running."
 STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_text(n)
     PreviewState.NOT_RUNNING: STATUS_NOT_RUNNING,
@@ -57,6 +47,7 @@ STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_t
     PreviewState.STOPPED_ERROR: "Stopped with an error, listed in Problems.",
     PreviewState.STOPPED_UNEXPECTED: "Stopped unexpectedly.",
 }
+LIVE = (PreviewState.STARTING, PreviewState.RUNNING)
 
 
 def didnt_start_text(count: int) -> str:
@@ -72,56 +63,36 @@ def status_text(event: PreviewEvent) -> str:
 
 
 class RunWiring:
-    """The left column's preview part, starting a preview, and the one poll loop."""
+    """The Play bar, playing and stopping the game, and the one poll loop."""
 
-    def _build_run_column(self, left: ttk.Frame, row: int) -> None:
-        """The left column from grid ``row`` down (08 §7): START VALUES, the Preview button
-        and where it starts."""
-        px = self._px
-        inset = px(PANEL_INSET)
-        panel_header(left, START_VALUES_HEADING, self.scale).grid(
-            row=row, column=0, sticky="ew", pady=(px(COLUMN_PAD), 0))
-        self.start_values_hint = ttk.Label(left, text=START_VALUES_HINT,
-                                           style="Side.Hint.TLabel",
-                                           wraplength=px(LEFT_WIDTH) - 2 * inset)
-        self.start_values_hint.grid(row=row + 1, column=0, sticky="w", padx=inset)
-        box = ttk.Frame(left, style="Side.TFrame")
-        box.grid(row=row + 2, column=0, sticky="ew", padx=inset, pady=(px(4), 0))
-        box.columnconfigure(0, weight=1)
-        # An input: the input fill in a 1 px border that turns the focus color (08 §7).
-        self.start_values = tk.Text(
-            box, height=START_VALUES_ROWS, width=1, wrap="none", undo=True, maxundo=-1,
-            font=self.start_values_font, background=INPUT_BACKGROUND, foreground=PLAIN_COLOR,
-            insertbackground=CURSOR_COLOR, insertwidth=px(CURSOR_WIDTH),
-            selectbackground=SELECTION_BACKGROUND, inactiveselectbackground=INACTIVE_SELECTION,
-            padx=px(8), pady=px(TEXT_PAD), highlightthickness=1,
-            highlightbackground=INPUT_BORDER, highlightcolor=FOCUS_BORDER, borderwidth=0,
-            relief="flat")
-        self.start_values.tag_configure("sel", foreground=PLAIN_COLOR)
-        self.start_values.grid(row=0, column=0, sticky="ew")
-        values_bar = ttk.Scrollbar(box, orient="vertical", command=self.start_values.yview,
-                                   style="Side.Vertical.TScrollbar")
-        self.start_values.configure(yscrollcommand=autohide(values_bar, row=0, column=1,
-                                                            sticky="ns"))
+    start_values_text = ""              # Play options' start values (session only)
+    play_fresh = False                  # Play options' "Play as a new player"
+    guide_shown = False
+    _scene_tab = ""
 
-        self.preview_button = ttk.Button(left, text=PREVIEW_BUTTON, command=self.preview,
-                                         style="Large.TButton")
-        for key in ("<Return>", "<KP_Enter>"):          # Space works by itself
-            self.preview_button.bind(key, lambda _e: self._break(self.preview))
-        self.preview_button.grid(row=row + 3, column=0, sticky="ew", padx=inset,
-                                 pady=(inset, 0))
-        wrap = px(LEFT_WIDTH) - 2 * inset
-        ttk.Label(left, text=STARTS_AT, style="Side.Hint.TLabel").grid(
-            row=row + 4, column=0, sticky="w", padx=inset, pady=(px(COLUMN_PAD), 0))
-        self.start_label = ttk.Label(left, text=BEGINNING, wraplength=wrap, justify="left",
-                                     style="Side.TLabel")
-        self.start_label.grid(row=row + 5, column=0, sticky="w", padx=inset, pady=(0, inset))
-        self._wrapped_labels = (self.start_values_hint, self.start_label)
+    def _build_play_bar(self) -> None:
+        """The Play bar under the menu bar, across the window (PR-F47-07). Packed before
+        the panes; ``studiomenus`` packs the in-window menu bar above it."""
+        self.play_bar = PlayBar(self.root, scale=self.scale, font=self.ui_font,
+                                tip_font=self.fonts["small"], on_play=self.play_from_start,
+                                on_scene=self.play_scene, on_stop=self.stop_game,
+                                on_options=self.play_options, on_guide=self.toggle_guide)
+        self.play_bar.frame.pack(side="top", fill="x")
+        self.play_bar.divider.pack(side="top", fill="x")
+        self.play_button = self.play_bar.play_button
+        self.stop_button = self.play_bar.stop_button
+        self.start_label = self.play_bar.scene_label
+        self._played_marked = False
+        state = studiostate.read_state(self.paths.root)
+        if isinstance(state, studiostate.StudioState):
+            self.guide_shown = state.guide_open
+            self._played_marked = state.played
+        self.play_bar.set_guide(self.guide_shown)
 
     # --- Start label (PR-F44-09, UI-F44-05) -------------------------------------------------
 
     def start_label_name(self) -> str | None:
-        """The label Preview would start at, or None for the beginning."""
+        """The label above the editor's cursor (Play this scene's fallback), or None for the beginning."""
         if self.current is None or not self.current.editable:
             return None
         widget = self.text
@@ -140,16 +111,35 @@ class RunWiring:
         if line == self._label_line:
             return
         self._label_line = line
-        name = self.start_label_name()
-        self.start_label.configure(text=name if name is not None else BEGINNING)
+        self._update_scene_name()
 
-    # --- Preview (PR-F44-09-14, §7.6 "Preview (F5)") ---------------------------------------
+    def scene_to_play(self) -> str | None:
+        """Play this scene's label (§7.4): the selected box while the Story map shows,
+        else the label above the editor's cursor; None plays from the start."""
+        if self.current_tab() == "map":
+            name = self.story_map.focused_name()
+            if name is not None:
+                return name
+        return self.start_label_name()
 
-    def preview(self, from_cursor: bool = True, *, at: str | None = None) -> None:
-        """F5, the Preview button (``from_cursor``: start at the label above the cursor),
-        Shift+F5 (start at ``start``) and Preview from this scene (``at``: that label). Saves every unsaved file first: the first failure
-        shows its dialog and nothing starts. Start-value problems go to the panel, and
-        nothing starts (I-5). Focus stays where it was (03 §4)."""
+    def _update_scene_name(self) -> None:
+        """The muted name after Play this scene: what F5 would play now."""
+        self.play_bar.set_scene(self.scene_to_play())
+
+    # --- Play (PR-F47-07..09, §7.4; F44 PR-F44-09-14) --------------------------------------
+
+    def play_from_start(self) -> None:
+        """▶ Play and Shift+F5: from the game's ``start``."""
+        self.play(None)
+
+    def play_scene(self) -> None:
+        """▶ Play this scene and F5."""
+        self.play(self.scene_to_play())
+
+    def play(self, label: str | None) -> None:
+        """Play from ``label`` (None: the start). Saves every unsaved file first: the first
+        failure shows its dialog and nothing starts. Start-value problems go to the panel,
+        and nothing starts (I-5). Focus stays where it was (03 §4)."""
         if self.closed:
             return
         was_armed, dirty = self.armed, self.dirty_files()
@@ -159,14 +149,37 @@ class RunWiring:
                 return
         if dirty or not was_armed:          # after saves, and the first full check (07 I-1)
             self.request_check()
-        args, problems = start_value_args(self.start_values.get("1.0", "end-1c"))
+        args, problems = start_value_args(self.start_values_text)
         if problems:
             self.show_event(PreviewEvent(PreviewState.DIDNT_START,
                                          start_values_report(problems)))
             return
-        label = at if at is not None else self.start_label_name() if from_cursor else None
-        self.runner.start(preview_argv(self.paths.root, label, args))
+        self.runner.start(preview_argv(self.paths.root, label, args, fresh=self.play_fresh))
         self.apply_events(self.runner.poll())
+
+    def stop_game(self) -> None:
+        """■ Stop and Ctrl+F2: end the game child (only while it runs)."""
+        if self.closed or self.preview_state not in LIVE:
+            return
+        self.runner.stop()
+        self.show_event(PreviewEvent(PreviewState.CLOSED))
+
+    def play_options(self) -> None:
+        """Play options…: the start values and "Play as a new player", for this session."""
+        answer = ask_play_options(self.root, self.start_values_text, self.play_fresh,
+                                  font=self.start_values_font)
+        if answer is not None:
+            self.start_values_text, self.play_fresh = answer
+
+    def toggle_guide(self) -> None:
+        """? Guide: show or hide the Guide (remembered per game in ``studiostate``). The
+        pane itself (W6) listens through ``show_guide`` when the window has one."""
+        self.guide_shown = not self.guide_shown
+        self.play_bar.set_guide(self.guide_shown)
+        studiostate.with_change(self.paths.root, guide_open=self.guide_shown)
+        show = getattr(self, "show_guide", None)
+        if callable(show):
+            show(self.guide_shown)
 
     def _poll_preview(self) -> None:
         """The one poll loop: the preview runner, the check runner, then each joined
@@ -176,6 +189,10 @@ class RunWiring:
             return
         try:
             self.apply_events(self.runner.poll())
+            tab = self.current_tab()
+            if tab == "map" or tab != self._scene_tab:      # a box chosen, or the tab left
+                self._scene_tab = tab
+                self._update_scene_name()
             self.apply_check_events(self.check_runner.poll())
             for runner, on_events in list(self.runners):
                 if self.closed:
@@ -202,8 +219,12 @@ class RunWiring:
         it as it is."""
         self.preview_state = event.state
         self.status_label.configure(text=status_text(event))
+        self.play_bar.set_running(event.state in LIVE)
         if event.state is PreviewState.RUNNING:
             self.show_hint(NO_PROBLEMS)
+            if not self._played_marked:     # Guide step 7: a Play reached the game window
+                self._played_marked = True
+                studiostate.with_change(self.paths.root, played=True)
         elif event.report is not None and event.state in (PreviewState.DIDNT_START,
                                                           PreviewState.STOPPED_ERROR):
             self.show_report(event.report)

@@ -73,7 +73,7 @@ STORY_EDIT = "Edit command"
 STORY_UP = "Move up"
 STORY_DOWN = "Move down"
 STORY_DELETE_ROW = "Delete command"
-STORY_PREVIEW = "Preview from this scene"
+STORY_PREVIEW = "Play from this scene"       # F47 PR-F47-08 (was Preview…)
 RENAME_SCENE_ASK = "Rename the scene `{name}`. Type its new name:"
 RENAME_SCENE_OK = "Continue"
 CHANGE_TARGET_TITLE = "Change target"
@@ -779,10 +779,11 @@ class MapWiring:
             menu.add_command(label=label, accelerator=accel.replace("Ctrl", self._key_word()),
                              command=run)
             last_was_item = True
-        if kind == "box" and self.story_map.focused_name() is not None:
+        scene = self._context_scene(kind)
+        if scene is not None:                       # F47 PR-F47-08: boxes and Events rows
             if last_was_item:
                 menu.add_separator()
-            menu.add_command(label=STORY_PREVIEW, command=self.preview_scene)
+            menu.add_command(label=STORY_PREVIEW, command=lambda: self.play(scene))
         if menu.index("end") is not None and menu.type("end") == "separator":
             menu.delete("end")
         self.last_context = menu            # tests read it
@@ -1199,12 +1200,14 @@ class MapWiring:
         return self.retarget(layout.boxes[edge.src].name, layout.boxes[edge.dst].name,
                              edge.kind, layout.boxes[target].name)
 
-    def preview_scene(self) -> None:
-        """Preview from this scene (a box's context menu, PR-F46-17): F44's preview,
-        started at the focused box's label."""
-        name = self.story_map.focused_name()
-        if name is not None:
-            self.preview(at=name)
+    def _context_scene(self, kind: str) -> str | None:
+        """The scene Play from this scene plays: a box's own, or the scene whose Events
+        list a row is in."""
+        if kind == "box":
+            return self.story_map.focused_name()
+        if kind == "row" and self.story is not None and self.story.key is not None:
+            return self.story.key[0]
+        return None
 
     def move_box(self) -> None:
         """Move box (G3): the focused box follows the arrow keys until Enter."""

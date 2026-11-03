@@ -20,8 +20,12 @@ from engine.tools.editor.theme import MENU_BAR_PX
 from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
+from engine.tools.editor.playbar import PLAY_OPTIONS
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
+PLAY_MENU = "Play"                      # Run menu (F47 §6.1)
+PLAY_SCENE_MENU = "Play this scene"
+STOP_MENU = "Stop"
 
 
 @dataclass(frozen=True)
@@ -95,8 +99,11 @@ class StudioMenus:
                 Check(SHOW_WARNINGS, self.show_warnings, self.render_panel),
             ]),
             ("Run", "run_menu", [
-                Item("Preview", "F5", self.preview),
-                Item("Preview from start", "Shift+F5", lambda: self.preview(False)),
+                Item(PLAY_MENU, "Shift+F5", self.play_from_start),
+                Item(PLAY_SCENE_MENU, "F5", self.play_scene),
+                Item(STOP_MENU, f"{key}+F2", self.stop_game),
+                Item(PLAY_OPTIONS, command=self.play_options),
+                SEPARATOR,
                 Item("Check now", "F7", self.check_now),
             ]),
             ("Help", "help_menu", [
@@ -135,7 +142,7 @@ class StudioMenus:
                                 height=max(self._px(MENU_BAR_PX),
                                            font.metrics("linespace") + self._px(8)),
                                 scale=self.scale)
-        self.menu_bar.frame.pack(side="top", fill="x", before=self.hpane)
+        self.menu_bar.frame.pack(side="top", fill="x", before=self.play_bar.frame)
 
     def _build_insert_menu(self, bar: tk.Menu) -> tk.Menu:
         """Insert: one submenu per GROUPS entry with docs, built once from the registry."""

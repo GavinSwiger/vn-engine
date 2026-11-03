@@ -1,6 +1,6 @@
 # Studio, the scene editor
 
-Studio edits, checks, and previews your game, and maps your story.
+Studio edits, checks, plays, and maps your game.
 
 ## Open a game
 
@@ -8,8 +8,8 @@ Studio edits, checks, and previews your game, and maps your story.
 python -m engine edit game
 ```
 
-Leave out `game` to open the game next to `main.py`. The window holds the **Project**
-panel, **Start values**, four tabs, **Problems**, and **Help**.
+Leave out `game` to open the game next to `main.py`. The window holds the Play bar,
+the **Project** panel, four tabs, **Problems**, and **Help**.
 
 ## Your files
 
@@ -75,33 +75,34 @@ Ctrl+click uses the Editor tab. Ctrl+= and Ctrl+- zoom.
 If a change stops the script loading, the map keeps its last drawing, marked "out of date".
 **Go to label** (Ctrl+G) jumps to a label by name.
 
-## Preview a scene
+## Play a scene
 
-Click inside a scene. "Preview starts at:" names the label above the cursor. Press F5 or
-**Preview**. Studio saves your files and opens the game at that label. Shift+F5 starts at
-`label start` instead.
+**▶ Play this scene** (F5) saves your files and plays from the label above the cursor, or
+the selected map box. **▶ Play** (Shift+F5) starts at
+`label start`. **■ Stop** (Ctrl+F2) closes it.
 
 A scene that is only reached by `call` ends the preview at its `return`.
 
 ## Start values
 
 In *Paper Lanterns*, the example game, `label bridge` checks `bought_lantern`. Hana's
-name is "???" until `label start` sets it. Type start values in the **Start values** box,
-one per line, written like a `default`:
+name is "???" until `label start` sets it. In **Play options…**, type them in the
+**Start values** box, one per line, written like a `default`:
 
 ```
 bought_lantern = True
 hana_name = "Hana"
 ```
 
-The story's defaults are set first. Then your values replace them. A default that uses
+Your values replace the defaults. A default that uses
 another default, like `default bonus = trust + 1`, uses the original `trust`.
 
-Previews are normal dev runs. They use the saves and persistent data in your game folder.
+Previews are normal dev runs. They use the saves and persistent data in your game folder,
+unless you tick **Play as a new player**.
 
 ## When a preview can't start
 
-Two errors come from the start options, so they have no line:
+Two errors come from the start options and have no line:
 
 - **E26b, no such label:** no label has the start name. The message suggests a close
   name, or names the file that no `include` adds.
@@ -110,7 +111,7 @@ Two errors come from the start options, so they have no line:
 
 ## Without Studio
 
-This line runs the same preview in cmd, PowerShell, or bash:
+The same preview from cmd, PowerShell, or bash:
 
 ```
 python -m engine run game --start bridge --set "bought_lantern=True" --set "hana_name='Hana'"
@@ -127,7 +128,7 @@ inside the double quotes.
 - Ctrl+Space: completion. Ctrl+G: Go to label.
 - Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4: Editor, Story map, Asset, Outline.
 - Ctrl+=, Ctrl+-, Ctrl+0: zoom the text, or the map.
-- F5: preview from the cursor. Shift+F5: from the start. F7: Check now.
+- F5: play this scene. Shift+F5: from the start. Ctrl+F2: stop. F7: Check now.
 - F6, Shift+F6: next or previous area.
 
 ## Good to know

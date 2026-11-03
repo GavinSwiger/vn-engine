@@ -29,7 +29,8 @@ applies a ``scriptedit.Plan`` (F46's story edits, F47's Database and Game settin
 - ``fileactions.FileActions``: Add files…, New script file, Rename, Delete, New game.
 - ``checkwiring.CheckWiring``: checks, markers, the name index, the Problems panel, and
   ``on_check_done``.
-- ``runwiring.RunWiring``: start values, Preview, and the poll loop (``join_runner``).
+- ``runwiring.RunWiring``: the Play bar (``playbar``), Play and Stop, and the poll loop
+  (``join_runner``).
 - ``mapwiring.MapWiring``: the Story map tab, its side pane, the layout file, map undo.
 
 Imports only ``engine.core``, ``engine.script`` (through ``document`` and ``syntax``), and
@@ -136,7 +137,6 @@ from engine.tools.editor.fileactions import (  # re-exported: tests read window.
 from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
-    STARTS_AT,
     STATUS_NOT_RUNNING,
     RunWiring,
     status_text,
@@ -461,6 +461,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
         # The status bar is packed first, so it keeps its line at the minimum size.
         self._build_status_bar()
+        self._build_play_bar()             # F47: under the menu bar, across the window
         sash, sash_width = THEME["sash"], px(SASH_WIDTH)
         self.hpane = tk.PanedWindow(root, orient="horizontal", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
@@ -514,8 +515,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
     def _build_left_column(self) -> None:
         """The chrome-toned left column (08 §7): PROJECT's header with "+ Add files…" as a
-        ghost button, the tree, then ``runwiring``'s START VALUES, the Preview button and
-        where it starts."""
+        ghost button, and the tree below it (F47: the Play bar replaced F44's start values
+        and Preview button here)."""
         left, px = self.left, self._px
         left.columnconfigure(0, weight=1)
         left.rowconfigure(1, weight=1)
@@ -533,8 +534,6 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             self.tree.bind(key, self._focus_editor)
         self.tree.bind("<F2>", lambda _e: self._break(self.rename_selected))
         self.tree.bind("<Delete>", lambda _e: self._break(self.delete_selected))
-        self._build_run_column(left, 2)
-        left.bind("<Configure>", self._rewrap_left, add="+")
 
     def _build_status_bar(self) -> None:
         """F45 01 §6.5 (amended 2026-11-02): the game folder, the check's counts and message,
@@ -655,11 +654,6 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         limit = max(self._px(LEFT_MIN_WIDTH), total // 2)
         if x > limit:
             self.hpane.sash_place(0, limit, y)
-
-    def _rewrap_left(self, event: tk.Event) -> None:
-        wrap = max(40, event.width - 2 * self._px(PANEL_INSET))
-        for label in self._wrapped_labels:
-            label.configure(wraplength=wrap)
 
     # --- Editor widgets ---------------------------------------------------------------------
 
