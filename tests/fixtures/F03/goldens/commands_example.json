@@ -623,7 +623,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "text": "That's me in there. hana.chr. Don't open it, it's ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "wave",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "private",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
         "type": "Span"
        }
       ],
@@ -631,10 +649,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/da751fec11f2",
+     "sid": "hana_file/3d0ffb0f4fe3",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "text": "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}.",
      "type": "Say"
     },
     {
@@ -718,7 +736,26 @@
         "style": {
          "type": "Style"
         },
-        "text": "...Huh. Did I just disappear from your folder?",
+        "text": "...Huh. Did I just ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "shake",
+          "strength": "small",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "disappear",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": " from your folder?",
         "type": "Span"
        }
       ],
@@ -726,10 +763,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/9eedb6ccaa82",
+     "sid": "hana_file/3329717e747a",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "...Huh. Did I just disappear from your folder?",
+     "text": "...Huh. Did I just {shake=small}disappear{/shake} from your folder?",
      "type": "Say"
     },
     {
@@ -769,7 +806,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "text": "There's a copy of me in the files folder. You could ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "glitch",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "put me back",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ", if you like.",
         "type": "Span"
        }
       ],
@@ -777,10 +832,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/c7f9e3fdbe3a",
+     "sid": "hana_file/378ba8039eab",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "text": "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like.",
      "type": "Say"
     },
     {
@@ -3960,19 +4015,19 @@
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/da751fec11f2",
+        "sid": "hana_file/3d0ffb0f4fe3",
         "text": "That's me in there. hana.chr. Don't open it, it's private."
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/9eedb6ccaa82",
+        "sid": "hana_file/3329717e747a",
         "text": "...Huh. Did I just disappear from your folder?"
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/c7f9e3fdbe3a",
+        "sid": "hana_file/378ba8039eab",
         "text": "There's a copy of me in the files folder. You could put me back, if you like."
        },
        {
@@ -5018,7 +5073,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "text": "That's me in there. hana.chr. Don't open it, it's ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "wave",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "private",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
         "type": "Span"
        }
       ],
@@ -5026,10 +5099,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/da751fec11f2",
+     "sid": "hana_file/3d0ffb0f4fe3",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "text": "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}.",
      "type": "Say"
     },
     {
@@ -5113,7 +5186,26 @@
         "style": {
          "type": "Style"
         },
-        "text": "...Huh. Did I just disappear from your folder?",
+        "text": "...Huh. Did I just ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "shake",
+          "strength": "small",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "disappear",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": " from your folder?",
         "type": "Span"
        }
       ],
@@ -5121,10 +5213,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/9eedb6ccaa82",
+     "sid": "hana_file/3329717e747a",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "...Huh. Did I just disappear from your folder?",
+     "text": "...Huh. Did I just {shake=small}disappear{/shake} from your folder?",
      "type": "Say"
     },
     {
@@ -5164,7 +5256,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "text": "There's a copy of me in the files folder. You could ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "glitch",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "put me back",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ", if you like.",
         "type": "Span"
        }
       ],
@@ -5172,10 +5282,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/c7f9e3fdbe3a",
+     "sid": "hana_file/378ba8039eab",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "text": "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like.",
      "type": "Say"
     },
     {
@@ -8137,19 +8247,19 @@
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/da751fec11f2",
+        "sid": "hana_file/3d0ffb0f4fe3",
         "text": "That's me in there. hana.chr. Don't open it, it's private."
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/9eedb6ccaa82",
+        "sid": "hana_file/3329717e747a",
         "text": "...Huh. Did I just disappear from your folder?"
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/c7f9e3fdbe3a",
+        "sid": "hana_file/378ba8039eab",
         "text": "There's a copy of me in the files folder. You could put me back, if you like."
        },
        {
@@ -9179,7 +9289,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "text": "That's me in there. hana.chr. Don't open it, it's ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "wave",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "private",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
         "type": "Span"
        }
       ],
@@ -9187,10 +9315,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/da751fec11f2",
+     "sid": "hana_file/3d0ffb0f4fe3",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "text": "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}.",
      "type": "Say"
     },
     {
@@ -9274,7 +9402,26 @@
         "style": {
          "type": "Style"
         },
-        "text": "...Huh. Did I just disappear from your folder?",
+        "text": "...Huh. Did I just ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "shake",
+          "strength": "small",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "disappear",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": " from your folder?",
         "type": "Span"
        }
       ],
@@ -9282,10 +9429,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/9eedb6ccaa82",
+     "sid": "hana_file/3329717e747a",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "...Huh. Did I just disappear from your folder?",
+     "text": "...Huh. Did I just {shake=small}disappear{/shake} from your folder?",
      "type": "Say"
     },
     {
@@ -9325,7 +9472,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "text": "There's a copy of me in the files folder. You could ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "glitch",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "put me back",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ", if you like.",
         "type": "Span"
        }
       ],
@@ -9333,10 +9498,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/c7f9e3fdbe3a",
+     "sid": "hana_file/378ba8039eab",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "text": "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like.",
      "type": "Say"
     },
     {
@@ -12584,19 +12749,19 @@
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/da751fec11f2",
+        "sid": "hana_file/3d0ffb0f4fe3",
         "text": "That's me in there. hana.chr. Don't open it, it's private."
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/9eedb6ccaa82",
+        "sid": "hana_file/3329717e747a",
         "text": "...Huh. Did I just disappear from your folder?"
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/c7f9e3fdbe3a",
+        "sid": "hana_file/378ba8039eab",
         "text": "There's a copy of me in the files folder. You could put me back, if you like."
        },
        {
@@ -13647,7 +13812,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "text": "That's me in there. hana.chr. Don't open it, it's ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "wave",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "private",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
         "type": "Span"
        }
       ],
@@ -13655,10 +13838,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/da751fec11f2",
+     "sid": "hana_file/3d0ffb0f4fe3",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "text": "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}.",
      "type": "Say"
     },
     {
@@ -13742,7 +13925,26 @@
         "style": {
          "type": "Style"
         },
-        "text": "...Huh. Did I just disappear from your folder?",
+        "text": "...Huh. Did I just ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "shake",
+          "strength": "small",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "disappear",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": " from your folder?",
         "type": "Span"
        }
       ],
@@ -13750,10 +13952,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/9eedb6ccaa82",
+     "sid": "hana_file/3329717e747a",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "...Huh. Did I just disappear from your folder?",
+     "text": "...Huh. Did I just {shake=small}disappear{/shake} from your folder?",
      "type": "Say"
     },
     {
@@ -13793,7 +13995,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "text": "There's a copy of me in the files folder. You could ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "glitch",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "put me back",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ", if you like.",
         "type": "Span"
        }
       ],
@@ -13801,10 +14021,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/c7f9e3fdbe3a",
+     "sid": "hana_file/378ba8039eab",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "text": "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like.",
      "type": "Say"
     },
     {
@@ -16265,19 +16485,19 @@
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/da751fec11f2",
+        "sid": "hana_file/3d0ffb0f4fe3",
         "text": "That's me in there. hana.chr. Don't open it, it's private."
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/9eedb6ccaa82",
+        "sid": "hana_file/3329717e747a",
         "text": "...Huh. Did I just disappear from your folder?"
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/c7f9e3fdbe3a",
+        "sid": "hana_file/378ba8039eab",
         "text": "There's a copy of me in the files folder. You could put me back, if you like."
        },
        {
@@ -17233,7 +17453,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "text": "That's me in there. hana.chr. Don't open it, it's ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "wave",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "private",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
         "type": "Span"
        }
       ],
@@ -17241,10 +17479,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/da751fec11f2",
+     "sid": "hana_file/3d0ffb0f4fe3",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "text": "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}.",
      "type": "Say"
     },
     {
@@ -17328,7 +17566,26 @@
         "style": {
          "type": "Style"
         },
-        "text": "...Huh. Did I just disappear from your folder?",
+        "text": "...Huh. Did I just ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "shake",
+          "strength": "small",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "disappear",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": " from your folder?",
         "type": "Span"
        }
       ],
@@ -17336,10 +17593,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/9eedb6ccaa82",
+     "sid": "hana_file/3329717e747a",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "...Huh. Did I just disappear from your folder?",
+     "text": "...Huh. Did I just {shake=small}disappear{/shake} from your folder?",
      "type": "Say"
     },
     {
@@ -17379,7 +17636,25 @@
         "style": {
          "type": "Style"
         },
-        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "text": "There's a copy of me in the files folder. You could ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "effect": {
+          "kind": "glitch",
+          "type": "TextEffect"
+         },
+         "type": "Style"
+        },
+        "text": "put me back",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ", if you like.",
         "type": "Span"
        }
       ],
@@ -17387,10 +17662,10 @@
      },
      "name": "Hana",
      "name_color": "#b03070",
-     "sid": "hana_file/c7f9e3fdbe3a",
+     "sid": "hana_file/378ba8039eab",
      "speaker": "hana",
      "speaker_tag": "hana",
-     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "text": "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like.",
      "type": "Say"
     },
     {
@@ -20407,19 +20682,19 @@
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/da751fec11f2",
+        "sid": "hana_file/3d0ffb0f4fe3",
         "text": "That's me in there. hana.chr. Don't open it, it's private."
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/9eedb6ccaa82",
+        "sid": "hana_file/3329717e747a",
         "text": "...Huh. Did I just disappear from your folder?"
        },
        {
         "kind": "line",
         "name": "Hana",
-        "sid": "hana_file/c7f9e3fdbe3a",
+        "sid": "hana_file/378ba8039eab",
         "text": "There's a copy of me in the files folder. You could put me back, if you like."
        },
        {

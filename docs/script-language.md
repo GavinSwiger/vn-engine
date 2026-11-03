@@ -380,6 +380,7 @@ file and line:
 | `only choices can go directly in a menu, after one optional question line. Indent this line inside a choice, or move it above menu:.` | Everything but the question goes inside a choice. |
 | `this choice has no text, so the player couldn't see it. Write its words between the quotes.` | Write the choice's words. |
 | `{pause} can't be used in a choice, because choices appear all at once. Choices can use {b}, {i}, {color}, and {var}.` (`{speed}`, `{size}`, and `{next}` the same) | Remove the tag. |
+| `{shake} can't be used in a choice, because choices are shown without text effects. Choices can use {b}, {i}, {color}, and {var}.` (`{wave}` and `{glitch}` the same) | Remove the effect. |
 | `there is no tag "colour". Did you mean "color"?` (every tag mistake of [When a tag is wrong](#when-a-tag-is-wrong)) | Fix the tag. |
 | `{var=met_daichi} shows a variable that no default or define sets, so the story stops if this line runs before a $ line sets it. Add default met_daichi = "" at the top level.` (warning) | Add the `default`. |
 | `this line of text ends with :, which only menu choices do. Remove the :, or put the choice in a menu: block.` | A choice outside a menu: put it in one. |
@@ -1229,7 +1230,6 @@ extra dots, at most 5 words, and not a statement word or `layer`, `zoom`, `flip`
 lists any file that breaks these, with a name to rename it to. The example game's pictures
 are in `game/images/`.
 
-**Art scale.** Sprites are drawn at their own size on a screen 720 high. If your art was
 **Blinking and talking.** A character blinks, and moves her mouth while her lines type,
 when her picture has frames next to it: copies of the same picture, the same size, with only
 the eyes or the mouth changed. Name them after the look, with `_blink` or `_talk` and a
@@ -1255,6 +1255,7 @@ blink_frame = 0.08         # seconds per blink frame (0.02 to 0.5)
 talk_frame = 0.1           # seconds per talking frame (0.03 to 0.5)
 ```
 
+**Art scale.** Sprites are drawn at their own size on a screen 720 high. If your art was
 drawn for a 1920×1080 screen, say so once in `game/config.toml`. Backgrounds always fill
 the screen, whatever their size.
 ```toml
@@ -1548,6 +1549,9 @@ bold and `{/b}` ends it.
 | `{size=1.5}…{/size}` | bigger or smaller: 0.5 to 2 times the normal size |
 | `{speed=0.5}…{/speed}` | type slower or faster: 0.1 to 10 times the player's speed (2 is twice as fast) |
 | `{speed=instant}…{/speed}` | show these words all at once |
+| `{shake}…{/shake}` | the letters tremble; see [Text effects](#text-effects) |
+| `{wave}…{/wave}` | the letters ripple up and down |
+| `{glitch}…{/glitch}` | some letters flicker into symbols such as `#` and `%` |
 | `{pause=0.6}` | stop typing for 0.6 seconds (0.1 to 30) |
 | `{pause}` | stop until the player clicks; the text so far stays |
 | `{var=player_name}` | show a story variable's value |
@@ -1596,6 +1600,65 @@ where you like:
 
 The check measures each `{var}` as its `default`'s value (or empty), at the `text_size` and
 fonts in `config.toml`.
+
+### Text effects
+
+`{shake}`, `{wave}`, and `{glitch}` move or corrupt the letters between them while the line
+is on screen: `shake` trembles, `wave` ripples up and down, and `glitch` flickers letters
+into symbols such as `#` and `%`.
+
+```
+default player_name = "Ren"
+
+label start:
+    hana "I'm {wave}so{/wave} happy you came today!"
+    hana "{shake=small}I just... {pause=0.6}{speed=0.2}don't{/speed} want you to leave.{/shake}"
+    hana "{glitch=large}You're not going anywhere.{/glitch}"
+    "My name is {glitch}{var=player_name}{/glitch}."
+```
+
+| Tag | What it does | `small` / `medium` / `large` |
+|---|---|---|
+| `{shake}…{/shake}` | each letter trembles on its own, 20 times a second | up to 1 / 2 / 4 units from its place (at text size 28) |
+| `{wave}…{/wave}` | the letters ripple up and down, one wave a second along the words | 2 / 3.5 / 6 units high |
+| `{glitch}…{/glitch}` | letters flicker into one of 20 symbols, each about 8 times a second | about 10% / 25% / 50% of the letters at any moment |
+
+- **Strength.** Each takes `small`, `medium` (the default), or `large` after `=`:
+  `{shake=large}…{/shake}`. Shake and wave grow with the text: `{size=2}` or a player's
+  bigger text size moves them further.
+- **One effect at a time.** Effects mix with every other tag (`{b}`, `{color}`, `{size}`,
+  `{speed}`, `{pause}`, `{var}`), but a letter has one effect at a time, so close one before
+  opening another: `{shake}…{/shake}{wave}…{/wave}`. The same effect inside itself is fine,
+  and the inner strength wins: `{shake}a{shake=large}b{/shake}c{/shake}`.
+- **Only for show.** Effects never change where a line breaks, how fast it types, its typing
+  sound, or what is saved. **History** shows the real words, and a `{var}` inside `{glitch}`
+  glitches only on screen.
+- **Sudden speed changes** need no new tag: `{speed=0.2}` crawls, `{speed=instant}` slams the
+  rest out at once, and `{pause=0.8}` holds a beat:
+
+```
+    "{speed=0.2}It was... {/speed}{pause=0.8}{speed=instant}{shake=large}GONE.{/shake}{/speed}"
+```
+
+- **Reduce motion.** When a player turns on **Reduce motion and flashing** in Settings (or
+  `[effects] reduce = true` is set for everyone), shake and wave hold still and glitch stops
+  flickering: each glitch span keeps one fixed scatter of symbols, at least one. So, as with
+  `shake` and `flash`, don't let an effect carry the story on its own: let the words say
+  what happens.
+- **Where they work.** Dialogue and narration, in the text box and in full-screen text
+  (`nvl`), where every line on the page keeps moving. A line shown again by a load or
+  rollback appears complete, its effects moving. Choices, codex tips, and character names
+  take no effects; the tag stops the launch with their own message.
+- **Nothing is clipped.** A large shake or wave at a big size can reach a few units past
+  the edge of the box. It is drawn there, and nothing is left behind when it moves back.
+- **Fonts without the symbols.** Glitch draws its symbols in the span's own font:
+  `! # $ % & * + / < = > ? @ \ ^ _ | ~ [ ]`. The built-in fonts have them all; a font that
+  lacks one shows its missing-letter box instead.
+- **Keep glitches short.** In a dev run, a `{glitch}` span of more than 40 letters at
+  `medium` or `large` gives a warning (in the table below), because so many symbols make
+  the line hard to read. Glitch a few words, or use `{glitch=small}`.
+
+The example game's bonus scene, `game/script/bonus.vns`, uses each effect once.
 
 ### Text style for a character
 
@@ -1658,13 +1721,14 @@ The game checks every tag when it loads and stops with the file, line, and colum
 | Message | Fix |
 |---|---|
 | `there is no tag "colour". Did you mean "color"?` | Fix the spelling. |
-| `there is no tag "blink". The tags are b, i, color, size, speed, pause, var, and next.` | Use one of these tags. |
+| `there is no tag "blink". The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.` | Use one of these tags. |
 | `tags are lower case: write {b}, not {B}.` | Write the tag in lower case. |
 | `there is no tag "bold". For bold, write {b}…{/b}.` | Tags from other engines get a hint like this. |
 | `there is no tag "w". To wait for a click, write {pause}; to wait half a second, write {pause=0.5}.` | Use `{pause}`. |
 | `there is no tag "cps". To change typing speed, write {speed=2}…{/speed} for twice as fast.` | Use `{speed=…}`. |
 | `there is no tag "nw". To move on by itself, end the text with {next}.` | Use `{next}`. |
-| `there is no tag "shake" in this engine version.` | Remove it. |
+| `there is no tag "jitter". To shake text, write {shake}…{/shake}.` / `there is no tag "wavy". To make text ripple, write {wave}…{/wave}.` / `there is no tag "zalgo". To make text glitch, write {glitch}…{/glitch}.` | Use the [text effect](#text-effects) the hint names. |
+| `there is no tag "font" in this engine version. The tags are b, i, color, size, speed, shake, wave, glitch, pause, var, next, and username.` | Remove it, or use one of these tags. |
 | `this { never closes. End the tag with }, or write {{ to show a {.` | Close the tag, or write `{{`. |
 | `{} is an empty tag. To show {}, write {{}.` | Write `{{}`. |
 | `a { can't go inside a tag. To show a {, write {{.` | Close the tag first. |
@@ -1685,6 +1749,8 @@ The game checks every tag when it loads and stops with the file, line, and colum
 | `numbers in tags have no units: write {pause=0.5}, not {pause=0.5s}.` | Remove the unit. |
 | `{speed=…} takes a number from 0.1 to 10, or instant, but this has 40. Speeds are relative: 2 is twice as fast, 0.5 half as fast.` | Use a relative speed. |
 | `{size=…} takes a number from 0.5 to 2, but this has 28. Sizes are relative: 1.5 is half again as big.` | Use a relative size. |
+| `{shake=…} takes small, medium, or large, or no value, but this has "2". Write {shake=large} for a bigger shake.` (`{wave}` and `{glitch}` the same, ending "for a bigger wave" and "for more glitching") / `{wave=} takes small, medium, or large: write {wave} for medium, or {wave=large}.` | Write `small`, `medium`, or `large`, or no value for medium. |
+| `{wave} can't go inside {shake}: a character has one effect at a time. Close {/shake} first, or pick one: {shake}…{/shake}{wave}…{/wave}.` | Close one effect before opening another. |
 | `write 0.5, not .5.` | Start the number with 0. |
 | `{var=…} takes one variable's name, such as {var=player_name}, but this has "hana.name". To show something else, store it in a variable first.` | `$ shown_name = hana.name`, then `{var=shown_name}`. |
 | `{/b} closes bold, but no {b} is open here. Remove it, or add {b} where bold should start.` | Remove it, or add the `{b}`. |
@@ -1692,6 +1758,7 @@ The game checks every tag when it loads and stops with the file, line, and colum
 | `{/b} closes bold, but {i} was opened inside it and is still open. Close {/i} first: {b}…{i}…{/i}{/b}.` | Close the inner tag first. |
 | `{next} goes at the very end of the text, because the line moves on as soon as it is shown. Move it to the end, or use {pause} to wait here.` | Move it to the end. |
 | `this line has {next} twice. Keep the last one.` | Remove the first. |
+| `this {glitch} has 41 characters glitching at medium or large, so about a quarter of them show as symbols at any moment and the line is hard to read. Use a shorter span or {glitch=small}; History always shows the real text.` / `this {glitch} has 64 characters glitching at medium or large, so about half of them show as symbols at any moment and the line is hard to read. Use a shorter span or {glitch=small}; History always shows the real text.` (warning, dev runs) | Glitch fewer words, or use `{glitch=small}`. |
 
 ---
 
@@ -2917,6 +2984,8 @@ game start; the rest stop the launch.
 | `{/b} closes bold, but no {b} is open here. …` | Remove it, or add the `{b}`. |
 | `{/b} closes bold, but {i} was opened inside it and is still open. …` | Close the inner tag first. |
 | `{next} goes at the very end of the text, …` | Move it to the end. |
+| `{wave} can't go inside {shake}: a character has one effect at a time. …` | Close one effect before opening another. |
+| `this {glitch} has 64 characters glitching at medium or large, …` (warning, dev runs) | Glitch fewer words, or use `{glitch=small}`. |
 | `text_color must be a color: …` / `character names are shown exactly as written, …` | Fix the `Character` option; names take no tags. |
 | `{var=player_nmae} shows a variable that no default or define sets, …` (warning) | Fix the name, or add a `default`. |
 | `this line needs 2 text boxes at text size 28, …` (warning, dev runs) | Split the line if you want to choose the break. |
@@ -3104,7 +3173,7 @@ W196–W200 are warnings in the log while the game runs; the story goes on.
 Glitch effects make the stage picture look broken, for a moment or for as long as you like:
 bands of it slide sideways, its colors split apart, static covers it, or one sprite twitches.
 They act on the stage only; the text box, choices, and menus never glitch. To glitch a
-line's text instead, write [`{glitch}…{/glitch}`](#text-tags) inside it. The example game's
+line's text instead, write [`{glitch}…{/glitch}`](#text-effects) inside it. The example game's
 bonus scene, `game/script/bonus.vns`, uses each one with a comment above its first use.
 
 ```
@@ -3388,3 +3457,9 @@ game runs; the story goes on.
   `colorshift`, `static`, and `jitter`, sizes, bursts and `on`/`off`, `effect off`, `with glitch`,
   the flash limit and reduced effects, saves, `[effects] glitch` and `glitch_size`, and E294,
   W182–W184. `effect` is available in Reserved words; `glitch` is in the `with` table.
+- 2026-11-02: F29 step 5: "Text effects" in Dialogue text (section 14): `{shake}`, `{wave}`,
+  `{glitch}` and their strengths, one effect at a time, History, the crawl-then-slam recipe,
+  Reduce motion, nothing clipped, fonts without the symbols, and long glitches. The tag table
+  lists the three; the E160 list and missing-tag rows match the engine again (the old
+  "shake in this engine version" row is gone); new rows for the E160 effect hints, E164's
+  effect forms, E297, W185, and E175's effect form.

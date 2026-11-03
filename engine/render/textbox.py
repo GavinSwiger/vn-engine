@@ -68,8 +68,11 @@ this view owns the look and its caches.
 """
 
 import math
+import sys
+from array import array
 from bisect import bisect_left
 from collections import OrderedDict
+from itertools import repeat
 from weakref import WeakKeyDictionary
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
@@ -98,6 +101,7 @@ from engine.render.textfx import (
     SHAKE,
     SHAKE_STEP_S,
     SUBSTITUTES,
+    WAVE,
     WAVE_PERIOD_S,
     WAVE_PHASE,
     FxTime,
@@ -110,12 +114,14 @@ from engine.render.textfx import (
 from engine.render.textlayout import LINE_PITCH, FaceSource, Page, render_safe
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from engine.render.assets import AssetManager, ImageRef
 
 Blit = tuple[pygame.Surface, tuple[int, int]]
 _M: Final = 0xFFFFFFFF
+_LANE: Final = array("q", [1])           # one 64-bit lane of fx_blits' batched hash
+assert _LANE.itemsize == 8
 
 MAX_BOX_HEIGHT: Final = 216              # UI-F05-01: the box never grows past this
 LINES_FOR_HEIGHT: Final = 3              # H fits three lines of the text size
@@ -261,6 +267,32 @@ class _PageDraw:
                         break
 
 
+def _mix_lanes(x: int, mask: int) -> int:
+    """``textfx.mix32`` on every 64-bit lane of ``x`` at once (each lane < 2³²; ``mask`` is
+    0xFFFFFFFF in each lane). A lane times a 32-bit constant stays under 2⁶⁴, and each shift
+    is masked, so no lane reaches its neighbour: the result is each lane's ``mix32``."""
+    x ^= (x >> 16) & mask
+    x = (x * 0x7FEB352D) & mask
+    x ^= (x >> 15) & mask
+    x = (x * 0x846CA68B) & mask
+    x ^= (x >> 16) & mask
+    return x
+
+
+def _lane_hashes(starts: list[int], salts: tuple[int, ...], seed: int) -> "tuple[array[int], ...]":
+    """``mix32(mix32(start) + (s << 20 | seed))`` for each ``start`` (``key + step``) and each
+    salt ``s`` in ``salts`` order, batched: the starts packed into one int of 64-bit lanes,
+    so each ``mix32`` round is five big-int operations for the whole list."""
+    n = len(starts)
+    ones = int.from_bytes(_LANE.tobytes() * n, sys.byteorder)
+    mask = ones * _M
+    first = _mix_lanes(int.from_bytes(array("q", starts).tobytes(), sys.byteorder) & mask,
+                       mask)
+    return tuple(array("q", _mix_lanes((first + ones * (s << SEED_BITS | seed)) & mask,
+                                       mask).to_bytes(8 * n, sys.byteorder))
+                 for s in salts)
+
+
 def fx_blits(glyphs: "Sequence[FxGlyph]", fx: FxTime | None, seed: int,
              out: list[Blit]) -> None:
     """Append each glyph's posed ``(surface, dest)`` to ``out`` (F29 ``04`` §7.3). ``fx``
@@ -268,73 +300,68 @@ def fx_blits(glyphs: "Sequence[FxGlyph]", fx: FxTime | None, seed: int,
     step-0 pick or its ``still_sub`` (call ``_PageDraw.prepare_still`` first).
 
     The poses are exactly ``textfx.shake_unit``, ``wave_unit``, and ``glitch_pick``
-    (AC-F29-10, 13 compare them). For speed (04 §11: a full page ≤ 1.5 ms) the hash's last
-    two ``mix32`` rounds are inlined here: ``h(i, step, salt, seed)`` is ``mix32(mix32(key
-    + step) + (salt << 20 | seed))`` with ``key = index_key(i)`` kept on the glyph, and a
-    glitch glyph's phase is kept per seed. Per glyph: two rounds or one ``sin``, a tuple."""
+    (AC-F29-10, 13 compare them). For speed (04 §11: a full page ≤ 1.5 ms) the hash is
+    batched (F29 step 5, about 2× on a full page): ``h(i, step, salt, seed)`` is
+    ``mix32(mix32(key + step) + (salt << 20 | seed))`` with ``key = index_key(i)`` kept on
+    the glyph, and ``_lane_hashes`` runs both rounds for every glyph of the list at once (a
+    glitch glyph's phase is kept per seed). Per glyph then: one tuple, plus two ``round`` or
+    one ``sin``. A list of wave alone hashes nothing."""
     append = out.append
-    if fx is None:
+    if fx is None or not glyphs:
         for g in glyphs:
             append((g.surface, g.dest))
         return
     t, still = fx.t, fx.still
     floor = math.floor
-    wave = 2.0 * math.pi * t / WAVE_PERIOD_S
-    shake_step = floor(t / SHAKE_STEP_S)
-    shake_salt = SALT_SHAKE << SEED_BITS | seed
-    pick_salt = SALT_GLITCH_PICK << SEED_BITS | seed
     count = len(SUBSTITUTES)
-    for g in glyphs:
-        kind = g.kind
-        if kind == GLITCH:
+    if still:                          # shake and wave rest; glitch at step 0
+        if not any(g.kind == GLITCH for g in glyphs):
+            for g in glyphs:
+                append((g.surface, g.dest))
+            return
+        (picks,) = _lane_hashes([g.key for g in glyphs], (SALT_GLITCH_PICK,), seed)
+        for g, x in zip(glyphs, picks):
+            if g.kind != GLITCH:
+                append((g.surface, g.dest))
+                continue
             assert len(g.subs) == count
-            if still:
-                step = 0
-            else:
-                if g.phase_seed != seed:
-                    g.phase = GLITCH_STEP_S * u(h(g.index, 0, SALT_GLITCH_PHASE, seed))
-                    g.phase_seed = seed
-                step = floor((t + g.phase) / GLITCH_STEP_S)
-            x = (g.key + step) & _M                # mix32, inlined (textfx.mix32)
-            x ^= x >> 16
-            x = (x * 0x7FEB352D) & _M
-            x ^= x >> 15
-            x = (x * 0x846CA68B) & _M
-            x ^= x >> 16
-            x = (x + pick_salt) & _M
-            x ^= x >> 16
-            x = (x * 0x7FEB352D) & _M
-            x ^= x >> 15
-            x = (x * 0x846CA68B) & _M
-            x ^= x >> 16
             if (x & 0xFFFF) / 65536 < g.amp:
                 append(g.subs[int((x >> 16) / 65536 * count)])
-            elif still and g.still_sub >= 0:
+            elif g.still_sub >= 0:
                 append(g.subs[g.still_sub])
             else:
                 append((g.surface, g.dest))
-        elif still:
-            append((g.surface, g.dest))
-        elif kind == SHAKE:
-            x = (g.key + shake_step) & _M          # mix32, inlined (textfx.mix32)
-            x ^= x >> 16
-            x = (x * 0x7FEB352D) & _M
-            x ^= x >> 15
-            x = (x * 0x846CA68B) & _M
-            x ^= x >> 16
-            x = (x + shake_salt) & _M
-            x ^= x >> 16
-            x = (x * 0x7FEB352D) & _M
-            x ^= x >> 15
-            x = (x * 0x846CA68B) & _M
-            x ^= x >> 16
+        return
+    shakes: "Iterable[int]"
+    picks: "Iterable[int]"
+    if any(g.kind != WAVE for g in glyphs):
+        for g in [g for g in glyphs if g.kind == GLITCH and g.phase_seed != seed]:
+            g.phase = GLITCH_STEP_S * u(h(g.index, 0, SALT_GLITCH_PHASE, seed))
+            g.phase_seed = seed
+        shake_step = floor(t / SHAKE_STEP_S)
+        starts = [g.key + floor((t + g.phase) / GLITCH_STEP_S) if g.kind == GLITCH
+                  else g.key + shake_step for g in glyphs]
+        shakes, picks = _lane_hashes(starts, (SALT_SHAKE, SALT_GLITCH_PICK), seed)
+    else:
+        shakes = picks = repeat(0)
+    wave = 2.0 * math.pi * t / WAVE_PERIOD_S
+    sin = math.sin
+    for g, xs, xp in zip(glyphs, shakes, picks):
+        kind = g.kind
+        if kind == SHAKE:
             amp = g.amp
             dx, dy = g.dest
-            append((g.surface, (dx + round(amp * (2 * ((x & 0xFFFF) / 65536) - 1)),
-                                dy + round(amp * (2 * ((x >> 16) / 65536) - 1)))))
-        else:                                      # wave: raised = up (textfx.wave_unit)
+            append((g.surface, (dx + round(amp * (2 * ((xs & 0xFFFF) / 65536) - 1)),
+                                dy + round(amp * (2 * ((xs >> 16) / 65536) - 1)))))
+        elif kind == GLITCH:
+            assert len(g.subs) == count
+            if (xp & 0xFFFF) / 65536 < g.amp:
+                append(g.subs[int((xp >> 16) / 65536 * count)])
+            else:
+                append((g.surface, g.dest))
+        else:                          # wave: raised = up (textfx.wave_unit)
             dx, dy = g.dest
-            append((g.surface, (dx, dy + round(-g.amp * math.sin(wave + WAVE_PHASE * g.index)))))
+            append((g.surface, (dx, dy + round(-g.amp * sin(wave + WAVE_PHASE * g.index)))))
 
 
 class _TypedLayer:

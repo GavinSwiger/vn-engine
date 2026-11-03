@@ -90,6 +90,12 @@ F05_KEYS = ("[textbox]", "cps", "[theme.textbox]", "text_font", "bold_font", "it
             "frame_image", "[theme.textbox.name_tab]")
 
 
+# F05's E160 forms that F29 (and F30's username) changed in messages.py: the list now names
+# shake, wave, glitch, and username, and "shake" is a tag, not a missing one.
+F29_SUPERSEDED = ('there is no tag "blink". The tags are b, i, color, size, speed, pause, var, '
+                  'and next.', 'there is no tag "shake" in this engine version.')
+
+
 def _f05_messages(code: str) -> list[str]:
     """The full quoted texts of F05 ``02-script.md`` §5's row for ``code`` (parts such as
     `` `i` `` and W40's "needs 3 text boxes …" are left out)."""
@@ -112,6 +118,8 @@ def test_ac_f05_48_dialogue_text_section():
         quoted = _f05_messages(code)
         assert quoted, code
         for message in quoted:
+            if message in F29_SUPERSEDED:          # AC-F29-19 checks the engine's words
+                continue
             assert f"`{message}`" in section, (code, message)
     assert re.search(r"color carries meaning.*make those words bold", section, re.S)
 
@@ -1874,3 +1882,125 @@ def test_ac_f28_28_glitch_effects_docs(tmp_path):
                   "tear and jitter draw nothing", "one still noise frame",
                   "`with glitch` plays as a dissolve"):
         assert words in reduced, words
+
+
+# --- AC-F29-19, AC-F29-20: "Text effects" and the example game's effect lines -----------------
+
+# Each F29 code → the forms the reference quotes in full (``format_message`` arguments).
+F29_MESSAGES: dict[str, list[tuple]] = {
+    "E160": [("list", "blink"), ("missing", "font"), ("hint", "jitter", "shake"),
+             ("hint", "wavy", "wave"), ("hint", "zalgo", "glitch")],
+    "E164": [("effect", "shake", "2"), ("effect", "wave", "")],
+    "E297": [()],
+    "W185": [(), (64, "large")],
+    "E175": [("shake",)],
+}
+
+
+def test_ac_f29_19_text_effects_docs(tmp_path):
+    """``script-language.md``'s "Text effects" part of Dialogue text (not proposed): design
+    §5.4's points (the three tags and strengths, one effect at a time, History, the
+    crawl-then-slam recipe, Reduce motion, offsets not clipped, fonts without the symbols);
+    the tag table lists the three; the E160, E164, E297, W185 (and E175) forms as
+    ``messages.py`` words them, with F05's stale E160 forms gone; each code block loads and
+    launches in a copy of the doc game with no error or warning. The three tags' Help rows
+    link to the part."""
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.messages import format_message
+    from engine.script.tag_docs import TEXT_EFFECTS_HEADING, tag_doc
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    assert "proposed, F29" not in text
+    chapter = _section(text, "Dialogue text")
+    part = _subsection(chapter, TEXT_EFFECTS_HEADING)
+    assert "proposed" not in part
+    flat = " ".join(part.split())
+    for words in ("one effect at a time", "History", "Reduce motion", "`small`, `medium` (the "
+                  "default), or `large`", "{speed=0.2}", "{speed=instant}", "{pause=0.8}",
+                  "don't let an effect carry the story on its own", "Nothing is clipped",
+                  "missing-letter box", "{glitch=small}"):
+        assert words in flat, words
+    for tag in ("shake", "wave", "glitch"):
+        assert re.search(rf"^\| `\{{{tag}\}}…\{{/{tag}\}}` \|", _subsection(chapter, "Text tags"),
+                         re.M), tag
+        assert tag_doc(tag).docs == TEXT_EFFECTS_HEADING
+    for code, forms in F29_MESSAGES.items():
+        for args in forms:
+            assert f"`{format_message(code, args)}`" in text, (code, args)
+    for stale in F29_SUPERSEDED:
+        assert stale not in text, stale
+
+    blocks = re.findall(r"^```\n(.*?)^```", part, re.M | re.S)
+    assert len(blocks) == 2 and "{glitch=large}" in blocks[0]
+    docgame = REPO / "tests" / "fixtures" / "docgame"
+    for number, body in enumerate(blocks):
+        game = tmp_path / f"game{number}"
+        shutil.copytree(docgame, game)
+        story = 'define hana = Character("Hana")\n'
+        story += body if "label start:" in body else "label start:\n" + body
+        (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+        (game / "script" / "chapter2.vns").unlink()              # included only by main.vns
+        result = load_story(GamePaths.for_game(game))
+        assert result.errors == () and result.warnings == (), (body, result.errors,
+                                                               result.warnings)
+        launch = run_launch(result.program)
+        assert launch.namespace is not None and launch.warnings == (), body
+
+
+def test_ac_f29_20_the_example_game_uses_each_text_effect(tmp_path, caplog):
+    """``game/`` has one line with each of ``{shake}``, ``{wave}``, ``{glitch}``, under a
+    comment with the reduce-motion advice; its dev load has no warning (no W185); Run R
+    (seeds 1–5, AC-F05-47's walkthroughs) shows each effect in every run. The ``--dev``
+    launch with no WARNING is AC-F05-47's (``tests/app/test_text_check.py``)."""
+    import logging
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.commands import Say, StoryEnded
+    from engine.runtime.headless import run_headless
+    from engine.script import LoadOptions, load_story
+    from engine.script.texttags import Span
+    from tests.runtime.corpus import EXAMPLE_PICKS, example_minigames, play
+    from tests.runtime.stage_story import position_names
+
+    uses: dict[str, list[tuple[str, int]]] = {"shake": [], "wave": [], "glitch": []}
+    for ref, number, lines in _example_lines():
+        line = lines[number - 1]
+        if line.strip().startswith("#"):
+            continue
+        for tag in uses:
+            if re.search(rf"\{{{tag}(=\w+)?\}}", line):
+                uses[tag].append((ref, number))
+    assert all(len(found) == 1 for found in uses.values()), uses
+    advice = False
+    for tag, [(ref, number)] in uses.items():
+        lines = (EXAMPLE / ref).read_text(encoding="utf-8").splitlines()
+        assert lines[number - 2].lstrip().startswith("#"), (tag, ref, number)
+        k = number - 2
+        while k >= 0 and lines[k].lstrip().startswith("#"):
+            advice = advice or "Reduce" in lines[k] or "motion" in lines[k]
+            k -= 1
+    assert advice
+
+    root = tmp_path / "game"
+    shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("logs", "characters"))
+    result = load_story(GamePaths.for_game(root), LoadOptions(
+        position_names=position_names(root), minigames=example_minigames()))  # dev load
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    program = result.program
+    images = tuple(sorted(p.relative_to(root).as_posix()
+                          for p in (root / "images").rglob("*") if p.is_file()))
+    with caplog.at_level(logging.DEBUG):
+        for seed in range(1, 6):
+            inputs = play(program, seed, images, EXAMPLE_PICKS[seed]).inputs
+            commands = run_headless(program, seed=seed, image_files=images, dev=True,
+                                    inputs=inputs, minigames=example_minigames())
+            assert commands[-1] == StoryEnded(), seed
+            shown = {p.style.effect.kind for c in commands if type(c) is Say
+                     for p in c.body.pieces if type(p) is Span and p.style.effect is not None}
+            assert shown == set(uses), (seed, shown)
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []

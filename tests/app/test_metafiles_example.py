@@ -46,7 +46,7 @@ def test_ac_f31_27_the_example_bonus_scene(tmp_path, scripted_app, unthreaded, c
     def scene(app, out):
         yield from advance_to(app, "Oh, and I left something")
         out["written"] = {p.name: p.read_bytes() for p in root.iterdir()}
-        yield from advance_to(app, "...Huh. Did I just disappear")
+        yield from advance_to(app, "...Huh. Did I just")          # F29: {shake=small} next
         out["deleted"] = sorted(p.name for p in root.iterdir())
         yield from advance_to(app, "Never mind. A new game")
 

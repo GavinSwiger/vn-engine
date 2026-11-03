@@ -16,7 +16,13 @@ label hana_file:
     # starts a new line in the file.
     file write "read_me.txt" "If you're reading this, don't tell Hana.\nShe can hear you."
     hana "Oh, and I left something for you, in your game folder. Look in the characters folder."
-    hana happy "That's me in there. hana.chr. Don't open it, it's private."
+    # Text effects move the words between a tag and its closing tag while the line is up.
+    # {wave} makes them ripple up and down; {shake} and {glitch} come below. Each takes
+    # small, medium (the default), or large, e.g. {wave=large}. Players who turn on Reduce
+    # motion and flashing in Settings see them hold still, so, as with shake and flash,
+    # never let an effect carry the story on its own. Every rule is in
+    # docs/script-language.md, "Text effects".
+    hana happy "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}."
     # "file delete" deletes a file the story wrote. Like a write, it can't be undone. The
     # original in files/ stays, so a new game writes the file again.
     file delete "hana.chr"
@@ -29,11 +35,14 @@ label hana_file:
     # "effect" glitches the stage picture; the text box never glitches. "effect jitter"
     # and a sprite's tag make that sprite twitch. A length in seconds makes a short burst.
     effect jitter hana 0.8
-    hana surprised "...Huh. Did I just disappear from your folder?"
+    # {shake} makes the words tremble; here, small, while the sprite twitches too.
+    hana surprised "...Huh. Did I just {shake=small}disappear{/shake} from your folder?"
     # "on" keeps a glitch going until an "off". "effect tear" slides thin bands of the
     # picture sideways; small keeps it gentle.
     effect tear small on
-    hana "There's a copy of me in the files folder. You could put me back, if you like."
+    # {glitch} flickers some letters into symbols such as # and %. Keep it short: History
+    # always shows the real words.
+    hana "There's a copy of me in the files folder. You could {glitch}put me back{/glitch}, if you like."
     # "off" after a glitch's name stops that one glitch.
     effect tear off
     # "effect colorshift" pulls the picture's red and blue apart.

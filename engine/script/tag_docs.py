@@ -21,16 +21,21 @@ from engine.script.texttags import STYLE_TAGS
 
 # The heading in docs/script-language.md that documents every tag.
 TAG_DOCS_HEADING: Final = "Text tags"
+# F29 step 5: the effect tags' own part of the Dialogue text chapter, which their Help
+# rows link to.
+TEXT_EFFECTS_HEADING: Final = "Text effects"
 
 
 @dataclass(frozen=True, slots=True)
 class TagDoc:
-    """One tag's Help rows. ``name`` is the tag as the engine knows it (``TAGS``)."""
+    """One tag's Help rows. ``name`` is the tag as the engine knows it (``TAGS``);
+    ``heading`` is the docs heading its Help row links to."""
 
     name: str
     syntax: str
     summary: str
     example: str
+    heading: str = TAG_DOCS_HEADING
 
     @property
     def title(self) -> str:
@@ -38,7 +43,7 @@ class TagDoc:
 
     @property
     def docs(self) -> str:
-        return TAG_DOCS_HEADING
+        return self.heading
 
     @property
     def closes(self) -> bool:
@@ -67,15 +72,15 @@ TAG_DOCS: Final[tuple[TagDoc, ...]] = (
     # F29 (07 I-12): the effects, each with an optional strength.
     TagDoc("shake", "{shake}…{/shake} or {shake=small|medium|large}…{/shake}",
            "Trembling letters (medium with no strength); they hold still under Reduce motion.",
-           'hana "{shake}No!{/shake}"'),
+           'hana "{shake}No!{/shake}"', TEXT_EFFECTS_HEADING),
     TagDoc("wave", "{wave}…{/wave} or {wave=small|medium|large}…{/wave}",
            "Letters ripple up and down (medium with no strength); they hold still under "
            "Reduce motion.",
-           'hana "La la {wave=large}laaa{/wave}~"'),
+           'hana "La la {wave=large}laaa{/wave}~"', TEXT_EFFECTS_HEADING),
     TagDoc("glitch", "{glitch}…{/glitch} or {glitch=small|medium|large}…{/glitch}",
            "Letters flicker into symbols such as # and % (medium with no strength); History "
            "shows the real words.",
-           'hana "{glitch=large}You\'re not going anywhere.{/glitch}"'),
+           'hana "{glitch=large}You\'re not going anywhere.{/glitch}"', TEXT_EFFECTS_HEADING),
     # F30 (04 §5.3): the player's name, only where they allow it.
     TagDoc("username", "{username} or {username=name}",
            "The player's computer user name if the game offers it and the player allows it; "
@@ -109,4 +114,5 @@ def tag_names() -> tuple[str, ...]:
     return tuple(row.name for row in TAG_DOCS)
 
 
-__all__ = ["TAG_DOCS", "TAG_DOCS_HEADING", "TagDoc", "tag_doc", "tag_names"]
+__all__ = ["TAG_DOCS", "TAG_DOCS_HEADING", "TEXT_EFFECTS_HEADING", "TagDoc", "tag_doc",
+           "tag_names"]
