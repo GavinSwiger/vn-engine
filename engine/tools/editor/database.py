@@ -37,6 +37,10 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
 - F41-W2: **Clean up** (last; what each check's linter found unused or not reached, with
   Open in {category} and that category's own Delete…) lives in ``dbcleanup.CleanupCategory``.
 
+F40-W2: while a game runs, Variables and Meters show **In the game now:** with the running
+game's value (asked when the form shows and after each change; never polled) and
+**Change…**, which sends the new value to the game (``runwiring.change_in_game``).
+
 Every entry shows "Used in N lines" (the last check's ``*_use`` rows) with **Show uses**
 (the Problems panel lists the lines), and Delete is refused while it is used. The lists are
 rebuilt when the tab shows, after each check (``win.on_check_done``) and after each write.
@@ -155,6 +159,12 @@ NAME_FROM = "Comes from the variable {name}"
 PLAY_BUTTON = "▶ Play"
 STOP_BUTTON = "■ Stop"
 YES, NO = "Yes", "No"
+GAME_NOW = "In the game now: {value}"     # F40 (01 §6.4)
+GAME_WAITING = "…"
+GAME_NOT_STARTED = "not started"
+GAME_NO_ANSWER = "no answer yet"
+GAME_LEFT_OUT = "—"
+CHANGE_BUTTON = "Change…"
 
 LABEL_NAME = "Name shown"
 LABEL_NAME_COLOR = "Name colour"
@@ -365,6 +375,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.gallery_refs: dict[str, str] = {}     # gallery key → image ref
         self.sound_status = ""
         self._listening = False
+        self.game_now: tuple[str, ttk.Frame, ttk.Label, ttk.Button] | None = None   # F40
         win.on_check_done.append(lambda _result: self._schedule_refresh())
         win.notebook.bind("<<NotebookTabChanged>>", lambda _e: self._on_tab_changed(),
                           add="+")
@@ -1068,6 +1079,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             f["value"] = TextField(grid.frame, str(values["value"]), width=28,
                                    on_change=lambda v: self._edit(entry, {"value": v}))
         grid.row(LABEL_START, f["value"])
+        if entry.kind == dec.VARIABLE:
+            self._game_now_row(grid, entry.name)                # F40: In the game now
         remembered = entry.kind == dec.PERSISTENT
         f["remembered"] = ToggleField(
             grid.frame, db.REMEMBERED, remembered,
@@ -1341,6 +1354,67 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.stop_sound()
             if self.anim_panel is not None:
                 self.anim_panel.stop()
+
+    # --- In the game now (F40 W2, PR-F40-20) -----------------------------------------------
+
+    def _game_now_row(self, grid: FormGrid, name: str) -> None:
+        """The **In the game now:** row under the start value, shown while a game runs."""
+        line = ttk.Frame(grid.frame)
+        label = ttk.Label(line, text=GAME_NOW.format(value=GAME_WAITING))
+        label.pack(side="left")
+        button = ttk.Button(line, text=CHANGE_BUTTON, style="Link.Ghost.TButton",
+                            cursor="hand2",
+                            command=lambda: self.win.change_in_game(
+                                name, self._game_value(name) or ""))
+        button.pack(side="left", padx=(self._px(8), 0))
+        grid.widget(line, pady=(2, 4))
+        self.game_now = (name, line, label, button)
+        self.game_running_changed(self.win.game_running)
+
+    def _game_value(self, name: str) -> str | None:
+        values = self.win.game_values
+        return None if values is None else values[1].get(name)
+
+    def _game_now_alive(self) -> tuple[str, ttk.Frame, ttk.Label, ttk.Button] | None:
+        shown = self.game_now
+        if shown is None or not shown[1].winfo_exists():
+            self.game_now = None
+            return None
+        return shown
+
+    def game_value_names(self) -> list[str]:
+        """The story variables and meters Database lists (a ``values`` answer's others are
+        ignored)."""
+        return [row.entry.name for key in (db.CATEGORY_VARIABLE, db.CATEGORY_METER)
+                for row in self.rows.get(key, ()) if row.entry is not None]
+
+    def game_running_changed(self, running: bool) -> None:
+        """The game started or stopped: the row shows (asking for the values) or hides."""
+        shown = self._game_now_alive()
+        if shown is None:
+            return
+        if running:
+            shown[1].grid()
+            self.win.ask_game_values()
+            self.game_values_changed()
+        else:
+            shown[1].grid_remove()
+
+    def game_values_changed(self) -> None:
+        """The game's values (or no answer): the row's text and its Change… button."""
+        shown = self._game_now_alive()
+        if shown is None:
+            return
+        name, _line, label, button = shown
+        values = self.win.game_values
+        if values is None:
+            text = GAME_WAITING if self.win.console.waiting("values") else GAME_NO_ANSWER
+        elif not values[0]:
+            text = GAME_NOT_STARTED
+        else:
+            text = values[1].get(name, GAME_LEFT_OUT)
+        label.configure(text=GAME_NOW.format(value=text))
+        button.state(["!disabled"] if values is not None and values[0] else ["disabled"])
 
     # --- Writing (04 §7.1) ------------------------------------------------------------------
 

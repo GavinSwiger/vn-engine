@@ -23,7 +23,14 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
-from engine.tools.editor.runwiring import PLAYTHROUGH_MENU, UPDATE_MENU, UPDATE_ON_SAVE_MENU
+from engine.tools.editor.runwiring import (
+    CONSOLE_MENU,
+    JUMP_MENU,
+    NO_GAME,
+    PLAYTHROUGH_MENU,
+    UPDATE_MENU,
+    UPDATE_ON_SAVE_MENU,
+)
 from engine.tools.editor.guide import GUIDE_TITLE
 from engine.tools.editor.guides import GUIDES, GUIDES_MENU, open_guide
 from engine.tools.editor.dialogs import show_error
@@ -115,6 +122,8 @@ class StudioMenus:
                 Item(PLAY_SCENE_MENU, "F5", self.play_scene),
                 Item(STOP_MENU, f"{key}+F2", self.stop_game),
                 Item(PLAY_OPTIONS, command=self.play_options),
+                Item(CONSOLE_MENU, "F12", self.open_console),               # F40
+                Item(JUMP_MENU, NO_GAME, self.jump_game_to_scene),          # F40: dimmed
                 Item(PLAYTHROUGH_MENU, command=self.preview_playthrough),   # F32
                 SEPARATOR,
                 Item(UPDATE_MENU, f"{key}+R", self.update_game, guarded=True),
@@ -145,6 +154,7 @@ class StudioMenus:
             bar.add_cascade(label=label, menu=menu)
         self.file_ops = tuple(file_ops)
         set_entry_enabled(self.run_menu, UPDATE_MENU, False)    # on while a game runs
+        set_entry_enabled(self.run_menu, JUMP_MENU, False)      # F40: likewise
         self.menubar = bar
         if self.mod == "Command":
             self.root.configure(menu=bar)

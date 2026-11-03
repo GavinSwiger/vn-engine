@@ -18,6 +18,15 @@ game on save", on by default) or on Ctrl+R (Run ▸ "Update the running game"), 
 of the saved files; its texts (S1-S4) replace F44's in the status bar while an update is
 under way, and the Problems summary gets its suffix while an update is held. Play and Stop
 forget any update, so a restart is never reported as "Updated".
+
+F40 (developer console, ``01`` §4.3, §6.4; ``04`` §7.5, W2): **Run ▸ Open console in the
+game** (F12) sends ``open`` to the running game, or plays from the start and sends it once
+the game runs; **Run ▸ Jump the game to this scene** and the map box's **Jump the game
+here** send ``jump`` (dimmed, with "no game running" beside them, while no game runs);
+Database's **In the game now** asks for ``values`` and **Change…** sends ``set``. Answers
+come through ``consoleclient.ConsoleTracker`` (one outstanding request per kind, 2 s) and
+show in the status bar's preview item for 5 s as ``Console: {text}``, escaped and cut to
+200 characters; Studio never acts on an answer's text.
 """
 
 from __future__ import annotations
@@ -26,8 +35,8 @@ import tkinter as tk
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from engine.tools.editor import studiostate
-from engine.tools.editor.dialogs import ask, show_info
+from engine.tools.editor import consoleclient, studiostate
+from engine.tools.editor.dialogs import ask, ask_text, show_info
 from engine.tools.editor.hotreload import HotReload, HotReloadEvent
 from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
     BEGINNING,
@@ -70,6 +79,21 @@ UPDATABLE = (*LIVE, PreviewState.STOPPED_ERROR)
 UPDATE_MENU = "Update the running game"         # Run menu, Ctrl+R (F39 §4.2)
 UPDATE_ON_SAVE_MENU = "Update the game on save"     # Run menu check, on by default (D2)
 PREVIEW_GLYPH = "▶ "                    # the status item's prefix; F39's texts start with it
+# F40 (01 §6.4): the Run menu's console items and the map box's.
+CONSOLE_MENU = "Open console in the game"
+JUMP_MENU = "Jump the game to this scene"
+JUMP_HERE = "Jump the game here"
+NO_GAME = "no game running"             # beside a dimmed console item (the accelerator column)
+JUMP_NEEDS_GAME = "Console: play the game first (Shift+F5), then jump it to a scene."
+JUMP_NEEDS_SCENE = ("Console: pick a scene first: a box on the Story map, or put the cursor "
+                    "in a scene in the editor.")
+# The spec's text, then what to do: the game doesn't answer while it loads or shows a
+# screen that must finish first (the name question, a warning, a fade, the error screen).
+DIDNT_ANSWER = (consoleclient.DIDNT_ANSWER + " It may be loading or showing a screen that "
+                "has to finish first. Try again in a moment.")
+CHANGE_ASK = "Change {name} in the game"
+CHANGE_HINT = 'Like a start value: 3, True, "Hana" or [1, 2]'
+CHANGE_OK = "Change"
 
 
 def didnt_start_text(count: int) -> str:
@@ -356,6 +380,7 @@ class RunWiring:
             return
         try:
             self.apply_events(self.runner.poll())
+            self._poll_console()
             tab = self.current_tab()
             if tab == "map" or tab != self._scene_tab:      # a box chosen, or the tab left
                 self._scene_tab = tab
@@ -391,6 +416,7 @@ class RunWiring:
         self.play_bar.set_running(event.state in LIVE)
         set_entry_enabled(self.run_menu, UPDATE_MENU, event.state in UPDATABLE)
         self._sync_hot_suffix()
+        self._console_state_changed()
         if event.state is PreviewState.RUNNING:
             self.show_hint(NO_PROBLEMS)
             if not self._played_marked:     # Guide step 7: a Play reached the game window
@@ -402,3 +428,156 @@ class RunWiring:
         elif event.report is not None and event.state in (PreviewState.DIDNT_START,
                                                           PreviewState.STOPPED_ERROR):
             self.show_report(event.report)
+
+    # --- The developer console (F40 W2) -----------------------------------------------------
+
+    game_values: tuple[bool, dict[str, str]] | None = None     # (story running, name → text)
+
+    @property
+    def console(self) -> consoleclient.ConsoleTracker:
+        """The console requests waiting on an answer (made on first use)."""
+        tracker = self.__dict__.get("_console_tracker")
+        if tracker is None:
+            tracker = self.__dict__["_console_tracker"] = consoleclient.ConsoleTracker()
+        return tracker
+
+    @property
+    def game_running(self) -> bool:
+        """Whether a game is running that can take console requests."""
+        return self.preview_state is PreviewState.RUNNING
+
+    def open_console(self) -> None:
+        """Run ▸ Open console in the game (F12): ``open`` to the running game; with none,
+        Play from the start, then ``open`` once it runs (PR-F40-18)."""
+        if self.closed:
+            return
+        if self.game_running:
+            self.console_send("open", consoleclient.open_line())
+            return
+        self._console_open_pending = True
+        if self.preview_state not in LIVE:      # a game already starting just gets it later
+            self.play_from_start()
+            if self.preview_state not in LIVE:  # didn't start (a save or a start value)
+                self._console_open_pending = False
+
+    def jump_game_to_scene(self) -> None:
+        """Run ▸ Jump the game to this scene: the selected box while the Story map shows,
+        else the scene at the editor's cursor."""
+        if not self.game_running:
+            self.console_status(JUMP_NEEDS_GAME)
+            return
+        label = self.scene_to_play()
+        if label is None:
+            self.console_status(JUMP_NEEDS_SCENE)
+            return
+        self.jump_game_to(label)
+
+    def jump_game_to(self, label: str) -> None:
+        """Jump the running game to scene ``label`` (PR-F40-19)."""
+        if not self.game_running:
+            self.console_status(JUMP_NEEDS_GAME)
+            return
+        self.console_send("jump", consoleclient.jump_line(label))
+
+    def change_in_game(self, name: str, shown: str) -> None:
+        """Database's **Change…**: a one-field dialog, then ``set`` (PR-F40-20)."""
+        if not self.game_running:
+            return
+        answer = ask_text(self.root, CHANGE_ASK.format(name=name), shown, ok=CHANGE_OK,
+                          hint=lambda _text: CHANGE_HINT, select_stem=False)
+        if answer is None or not answer[0].strip():
+            return
+        self.console_send("set", consoleclient.set_line(name, answer[0].strip()))
+
+    def ask_game_values(self) -> None:
+        """Ask the running game for every variable's value (Database's In the game now)."""
+        if self.game_running and not self.console.waiting("values"):
+            self.console_send("values", consoleclient.values_line(), quiet=True)
+
+    def console_send(self, do: str, line: bytes | None, *, quiet: bool = False) -> bool:
+        """Send one console message line and wait (2 s) for its answer. None (a value
+        too long to send) shows the bad-value text."""
+        if line is None:
+            self.console_status(consoleclient.STATUS.format(text=consoleclient.BAD_VALUE))
+            return False
+        send = getattr(self.runner, "send", None)
+        if send is None or not send(line):
+            if not quiet:
+                self.console_status(DIDNT_ANSWER)
+            return False
+        self.console.sent(do)
+        return True
+
+    def console_status(self, text: str) -> None:
+        """``text`` in the status bar's preview item for 5 s, then the preview state."""
+        label = self.status_label
+        if self.__dict__.get("_console_shown") is None:
+            self._console_before = str(label.cget("text"))
+        label.configure(text=text)
+        self._console_shown = text
+        after = self.__dict__.get("_console_after")
+        if after is not None:
+            self.root.after_cancel(after)
+        self._console_after = self.root.after(
+            round(consoleclient.STATUS_SHOW_S * 1000), self._console_status_done)
+
+    def _console_status_done(self) -> None:
+        self._console_after = None
+        shown, self._console_shown = self.__dict__.get("_console_shown"), None
+        if not self.closed and shown is not None and \
+                str(self.status_label.cget("text")) == shown:
+            self.status_label.configure(text=self._console_before)
+
+    def _console_state_changed(self) -> None:
+        """A preview state: the console items on or off, a pending ``open`` sent, the
+        waiting requests forgotten when the game ends, and Database told."""
+        running = self.game_running
+        self._console_shown = None              # the new state's text is the one to keep
+        menu = getattr(self, "run_menu", None)
+        if menu is not None:
+            set_entry_enabled(menu, JUMP_MENU, running)
+            menu.entryconfigure(JUMP_MENU, accelerator="" if running else NO_GAME)
+        if running and self.__dict__.get("_console_open_pending"):
+            self._console_open_pending = False
+            self.console_send("open", consoleclient.open_line())
+        if self.preview_state not in LIVE:
+            self._console_open_pending = False
+            self.console.clear()
+            self.game_values = None
+        database = getattr(self, "database", None)
+        if database is not None:
+            database.game_running_changed(running)
+
+    def _poll_console(self) -> None:
+        """The game's console answers (untrusted text: shown escaped, never acted on), and
+        the requests that went unanswered for 2 s."""
+        read = getattr(self.runner, "console_events", None)
+        events = read() if callable(read) else []
+        for event in events:
+            answer = self.console.receive(event, self._console_names())
+            if answer is None:
+                continue
+            if answer.do == "values":
+                self.game_values = (bool(answer.story), answer.values)
+                self._values_arrived()
+                continue
+            if answer.status is not None:
+                self.console_status(answer.status)
+            if answer.do == "set":
+                self.ask_game_values()          # the value refreshes after each Change
+        for do in self.console.overdue():
+            if do == "values":
+                self.game_values = None
+                self._values_arrived()
+            else:
+                self.console_status(DIDNT_ANSWER)
+
+    def _console_names(self) -> frozenset[str]:
+        database = getattr(self, "database", None)
+        return frozenset(database.game_value_names()) if database is not None else frozenset()
+
+    def _values_arrived(self) -> None:
+        database = getattr(self, "database", None)
+        if database is not None:
+            database.game_values_changed()
+

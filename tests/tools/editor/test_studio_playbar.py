@@ -136,7 +136,8 @@ def test_ac_f47_02_play_from_this_scene_on_box_and_row_menus(studio, lanterns, m
     game = fake_game(win)
     view.focus_box(view.layout.index_of("river"))
     menu = win.context_menu("box")
-    assert menu.entrycget("end", "label") == "Play from this scene"
+    assert menu.entrycget(menu.index("end") - 1, "label") == "Play from this scene"
+    assert menu.entrycget("end", "label") == "Jump the game here"          # F40, after it
     menu.invoke("Play from this scene")
     assert start_of(game.argvs[-1]) == "river"
 

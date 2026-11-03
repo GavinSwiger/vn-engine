@@ -83,6 +83,8 @@ class EditorKeys:
             ((f"<{mod}-F2>",), lambda _e: brk(self.stop_game), MAIN),
             # F39: Ctrl+R updates the running game (the saved files, same place).
             (both("r"), lambda _e: brk(self.update_game), MAIN),
+            # F40: F12 opens the console in the running game (Play first when none runs).
+            (("<F12>",), lambda _e: brk(self.open_console), MAIN),
             (("<F6>",), lambda _e: brk(self.cycle_focus, 1), MAIN),
             (("<Shift-F6>",), lambda _e: brk(self.cycle_focus, -1), MAIN),
         ]

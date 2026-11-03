@@ -566,6 +566,7 @@ class MoreCategories:
                                  hi=POINTS_LIMIT, width=10,
                                  on_change=lambda v: self._meter_start(entry, v))
         grid.row(LABEL_START, f["start"])
+        self._game_now_row(grid, entry.name)            # type: ignore[attr-defined]  (F40)
         hint = ttk.Label(grid.frame, text=METER_HINT.format(name=entry.name),
                          style="Hint.TLabel")
         grid.widget(hint, pady=(6, 2))

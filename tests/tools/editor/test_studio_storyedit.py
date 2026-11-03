@@ -1037,7 +1037,9 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     assert view.focused_name() == "festival"
     assert shown() == [("New scene", "normal"), ("Go to scene…", "normal"),
                        ("Rename scene", "normal"), ("Delete scene", "normal"),
-                       ("Move box", "normal"), ("Play from this scene", "normal")]
+                       ("Move box", "normal"), ("Play from this scene", "normal"),
+                       ("Jump the game here",                  # F40: dimmed, no game
+                        "normal" if views.MENU_DIM_ENTRIES else "disabled")]
     win.last_context = None
     ed.press(canvas, "<Shift-F10>")
     assert [label for label, _ in shown()][:2] == ["New scene", "Go to scene…"]

@@ -33,7 +33,14 @@ from engine.tools.editor.storymap import (
     undo_blocked_text,
 )
 from engine.tools.editor.theme import THEME
-from engine.tools.editor.views import DIRTY_MARK, StoryMapView, TabStrip, autohide
+from engine.tools.editor.runwiring import JUMP_HERE, NO_GAME
+from engine.tools.editor.views import (
+    DIRTY_MARK,
+    StoryMapView,
+    TabStrip,
+    autohide,
+    set_entry_enabled,
+)
 from engine.tools.editor.studiolook import (
     BACKGROUND,
     GUTTER_BACKGROUND,
@@ -784,6 +791,11 @@ class MapWiring:
             if last_was_item:
                 menu.add_separator()
             menu.add_command(label=STORY_PREVIEW, command=lambda: self.play(scene))
+            if kind == "box":                       # F40: dimmed while no game runs
+                running = self.game_running
+                menu.add_command(label=JUMP_HERE, accelerator="" if running else NO_GAME,
+                                 command=lambda: self.jump_game_to(scene))
+                set_entry_enabled(menu, JUMP_HERE, running)
         if menu.index("end") is not None and menu.type("end") == "separator":
             menu.delete("end")
         self.last_context = menu            # tests read it

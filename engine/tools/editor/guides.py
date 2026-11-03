@@ -27,6 +27,7 @@ GUIDES: tuple[tuple[str, str], ...] = (
     ("Minigames", "minigames.md"),
     ("Meta files", "meta-files.md"),
     ("Update the running game", "hot-reload.md"),
+    ("Developer console", "dev-console.md"),
     ("Build game", "build-game.md"),
 )
 

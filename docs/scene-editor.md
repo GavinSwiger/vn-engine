@@ -131,12 +131,13 @@ inside the double quotes.
   [Database](database.md), [Game settings](game-settings.md), Asset, Outline.
 - Ctrl+=, Ctrl+-, Ctrl+0: zoom the text, or the map.
 - F5: play this scene. Shift+F5: from the start. Ctrl+F2: stop. F7: Check now.
+  F12: the [console](dev-console.md).
 - F6, Shift+F6: next or previous area.
 
 ## Good to know
 
 - The editor shows right-to-left text in typing order. Check how it looks in the preview.
-- On macOS, F5 and F6 may need Fn (so may F7), and Ctrl is Cmd.
+- On macOS, F5 and F6 may need Fn, and Ctrl is Cmd.
 - Tk (Studio's toolkit) has limited screen-reader support.
 
 ## For engine builders
