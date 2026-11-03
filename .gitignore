@@ -26,8 +26,8 @@ venv/
 .tox/
 .coverage
 htmlcov/
-build/
-dist/
+/build/
+/dist/
 
 # --- Files the example game writes when you run it ------------------------------------
 game/logs/
