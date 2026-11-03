@@ -190,6 +190,7 @@ def try_link_file(link: Path, target: Path) -> bool:
 
 # window.py's split (F47 04 §3.4): a name tests patch may live in any of Studio's modules.
 STUDIO_MODULES = ("window", "fileactions", "checkwiring", "runwiring", "mapwiring", "database",
+                  "dbcleanup",
                   "animpanel",
                   "dbmore", "dbgallery", "dbextras", "dbreplays", "dbachievements", "studiomenus", "editorkeys", "settingsview")
 

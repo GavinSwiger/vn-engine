@@ -254,15 +254,16 @@ def cleanup_view(result: Any | None) -> CleanupView:
         return CleanupView(STATE_NOT_CHECKED, NOT_CHECKED)
     names: Mapping[str, Sequence[Any]] = getattr(result, "names", {}) or {}
     totals: Mapping[str, int] = getattr(result, "name_totals", {}) or {}
-    sent = [kind for kind in KINDS if kind in names]
+    # A kind with no rows is sent as a total only (the check child sends no empty rows).
+    sent = [kind for kind in KINDS if kind in names or kind in totals]
     if _has_errors(result) or not sent:
         return CleanupView(STATE_ERRORS, ERRORS)
-    waiting = WAITING if UNUSED_CHARACTER not in names else None
+    waiting = WAITING if UNUSED_CHARACTER not in sent else None
     grouped: dict[str, list[CleanupItem]] = {key: [] for key, _heading in GROUPS}
     counts: dict[str, int] = dict.fromkeys(grouped, 0)
     for kind in sent:
         info = KINDS[kind]
-        rows = names[kind]
+        rows = names.get(kind, ())
         counts[info.group] += max(totals.get(kind, 0), len(rows))
         grouped[info.group].extend(CleanupItem(kind, *_row_parts(row), info) for row in rows)
     total = sum(counts.values())

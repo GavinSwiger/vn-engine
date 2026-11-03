@@ -123,7 +123,8 @@ def test_character_files_list_add_preview_uses_and_delete(studio, tmp_path):
     apply_check(ed, game)
     db_pane = open_database(ed, db.CATEGORY_META)
     keys = list(db_pane.cat_tree.get_children())
-    assert keys[-2:] == [minigameview.CATEGORY, db.CATEGORY_META]       # design §4.3 order
+    assert keys[-3:] == [minigameview.CATEGORY, db.CATEGORY_META,      # design §4.3 order
+                         db.CATEGORY_CLEANUP]                          # (F41: Clean up last)
     assert db_pane.cat_tree.item(db.CATEGORY_META, "text") == "Character files"
     assert db_pane.counts()[db.CATEGORY_META] == 3
     assert db_pane.new_button.cget("text") == dbmeta.ADD

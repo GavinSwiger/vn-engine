@@ -1014,6 +1014,20 @@ class MapWiring:
         self.map_canvas.focus_set()
         return plan
 
+    def show_scene_on_map(self, name: str) -> bool:
+        """Database ▸ Clean up's Show on map (F41 W2): the Story map tab, drawn fresh, with
+        scene ``name``'s box focused; False when the map has no such box."""
+        self.show_tab(self.tab_index("map"))
+        self._map_dirty = True
+        self.refresh_story_map()
+        view = self.story_map
+        index = view.layout.index_of(name) if view.layout is not None else None
+        if index is None:
+            return False
+        view.focus_box(index)
+        self.map_canvas.focus_set()
+        return True
+
     def map_delete(self) -> None:
         """Delete on the map: the selected arrow, else (step 6) the focused scene."""
         if self.story_map.edge is not None:

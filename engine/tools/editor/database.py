@@ -32,8 +32,10 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   live in ``dbreplays.ReplaysCategory``.
 - F37-S3: **Achievements** (after Scene replays) lives in
   ``dbachievements.AchievementsCategory``.
-- F31: **Character files** (last; the originals in ``files/``, + Add…, a text preview) lives
+- F31: **Character files** (the originals in ``files/``, + Add…, a text preview) lives
   in ``dbmeta.MetaFilesCategory``.
+- F41-W2: **Clean up** (last; what each check's linter found unused or not reached, with
+  Open in {category} and that category's own Delete…) lives in ``dbcleanup.CleanupCategory``.
 
 Every entry shows "Used in N lines" (the last check's ``*_use`` rows) with **Show uses**
 (the Problems panel lists the lines), and Delete is refused while it is used. The lists are
@@ -54,6 +56,7 @@ from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.animpanel import FRAME_PX, LookPanel
 from engine.tools.editor.dbachievements import ABOUT_ACHIEVEMENTS, AchievementsCategory
+from engine.tools.editor.dbcleanup import ABOUT_CLEANUP, CleanupCategory
 from engine.tools.editor.dbextras import ABOUT_MUSIC, MusicRoomCategory
 from engine.tools.editor.dbgallery import ABOUT_GALLERY, GalleryCategory
 from engine.tools.editor.dbmeta import ABOUT_META, MetaFilesCategory
@@ -103,7 +106,7 @@ ALL_CATEGORIES = (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE, db.CATEGORY_GALLER
                   *(key for p2 in db.P2_CATEGORIES        # F36: Scene replays after Endings
                     for key in ((p2, db.CATEGORY_REPLAY, db.CATEGORY_ACHIEVEMENT)
                                 if p2 == db.CATEGORY_ENDING else (p2,))),
-                  db.CATEGORY_META)
+                  db.CATEGORY_META, db.CATEGORY_CLEANUP)       # F41: Clean up last
 TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
 # core/constants.py (the meta-files write root; tests/core/test_paths_meta.py).
@@ -124,6 +127,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     db.CATEGORY_META: ABOUT_META,
     db.CATEGORY_REPLAY: ABOUT_REPLAYS,
     db.CATEGORY_ACHIEVEMENT: ABOUT_ACHIEVEMENTS,
+    db.CATEGORY_CLEANUP: ABOUT_CLEANUP,
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
@@ -242,7 +246,7 @@ class _Form:
 
 
 class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCategory,
-                   AchievementsCategory, MetaFilesCategory):
+                   AchievementsCategory, MetaFilesCategory, CleanupCategory):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -260,6 +264,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.compact = False
         self._search_live = False
         self._refresh_id: str | None = None
+        self._cleanup_init()
         self.fonts = win.fonts
         style = ttk.Style(self.root)
         style.configure("Caption.TLabel", background=THEME["editor.background"],
@@ -428,9 +433,15 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.rows[db.CATEGORY_REPLAY] = self._replay_rows()
         self.rows[db.CATEGORY_ACHIEVEMENT] = self._achievement_rows()
         self.rows[db.CATEGORY_META] = self._meta_rows()
+        self.rows[db.CATEGORY_CLEANUP] = self._cleanup_rows()     # last: finds the others'
         for key in ALL_CATEGORIES:
             count = sum(1 for row in self.rows[key] if row.entry is not None)
             self.cat_tree.item(key, values=(str(count),))
+        cleanup = self.cleanup_count
+        self.cat_tree.item(db.CATEGORY_CLEANUP, values=("" if cleanup is None else
+                                                         str(cleanup),))
+        for choice in self.cat_choices:         # the drop-downs show Clean up's count
+            choice.set_choices(self.category_choices())
         if select is not None:
             self.chosen[self.category] = select
         self._fill_list()
@@ -552,7 +563,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
 
     def category_choices(self) -> list[tuple[str, str]]:
         """Every category as (key, title), in the side bar's order."""
-        return [(str(k), str(self.cat_tree.item(k, "text")))
+        return [(str(k), self._cleanup_choice_title(str(self.cat_tree.item(k, "text")))
+                 if k == db.CATEGORY_CLEANUP else str(self.cat_tree.item(k, "text")))
                 for k in self.cat_tree.get_children()]
 
     def category_choice(self, parent: tk.Misc) -> ChoiceField:
@@ -595,7 +607,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.cat_tree.selection_set(key)
         self.show_category_choice(key)
         self.list_title.configure(text=TITLES[key].upper())
-        if key in READ_ONLY:
+        if key in READ_ONLY or key == db.CATEGORY_CLEANUP:
             self.new_button.pack_forget()
         elif not self.new_button.winfo_ismapped():
             self.new_button.pack(side="right", padx=(0, self._px(4)))
@@ -701,6 +713,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self._meta_after_fill(has_entries)
         self._replay_after_fill(has_entries)
         self._achievement_after_fill(has_entries)
+        self._cleanup_after_fill(has_entries)
 
     def _row(self, iid: str) -> Row | None:
         return next((r for r in self.rows[self.category] if r.iid == iid), None)
@@ -774,6 +787,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                      self._px(360)).grid(row=0, column=0, sticky="ew")
 
     def _form_key(self, row: Row) -> tuple:
+        if self.category == db.CATEGORY_CLEANUP:   # its rows carry other kinds' entries
+            return self._cleanup_key(row)
         entry = row.entry
         if entry is None:
             members = tuple(r.iid for r in self.rows[self.category] if r.parent == row.iid)
@@ -814,7 +829,9 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                 form.update(row)
             return
         entry = row.entry
-        if entry is None:
+        if self.category == db.CATEGORY_CLEANUP:
+            self._cleanup_form(row, key)
+        elif entry is None:
             self._group_form(row, key)
         elif entry.kind == dec.CHARACTER:
             self._character_form(row, key)
@@ -1407,6 +1424,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.new_achievement()
         elif self.category == db.CATEGORY_META:
             self.add_meta_files()
+        elif self.category == db.CATEGORY_CLEANUP:
+            return                                  # nothing to make in Clean up
         else:
             self._p2_new()
 
@@ -1503,7 +1522,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         it is used (P3-B, AC-F47-52), after the Ask; a position also in config.toml."""
         row = self.selected_row()
         entry = row.entry if row is not None else None
-        if entry is None:
+        if entry is None or self.category == db.CATEGORY_CLEANUP:
             return
         if entry.kind == dec.POSITION:
             if entry.editable and not (entry.values or {}).get("builtin"):
@@ -1571,10 +1590,19 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         delete()
 
     def delete_selected(self) -> None:
-        row = self.selected_row()
-        if row is None or row.entry is None:
+        if self.category == db.CATEGORY_CLEANUP:
+            self.cleanup_delete_selected()
             return
+        row = self.selected_row()
+        if row is not None:
+            self.delete_row(row, self.category)
+
+    def delete_row(self, row: Row, category: str) -> None:
+        """Delete ``row`` of ``category`` as that category's Delete does, with its own
+        question (the Delete key there, and Clean up's Delete…, F41 §7.5)."""
         entry = row.entry
+        if entry is None or category not in ALL_CATEGORIES:
+            return
         if entry.kind in (db.BACKGROUND, db.SOUND, db.META_FILE):
             self.delete_entry(entry, lambda: self._delete_file(entry, row.ref))
         elif entry.kind == dec.POSITION:
