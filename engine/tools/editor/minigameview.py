@@ -36,7 +36,7 @@ from typing import Any
 
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
-from engine.tools.editor import declplan, files
+from engine.tools.editor import declplan, declrename, files
 from engine.tools.editor import minigamedata as mg
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.scriptedit import STALE, FilePlan, LineEdit, Plan, Refuse
@@ -72,6 +72,8 @@ NO_ITEMS_FOR_EVIDENCE = ("Evidence needs an item the player can present. Add one
 USED_IN = "Used in {lines}"
 NOT_USED = "Not used yet"
 DELETE = "Delete"
+RENAME = "Rename…"
+RENAME_ASK = "New script name for {name}:"
 DELETE_ASK = "Delete {name}? Its lines are removed from {ref}; Edit ▸ Undo there brings it back."
 DELETE_BUTTONS = ("Delete", "Cancel")
 DELETE_REFUSED = "{name} is used in {lines}, so it can't be deleted yet."
@@ -1898,6 +1900,10 @@ class MinigamePane:
         ttk.Label(title, text=ds.name, style="Title.TLabel").pack(side="left")
         ttk.Button(title, text=DELETE, style="Secondary.TButton",
                    command=self.delete_selected).pack(side="right")
+        if ds.kind != mg.ANSWER:
+            ttk.Button(title, text=RENAME, style="Secondary.TButton",
+                       command=self.rename_selected).pack(side="right",
+                                                          padx=(0, self.host.px(8)))
         self.detail_label = ttk.Label(body, text="", style="Hint.TLabel")
         self.detail_label.pack(anchor="w", pady=(0, self.host.px(12)))
         self._detail(ds)
@@ -1940,6 +1946,25 @@ class MinigamePane:
             self.chosen = name
             self.refresh()
         return name
+
+    def rename_selected(self) -> bool:
+        """Rename… (P3-B): a new script name for the data set, and every ``minigame`` line
+        that passes it follows. A testimony's ``<name>_answer`` follows too."""
+        ds = self.data(self.chosen)
+        if ds is None or ds.kind == mg.ANSWER:
+            return False
+        answer = ask_text(self.root, RENAME_ASK.format(name=ds.name), ds.name, ok="Rename")
+        if answer is None or not answer[0].strip() or answer[0].strip() == ds.name:
+            return False
+        new = answer[0].strip()
+        pair = self.store.answer_of(ds) if ds.kind == mg.TESTIMONY else None
+        if not self.database.rename_everywhere(declrename.DATA, ds.name, new):
+            return False
+        if pair is not None and pair.name == f"{ds.name}_answer":
+            self.database.rename_everywhere(declrename.DATA, pair.name, f"{new}_answer")
+        self.chosen = new
+        self.refresh()
+        return True
 
     def delete_selected(self) -> None:
         ds = self.data(self.chosen)

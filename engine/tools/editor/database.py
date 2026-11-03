@@ -38,6 +38,7 @@ from typing import Any
 from engine.script.messages import show
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
+from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.dbmore import (
     ABOUT_MORE,
@@ -47,7 +48,7 @@ from engine.tools.editor.dbmore import (
     PREFIXES,
     READ_ONLY,
     REMEMBERED_HINT,
-    RENAME_LOCKED,
+    RENAME_HINT,
     MoreCategories,
     Row,
 )
@@ -793,7 +794,7 @@ class DatabasePane(MoreCategories):
         script_label = ttk.Label(script, text=db.SCRIPT_NAME.format(name=entry.name),
                                  style="Hint.TLabel")
         script_label.pack(side="left")
-        if entry.name_editable:
+        if entry.name_editable or entry.kind in declrename.RENAMABLE:
             ttk.Button(script, text="Rename…", style="Link.Ghost.TButton",
                        command=self.rename_selected).pack(side="left",
                                                           padx=(self._px(8), 0))
@@ -885,8 +886,8 @@ class DatabasePane(MoreCategories):
                                   on_change=lambda v: self._rename(entry, str(v).strip()))
             grid.row(LABEL_SCRIPT_NAME, f["name"])
         else:
-            grid.row(LABEL_SCRIPT_NAME, ttk.Label(grid.frame, text=entry.name),
-                     hint=RENAME_LOCKED)
+            grid.row(LABEL_SCRIPT_NAME, self._rename_box(grid.frame, entry.name),
+                     hint=RENAME_HINT)
         f["kind"] = ChoiceField(grid.frame, [(k, dec.KIND_TITLES[k]) for k in
                                              dec.VARIABLE_KINDS], kind, width=12,
                                 on_change=lambda v: self._edit(entry, {
@@ -1198,8 +1199,15 @@ class DatabasePane(MoreCategories):
         if name == decl.name:
             return True
         prefix = PREFIXES[decl.kind]
-        return self._write(declplan.plan_edit(decl, decl.values, self.texts, name=name),
-                           select=prefix + name)
+
+        def simple() -> bool:
+            return self._write(declplan.plan_edit(decl, decl.values, self.texts, name=name),
+                               select=prefix + name)
+        if decl.kind not in declrename.RENAMABLE:
+            return simple()
+        # P3-B: a used entry is renamed everywhere (after the Ask); an unused one in place.
+        return self.rename_everywhere(decl.kind, decl.name, name, simple=simple,
+                                      select=prefix + name)
 
     def _write(self, plan: object, select: str | None = None) -> bool:
         """Apply a ``DeclPlan`` (creating ``database.vns`` first when it says so), or show a
@@ -1326,10 +1334,22 @@ class DatabasePane(MoreCategories):
                            select=f"k:{name}")
 
     def rename_selected(self) -> None:
-        """F2 / Rename…: a new script name while nothing uses the entry (PR-F47-10)."""
+        """F2 / Rename…: a new script name (PR-F47-10). A used entry is renamed everywhere
+        it is used (P3-B, AC-F47-52), after the Ask; a position also in config.toml."""
         row = self.selected_row()
         entry = row.entry if row is not None else None
-        if entry is None or entry.kind not in dec.EDITABLE_KINDS or not entry.name_editable:
+        if entry is None:
+            return
+        if entry.kind == dec.POSITION:
+            if entry.editable and not (entry.values or {}).get("builtin"):
+                answer = ask_text(self.root, RENAME_ASK.format(name=entry.shown), entry.name,
+                                  ok="Rename")
+                if answer is not None and answer[0].strip():
+                    new = answer[0].strip()
+                    self.rename_everywhere(dec.POSITION, entry.name, new, select=f"o:{new}")
+            return
+        if entry.kind not in dec.EDITABLE_KINDS or not (
+                entry.name_editable or (entry.editable and entry.kind in declrename.RENAMABLE)):
             return
         answer = ask_text(self.root, RENAME_ASK.format(name=entry.shown), entry.name,
                           ok="Rename")

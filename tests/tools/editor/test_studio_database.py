@@ -404,3 +404,42 @@ def test_ac_f47_12_sounds_by_folder_play_one_at_a_time_through_the_helper(tmp_pa
     lines = result.stdout.strip().splitlines()
     assert lines[0].startswith("FIRST ")            # a real reply from the helper child
     assert lines[-1] == "[]"                         # no pygame in Studio's process
+
+
+def test_ac_f47_52_rename_everywhere_on_a_used_character(studio, tmp_path):
+    """P3-B: Rename… on a used character asks once with the count, then every line that
+    uses it follows; its pictures stay (``image_tag``); one undo step per file."""
+    game = sample_game(tmp_path)
+    ed = studio(game, mapped=True)
+    apply_check(ed, game)
+    db = open_database(ed, "character")
+    db.select("c:hana")
+    ed.root.update()
+    buttons = [w for w in _descendants(db.form_frame) if isinstance(w, tk.ttk.Button)
+               and str(w.cget("text")) == "Rename…"]
+    assert buttons                                  # shown though Hana is used
+    ed.answers[:] = ["hanako", 0]                   # the new name, then Rename
+    buttons[0].invoke()
+    ed.root.update()
+    assert ed.dialogs[-2][:3] == ("text", "New script name for Hana:", "hana")
+    assert ed.dialogs[-1][:3] == (
+        "ask", "Rename `hana` to `hanako`? 6 places in 2 files will change. "
+               "Its pictures stay in images/hana/.", ("Rename", "Cancel"))
+    main, database = text_of(ed, "script/main.vns"), text_of(ed, DB_REF)
+    assert 'define hanako = Character("Hana", color="#b03070", blip="blips/hana.wav", ' \
+           'blip_pitch=0.1, image_tag="hana")' in database
+    assert '    hanako "You came!' in main and '            hanako sad "Oh.' in main
+    assert "    show hana happy at left with dissolve" in main      # the picture's name
+    assert "hana " not in main.replace("show hana", "")
+    assert db.selected_row().entry.name == "hanako"
+    for ref in ("script/main.vns", DB_REF):          # one Ctrl+Z per file undoes it
+        ed.win.files[ref].widget.edit_undo()
+    assert text_of(ed, "script/main.vns") == \
+        (game / "script/main.vns").read_text("utf-8").removesuffix("\n")
+    assert "define hana = " in text_of(ed, DB_REF)
+
+
+def _descendants(widget):
+    for child in widget.winfo_children():
+        yield child
+        yield from _descendants(child)

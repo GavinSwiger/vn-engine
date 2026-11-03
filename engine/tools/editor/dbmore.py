@@ -35,6 +35,7 @@ from engine.script.messages import show
 from engine.script.points import POINTS_LIMIT
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
+from engine.tools.editor import declrename
 from engine.tools.editor import (declplan, fieldhints, fieldwidgets, files, stageat, tomlpatch,
                                   trywiring)
 from engine.tools.editor.dialogs import ask, ask_text, show_error
@@ -48,7 +49,7 @@ from engine.tools.editor.fieldwidgets import (
     ToggleField,
 )
 from engine.tools.editor.formdialogs import pick_scene
-from engine.tools.editor.scriptedit import STALE, Refuse
+from engine.tools.editor.scriptedit import STALE, UNSAFE, Ask, Refuse
 from engine.tools.editor.settingsview import LongTextField
 from engine.tools.editor.stagecanvas import STAGE_H, STAGE_W, StageCanvas
 
@@ -115,6 +116,8 @@ Y_HINT = "720 is the bottom edge."
 POSITION_IN_SCRIPT = "show hana happy at {name}"
 IN_SCRIPT = "In the script: {line}"
 RENAME_LOCKED = "The script uses this name, so it can't change here yet."
+RENAME_BUTTON = "Rename…"
+RENAME_HINT = "Rename… changes every line that uses it too."
 DELETE = "Delete"
 DELETE_BUTTONS = ("Delete", "Cancel")
 DELETE_POSITION_ASK = ("Delete {name}? Its line goes from the game's settings file; Edit "
@@ -414,9 +417,85 @@ class MoreCategories:
                 grid.frame, entry.name, width=18, check=lambda t: bool(t.strip()),
                 on_change=lambda v: self._rename(entry, str(v).strip()))
             grid.row(LABEL_SCRIPT_NAME, form.fields["name"])
+        elif entry.kind in declrename.RENAMABLE:
+            grid.row(LABEL_SCRIPT_NAME, self._rename_box(grid.frame, entry.name),
+                     hint=RENAME_HINT)
         else:
             grid.row(LABEL_SCRIPT_NAME, ttk.Label(grid.frame, text=entry.name),
                      hint=RENAME_LOCKED)
+
+    # --- Rename everywhere (P3-B, AC-F47-52) ------------------------------------------------
+
+    def _rename_box(self, parent: tk.Misc, name: str) -> ttk.Frame:
+        """The script name with **Rename…** beside it (for a used entry)."""
+        box = ttk.Frame(parent)
+        ttk.Label(box, text=name).pack(side="left")
+        ttk.Button(box, text=RENAME_BUTTON, style="Link.Ghost.TButton",
+                   command=self.rename_selected).pack(side="left", padx=(self._px(8), 0))
+        return box
+
+    def _rename_inputs(self) -> tuple[dict[str, str], dict[str, str], frozenset[str],
+                                      str | None]:
+        """Every script's text, the read-only ones' reasons, the story's position names and
+        config.toml's text, for ``declrename.plan_rename``."""
+        texts: dict[str, str] = {}
+        locked: dict[str, str] = {}
+        for ref in self.win._script_refs():
+            text, reason = self.win._script_text(ref)
+            texts[ref] = text
+            if reason is not None:
+                locked[ref] = reason
+        config = self.config_text()
+        if config is not None and CONFIG_REF in self.win.files \
+                and not self.win.files[CONFIG_REF].editable:
+            locked[CONFIG_REF] = CONFIG_BROKEN
+        rows = dec.position_rows(config) if config is not None else None
+        positions = frozenset(self.win._positions()) | {r.name for r in rows or ()}
+        return texts, locked, positions, config
+
+    def rename_everywhere(self, kind: str, old: str, new: str,
+                          simple: Callable[[], bool] | None = None,
+                          select: str | None = None) -> bool:
+        """Rename ``kind`` ``old`` to ``new`` and every use of it, after the Ask ("N places
+        in M files will change", and what happens to saves). When only the declaration
+        changes, nothing is asked (``simple``, the old in-place edit, does it when given)."""
+        texts, locked, positions, config = self._rename_inputs()
+        taken = positions if kind == dec.POSITION else ()
+
+        def plan(confirm: bool) -> object:
+            try:
+                return declrename.plan_rename(kind, old, new, texts, locked=locked,
+                                              config_text=config, positions=positions,
+                                              taken=taken, confirm=confirm)
+            except Exception:           # a planner bug must never reach the text
+                return Refuse(UNSAFE)
+        result = plan(True)
+        if result is None:
+            return True
+        if isinstance(result, Refuse):
+            show_error(self.root, result.text)
+            self.refresh()
+            return False
+        assert isinstance(result, declrename.RenamePlan)
+        if result.places <= 1 and simple is not None:
+            return simple()
+        if result.places > 1:
+            question = plan(False)
+            if not isinstance(question, Ask):
+                return False
+            if ask(self.root, question.text, question.buttons, escape=question.escape,
+                   default=question.default) != 0:
+                self.refresh()
+                return False
+        rename = result
+        if not self.win.apply_plan(rename.plan, lambda now: declrename.verify_rename(
+                rename, now, positions)):
+            show_error(self.root, STALE)
+            self.refresh()
+            return False
+        self.win._update_marks()
+        self.refresh(select=select)
+        return True
 
     def _wrap_hints(self) -> None:
         """Hint lines in the form wrap instead of running out of a narrow form."""
@@ -959,6 +1038,10 @@ class MoreCategories:
                 ttk.Button(bottom, text=DELETE, style="Secondary.TButton",
                            command=lambda: self.delete_entry(
                                entry, lambda: self.delete_position(entry))).pack(side="right")
+                if editable:
+                    ttk.Button(bottom, text=RENAME_BUTTON, style="Secondary.TButton",
+                               command=self.rename_selected).pack(
+                                   side="right", padx=(0, self._px(8)))
 
         form.update = update
         update(row)
