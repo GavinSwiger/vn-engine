@@ -122,7 +122,7 @@ def save_to_path(game_root: Path, save_to: str) -> Path | None:
     text = save_to.strip()
     if not text:
         return None
-    path = Path(os.path.expanduser(text))
+    path = Path(text)                    # no "~" expansion: home lookups stay in core/paths
     if not path.is_absolute():
         path = Path(os.path.abspath(game_root)).parent / path
     return Path(os.path.abspath(path))
