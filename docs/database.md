@@ -9,7 +9,8 @@ file takes it back. **+ New** adds an entry: new declarations go into
 positions go into `config.toml`.
 
 - **Characters**: the name shown, its colour, the text colour and italics, the character's
-  **Looks** (the pictures in `images/<name>/`; **+ Add looks…** copies more in), and the
+  **Looks** (the pictures in `images/<name>/`; **+ Add looks…** copies more in; a click on
+  one sets up its [blinking and talking](#blinking-and-talking)), and the
   **Voice blip** (a sound with ▶, how often it plays, its pitch and volume).
 - **Pictures**: backgrounds, each character's looks, and colour backgrounds
   (`image bg night = "#102040"`), as thumbnails.
@@ -34,6 +35,32 @@ positions go into `config.toml`.
   marker (or use the arrow keys, or type x and y) and `[stage.positions]` in `config.toml`
   changes. A drop near the bottom edge lands on it. **Use default** puts a moved left,
   center or right back; your own positions can be deleted while unused.
+
+## Blinking and talking
+
+A character can blink and move her mouth while her lines type, with no script lines. In
+**Characters**, click one of her looks: the **Blinking and talking** panel under the Looks
+shows that look at 192 px with two rows of small pictures.
+
+- **Blink frames**: copies of the look with the eyes closed (or half closed, then closed).
+  The character blinks every few seconds.
+- **Talking frames**: copies of the look with the mouth open. The mouth moves while her
+  lines type and closes when the text stops.
+
+**+ Add blink frame…** and **+ Add talking frame…** copy one picture in and name it for
+you: `happy_blink1.png`, `happy_blink2.png`, … next to `happy.png` (`happy_talk1.png` for
+talking). Click a small picture and **Remove frame** (or Delete) removes the file; the other
+frames keep their names. A look holds up to 9 of each. **▶ Blink** plays one blink and
+**▶ Talk** two seconds of talking in the panel; **■ Stop** stops it.
+
+A frame must be the same size as its look, with only the eyes or mouth changed. The panel
+says when a frame is another size, because the game won't use it. Files you copy in
+yourself with these names are found too. Frames are not looks: the Looks gallery and the
+Events forms don't offer them, and a look that has frames is labelled `happy (moves)`.
+
+How fast it moves is in **Game settings ▸ Effects & comfort ▸ Sprite animation**: blinking
+and talking on or off, about how often a blink comes, and the seconds per blink and talking
+frame. ▶ Blink and ▶ Talk use these. With **Reduce motion** on, sprites hold still.
 
 Each entry says where it is used ("Used in 3 lines"); **Show uses** lists those lines in
 Problems, where a click opens one. Something that is used can't be deleted until those

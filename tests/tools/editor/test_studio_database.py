@@ -203,7 +203,9 @@ def test_ac_f47_09_looks_gallery_with_thumbnails_and_add_looks(studio, tmp_path,
     ed = studio(game)
     db = open_database(ed, "character")
     db.select("c:hana")
-    assert db.gallery.labels() == ["happy", "sad"]
+    # F38: the sample's blink and talking frames aren't looks; a look with them "moves".
+    assert [label.removesuffix(" (moves)") for label in db.gallery.labels()] == [
+        "happy", "sad"]
     assert set(db.gallery.images) == {"images/hana/happy.png", "images/hana/sad.png"}
     assert all(image.width() <= 96 and image.height() <= 96
                for image in db.gallery.images.values())

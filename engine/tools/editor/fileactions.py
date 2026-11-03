@@ -149,11 +149,14 @@ class FileActions:
 
     def add_files(self, sources: Sequence[Path] | None = None, *,
                   target: tuple[str, str] | None = None,
-                  on_done: Callable[[list[str]], object] | None = None) -> None:
+                  on_done: Callable[[list[str]], object] | None = None,
+                  name: str | None = None) -> None:
         """Add files…: pick files, plan them, settle names and clashes in dialogs, then copy
         them on a worker thread; the summary shows when the last one is done. ``target``
         (group key, folder ref) replaces the project panel's selection (F47's Database);
-        ``on_done`` gets the added refs after the summary."""
+        ``on_done`` gets the added refs after the summary. ``name`` (F38's + Add blink
+        frame…): one file only, saved as ``name`` plus its own suffix (lower-cased), with
+        the same checks."""
         if self.closed or self.adding or not self.file_ops_enabled():
             return
         self._add_on_done = on_done
@@ -167,7 +170,12 @@ class FileActions:
             sources = ask_open_files(self.root)
         if not sources:
             return
+        if name is not None:
+            sources = list(sources)[:1]
         plans = files.plan_add(self.paths, key, folder_ref, sources)
+        if name is not None:
+            plans = [plan if plan.refusal is not None else files.rename_plan(
+                self.paths, plan, name + Path(plan.label).suffix.lower()) for plan in plans]
         jobs: list[tuple[files.AddPlan, str]] = []
         refused: list[files.AddOutcome] = []
         for plan in plans:

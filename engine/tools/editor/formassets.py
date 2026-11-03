@@ -10,7 +10,7 @@ provider for a Studio window, built from what the Database shows:
   them), so an unsaved edit in the Database shows at once;
 - pictures from the project's ``images/`` files (``files.image_name_of``) plus the check's
   ``image`` names; a look is the rest of an image name after its sprite tag
-  (``dbmodel.looks_of``' rule);
+  (``dbmodel.looks_in``: F38's blink and talking frames are not looks);
 - thumbnails from ``helperhub.ThumbLoader`` (PNG/GIF in-process, JPEG/WebP via the helper
   child; ``changed()`` when one arrives); a colour background is its colour;
 - sounds through the window's ``HelperHub`` (one at a time; ``changed()`` on its replies);
@@ -31,6 +31,7 @@ from engine.core.paths import is_meta_name
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import files
+from engine.tools.editor.dbmodel import looks_in
 from engine.tools.editor.fieldwidgets import THUMB_PX
 from engine.tools.editor.forms_files_ui import STYLE_OFF
 from engine.tools.editor.settingsmodel import style_names
@@ -159,10 +160,9 @@ class WindowAssets(FormAssets):
         return str(values.get("image_tag") or who) if values is not None else who
 
     def looks(self, tag: str) -> Sequence[str]:
-        folded = tag.casefold()
-        found = {name.split(maxsplit=1)[1] for name in self.image_names
-                 if len(name.split()) > 1 and name.split()[0].casefold() == folded}
-        return tuple(sorted(found, key=str.casefold))
+        # F38: blink and talking frames are not offered as looks (dbmodel.looks_in).
+        colors = {name for name in self.image_names if name.casefold() in self.colors}
+        return looks_in(tag, self.image_names, colors)
 
     def color(self, who: str) -> str | None:
         values = self._character_of(who)

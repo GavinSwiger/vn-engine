@@ -312,6 +312,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("effects", "Comfort", ("reduce",)),
         Row("effects", "Effect lengths and sizes", rest=True),
         Row("theme.effects", "Effect colors"),
+        Row("animation", "Sprite animation"),           # F38 PR-F38-08
         Row("auto", "Auto-advance"),
         Row("skip", "Skipping"))),
     PageDef("chapters", "Chapters & codex", (
@@ -414,6 +415,10 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "audio.play_unfocused": "Play in the background",
     "audio.play_minimized": "Play while minimized", "audio.loop_start": "Loop points",
     "effects.reduce": "Reduce motion and flashing",
+    "animation.enabled": "Blinking and talking sprites",            # F38 §4
+    "animation.blink_every": "Blink about every (seconds)",
+    "animation.blink_frame": "Seconds per blink frame",
+    "animation.talk_frame": "Seconds per talking frame",
     "auto.delay": "Wait after a line (seconds)",
     "auto.per_char": "Extra wait per character (seconds)",
     "skip.all": "Skip unread text too",
@@ -783,6 +788,22 @@ def values(text: str) -> Mapping[str, object] | None:
     return MappingProxyType(found)
 
 
+def section_values(section: str, text: str | None) -> dict[str, object]:
+    """``[section]``'s own keys as the game would use them: each value ``text``
+    (``config.toml``'s) sets that its key accepts, else the key's default (a file that
+    doesn't parse, or None, gives every default). F38's look panel reads its preview timings
+    with this (``[animation]``), never through the engine's config loading (07 I-10)."""
+    found = (values(text) if text is not None else None) or {}
+    out: dict[str, object] = {}
+    for key, spec in config_fields(section_class(section)).items():
+        if isinstance(spec.metadata["validator"], Table):
+            continue
+        made = _make_field(section, key, spec)
+        value = found.get(made.path, made.default)
+        out[key] = made.default if made.problem(value) is not None else value
+    return out
+
+
 __all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Field", "KINDS",
            "LABELS", "LOOKS", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row",
            "Section",
@@ -790,5 +811,5 @@ __all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Fi
            "look_page", "look_title", "looks", "new_look_change", "new_look_problem",
            "on_looks_page", "style_names",
            "all_settings", "broken", "broken_message", "default_caption", "fields_by_path",
-           "label_for", "page", "pages", "raw_default", "search", "section_title",
+           "label_for", "page", "pages", "raw_default", "search", "section_title", "section_values",
            "table_paths", "text_only", "values", "widget_for"]

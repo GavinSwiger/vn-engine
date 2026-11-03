@@ -11,10 +11,11 @@ the Meters, Codex, Endings & routes, Chapters, Transitions and Positions lists
 ``names`` is any mapping of kind → rows with ``name``, ``file`` and ``line`` (``NameEntry``).
 """
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Container, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final, Protocol
 
+from engine.script.spriteframes import frame_of
 from engine.tools.editor import declarations as dec
 
 # --- Decision 4 and texts (design §6.4) --------------------------------------------------------
@@ -323,13 +324,25 @@ def background_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
     return sorted(out, key=lambda e: e.name.casefold())
 
 
-def looks_of(tag: str, names: Names) -> tuple[str, ...]:
-    """The looks of sprite ``tag``: the rest of each image name that starts with it
-    (``hana smile`` → ``smile``), sorted."""
+def looks_in(tag: str, image_names: Iterable[str],
+             not_pictures: Container[str] = ()) -> tuple[str, ...]:
+    """The looks of sprite ``tag`` among ``image_names``: the rest of each name that starts
+    with it (``hana smile`` → ``smile``), sorted. F38's blink and talking frames
+    (``hana smile_blink1``, ``spriteframes.frame_of``) are not looks and are left out;
+    ``not_pictures`` are names known to be solid colours, which are never frames."""
+    every = set(image_names)
+    pictures = {name for name in every if name not in not_pictures}
     folded = tag.casefold()
-    looks = {row.name.split(maxsplit=1)[1] for row in names.get("image", ())
-             if len(row.name.split()) > 1 and row.name.split()[0].casefold() == folded}
+    looks = {name.split(maxsplit=1)[1] for name in every
+             if len(name.split()) > 1 and name.split()[0].casefold() == folded
+             and frame_of(name, pictures) is None}
     return tuple(sorted(looks, key=str.casefold))
+
+
+def looks_of(tag: str, names: Names) -> tuple[str, ...]:
+    """The looks of sprite ``tag`` in the check's ``image`` names (``looks_in``: frames
+    are left out, so the Events pickers don't offer them; F38 07 I-10)."""
+    return looks_in(tag, (row.name for row in names.get("image", ())))
 
 
 def sound_folder(ref: str) -> str:
@@ -370,7 +383,8 @@ __all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
            "SCRIPT_NAME", "SHOW_USES", "SOUND", "SOUND_FOLDERS", "SOUND_TITLES", "TIPS",
            "USED_IN", "USE_KINDS", "background_entries", "chapter_entries",
            "character_entries", "codex_categories", "codex_entries", "delete_refusal",
-           "ending_entries", "ending_names", "looks_of", "meter_entries", "position_entries",
+           "ending_entries", "ending_names", "looks_in", "looks_of", "meter_entries",
+           "position_entries",
            "remembered_entries", "route_entries", "search", "sound_entries", "sound_folder",
            "transition_entries", "use_places", "used_text", "uses_of", "variable_entries",
            "variable_names"]

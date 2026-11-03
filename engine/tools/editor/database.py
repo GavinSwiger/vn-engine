@@ -12,7 +12,9 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
 (``win.add_files``) and deleted with ``files.delete_file``.
 
 - **Characters**: name shown, name colour, text colour and italics, the looks gallery
-  (``images/<tag>/``, + Add looks…), the voice blip (sound ▶, every, pitch, volume).
+  (``images/<tag>/``, + Add looks…; F38: frames hidden, a click opens the look's
+  Blinking and talking panel, ``animpanel.LookPanel``), the voice blip (sound ▶, every,
+  pitch, volume).
 - **Pictures**: backgrounds, each character's looks and other pictures, as thumbnails;
   + Add backgrounds… and + Colour background (``image bg <n> = "#rrggbb"``).
 - **Sounds**: Music, Sound effects, Voices, Blips, Other (by folder), ▶/■ through the
@@ -40,6 +42,7 @@ from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
+from engine.tools.editor.animpanel import FRAME_PX, LookPanel
 from engine.tools.editor.dbmore import (
     ABOUT_MORE,
     DELETE,
@@ -312,6 +315,9 @@ class DatabasePane(MoreCategories):
 
         self.thumbs = ThumbLoader(win, self.frame, px(96), self._thumb_ready)
         self.previews = ThumbLoader(win, self.frame, px(PREVIEW_PX), self._thumb_ready)
+        self.frame_thumbs = ThumbLoader(win, self.frame, px(FRAME_PX), self._thumb_ready)
+        self.anim_panel: LookPanel | None = None   # F38: the character form's look panel
+        self.anim_looks: dict[str, str] = {}       # sprite tag (folded) → look ref chosen
         self.gallery: Gallery | None = None
         self.gallery_refs: dict[str, str] = {}     # gallery key → image ref
         self.sound_status = ""
@@ -651,6 +657,9 @@ class DatabasePane(MoreCategories):
     # --- Forms ------------------------------------------------------------------------------
 
     def _new_body(self, key: tuple) -> tuple[ttk.Frame, _Form]:
+        if self.anim_panel is not None:
+            self.anim_panel.stop()
+            self.anim_panel = None
         if self.body is not None:
             self.body.destroy()
         self.gallery = None
@@ -659,8 +668,12 @@ class DatabasePane(MoreCategories):
         self.body = ttk.Frame(self.scroll.inner, padding=(pad, pad, pad, pad))
         self.body.pack(fill="both", expand=True)
         self.body.columnconfigure(0, weight=1)
+        same = self.form is not None and self.form.key[:2] == key[:2]
+        where = self.scroll.canvas.yview()[0] if same else 0.0
         self.form = _Form(key)
         self.scroll.top()
+        if where:           # the same entry rebuilt (F38: a frame added): stay in place
+            self.root.after_idle(lambda: self.scroll.canvas.yview_moveto(where))
         return self.body, self.form
 
     def _message_form(self, text: str) -> None:
@@ -804,8 +817,20 @@ class DatabasePane(MoreCategories):
         grid.caption("Looks", button=(ADD_LOOKS, lambda: self.add_looks(entry)))
         gallery = self._gallery(grid.frame, NO_LOOKS.format(name=entry.shown))
         grid.widget(gallery.widget, pady=(0, 4))
-        self._fill_gallery([(ref, look_name(files.image_name_of(ref) or ref))
-                            for ref in self._looks(entry)])
+        # F38: frame pictures aren't looks; a click fills Blinking and talking below.
+        tag = self._look_tag(entry)
+        panel = LookPanel(self, grid.frame, folder=f"{IMAGES_PREFIX}{tag}",
+                          character=entry.shown, refs=self._looks(entry),
+                          on_look=lambda ref: self._anim_chosen(tag, ref))
+        self.anim_panel = panel
+        self._fill_gallery([(item.ref, item.label) for item in panel.items])
+        gallery.on_select = panel.show
+        if panel.items:
+            grid.widget(panel.frame, pady=(12, 4))
+            chosen = self.anim_looks.get(tag.casefold())
+            if panel.item(chosen or "") is not None:
+                gallery.select(chosen)
+                panel.show(chosen)
 
         grid.caption("Voice blip")
         sounds = self._sound_names()
@@ -848,10 +873,15 @@ class DatabasePane(MoreCategories):
             for name in ("every", "pitch", "volume"):
                 f[name].enable(on)
             script_label.configure(text=db.SCRIPT_NAME.format(name=entry.name))
+            panel.sync_hints()
             self._sync_play_buttons()
 
         form.update = update
         update(row)
+
+    def _anim_chosen(self, tag: str, ref: str) -> None:
+        """Remember the look whose panel shows, so it stays after a frame is added."""
+        self.anim_looks[tag.casefold()] = ref
 
     def _blip_values(self, blip: object) -> dict[str, object]:
         if blip is None:            # tuning needs a blip (SR-F06-02): back to the defaults
@@ -1020,6 +1050,8 @@ class DatabasePane(MoreCategories):
                     image = self.thumbs.get(ref)
                     if image is not None:
                         gallery.set_image(key, image)
+        if self.anim_panel is not None:
+            self.anim_panel.thumb_ready(ref)
         if self.form is not None and self.form.update is not None and \
                 getattr(self, "_preview_ref", None) == ref:
             row = self.selected_row()
@@ -1169,6 +1201,8 @@ class DatabasePane(MoreCategories):
     def _on_tab_changed(self) -> None:
         if not self.shown:
             self.stop_sound()
+            if self.anim_panel is not None:
+                self.anim_panel.stop()
 
     # --- Writing (04 §7.1) ------------------------------------------------------------------
 
