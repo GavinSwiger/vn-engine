@@ -194,3 +194,16 @@ Options 2 and 5.
   - Frames are held during transitions, cards, FAST frames and colorshift, and a full compose
     shows plain looks.
   - No thread is added. Status remains accepted.
+- 2026-11-02: amended at the M6 extras review (F34–F37, `specs/F36-ending-list/07` I-2, I-3, I-8).
+  - The launch's one `ImagePrefetcher` is exposed as `app.prefetcher`. Besides the stage, the
+    title's Extras (F34 `ThumbCache`, `GalleryViewer`; F36's Scenes page) may `request` and
+    `pump` it. One owner pumps per frame: the stage screen in game, `ThumbCache` only in mode
+    TITLE. A request replaces the queue (nothing else is queued on the title).
+  - A thumbnail ref the prefetcher refused (over `PREFETCH_ONE_MAX`), or any ref when prefetch
+    is off, may be decoded on the main thread: at most one per frame, once per ref per launch.
+    A ref that is only late is never decoded twice.
+  - Memory: `ThumbCache` is its own `SizedLru` of 16 MiB, outside the asset budget.
+  - F12's writer owner `persist` writes nothing while F36's replay sandbox is open
+    (`flush_now` returns False; `close` puts the store back, then writes). A crash during a
+    replay writes nothing, so names kept by `replay_keeps` kinds since the last write are lost.
+  - No thread is added. Status remains accepted.
