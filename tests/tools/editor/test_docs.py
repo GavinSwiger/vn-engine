@@ -82,7 +82,7 @@ def test_ac_f44_37_page_is_linked_from_the_language_reference():
 # --- F45: the Studio page (AC-F45-48) -------------------------------------------------------
 
 # AC-F45-46's keys, each named in the page's key list.
-STUDIO_KEYS = ("Ctrl+N", "Ctrl+Shift+O", "F2", "Delete", "Ctrl+S", "Ctrl+Shift+S",
+STUDIO_KEYS = ("Ctrl+O", "Ctrl+N", "Ctrl+Shift+O", "F2", "Delete", "Ctrl+S", "Ctrl+Shift+S",
                "Ctrl+Space", "Ctrl+G", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+4", "F5", "Shift+F5", "Ctrl+F2", "F7",
                "F6", "Shift+F6", "Ctrl+=", "Ctrl+-", "Ctrl+0")
 

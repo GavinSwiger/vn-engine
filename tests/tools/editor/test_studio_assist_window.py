@@ -383,7 +383,7 @@ def test_ac45_the_image_preview(studio, studio_game, monkeypatch):
 
 # --- AC-F45-46: menus, keys and tabs -----------------------------------------------------------
 
-HANDLERS = ("new_script_file", "add_files", "rename_selected", "delete_selected",
+HANDLERS = ("new_script_file", "open_game", "add_files", "rename_selected", "delete_selected",
             "save_current", "save_all", "complete", "go_to_label", "show_tab", "play_scene",
             "play_from_start", "stop_game", "check_now")
 
@@ -403,6 +403,7 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         "File", "Edit", "Insert", "Story", "View", "Run", "Help"]   # Story: AC-F46-33
     rows = [  # (menu, entry, key widget, key, the handler call both make)
         (ed.file_menu, "New script file", ed.text, "<Control-n>", ("new_script_file",)),
+        (ed.file_menu, "Open game…", ed.text, "<Control-o>", ("open_game",)),
         (ed.file_menu, "Add files…", ed.text, "<Control-Shift-O>", ("add_files",)),
         (ed.file_menu, "Rename", ed.tree, "<F2>", ("rename_selected",)),
         (ed.file_menu, "Delete", ed.tree, "<Delete>", ("delete_selected",)),

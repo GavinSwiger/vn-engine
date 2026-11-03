@@ -4,7 +4,7 @@
 #
 # The files go in the characters folder of the game folder, and nowhere else. Players
 # can open, move, or delete them, and the story can check what they did. Every rule is in
-# docs/script-language.md, "Meta files".
+# Help ▸ Guides ▸ Script language, "Meta files".
 
 label hana_file:
     # "file write" puts a file in the characters folder. With only a name, it copies the
@@ -21,7 +21,7 @@ label hana_file:
     # small, medium (the default), or large, e.g. {wave=large}. Players who turn on Reduce
     # motion and flashing in Settings see them hold still, so, as with shake and flash,
     # never let an effect carry the story on its own. Every rule is in
-    # docs/script-language.md, "Text effects".
+    # Help ▸ Guides ▸ Script language, "Text effects".
     hana happy "That's me in there. hana.chr. Don't open it, it's {wave}private{/wave}."
     # "file delete" deletes a file the story wrote. Like a write, it can't be undone. The
     # original in files/ stays, so a new game writes the file again.
@@ -29,11 +29,11 @@ label hana_file:
     # "ui style" switches the text box to a style from config.toml, here [style.dark],
     # while Hana's file is gone. The box's colors change at once and its text with the
     # next line. "ui style off" brings back the usual look; saves keep the style. Every
-    # rule is in docs/script-language.md, "Dynamic UI".
+    # rule is in Help ▸ Guides ▸ Script language, "Dynamic UI".
     ui style dark
     # Glitch effects: the picture seems to break while Hana's file is gone. The lines say
     # what happens too, so players who turn effects down miss nothing. Every rule is in
-    # docs/script-language.md, "Glitch effects".
+    # Help ▸ Guides ▸ Script language, "Glitch effects".
     # "with glitch" is a transition: the old picture tears, cuts to the new one, and
     # settles.
     show hana surprised with glitch
@@ -68,7 +68,7 @@ label hana_file:
         hana "Never mind. A new game always brings me back."
     # Fourth-wall tricks: for a moment the game seems to reach outside its window. Name
     # them in your content warning (config.toml's [content_warning] shows how). Every rule
-    # is in docs/script-language.md, "Fourth-wall tricks".
+    # is in Help ▸ Guides ▸ Script language, "Fourth-wall tricks".
     # "effect window_title" changes the words in the window's title bar. A save keeps it,
     # so loading one brings it back.
     effect window_title "Hana is still here"

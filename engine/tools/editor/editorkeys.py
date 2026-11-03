@@ -64,6 +64,7 @@ class EditorKeys:
             ((f"<{mod}-Shift-S>",), lambda _e: brk(self.save_all), MAIN),
             (both("n"), lambda _e: brk(self.new_script_file), MAIN),
             ((f"<{mod}-Shift-O>",), lambda _e: brk(self.add_files), MAIN),
+            (both("o"), lambda _e: brk(self.open_game), MAIN),
             # F42: File ▸ Build game… (it does nothing while a build runs).
             ((f"<{mod}-Shift-B>",), lambda _e: brk(open_build_dialog, self), MAIN),
             (both("g"), lambda _e: brk(self.go_to_label), MAIN),

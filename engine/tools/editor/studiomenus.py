@@ -3,7 +3,7 @@
 ``Item(label, accelerator, command)`` (``guarded``: through ``views.menu_command``, so a
 disabled entry does nothing), ``Check(label, variable, command)``, or ``SEPARATOR``; Insert
 and Story are built from the doc registry and ``story_actions``. View's tab rows come from
-``window.TABS``. F47 adds Run and Help rows; F42 a File row after Save all; F39 the Run
+``window.TABS``. F47 adds Run and Help rows; Help ▸ Guides opens the docs pages; F42 a File row after Save all; F39 the Run
 menu's "Update the running game" (Ctrl+R, on while a game runs) and "Update the game on
 save".
 
@@ -25,6 +25,8 @@ from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
 from engine.tools.editor.runwiring import PLAYTHROUGH_MENU, UPDATE_MENU, UPDATE_ON_SAVE_MENU
 from engine.tools.editor.guide import GUIDE_TITLE
+from engine.tools.editor.guides import GUIDES, GUIDES_MENU, open_guide
+from engine.tools.editor.dialogs import show_error
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.build.texts import MENU as BUILD_MENU
 
@@ -70,6 +72,7 @@ class StudioMenus:
         return [
             ("File", "file_menu", [
                 Item("New game…", command=self.new_game),
+                Item("Open game…", f"{key}+O", self.open_game),
                 Item("New script file", f"{key}+N", lambda: self.new_script_file(),
                      guarded=True, file_op=True),
                 Item(ADD_BUTTON, f"{key}+Shift+O", self.add_files, guarded=True,
@@ -119,10 +122,7 @@ class StudioMenus:
                 SEPARATOR,
                 Item("Check now", "F7", self.check_now),
             ]),
-            ("Help", "help_menu", [
-                Item("Help for this line", command=self.focus_help),
-                Item(GUIDE_TITLE, command=self.toggle_guide),   # F47: shows or hides it
-            ]),
+            ("Help", "help_menu", self._build_help_menu),
         ]
 
     def _build_menus(self) -> None:
@@ -170,6 +170,25 @@ class StudioMenus:
             menu.add_cascade(label=group, menu=sub)
             self.insert_submenus[group] = sub
         return menu
+
+    def _build_help_menu(self, bar: tk.Menu) -> tk.Menu:
+        """Help: help for the line, the Guide pane (F47: shows or hides it), and **Guides**,
+        the engine's docs pages (``guides.GUIDES``)."""
+        menu = tk.Menu(bar, tearoff=0)
+        for row in (Item("Help for this line", command=self.focus_help),
+                    Item(GUIDE_TITLE, command=self.toggle_guide)):
+            _add_row(menu, row)
+        sub = tk.Menu(menu, tearoff=0)
+        for title, name in GUIDES:
+            sub.add_command(label=title, command=lambda t=title, n=name: self.open_guide(t, n))
+        menu.add_cascade(label=GUIDES_MENU, menu=sub)
+        self.guides_menu = sub
+        return menu
+
+    def open_guide(self, title: str, name: str) -> None:
+        problem = open_guide(title, name)
+        if problem is not None:
+            show_error(self.root, problem)
 
     def _build_story_menu(self, bar: tk.Menu) -> tk.Menu:
         """F46 (design §6.1, 04 §6.11): one action table builds the Story menu and the

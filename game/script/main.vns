@@ -4,8 +4,8 @@
 # comment explains the line below it. A line that starts with # is a comment. The game
 # skips comments, so use them for your own notes.
 #
-# Change this story or replace it with your own. Every rule is in
-# docs/script-language.md.
+# Change this story or replace it with your own. Every rule is in Studio's guide:
+# Help ▸ Guides ▸ Script language (docs/script-language.md in the vn-engine folder).
 #
 # Players can save at any line or menu: F5 saves at once, F9 loads the newest of those
 # quick saves, and the game menu (Esc) has Save and Load pages. The game also saves by

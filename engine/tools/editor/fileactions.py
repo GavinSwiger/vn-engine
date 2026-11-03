@@ -24,6 +24,7 @@ from engine.tools.editor import dialogs, files
 from engine.tools.editor.dialogs import (
     ask,
     ask_directory,
+    ask_game_folder,
     ask_open_files,
     ask_text,
     show_error,
@@ -48,6 +49,9 @@ DELETE_DEFAULT = 1                      # a destructive button is never the defa
 ADD_POLL_MS = 50
 NEW_GAME_TITLE = "New game"             # F47 PR-F47-25: Start from, then the folder
 NEW_GAME_NEXT = "Choose a folder…"
+OPEN_NOT_GAME = ("“{name}” isn't a game folder: it has no script folder. Choose the folder "
+                 "that holds your game's script folder and config.toml, or make a game "
+                 "with File ▸ New game….")
 TEMPLATE_HINTS = {
     files.TEMPLATE_SAMPLE: "Two characters, two places, music, a choice and two endings, "
                            "ready for you to change.",
@@ -114,7 +118,7 @@ def ask_start_from(parent: tk.Misc) -> str | None:
 
 
 def launch_studio(folder: Path) -> None:
-    """Open Studio on a new game in its own process; this window stays open (a seam)."""
+    """Open Studio on a game folder in its own process; this window stays open (a seam)."""
     kwargs: dict = {}
     if os.name == "nt":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -395,3 +399,24 @@ class FileActions:
             show_error(self.root, result.text)
             return
         launch_studio(result)
+
+    def open_game(self) -> None:
+        """File ▸ Open game… (Ctrl+O): an existing game folder opens in its own Studio and
+        this window stays open, as New game does. The game open here does nothing; a folder
+        without ``script/`` is refused with a line on what to choose instead."""
+        from engine.tools.editor import game_folder_problem
+
+        if self.closed:
+            return
+        folder = ask_game_folder(self.root)
+        if folder is None:
+            return
+        try:
+            if folder.resolve() == Path(self.paths.root).resolve():
+                return
+        except OSError:
+            pass
+        if game_folder_problem(folder) is not None:
+            show_error(self.root, OPEN_NOT_GAME.format(name=show(folder.name)))
+            return
+        launch_studio(folder)

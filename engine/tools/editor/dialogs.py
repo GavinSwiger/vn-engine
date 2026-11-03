@@ -81,6 +81,12 @@ def ask_directory(parent: tk.Misc) -> Path | None:
     return Path(picked) if picked else None
 
 
+def ask_game_folder(parent: tk.Misc) -> Path | None:
+    """Open game…: the OS folder dialog for an existing game folder. None if cancelled."""
+    picked = filedialog.askdirectory(parent=parent, title="Open game folder", mustexist=True)
+    return Path(picked) if picked else None
+
+
 def _dialog(parent: tk.Misc) -> tk.Toplevel:
     dialog = tk.Toplevel(parent)
     dialog.withdraw()

@@ -18,6 +18,7 @@ from engine.script.translatecheck import (
     shown_text,
 )
 from tests.script.helpers import one_error
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 REF = "translations/ja.po"
 

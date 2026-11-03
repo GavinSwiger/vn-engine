@@ -88,7 +88,7 @@ label lantern_stall:
     "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
     # "minigame" plays a small game inside the story; the story waits until it ends.
     # lantern_memory is this game's own minigame: a plugin in game/minigames/ (see
-    # docs/minigames.md, "Writing a minigame"). pairs=6 deals six pairs of lanterns.
+    # Help ▸ Guides ▸ Minigames, "Writing a minigame"). pairs=6 deals six pairs of lanterns.
     # "into turns" keeps the result, the number of turns the player took, in the story
     # variable turns (main.vns gives it a default). Clearing the board also adds 1 to
     # Hana's meter: she is watching from the water.
