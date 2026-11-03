@@ -74,6 +74,7 @@ def advance(interp: Interpreter) -> None:
 class Outcome:
     lines: tuple
     ok: bool
+    undone: str | None = None
 
 
 class FakeRunner:
@@ -93,11 +94,21 @@ class FakeRunner:
             code, mode = compile(line, "<console>", "eval"), "eval"
         except SyntaxError:
             code, mode = compile(line, "<console>", "exec"), "exec"
-        try:
-            value = interp.author_call(eval, code, interp.G)
-        except BaseException as error:                    # noqa: BLE001 (as guarded)
-            return Outcome((f"{type(error).__name__}: {error}",), False)
-        return Outcome((value_text(value, CODE_MAX) if mode == "eval" else "Done.",), True)
+        out: list[str] = []
+
+        def apply() -> bool:                              # one console_change, as P1's
+            try:
+                value = interp.author_call(eval, code, interp.G)
+            except BaseException as error:                # noqa: BLE001 (as guarded)
+                out.append(f"{type(error).__name__}: {error}")
+                return False
+            out.append(value_text(value, CODE_MAX) if mode == "eval" else "Done.")
+            return True
+
+        reason = interp.console_change(apply)
+        if reason:
+            out.clear()
+        return Outcome(tuple(out), reason is None, reason or None)
 
     def guarded(self, interp: Interpreter, fn) -> None:
         try:

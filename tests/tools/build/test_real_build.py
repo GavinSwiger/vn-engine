@@ -211,6 +211,8 @@ def test_ac_f42_07_bundle_has_no_dev_tools_tk_starter_or_sample(example_build):
     modules = {name.casefold() for name in scan.members}
     assert any(name.startswith("engine.app") for name in modules)      # the PYZ was read
     assert not [m for m in modules if m.startswith(("engine.tools", "tkinter", "_tkinter"))]
+    # AC-F40-04: the developer console (engine/tools/console) is never packaged.
+    assert not [m for m in modules if "console" in m.split(".")]
     assert not [f for f in files if f.startswith(("engine/tools", "engine/data/starter",
                                                   "engine/data/sample"))]
     assert {p.name for p in (internal / "engine" / "data").iterdir()} == {"fonts", "icon.png"}
@@ -242,7 +244,9 @@ def test_ac_f42_11_a_plugin_using_a_stdlib_module_the_engine_does_not_loads(
 def test_ac_f42_12_no_author_path_or_name_anywhere_in_the_build(example_build):
     built = example_build
     canary_code = "run the game in the game folder next to"      # cli.py, inside the PYZ
-    scanner = LeakScanner([*_needles(built), canary_code, TITLE.casefold()])
+    # AC-F40-35: the developer console's Code hint (tools/console/texts.py) is nowhere.
+    console_needle = "one line of python, like a $ line"
+    scanner = LeakScanner([*_needles(built), canary_code, TITLE.casefold(), console_needle])
     result = scanner.folder(built.folder)
     leaks = [(where, needle) for where, needle in result.hits
              if needle not in (canary_code, TITLE.casefold())]

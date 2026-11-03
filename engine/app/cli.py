@@ -146,6 +146,8 @@ HelperHandler = Callable[[Path], int]
 BuildHandler = Callable[..., int]
 # F41: lint_handler(game_dir, as_json=…, strict=…) -> exit code.
 LintHandler = Callable[..., int]
+# F40: console_factory(app) -> the App's console (``engine/__main__.py``'s ``_console``).
+ConsoleFactory = Callable[..., object]
 
 
 def _bench_seconds(text: str) -> float:
@@ -249,12 +251,15 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
          checker: CheckHandler | None = None,
          helper: HelperHandler | None = None,
          builder: BuildHandler | None = None,
-         linter: LintHandler | None = None) -> int:
+         linter: LintHandler | None = None,
+         console: ConsoleFactory | None = None) -> int:
     """``python -m engine run [GAME_DIR] [options]``, and ``edit [GAME_DIR]`` when
     ``editor`` is given (``engine/__main__.py``) and the build isn't frozen; likewise
     ``check [GAME_DIR] …`` with ``checker`` (F45), ``helper`` (F47), ``build [GAME_DIR]
     [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42) and ``lint [GAME_DIR]
-    [--json] [--strict]`` with ``linter`` (F41). ``GAME_DIR`` defaults to
+    [--json] [--strict]`` with ``linter`` (F41). F40: ``console`` (the developer
+    console's factory) reaches ``bootstrap.launch`` only for a dev ``run``; a frozen build
+    or ``--release`` drops it. ``GAME_DIR`` defaults to
     ``<repo>/game``; a relative ``GAME_DIR`` (or ``--out``) is resolved against the CWD
     once. ``build``'s ``--out`` defaults to ``builds`` beside the game folder (F42 I-6).
     F39's dev-only ``run`` options belong under ``dev_tools`` too, never in
@@ -382,6 +387,7 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
             run.error(RESUME_NEEDS_REPORT)
         if args.try_stdin:
             args.try_lines = _try_lines(run)
+        args.console = console                          # F40: dev runs only
     return _start(game_dir, args)
 
 
@@ -526,7 +532,8 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        window_at=getattr(args, "window_position", None),
                        try_lines=getattr(args, "try_lines", None),
                        extras=getattr(args, "extras", None),
-                       replay=getattr(args, "replay", None))
+                       replay=getattr(args, "replay", None),
+                       console=None if release else getattr(args, "console", None))
     except KeyboardInterrupt:
         return 0        # Ctrl+C before logging starts exits silently (§7.1 step 19)
 
@@ -538,7 +545,7 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             window_at: tuple[int, int] | None = None,
             try_lines: tuple[str, ...] | None = None,
             playthrough: int | None = None, extras: str | None = None,
-            replay: str | None = None) -> int:
+            replay: str | None = None, console: ConsoleFactory | None = None) -> int:
     """The startup sequence (``engine.app.bootstrap.launch``)."""
     from engine.app import bootstrap
 
@@ -548,4 +555,5 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
                             window_at=window_at, try_lines=try_lines,
-                            playthrough=playthrough, extras=extras, replay=replay)
+                            playthrough=playthrough, extras=extras, replay=replay,
+                            console=console)

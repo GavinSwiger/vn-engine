@@ -31,7 +31,7 @@ import gc
 import sys
 import time as _time
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pygame
 
@@ -73,6 +73,22 @@ if TYPE_CHECKING:
     from engine.ui.shell import GameShell
 
 QuitGuard = Callable[[], bool]
+
+
+class ConsoleSlot(Protocol):
+    """F40 (04 §1): what the App calls on ``App.console`` (``tools/console``'s
+    ``DevConsole``, handed in by ``engine/__main__.py`` through the bootstrap)."""
+
+    @property
+    def holds_story(self) -> bool: ...
+
+    def key(self, event: pygame.event.Event) -> bool: ...
+
+    def frame(self) -> None: ...
+
+    def draw(self, canvas: Canvas) -> None: ...
+
+    def studio(self, request: object) -> None: ...
 
 MINIMIZED_WAIT_MS = 100                 # ≤ 10 wake-ups per second while minimized
 MSG_EMPTY_FRAMEBUFFER = "Framebuffer is empty; frame skipped"
@@ -175,6 +191,11 @@ class App:
         self.metafiles: "DiskFolder | None" = None
         # F44: set with ``--report-to-editor``; reports "started" and fatal errors.
         self.editor_link = editor_link
+        # F40 (04 §1, §3): the developer console, filled only by ``bootstrap.launch`` in a
+        # dev run from the factory ``engine/__main__.py`` passes (``app`` never imports it).
+        # Called only while ``dev`` and filled: ``key`` (raw input), ``frame``, ``draw``,
+        # ``holds_story``, and ``studio`` (``EditorLink.update``).
+        self.console: "ConsoleSlot | None" = None
         self.time = assets.time
         self.canvas = Canvas(assets)
         self.screens = ScreenStack()
@@ -302,7 +323,7 @@ class App:
                     # F10 C3, the story hold: no pump while a menu (a screen that isn't
                     # in_game) is top, so no command is released and no checkpoint taken.
                     if (self.story is not None and not self.error_mode
-                            and self.screens.story_may_run()):
+                            and self.screens.story_may_run() and not self._console_holds()):
                         for command in self.story.pump():
                             self.router.dispatch(command)
                     self._update_persist()                   # F12: after dispatch
@@ -311,6 +332,8 @@ class App:
                     self._update_flow()                      # F20 (07 A6): after F11
                     self._update_audio()                     # F08: every frame, error mode too
                     self._update_editor()                    # F39: every frame, error mode too
+                    if self.dev and self.console is not None:
+                        self.console.frame()                 # F40 (04 §7.1): after Studio's
                     if self.rollback_release is not None:    # F14 (07 I-11)
                         self.rollback_release()
                     self.screens.update(self.time.dt)
@@ -596,6 +619,10 @@ class App:
         if self.audio is not None:
             self.audio.update(self._clock())
 
+    def _console_holds(self) -> bool:
+        """F40 PR-F40-06: the open console holds the story (dev runs only)."""
+        return self.dev and self.console is not None and self.console.holds_story
+
     def _update_editor(self) -> None:
         """F39's slot (``SPEC.md`` §5.1 step 3, §5.2): with ``--report-to-editor``, Studio's
         messages read since the last frame (one queue poll), in every mode: error mode and
@@ -635,6 +662,9 @@ class App:
             if self.dev and app_input.is_overlay_hotkey(event):
                 self.overlay_on = not self.overlay_on
                 return
+        # F40 (04 §7.6): F12, and every input event while the console is open (dev only).
+        if self.dev and self.console is not None and self.console.key(event):
+            return
         self.screens.handle_event(app_input.translate(event, self.viewport, self.window))
 
     # --- present (§7.5.2) ---------------------------------------------------------------------
@@ -676,6 +706,12 @@ class App:
         if not any(getattr(screen, "opaque", False) for screen in self.screens):
             self.canvas.fill((0, 0, 0))
         self.screens.draw(self.canvas)
+        # F40 (04 §7.6): the console over the screens, under notices and the F3 overlay;
+        # drawn only here, so never in a thumbnail, a scene picture or a backdrop.
+        if self.dev and self.console is not None and not self.error_mode:
+            if self.shell is not None:
+                self.shell.serve_captures(self.canvas)   # thumbnails before the console
+            self.console.draw(self.canvas)
         # F11 C9: notices over every screen, under the dev overlay; none in error mode.
         if self.shell is not None and not self.error_mode:
             self.shell.draw_layer(self.canvas)

@@ -28,7 +28,8 @@ bound as its ``freeze`` copy; a meter takes a whole number and is clamped (PR-F4
 - ``run_code(interp, line) -> CodeOutcome``: P1's ``runner.run_code``. It checks the line
   (``codecheck``) and runs it guarded; ``.lines`` are the output lines (``print`` text, then
   the value or ``Done.``, or one error line) and ``.ok`` is False when the line was refused,
-  raised or ran too long. The model calls it inside ``console_change``.
+  raised or ran too long; ``.undone`` is why a change was undone. It makes the one
+  ``console_change`` of the run itself, so the model doesn't wrap it.
 - ``guarded(interp, fn)``: P1's ``runner.guarded``; the one call into author code that a
   Variables refresh or a ``values`` answer makes for author objects' ``repr`` (``TextBatch``).
   None: author objects show ``<can't show this value>``.
@@ -167,10 +168,12 @@ class Result:
 
 
 class CodeOutcome(Protocol):
-    """P1's ``CodeResult`` as the model reads it."""
+    """P1's ``CodeResult`` as the model reads it. ``undone``: why ``console_change`` undid a
+    change that ran without an error, else None."""
 
     lines: Sequence[str]
     ok: bool
+    undone: str | None
 
 
 RunCodeFn = Callable[[Interpreter, str], CodeOutcome]
@@ -886,15 +889,14 @@ class ConsoleModel:
         if refusal is not None or interp is None:
             _log.info("Console Code line: refused")
             return self._entry(line, (refusal or texts.NO_STORY,), False)
-        outcomes: list[CodeOutcome] = []
-
-        def apply() -> bool:
-            outcomes.append(self._run_code(interp, line))
-            return bool(outcomes[-1].ok)
-
-        reason = self._change(interp, apply)
-        lines = [echo(str(text), CODE_MAX) for text in outcomes[-1].lines] if outcomes else []
-        ok = reason is None and bool(outcomes) and bool(outcomes[-1].ok)
+        try:                                  # run_code makes the one console_change itself
+            outcome = self._run_code(interp, line)
+        except Exception as error:            # noqa: BLE001 (never stop the game)
+            outcome, reason = None, echo(f"{type(error).__name__}: {error}", CODE_MAX)
+        else:
+            reason = getattr(outcome, "undone", None)
+        lines = [echo(str(text), CODE_MAX) for text in outcome.lines] if outcome else []
+        ok = reason is None and outcome is not None and bool(outcome.ok)
         if reason:                            # undone ("" is the line's own failure)
             lines.append(texts.CANT_SAVE.format(reason=echo(reason, CODE_MAX)))
         if not lines and ok:

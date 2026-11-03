@@ -145,8 +145,18 @@ class EditorLink:
             if shell is not None:
                 shell.notify(text, kind=kind)                # type: ignore[arg-type]
 
+        # F40 (04 §7.5, SEC-F40-01): console requests reach the console only in a dev run
+        # with the slot filled and not in error mode; otherwise they are dropped.
+        console = app.console
+        studio = (console.studio if app.dev and console is not None and not app.error_mode
+                  else None)
         handle_messages(messages, error_mode=app.error_mode, notify=notify,
-                        reload=lambda: self._reload(app))
+                        reload=lambda: self._reload(app), console=studio)
+
+    def send_line(self, data: bytes) -> None:
+        """F40: one report line (``data`` without its line break) to Studio, as ``_write``
+        does: a closed pipe sends the rest to the null device."""
+        self._write_bytes(data + b"\n")
 
     def _reload(self, app: "App") -> None:
         """§5.1 step 3: the ``state`` event (none when the place can't be carried: Studio

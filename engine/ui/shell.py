@@ -381,6 +381,13 @@ class GameShell:
             cue.draw(canvas)
         self.notices.draw(canvas, self.painter)
 
+    def serve_captures(self, canvas: "Canvas") -> None:
+        """F40 (``04`` §7.6): this frame's scene captures now, from the canvas as the screens
+        drew it, before the dev console draws over it (``draw_layer`` then has none left),
+        so the console is never in a thumbnail or scene picture."""
+        if self._captures:
+            self._serve_captures(canvas)
+
     def set_cue_layer(self, layer: "CueLayer | None") -> None:
         """F14 A3 (``07`` §3.3): the one in-game cue layer (ui-system layer 6, above the
         choices, under the notices), F14's ``LimitCue``. One slot: a second user goes
@@ -763,15 +770,23 @@ class GameShell:
 
     # -- an updated preview (F39 §5.1 step 5) --
 
-    def enter_game(self, start: Callable[[], None]) -> None:
+    def enter_game(self, start: Callable[[], None], *, choose: bool = True) -> None:
         """F39: an updated preview's resume enters the game at once: no title and no
         pre-title step (F33's warning, F30's question), the playthrough look chosen, the
         in-game screens reset, ``start()`` called exactly once where a new game would call
         ``new_game()`` (the resume's committing restore; the restored line shows at the next
         pump), then mode GAME and the in-game screens as the stack. A ``start()`` that
         didn't restore leaves the next step to the caller (the error screen or a normal
-        start replaces the stack)."""
-        self._choose()                              # F32: before the game starts
+        start replaces the stack).
+
+        F40 (``04`` §3): the console's in-game Jump passes ``choose=False``, so the
+        playthrough look isn't chosen again; its Jump on the title starts a new game here,
+        so the title's music goes as New Game's does."""
+        if self.mode is Mode.TITLE and self._music is not None:     # F40: from the title
+            self.leave_title()
+            self._release_title_music()
+        if choose:
+            self._choose()                          # F32: before the game starts
         self._reset_in_game()
         start()
         self.mode = Mode.GAME

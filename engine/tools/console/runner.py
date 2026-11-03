@@ -39,11 +39,12 @@ from typing import Any
 
 from engine.core.redact import echo
 from engine.runtime.interpreter import Interpreter, Status
+from engine.tools.console import texts
 from engine.tools.console.codecheck import Refused, check_line, clean_line, message_text
 from engine.tools.console.valuetext import CODE_MAX, value_text
 
-DONE = "Done."                                        # 01 §6.3 "Code done" (a statement)
-TOO_LONG = "That ran too long and was stopped."       # 01 §6.3 "Too long"
+DONE = texts.CODE_DONE                                # 01 §6.3 "Code done" (a statement)
+TOO_LONG = texts.TOO_LONG                             # 01 §6.3 "Too long"
 DRAIN_S = 0.5                                         # waiting for a late watchdog SIGINT
 DRAIN_STEP_S = 0.01
 

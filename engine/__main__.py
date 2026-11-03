@@ -7,6 +7,8 @@ players can run (F42, dev runs only); ``engine.tools.build`` is imported only in
 ``_build``.
 ``python -m engine lint [GAME_DIR] [--json] [--strict]``: print every problem and unused
 thing in a game (F41, dev runs only).
+``run`` in a dev run gets the developer console (F40): ``engine.tools.console`` is imported
+only inside ``_console``, which the bootstrap calls once with the App.
 
 Why this module exists: it is the second launch command (PR-F01-03, TR-F01-02). Like
 ``main.py`` it runs the Python version check before importing modern engine code, so it
@@ -54,8 +56,16 @@ def _lint(game_dir, *, as_json, strict):
     return lint_command(game_dir, as_json=as_json, strict=strict)
 
 
+def _console(app):
+    """The console factory given to ``cli.main`` (F40): called by ``bootstrap.launch``
+    only in a dev run."""
+    from engine.tools.console import install_console
+    return install_console(app)
+
+
 if __name__ == "__main__":
     _bootcheck.check_python()
     from engine.app import cli
     sys.exit(cli.main(sys.argv[1:], editor=_edit, checker=_check,
-                      helper=_helper, builder=_build, linter=_lint))
+                      helper=_helper, builder=_build, linter=_lint,
+                      console=_console))
