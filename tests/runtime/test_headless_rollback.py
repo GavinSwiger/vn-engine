@@ -56,15 +56,15 @@ def _driven(interp: Interpreter, seed: int, inputs: list[str], chunk: int,
             driver.post(WaitDone(interp.waiting_for))
             continue
         current = interp.current
+        if type(current) is Minigame:           # F25-4: run_headless's test outcome
+            outcome = headless_outcome(interp, current)     # (F23 s6: it uses no input)
+            driver.post(MinigameDone(current.sid, interp.minigame_run, outcome.result,
+                                     outcome.changes))
+            continue
         answer = next(pending, None)
         if answer is None:
             if type(current) is Menu:
                 return commands, heard
-            if type(current) is Minigame:       # F25-4: run_headless's test outcome
-                outcome = headless_outcome(interp, current)
-                driver.post(MinigameDone(current.sid, interp.minigame_run, outcome.result,
-                                         outcome.changes))
-                continue
             answer = "advance"
         word, _, n = answer.partition(" ")
         if word == "advance":
@@ -121,8 +121,8 @@ def test_ac27_headless_back_and_forward(monkeypatch):
     for name, program, seed, inputs, files in (
             ("K", fixture("steps"), 42, ["advance"] * 3 + ["choose 1"] + rolls, IMG14),
             # F17 step 5: 7 more advances for the prologue's full-screen lines; F25-4: 1
-            # more for Hana's map line.
-            ("example", example, 1, ["advance"] * 19 + ["choose 1", "choose 1"] + rolls,
+            # more for Hana's map line; F23 s6: 2 more for the lantern game's lines.
+            ("example", example, 1, ["advance"] * 21 + ["choose 1", "choose 1"] + rolls,
              images)):
         made.clear()
         expected = run_headless(program, seed=seed, inputs=inputs, image_files=files,

@@ -70,7 +70,7 @@ size (box top ≥ 472, tab top ≥ 410 at name size 48). F07's choice area must 
 quick-menu pill while it shows (F10 03-ui, Conflict C1). Notices may lie over choices and
 sprites; they never take input, so clicks reach what is below.
 
-### Minigame screen regions (proposed, F23)
+### Minigame screen regions
 
 The frame every minigame plugin gets
 ([F23 03-ui](../specs/F23-minigame-api/03-ui.md)). The heading and hint are optional, and
@@ -102,7 +102,7 @@ A page opened from the title (F11 Load, F16 Settings) uses the game-menu layout 
 title background; its sidebar is Return, then the title's entries that have pages, in
 title order (F10 G2, confirmed by F11).
 
-**Sidebar fit (proposed, F23).** When the navigation column doesn't fit in 640, these
+**Sidebar fit.** When the navigation column doesn't fit in 640, these
 steps apply in order, each only if still needed:
 1. Gaps become 4 (F10).
 2. Button height becomes max(48, pitch + 8).
@@ -129,7 +129,7 @@ textbox).
 | 3 | Say window | F05, F17 | Textbox, name tab, continue indicator; or, in full-screen text (F17), the NVL panel: `nvl.fill_color` at `nvl.fill_opacity` over the whole canvas, with the page's lines in the text column. Never both in one frame. The quick menu, choices, and cues draw over the panel. |
 | 4 | In-game overlays | F10, F14; F15 (proposed) | Quick menu (F10); skip/auto indicator (F15); rewind tag (F14). |
 | 5 | Choices | F07 | The open menu's buttons, one stack centered at x 640 in the choice area (y 16 to 16 above the name tab's top; with no text box, to the quick-menu floor, 686 at 100%), over the say window. Hidden with layers 3 and 4 in hidden mode (any input then only shows them). Picks are ignored for 250 ms after the buttons appear. |
-| 6 | In-game cues | F14 | The shell's one cue slot (`GameShell.set_cue_layer`), drawn after the scene captures and before notices: the rollback limit mark, over choices, for at most 500 ms. Never in `scene_picture()`, a save thumbnail, or a menu backdrop, and not drawn while a menu-type screen covers the game or in error mode. Also drawn over a running minigame at its cue point (proposed, F23). |
+| 6 | In-game cues | F14 | The shell's one cue slot (`GameShell.set_cue_layer`), drawn after the scene captures and before notices: the rollback limit mark, over choices, for at most 500 ms. Never in `scene_picture()`, a save thumbnail, or a menu backdrop, and not drawn while a menu-type screen covers the game or in error mode. Also drawn over a running minigame at its cue point. |
 
 **Hidden mode.** H, middle click, or gamepad north hides
 layers 3 and 4 instantly; the stage stays. Any advance input, H, middle click, or north
@@ -140,7 +140,7 @@ is not drawn.
 screen-stack order (architecture, "Screen stack"). The **title** is an opaque bottom
 screen when no game runs.
 
-The **minigame screen (proposed, F23)** sits directly above the in-game screen and paints
+The **minigame screen** sits directly above the in-game screen and paints
 every pixel: its own backdrop, or the frozen stage under `minigame.stage_dim_opacity`. While
 it shows, layers 3 and 4 are not drawn. Layer 6 cues, notices, and the dev overlay are still
 drawn above it. Any menu-type screen over it freezes it, with no time and no input.
@@ -154,7 +154,7 @@ stay in hidden mode. They are never part of a scene picture or save thumbnail. O
 everything: the dev overlay (F3, dev runs only, F01). The error screen (F01) replaces all
 screens and drops every notice.
 
-**Thumbnail during a minigame (proposed, F23).** A save made while a minigame is running or
+**Thumbnail during a minigame.** A save made while a minigame is running or
 paused uses the minigame's **opening picture**: the frame drawn when its fade-in ended. It
 does not use the current frame or the menu backdrop.
 
@@ -175,10 +175,10 @@ dropped when the property belongs to the whole area.
   UI font, fades, back sound), `panel`, `button`, `toggle`, `slider`, `list`, `title`,
   `menu`, `quick_menu`, `confirm`; `save` and `notice`; `rollback`; `nvl` (full-screen
   text);
-  `minigame` (the frame) and `plugin` (proposed, F23); `flowchart` (F20);
+  `minigame` (the frame) and `plugin`; `flowchart` (F20);
   `effects` (proposed, F09).
   Grid cells use `button`.
-- **Plugin tokens (proposed, F23).** A minigame plugin declares its own tokens under
+- **Plugin tokens.** A minigame plugin declares its own tokens under
   `plugin.<minigame name>.<element>.<property>`, set in `[theme.plugin.<name>]`. Each has a
   type by the suffix below, a default (a value or another token's name), and a range. Its
   words live in `[words.plugin.<name>]`, where `title` is the display title. The usual
@@ -435,7 +435,7 @@ the drawn limit mark is used.`); dev runs check the glyph on the fill as a graph
 | `rollback.bump_height` | length | 6 (0–12) | Say-window bump with the mark; 0: no bump. |
 | `rollback.limit_sound` | sound | none | Played on the UI channel when the mark appears. |
 
-**Minigame frame (proposed, F23).** Purposes are in
+**Minigame frame.** Purposes are in
 [F23 03-ui](../specs/F23-minigame-api/03-ui.md), Theme tokens.
 - The heading, hint panel, and Skip Game reuse `panel.*`, `button.*`, and `confirm.*`.
 - The new words are `skip_minigame` "Skip Game" and `confirm_skip_minigame` "Skip this game
@@ -633,7 +633,7 @@ usable thumbnail shows F11's themed placeholder, never the checkerboard.
 | Notice shown | min(8,000, `notice.duration_ms` 1,500 + 50 per character over 20) | Every notice ("Quick saved." 1,500) |
 | Notice fade | `notice.fade_ms` 200: in `ease_in_out` with a 24-unit slide, out `linear`, restack `ease_in_out` | Every notice |
 | Limit cue | Mark: cut in, 400 ms hold (restarted by each repeat), 100 ms `linear` fade; bump 80 ms up + 120 ms back, `ease_in_out` | Rollback at its limit; F20's chart limit bar (no bump) |
-| Minigame dissolve (proposed, F23) | `minigame.fade_ms` 300, `linear`, a cross-dissolve (not through black), in and out. The plugin gets no time or input during it. A rollback-landing start is a cut; a load start uses only the load fade | Every minigame start and end |
+| Minigame dissolve | `minigame.fade_ms` 300, `linear`, a cross-dissolve (not through black), in and out. The plugin gets no time or input during it. A rollback-landing start is a cut; a load start uses only the load fade | Every minigame start and end |
 | View pan (F20) | 200 ms, `ease_in_out`; a new target restarts it from where the view is; free-pan input stops it | A chart view keeping its selection in view |
 | Double click (F20) | Second click within 400 ms, pointer moved ≤ 8 units, same item | F20 chart nodes (Jump) |
 | Choice fade-in | `choice.fade_in_ms` 120, `linear`, from the frame the buttons appear; a pick is an instant cut | F07 every menu |
@@ -671,7 +671,7 @@ not change it. **UI screens:** every UI fade becomes an instant cut with
 no black frame between (the choice fade-in too, F07); color-only state changes (pressed, focus) stay. **Notices and the
 load fade** become cuts too: no slide, no restack movement. **Rollback:** landed steps
 are cuts and never replay shakes or flashes; the limit cue drops its bump and its mark cuts
-in and out. **Minigames (proposed, F23):** both dissolves become cuts. Plugins are told the
+in and out. **Minigames:** both dissolves become cuts. Plugins are told the
 setting, and bundled minigames drop shakes, flashes, and large motion. **Chart views
 (F20):** the view pan becomes a cut; the limit bar cuts in and out; free panning
 follows input as usual (the player is moving it). **Stage transitions and effects
@@ -700,8 +700,8 @@ Global keys, handled by the engine before any screen (architecture, "Screen stac
 No global key is a bare letter. **Esc is not global (F10 product Q4):**
 each screen handles it as "back" (§9). Gamepad Start is reserved for F10 (game menu).
 Clicks inside the letterbox bars are ignored by every feature. The stage (F04) takes no
-input. Screen-level dev keys: Shift+F3 sampler (F10), Shift+F8 end minigame (proposed,
-F23). Both are Shift only and do nothing in release runs.
+input. Screen-level dev keys: Shift+F3 sampler (F10), Shift+F8 end minigame
+(F23). Both are Shift only and do nothing in release runs.
 
 ### In-game reading keys
 
@@ -724,7 +724,7 @@ A / Cross, east = B / Circle, north = Y / Triangle, west = X / Square).
 Quick-menu buttons are mouse targets only; they are never in the keyboard or gamepad
 focus order, and every one has a key or menu path (PR-F10-34).
 
-### In a minigame (proposed, F23)
+### In a minigame
 
 These replace the reading keys while a minigame runs and nothing covers it.
 
@@ -748,12 +748,12 @@ inside it.
 | Arrows, D-pad, left stick (past half, one step per push) | Move focus to the nearest widget that way (§9); Up/Down wrap in a single column |
 | Tab / Shift+Tab | Next / previous widget in reading order, wrapping |
 | Enter, keypad Enter, Space, gamepad south | Activate; with nothing focused, focus the default widget |
-| Esc, right click, gamepad east | Back (inside a minigame: Backspace, right click, east; proposed, F23) |
+| Esc, right click, gamepad east | Back (inside a minigame: Backspace, right click, east) |
 | Gamepad Start | Close the game menu when it is the top screen |
 | Mouse wheel | Scroll the list or grid under the pointer only |
 | Home / End | First / last row or cell; slider minimum / maximum |
 | Page Up / Page Down | One page (lists, grids); on F11's pages also left / right bumper |
-| Delete, Backspace, gamepad west | Delete the focused item where a page allows it; Backspace is Back inside a minigame (proposed, F23) |
+| Delete, Backspace, gamepad west | Delete the focused item where a page allows it; Backspace is Back inside a minigame |
 
 **In a chart view (F20)** these differ (full table in F20 03-ui, Interaction):
 arrows never wrap; Left with nothing that way goes to the sidebar and other directions
@@ -827,7 +827,7 @@ are in [F10 03-ui](../specs/F10-ui-framework/03-ui.md).
 | Page row | A centered row of buttons H_b tall, 4 apart, each max(H_b, label + 32) wide, no focus marker; current page selected; ◀ ▶ appear only when not all fit |
 | Tag | Small pill over a picture: height text size + 10, width text + 16, radius 8, own backing (`save.badge.*`); never focusable. F20 also uses it for edge labels, the "You are here" tab, and counts |
 | Notice | Non-modal toast, below |
-| Minigame heading, hint bar (proposed, F23) | Panels from §1 "Minigame screen regions"; never focusable; text changes are cuts |
+| Minigame heading, hint bar | Panels from §1 "Minigame screen regions"; never focusable; text changes are cuts |
 | Codex view (F21) | F21's list and detail panel, optionally with a pick button; a minigame hosts it in its content area (≥ 640×400) |
 | Chart view (F20) | A pannable, zoomable map in a clipped viewport: cells joined by routed edges, with F10 scrollbars on both axes when they overflow. Draws only what meets the viewport. Mouse-only glyph toolbar. Full spec in F20 03-ui |
 
@@ -859,7 +859,7 @@ list or grid scrolls it just into view.
 **Back** (Esc, right click, gamepad east) closes the top screen or open page and returns
 focus to the widget that opened it. On a confirm it means No; on the game menu's first
 level it returns to the game; on the title it does nothing. Back never quits, starts, or
-loads a game. **In a minigame (proposed, F23)** Esc always opens the game menu. Back for
+loads a game. **In a minigame** Esc always opens the game menu. Back for
 the plugin is Backspace, right click, or east, and when unused it opens the game menu.
 
 **Confirm dialogs.** Every yes/no question uses F10's dialog: message, Yes left, No right,
@@ -1001,3 +1001,6 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
   its tokens (with `[theme.flowchart]` and its sub-tables), the 18 `flowchart_*` words with
   their defaults, the view pan and double-click timings, reduced motion for chart views, the
   chart view's keys, zoom floor, widget, and focus rule.
+- 2026-11-02: F23 built (steps 4–6): the minigame regions, screen, thumbnail rule, `minigame`
+  and `plugin` areas, plugin tokens, frame, dissolves, Shift+F8, and minigame keys are no
+  longer marked proposed.

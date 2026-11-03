@@ -813,9 +813,10 @@ def test_ac47_the_example_game_twice_on_one_store():
     # F25-4: the cross-examination starts before the bridge talk, so its StartMinigame's
     # held tips differ (run 2 holds the river god's from run 1); compare the rest. F26-4:
     # the walk home ends with Hana's phone chat. F27-4: the shed's puzzle room comes first.
+    # F23 s6: the lantern stall's lantern game comes before it.
     starts = [[c["name"] for c in run if c["type"] == "StartMinigame"] for run in (first, second)]
-    assert starts[0] == starts[1] == ["puzzle_room", "present_evidence", "poem_game",
-                                      "phone_chat"]
+    assert starts[0] == starts[1] == ["lantern_memory", "puzzle_room", "present_evidence",
+                                      "poem_game", "phone_chat"]
     first = [c for c in first if c["type"] != "StartMinigame"]
     second = [c for c in second if c["type"] != "StartMinigame"]
     tips = [c for c in first if c["type"] == "CodexAdded" and c["kind"] == "tip"]

@@ -319,7 +319,7 @@ DOC: Final = StatementDoc(
     "minigame <name> [skippable] [<arg>=<value> ...] [into <variable>]",
     "Starts a minigame and waits until the player finishes it. The result goes into a "
     "variable that has a default.",
-    "minigame lantern_memory pairs=6 into turns", None, "F23",
+    "minigame lantern_memory pairs=6 into turns", "minigame", "F23",
     fields=("lantern_memory", "pairs=6", "turns"))
 
 

@@ -908,6 +908,125 @@
       "pieces": [
        {
         "style": {
+         "type": "Style"
+        },
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/07944179b2a0",
+     "speaker": null,
+     "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "hints": false,
+      "pairs": 6
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "lantern_memory",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 533919876299229763,
+     "sid": "lantern_stall/c2944beb3590",
+     "skippable": false,
+     "type": "StartMinigame"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/94e9e5c81bdc",
+     "speaker": null,
+     "text": "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
          "color": "#1e4a9c",
          "italic": true,
          "type": "Style"
@@ -1163,7 +1282,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -1218,8 +1337,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 533919876299229763,
+     "run": 2,
+     "seed": 4640348442306208352,
      "sid": "shed_room/57d30134a3ce",
      "skippable": true,
      "type": "StartMinigame"
@@ -1638,7 +1757,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -1693,8 +1812,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 4640348442306208352,
+     "run": 3,
+     "seed": 9035287264038165814,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -2547,7 +2666,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 2
+        "value": 3
        },
        {
         "high": 10,
@@ -2603,8 +2722,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 9035287264038165814,
+     "run": 4,
+     "seed": 3335561882147042384,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -2838,38 +2957,13 @@
      "wait_id": 17
     },
     {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": [
-       {
-        "at": "left",
-        "flip": false,
-        "image": "hana happy",
-        "layer": 0,
-        "tag": "hana",
-        "zoom": 1.0
-       },
-       {
-        "at": "right",
-        "flip": false,
-        "image": "daichi grin",
-        "layer": 0,
-        "tag": "daichi",
-        "zoom": 1.0
-       }
-      ]
-     },
-     "type": "ShowStage"
-    },
-    {
      "attributes": [
-      "grin"
+      "happy"
      ],
      "blip": {
-      "every": 3,
-      "file": "blips/daichi.wav",
-      "type": "BlipSpec",
-      "volume": 70
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
      },
      "body": {
       "pieces": [
@@ -2877,18 +2971,18 @@
         "style": {
          "type": "Style"
         },
-        "text": "Same time next year? I'll save you a spot on the rail.",
+        "text": "Same time next year?",
         "type": "Span"
        }
       ],
       "type": "TaggedText"
      },
-     "name": "Daichi",
-     "name_color": "#3a6aa8",
-     "sid": "bridge/f7063760a932",
-     "speaker": "daichi",
-     "speaker_tag": "daichi",
-     "text": "Same time next year? I'll save you a spot on the rail.",
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "bridge/a327d9403eff",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Same time next year?",
      "type": "Say"
     },
     {
@@ -3090,7 +3184,7 @@
        {
         "at": "right",
         "flip": false,
-        "image": "daichi grin",
+        "image": "daichi smile",
         "layer": 0,
         "tag": "daichi",
         "zoom": 1.0
@@ -3247,7 +3341,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 3
+        "value": 4
        },
        {
         "high": 10,
@@ -3303,8 +3397,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 4,
-     "seed": 3335561882147042384,
+     "run": 5,
+     "seed": 1967107582972097042,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -3446,7 +3540,7 @@
       ],
       "waiting": null
      },
-     "dice": "7a47aefcdacfc371",
+     "dice": "d514e166b005ac0b",
      "flow": {
       "path": []
      },
@@ -3569,6 +3663,18 @@
         "name": "",
         "sid": "lantern_stall/6a99b9113d70",
         "text": "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/07944179b2a0",
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/94e9e5c81bdc",
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
        },
        {
         "kind": "line",
@@ -3770,9 +3876,9 @@
        },
        {
         "kind": "line",
-        "name": "Daichi",
-        "sid": "bridge/f7063760a932",
-        "text": "Same time next year? I'll save you a spot on the rail."
+        "name": "Hana",
+        "sid": "bridge/a327d9403eff",
+        "text": "Same time next year?"
        },
        {
         "kind": "line",
@@ -3848,7 +3954,7 @@
       "values": {
        "credibility": 3,
        "daichi": 4,
-       "hana": 3
+       "hana": 4
       }
      },
      "position": {
@@ -3893,10 +3999,11 @@
        "item": null
       },
       "trust": 1,
+      "turns": 9,
       "wish_for": "daichi"
      }
     },
-    "dice": "7a47aefcdacfc371",
+    "dice": "d514e166b005ac0b",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -3922,6 +4029,7 @@
       "item": null
      },
      "trust": 1,
+     "turns": 9,
      "wish_for": "daichi"
     }
    }
@@ -4872,6 +4980,124 @@
       "pieces": [
        {
         "style": {
+         "type": "Style"
+        },
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/07944179b2a0",
+     "speaker": null,
+     "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "hints": false,
+      "pairs": 6
+     },
+     "base": {
+      "items": [
+       "festival_map"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "lantern_memory",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 5315161610431815060,
+     "sid": "lantern_stall/c2944beb3590",
+     "skippable": false,
+     "type": "StartMinigame"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/94e9e5c81bdc",
+     "speaker": null,
+     "text": "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
          "color": "#1e4a9c",
          "italic": true,
          "type": "Style"
@@ -5081,7 +5307,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 2
+        "value": 3
        },
        {
         "high": 10,
@@ -5136,8 +5362,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 5315161610431815060,
+     "run": 2,
+     "seed": 12489259578856561289,
      "sid": "shed_room/57d30134a3ce",
      "skippable": true,
      "type": "StartMinigame"
@@ -5573,7 +5799,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 2
+        "value": 3
        },
        {
         "high": 10,
@@ -5628,8 +5854,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 12489259578856561289,
+     "run": 3,
+     "seed": 12128874106461539356,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -6481,7 +6707,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 3
+        "value": 4
        },
        {
         "high": 10,
@@ -6537,8 +6763,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 12128874106461539356,
+     "run": 4,
+     "seed": 15431706983618803857,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -7130,7 +7356,7 @@
       ],
       "waiting": null
      },
-     "dice": "23143f1be1a2dff3",
+     "dice": "63c7e28dff0c785d",
      "flow": {
       "path": []
      },
@@ -7259,6 +7485,18 @@
         "name": "",
         "sid": "lantern_stall/6a99b9113d70",
         "text": "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/07944179b2a0",
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/94e9e5c81bdc",
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
        },
        {
         "kind": "line",
@@ -7507,7 +7745,7 @@
       "values": {
        "credibility": 3,
        "daichi": 4,
-       "hana": 4
+       "hana": 5
       }
      },
      "position": {
@@ -7564,10 +7802,11 @@
        "item": null
       },
       "trust": 4,
+      "turns": 9,
       "wish_for": "daichi"
      }
     },
-    "dice": "23143f1be1a2dff3",
+    "dice": "63c7e28dff0c785d",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -7590,6 +7829,7 @@
       "item": null
      },
      "trust": 4,
+     "turns": 9,
      "wish_for": "daichi"
     }
    }
@@ -8540,6 +8780,124 @@
       "pieces": [
        {
         "style": {
+         "type": "Style"
+        },
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/07944179b2a0",
+     "speaker": null,
+     "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "hints": false,
+      "pairs": 6
+     },
+     "base": {
+      "items": [
+       "festival_map"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "lantern_memory",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 15551202664927782724,
+     "sid": "lantern_stall/c2944beb3590",
+     "skippable": false,
+     "type": "StartMinigame"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/94e9e5c81bdc",
+     "speaker": null,
+     "text": "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
          "color": "#1e4a9c",
          "italic": true,
          "type": "Style"
@@ -8811,7 +9169,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -8866,8 +9224,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 15551202664927782724,
+     "run": 2,
+     "seed": 13610778289651446475,
      "sid": "shed_room/57d30134a3ce",
      "skippable": true,
      "type": "StartMinigame"
@@ -9303,7 +9661,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -9358,8 +9716,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 13610778289651446475,
+     "run": 3,
+     "seed": 9053886688338620871,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -10211,7 +10569,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 2
+        "value": 3
        },
        {
         "high": 10,
@@ -10267,8 +10625,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 9053886688338620871,
+     "run": 4,
+     "seed": 13744861071081698247,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -10502,38 +10860,13 @@
      "wait_id": 17
     },
     {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": [
-       {
-        "at": "left",
-        "flip": false,
-        "image": "hana happy",
-        "layer": 0,
-        "tag": "hana",
-        "zoom": 1.0
-       },
-       {
-        "at": "right",
-        "flip": false,
-        "image": "daichi grin",
-        "layer": 0,
-        "tag": "daichi",
-        "zoom": 1.0
-       }
-      ]
-     },
-     "type": "ShowStage"
-    },
-    {
      "attributes": [
-      "grin"
+      "happy"
      ],
      "blip": {
-      "every": 3,
-      "file": "blips/daichi.wav",
-      "type": "BlipSpec",
-      "volume": 70
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
      },
      "body": {
       "pieces": [
@@ -10541,18 +10874,18 @@
         "style": {
          "type": "Style"
         },
-        "text": "Same time next year? I'll save you a spot on the rail.",
+        "text": "Same time next year?",
         "type": "Span"
        }
       ],
       "type": "TaggedText"
      },
-     "name": "Daichi",
-     "name_color": "#3a6aa8",
-     "sid": "bridge/f7063760a932",
-     "speaker": "daichi",
-     "speaker_tag": "daichi",
-     "text": "Same time next year? I'll save you a spot on the rail.",
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "bridge/a327d9403eff",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Same time next year?",
      "type": "Say"
     },
     {
@@ -10754,7 +11087,7 @@
        {
         "at": "right",
         "flip": false,
-        "image": "daichi grin",
+        "image": "daichi smile",
         "layer": 0,
         "tag": "daichi",
         "zoom": 1.0
@@ -10910,7 +11243,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 3
+        "value": 4
        },
        {
         "high": 10,
@@ -10966,8 +11299,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 4,
-     "seed": 13744861071081698247,
+     "run": 5,
+     "seed": 3363610504728999709,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -11109,7 +11442,7 @@
       ],
       "waiting": null
      },
-     "dice": "b3dc71acfa53149b",
+     "dice": "4d6c833e9cd9ed45",
      "flow": {
       "path": []
      },
@@ -11238,6 +11571,18 @@
         "name": "",
         "sid": "lantern_stall/6a99b9113d70",
         "text": "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/07944179b2a0",
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/94e9e5c81bdc",
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
        },
        {
         "kind": "line",
@@ -11439,9 +11784,9 @@
        },
        {
         "kind": "line",
-        "name": "Daichi",
-        "sid": "bridge/f7063760a932",
-        "text": "Same time next year? I'll save you a spot on the rail."
+        "name": "Hana",
+        "sid": "bridge/a327d9403eff",
+        "text": "Same time next year?"
        },
        {
         "kind": "line",
@@ -11516,7 +11861,7 @@
       "values": {
        "credibility": 3,
        "daichi": 4,
-       "hana": 3
+       "hana": 4
       }
      },
      "position": {
@@ -11561,10 +11906,11 @@
        "item": null
       },
       "trust": 3,
+      "turns": 9,
       "wish_for": "daichi"
      }
     },
-    "dice": "b3dc71acfa53149b",
+    "dice": "4d6c833e9cd9ed45",
     "status": "ENDED",
     "variables": {
      "asked_bridge": true,
@@ -11590,6 +11936,7 @@
       "item": null
      },
      "trust": 3,
+     "turns": 9,
      "wish_for": "daichi"
     }
    }
@@ -12503,6 +12850,125 @@
       "pieces": [
        {
         "style": {
+         "type": "Style"
+        },
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/07944179b2a0",
+     "speaker": null,
+     "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "hints": false,
+      "pairs": 6
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "lantern_memory",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 2483351169433638393,
+     "sid": "lantern_stall/c2944beb3590",
+     "skippable": false,
+     "type": "StartMinigame"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/94e9e5c81bdc",
+     "speaker": null,
+     "text": "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
          "color": "#1e4a9c",
          "italic": true,
          "type": "Style"
@@ -12689,7 +13155,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 0
+        "value": 1
        },
        {
         "high": 10,
@@ -12744,8 +13210,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 2483351169433638393,
+     "run": 2,
+     "seed": 11915800808285486558,
      "sid": "shed_room/57d30134a3ce",
      "skippable": true,
      "type": "StartMinigame"
@@ -13209,7 +13675,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 0
+        "value": 1
        },
        {
         "high": 10,
@@ -13264,8 +13730,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 11915800808285486558,
+     "run": 3,
+     "seed": 16848105351295415679,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -14100,7 +14566,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -14155,8 +14621,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 16848105351295415679,
+     "run": 4,
+     "seed": 16516432733538969029,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -14280,7 +14746,7 @@
       ],
       "waiting": null
      },
-     "dice": "a4085b9901e0c005",
+     "dice": "bb1c1b0e63d792bf",
      "flow": {
       "path": []
      },
@@ -14403,6 +14869,18 @@
         "name": "",
         "sid": "lantern_stall/6a99b9113d70",
         "text": "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/07944179b2a0",
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/94e9e5c81bdc",
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
        },
        {
         "kind": "line",
@@ -14592,7 +15070,7 @@
       "values": {
        "credibility": 3,
        "daichi": 0,
-       "hana": 1
+       "hana": 2
       }
      },
      "position": {
@@ -14637,10 +15115,11 @@
        "item": null
       },
       "trust": 1,
+      "turns": 9,
       "wish_for": null
      }
     },
-    "dice": "a4085b9901e0c005",
+    "dice": "bb1c1b0e63d792bf",
     "status": "ENDED",
     "variables": {
      "asked_bridge": false,
@@ -14666,6 +15145,7 @@
       "item": null
      },
      "trust": 1,
+     "turns": 9,
      "wish_for": null
     }
    }
@@ -15600,6 +16080,125 @@
       "pieces": [
        {
         "style": {
+         "type": "Style"
+        },
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/07944179b2a0",
+     "speaker": null,
+     "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down.",
+     "type": "Say"
+    },
+    {
+     "args": {
+      "hints": false,
+      "pairs": 6
+     },
+     "base": {
+      "items": [
+       "festival_map",
+       "fortune_slip"
+      ],
+      "meters": [
+       {
+        "high": 10,
+        "low": 0,
+        "name": "hana",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 10,
+        "low": 0,
+        "name": "daichi",
+        "type": "MeterView",
+        "value": 0
+       },
+       {
+        "high": 3,
+        "low": 0,
+        "name": "credibility",
+        "type": "MeterView",
+        "value": 3
+       }
+      ],
+      "tips": [
+       "lanterns"
+      ],
+      "type": "MinigameBase"
+     },
+     "name": "lantern_memory",
+     "names": {
+      "item_categories": [
+       [
+        "Things",
+        [
+         "lantern",
+         "fortune_slip",
+         "festival_map",
+         "shed_key",
+         "candles"
+        ]
+       ]
+      ],
+      "items": [
+       "lantern",
+       "fortune_slip",
+       "festival_map",
+       "shed_key",
+       "candles"
+      ],
+      "meters": [
+       "hana",
+       "daichi",
+       "credibility"
+      ],
+      "tips": [
+       "lanterns",
+       "river_god"
+      ],
+      "type": "StoryNames"
+     },
+     "restored": false,
+     "run": 1,
+     "seed": 3836177584277386782,
+     "sid": "lantern_stall/c2944beb3590",
+     "skippable": false,
+     "type": "StartMinigame"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": null,
+     "name_color": null,
+     "sid": "lantern_stall/94e9e5c81bdc",
+     "speaker": null,
+     "text": "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\"",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
          "color": "#1e4a9c",
          "italic": true,
          "type": "Style"
@@ -15855,7 +16454,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -15910,8 +16509,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 1,
-     "seed": 3836177584277386782,
+     "run": 2,
+     "seed": 16094839057210939872,
      "sid": "shed_room/57d30134a3ce",
      "skippable": true,
      "type": "StartMinigame"
@@ -16330,7 +16929,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 1
+        "value": 2
        },
        {
         "high": 10,
@@ -16385,8 +16984,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 2,
-     "seed": 16094839057210939872,
+     "run": 3,
+     "seed": 267916602303041196,
      "sid": "hana_testimony/505968fcd374",
      "skippable": true,
      "type": "StartMinigame"
@@ -17046,7 +17645,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 2
+        "value": 3
        },
        {
         "high": 10,
@@ -17101,8 +17700,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 3,
-     "seed": 267916602303041196,
+     "run": 4,
+     "seed": 10145667893448738017,
      "sid": "lantern_release/258dbaf7867d",
      "skippable": false,
      "type": "StartMinigame"
@@ -17720,7 +18319,7 @@
         "low": 0,
         "name": "hana",
         "type": "MeterView",
-        "value": 3
+        "value": 4
        },
        {
         "high": 10,
@@ -17775,8 +18374,8 @@
       "type": "StoryNames"
      },
      "restored": false,
-     "run": 4,
-     "seed": 10145667893448738017,
+     "run": 5,
+     "seed": 8146731717871140413,
      "sid": "river_end/74e57d8f5129",
      "skippable": false,
      "type": "StartMinigame"
@@ -17912,7 +18511,7 @@
       ],
       "waiting": null
      },
-     "dice": "ed71345d19d665c5",
+     "dice": "c5c4251689ae2e7f",
      "flow": {
       "path": []
      },
@@ -18041,6 +18640,18 @@
         "name": "",
         "sid": "lantern_stall/6a99b9113d70",
         "text": "\"Three hundred yen,\" the stall keeper said. \"Wishes are extra.\""
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/07944179b2a0",
+        "text": "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "lantern_stall/94e9e5c81bdc",
+        "text": "\"Only 9 turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
        },
        {
         "kind": "line",
@@ -18296,7 +18907,7 @@
       "values": {
        "credibility": 3,
        "daichi": 3,
-       "hana": 3
+       "hana": 4
       }
      },
      "position": {
@@ -18341,10 +18952,11 @@
        "item": null
       },
       "trust": 1,
+      "turns": 9,
       "wish_for": "daichi"
      }
     },
-    "dice": "ed71345d19d665c5",
+    "dice": "c5c4251689ae2e7f",
     "status": "ENDED",
     "variables": {
      "asked_bridge": false,
@@ -18370,6 +18982,7 @@
       "item": null
      },
      "trust": 1,
+     "turns": 9,
      "wish_for": "daichi"
     }
    }

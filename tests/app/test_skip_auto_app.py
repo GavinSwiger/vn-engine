@@ -565,8 +565,10 @@ def example_run(tmp_path: Path, *, skip: bool) -> dict:
             if skip:
                 p.sa.settings = SkipAutoSettings(skip_all=True)
                 s.key(pygame.K_TAB)
+            host = s.app.minigame_host
             for n in range(3000):
-                if choices.screen is not None:
+                # F23 s6: the lantern game comes before the stall's menu; skip stops there.
+                if choices.screen is not None or getattr(host, "session", None) is not None:
                     break
                 if not skip:
                     s.key(pygame.K_SPACE)

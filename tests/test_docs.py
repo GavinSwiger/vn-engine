@@ -1647,3 +1647,58 @@ def test_ac_f27_23_puzzle_room_docs(tmp_path):
     for token in TOKENS:
         assert re.search(rf"^\| `plugin\.puzzle_room\.{re.escape(token)}` \| ", tokens,
                          re.M), token
+
+
+# --- AC-F23-61: the minigame line, the plugin guide, and the minigame tokens ------------------
+
+F23_POINTS = (
+    "**A plugin is a program.**", "**`ctx.args` can come from a save.**",
+    "which has no side effects", "**Never build file paths or `eval` from arguments.**",
+    "**Use `ctx.log`**", "**Keep the player's computer out of results, titles, and logs.**",
+    "**Make no API calls from your own threads.**", "**Honour `reduce_motion`.**",
+    "**Use relative imports in packages.**")
+
+
+def test_ac_f23_61_minigame_docs(tmp_path):
+    """``script-language.md``'s ``minigame`` section (not proposed) loads with SIGS, and the
+    E272–E279 rows are there; ``docs/minigames.md``'s "Writing a minigame" shows the whole
+    example plugin (``game/minigames/lantern_memory.py``, which AC-F23-62 loads with Loader L
+    and plays in Host U by keyboard), states each SEC-F23-15 point, and its "Saves" has the
+    save sentence; ``ui-system.md`` lists the ``minigame`` tokens, the ``plugin`` area, and
+    the two words; F23's docs-table rows point at the heading."""
+    from engine.script import load_story
+    from engine.script.loader import LoadOptions
+    from engine.script.statement_docs import all_docs
+    from tests.fixtures.F23.sigs import SIGS
+    from tests.runtime.menu_story import write_game
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    assert "proposed, F23" not in text
+    section = _subsection(text, "minigame")
+    code = _code_blocks(section)
+    assert "minigame lantern_memory pairs=6 into turns" in code
+    story = 'define hana = Character("Hana")\n' + code + "\nlabel start:\n    jump lantern_stall\n"
+    result = load_story(write_game(tmp_path / "mg", story), LoadOptions(dev=True, minigames=SIGS))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    for code_ in ("E272", "E273", "E274", "E275", "E276", "E277", "E278", "E279"):
+        assert f"| {code_} |" in text or f"({code_})" in section, code_
+    assert "| `minigame` | available |" in _section(text, "Reserved words")
+    assert {d.docs for d in all_docs() if d.key == "minigame"} == {"minigame"}
+
+    guide = MINIGAMES.read_text(encoding="utf-8")
+    assert "proposed" not in guide
+    writing = guide[guide.index("\n## Writing a minigame"):guide.index("\n## Plugin reference")]
+    plugin = (REPO / "game" / "minigames" / "lantern_memory.py").read_text(encoding="utf-8")
+    assert f"```python\n{plugin}```" in writing
+    flat = " ".join(writing.split())
+    for point in F23_POINTS:
+        assert point in flat, point
+    saves = " ".join(_subsection(guide, "Saves").split())
+    assert "a save can restart any minigame with any arguments its plugin accepts" in saves
+
+    ui = UI.read_text(encoding="utf-8")
+    assert "proposed, F23" not in ui
+    for token in ("minigame.fade_ms", "minigame.background_image", "minigame.stage_dim_opacity",
+                  "minigame.hint.text_size"):
+        assert re.search(rf"^\| `{re.escape(token)}` \| ", ui, re.M), token
+    assert "`plugin`" in ui and "`skip_minigame`" in ui and "`confirm_skip_minigame`" in ui

@@ -153,28 +153,28 @@ ROWS: tuple[StatementDoc, ...] = (
         "pause 1.0", "pause", "F09", fields=("1.0",)),
     # --- Minigames (2026-11-02, AC-F45-53): one snippet per bundled minigame, its required
     # arguments as placeholder names (tests/tools/editor/test_outline.py ties them to the
-    # plugins' signatures). docs is None while minigame is in DOCS_PENDING (F23 s6).
+    # plugins' signatures). docs is docs/script-language.md's "minigame" (F23 s6).
     StatementDoc(
         "minigame", "Poem game", "Minigames", "minigame poem_game words=<list> [into <variable>]",
         "The bundled poem game: the player picks words; the result goes into a variable.",
-        "minigame poem_game words=poem_words into turns", None, "F24",
+        "minigame poem_game words=poem_words into turns", "minigame", "F24",
         fields=("poem_words", "turns"), names=("minigame",)),
     StatementDoc(
         "minigame", "Present evidence", "Minigames",
         "minigame present_evidence testimony=<dict> answer=<dict> [into <variable>]",
         "The bundled cross-examination: press the witness or present an item.",
         "minigame present_evidence testimony=witness_lines answer=contradictions into turns",
-        None, "F25", fields=("witness_lines", "contradictions", "turns"), names=("minigame",)),
+        "minigame", "F25", fields=("witness_lines", "contradictions", "turns"), names=("minigame",)),
     StatementDoc(
         "minigame", "Phone chat", "Minigames",
         "minigame phone_chat chat=<list> contact=<text> [into <variable>]",
         "The bundled phone conversation: the player picks replies.",
-        "minigame phone_chat chat=chat_lines contact=contact_name into turns", None, "F26",
+        "minigame phone_chat chat=chat_lines contact=contact_name into turns", "minigame", "F26",
         fields=("chat_lines", "contact_name", "turns"), names=("minigame",)),
     StatementDoc(
         "minigame", "Puzzle room", "Minigames", "minigame puzzle_room room=<dict> [into <variable>]",
         "The bundled point-and-click room: look, take, use, and combine items.",
-        "minigame puzzle_room room=room_spots into turns", None, "F27",
+        "minigame puzzle_room room=room_spots into turns", "minigame", "F27",
         fields=("room_spots", "turns"), names=("minigame",)),
     # --- Declarations -------------------------------------------------------------------
     StatementDoc(

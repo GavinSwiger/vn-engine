@@ -52,6 +52,8 @@ default asked_hana = False
 default asked_bridge = False
 # Who liked the wish written on the lantern (the poem game in routes/daichi.vns).
 default wish_for = None
+# The lantern game's result: how many turns the player took (chapter1.vns).
+default turns = 0
 # Hana's cross-examination on the bridge: the statement the player was on, and what they
 # did there (routes/daichi.vns).
 default hana_at = None

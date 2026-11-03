@@ -898,6 +898,54 @@ every character's name color.
 The example game's prologue opens in full-screen text, with one `nvl clear` and one
 `nvl off`.
 
+### minigame
+```
+default turns = 0
+
+label lantern_stall:
+    hana "First to find all the pairs wins a lantern!"
+    minigame lantern_memory pairs=6 into turns
+    if turns <= 10:
+        hana happy "Only {var=turns} turns? You're good at this!"
+```
+
+Starts a minigame (a small game such as a memory board or a poem builder) and waits until
+the player finishes it, then goes on with the next line. Minigames come with the engine,
+or from Python plugins in `game/minigames/`; [minigames.md](minigames.md) has the ones that
+come with the engine and "Writing a minigame".
+
+- **Name** first, exactly as the plugin names it.
+- **Arguments** as `name=value`, e.g. `pairs=6` or `hints=points.hana >= 3`. Values are
+  worked out when the line runs, like a condition, and must be values a variable could hold.
+  Misspelled or missing arguments are caught when the game starts.
+- **`into turns`** keeps the result in a variable, which needs a `default`. Without `into`
+  the result is dropped. Meter and codex changes the minigame makes happen together with
+  it, just before the next line.
+- **`skippable`**, right after the name, lets players skip this minigame from the game menu
+  (if the minigame supports it).
+
+Esc opens the game menu as usual. A save made during a minigame starts it again from the
+beginning, and rolling back to it lets the player play it again, like a choice. Random
+layouts come out the same each time.
+
+**Testing.** A headless run uses each minigame's test outcome, or one you give in the
+inputs: `finish 9`, or `finish 9; points hana += 1`. In a dev run, Shift+F8 ends a
+minigame with its test outcome.
+
+| Message | Fix |
+|---|---|
+| `there is no minigame named "lantern_memroy". Did you mean "lantern_memory"?` | Fix the spelling, or add the plugin. |
+| `there is no default named "turn" for the result. …` | Add `default turns = 0`, or fix the name after `into`. |
+| `lantern_memory has no argument "pair". …` / `minigame lantern_memory needs a value for pairs. …` | Use the plugin's argument names. |
+| `write pairs=6, with = between the argument and its value.` | Write `name=value`. |
+| `minigame is a statement, not Python, …` | Remove the `$` and write `minigame … into …`. |
+| `minigames/stargazing.py, line 12: this minigame plugin has a Python mistake: …` (E273) | Fix the plugin. |
+| `two minigame plugins use the name "stargazing": …` (E274) | Rename one of them. |
+| `minigames/stargazing.py needs minigame API 1.4, but this engine has 1.1. …` (E278) | Update the engine, or use a version of the plugin made for this one. |
+| `minigames/my_poems.py replaces the bundled minigame "poem_game", …` (warning, dev runs) | Rename yours to keep both. |
+
+Errors while a minigame runs (E272 and E275–E279) are in section 22.
+
 ---
 
 ## 8. Characters
@@ -2633,7 +2681,8 @@ reserved so your script keeps working when they arrive.
 | `nvl` | available |
 | `cg` | coming: gallery |
 | `ending` `lock` `unlock` | available |
-| `minigame` · `effect` · `file` | coming: minigames, glitch effects, meta files |
+| `minigame` | available |
+| `effect` · `file` | coming: glitch effects, meta files |
 | `rollback` | available |
 | `flowchart` | available |
 | `python` | not supported; use `$` lines |
@@ -2890,6 +2939,11 @@ you can look one up or mention it when you ask for help.
 | E185 | `define title couldn't be set: it reads persistent.cleared, but define values are set once at launch …` (at launch) | Use a `lambda` or a `default`. |
 | E256 | `Python can't change codex. Use unlock tip, unlock item, and lock item.` / `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `define hint couldn't be set: it reads codex, …` (at launch) | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock` (see [lock tip, lock item, unlock](#lock-tip-lock-item-unlock-codex)). |
 | W56 | `persistent.hana_rememebrs is read here but never set or given a default. …` (warning, dev runs) | Fix the spelling or add a `default`. |
+| E272 | `the argument words holds a set, which can't be saved. Use a list instead.` / `lantern_memory can't use pairs=40: …` (the plugin's `check_args` refused it) | Give values a variable can hold, that the minigame accepts. |
+| E275 | `minigame stargazing stopped with an error in minigames/stargazing.py, line 88: division by zero. Fix the plugin; the log has the details.` | Fix the plugin at that line. |
+| E276 | `stargazing finished with a set, which can't be saved, so it can't go into found. …` | Make the plugin finish with text, a number, a list, or a dictionary. |
+| E277 | `minigame stargazing ran for 5 seconds … without finishing, so it is probably stuck in a loop. …` | Check any `while` loop at that line. |
+| E279 | `minigame stargazing has no outcome for this headless run. Give one in the inputs, e.g. finish 3, or give the plugin a test outcome.` (headless runs) | Add `finish …` to the inputs, or a `test_outcome` to the plugin. |
 | E85 | `this Python stopped with an error: … the log has the details.` | Check the values the line uses. |
 
 When the mistake is inside a helper written in a `define`, the message names the line that

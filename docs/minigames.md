@@ -4,10 +4,67 @@ A minigame is a small game that runs inside the story: the story stops at a `min
 the player plays, and the story goes on with the result. Some minigames come with the engine;
 you can also write your own in Python.
 
-> **This guide is being written in parts.** It starts with four minigames that come with the
-> engine: the poem game (F24), the cross-examination (F25), the phone chat (F26), and the
-> puzzle room (F27). The `minigame` line itself, the Skip Game and Shift+F8 rules, and how to
-> write your own minigame plugin are added with F23's last steps.
+This guide has three parts:
+
+1. **Using a minigame** (next section): the `minigame` line, what the player sees, and how
+   to test a story that has one. Then one section for each minigame that comes with the
+   engine: the poem game, the cross-examination, the phone chat, and the puzzle room.
+2. **Writing a minigame**: your own minigame, step by step, using the example game's
+   lantern memory game as the worked example. You need to know a little Python: what a
+   class, a method, and a list are.
+3. **Plugin reference**: everything a plugin can declare and call, and the error messages.
+
+## Using a minigame
+
+A minigame is played from one line of the script. This is the lantern stall in the example
+game (`game/script/chapter1.vns`):
+
+```
+default turns = 0
+
+label lantern_stall:
+    "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+    minigame lantern_memory pairs=6 into turns
+    if turns <= 10:
+        "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said."
+```
+
+When the story reaches the `minigame` line, the scene fades into the game. The player plays
+until the game ends, the game fades back to the story, and the story goes on with the next
+line.
+
+- **The name** comes first: `lantern_memory`. It is the name the minigame's plugin gives
+  itself. Four names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
+  and `puzzle_room`. Any others are plugins in your game's `game/minigames/` folder.
+- **Arguments** come next, written `name=value`: `pairs=6`. Each minigame has its own; its
+  section below (or its plugin) lists them. A value is worked out when the line runs, like
+  a condition, so `hints=points.hana >= 3` works. Misspelled or missing arguments are
+  caught when the game starts, with the line number.
+- **`into turns`** keeps the minigame's result in a story variable, which needs a
+  `default`. Each minigame says what its result is: a number of turns, a word, a
+  dictionary. Without `into`, the result is dropped.
+- **`skippable`**, right after the name, adds **Skip Game** to the game menu while this
+  minigame runs, for players who would rather read on. Only minigames that say what happens
+  when skipped allow it.
+
+A minigame can also change meters (`points`) and the codex: clearing the lantern board
+adds 1 to Hana's meter. Those changes happen together with the result, just before the next
+line, so a save or a rollback never sees half of them.
+
+**What the player can do.** The minigame is played with the mouse, the keyboard (arrow
+keys, Enter, Backspace for Back), or a gamepad. Esc opens the game menu as usual, and the
+game waits while the menu is open. Saving during a minigame saves its start: loading starts
+the game again from the beginning, with the same random layout. Rolling back to a minigame
+lets the player play it again, like a choice. Once the player has done something in a
+minigame, the mouse wheel can't step back out of it.
+
+**Testing.** A headless run (an automated test that plays the story with no window) uses
+each minigame's test outcome: a result the plugin declares for tests. You can give your own in the inputs instead: `finish 9`, or
+`finish 9; points hana += 1` to make the meter change too. In a dev run, **Shift+F8** ends
+the running minigame with its test outcome, so you can test the story around it quickly.
+
+The script language reference has the full form of the line and its error messages:
+[script-language.md](script-language.md), "minigame".
 
 ## Poem game
 
@@ -906,3 +963,406 @@ need_item = "You need something for this."
 no_use = "That doesn't work."
 no_combine = "Those don't go together."
 ```
+
+## Writing a minigame
+
+A minigame of your own is a **plugin**: a Python file in your game's `game/minigames/`
+folder. When the game starts, the engine loads every plugin there, and each one adds a
+minigame name that `minigame` lines can use. This section builds the example game's lantern
+memory game, a board of face-down lanterns where the player turns over two at a time and
+tries to find the pairs. It is about 80 lines long, and you can copy it as the start of
+your own.
+
+### What a minigame does
+
+Every minigame follows the same simple life:
+
+1. The story reaches the `minigame` line. The engine checks the arguments, then makes a
+   new copy of your minigame class and calls its `start` method.
+2. While the player plays, the engine calls your methods: `handle_event` for each key,
+   click, or button press; `update` once a frame; `draw` once a frame. Buttons you put on
+   the screen are drawn and pressed for you, so a simple game needs few of these.
+3. When the game is over, your code calls `ctx.finish(result)`. The engine fades back to
+   the story, puts `result` into the `into` variable, and makes any meter or codex changes
+   you asked for.
+
+`ctx` is the **context**: the one object your minigame uses to talk to the engine. It holds
+the arguments, the story's random numbers, the meters and codex, and calls for the heading,
+the hint bar, sounds, and pictures. The reference below lists all of it.
+
+### The complete plugin
+
+This is `game/minigames/lantern_memory.py`, the whole file:
+
+```python
+"""Lantern memory: turn over two lanterns at a time and find the pairs.
+
+The example game's minigame plugin, and the one docs/minigames.md walks through
+("Writing a minigame"). In the script:
+
+    minigame lantern_memory pairs=6 into turns
+
+The result is the number of turns the player took. Clearing the board also gives Hana
+one point.
+"""
+
+from engine.minigames.api import Arg, Minigame, Outcome, add_points, register
+from engine.ui.focus import Box, FocusGroup
+from engine.ui.widgets import Button
+
+PICTURES = ["Moon", "Crane", "Fish", "Star", "Bell", "Kite", "Fan", "Drum"]
+COLUMNS = 4
+CARD_W, CARD_H, GAP = 200, 110, 24
+
+
+@register
+class LanternMemory(Minigame):
+    name = "lantern_memory"
+    title = "Lantern Memory"
+    args = {"pairs": Arg(), "hints": Arg(default=False)}
+    test_outcome = Outcome(9, (add_points("hana", 1),))
+    words = {"hint": "Find the matching lanterns."}
+
+    def check_args(self, args):
+        pairs = args["pairs"]
+        if type(pairs) is not int or not 2 <= pairs <= len(PICTURES):
+            return f"pairs must be a whole number from 2 to {len(PICTURES)}"
+        if type(args["hints"]) is not bool:
+            return "hints must be True or False"
+        return None
+
+    def start(self, ctx):
+        self.ctx = ctx
+        self.cards = ctx.random.shuffle(PICTURES[:ctx.args["pairs"]] * 2)
+        self.up = []                  # the one or two cards turned face up this turn
+        self.found = set()            # the cards already matched
+        self.turns = 0
+        self.buttons = [Button(lambda i=i: self.face(i), lambda i=i: self.pick(i))
+                        for i in range(len(self.cards))]
+        self.layout(ctx.area)
+        ctx.scope.set_groups([FocusGroup(self.buttons)])
+        ctx.scope.set_default(self.buttons[0])
+        ctx.heading(True)
+        self.show_hint()
+
+    def layout(self, area):
+        rows = (len(self.cards) + COLUMNS - 1) // COLUMNS
+        left = area.x + (area.w - (COLUMNS * CARD_W + (COLUMNS - 1) * GAP)) / 2
+        top = area.y + (area.h - (rows * CARD_H + (rows - 1) * GAP)) / 2
+        for i, button in enumerate(self.buttons):
+            row, column = divmod(i, COLUMNS)
+            button.box = Box(left + column * (CARD_W + GAP), top + row * (CARD_H + GAP),
+                             CARD_W, CARD_H)
+
+    def face(self, i):
+        return self.cards[i] if i in self.found or i in self.up else "?"
+
+    def pick(self, i):
+        if i in self.found or i in self.up:
+            return
+        if len(self.up) == 2:         # the last two didn't match: turn them back down
+            self.up = []
+        self.up.append(i)
+        if len(self.up) == 2:
+            self.turns += 1
+            first, second = self.up
+            if self.cards[first] == self.cards[second]:
+                self.found.update(self.up)
+                self.up = []
+        if len(self.found) == len(self.cards):
+            self.ctx.points.add("hana", 1)
+            self.ctx.finish(self.turns)
+            return
+        self.show_hint()
+
+    def show_hint(self):
+        hint = self.ctx.words.mine("hint")
+        if self.ctx.args["hints"]:
+            left = (len(self.cards) - len(self.found)) // 2
+            hint += f" Pairs left: {left}. Turns: {self.turns}."
+        self.ctx.hint(hint)
+```
+
+The rest of this section goes through it a piece at a time.
+
+### Step 1: the file and the imports
+
+Make the folder `game/minigames/` (lower case) next to `game/script/`, and save the plugin
+there as a `.py` file. The file's name doesn't matter to the story; the name inside it does.
+
+The first lines bring in what the plugin uses: from `engine.minigames.api`, the `Minigame`
+class to build on, `Arg` and `Outcome` for the declarations, `add_points` for the test
+outcome, and `register`; from F10's widget kit, `Button`, `Box` (a rectangle: x, y, width,
+height), and `FocusGroup` (buttons the arrow keys move between). `PICTURES`, `COLUMNS`, and
+the card sizes are plain Python values the game uses.
+
+### Step 2: the declarations
+
+```python
+@register
+class LanternMemory(Minigame):
+    name = "lantern_memory"
+    title = "Lantern Memory"
+    args = {"pairs": Arg(), "hints": Arg(default=False)}
+    test_outcome = Outcome(9, (add_points("hana", 1),))
+    words = {"hint": "Find the matching lanterns."}
+```
+
+`@register` on the line above the class adds the minigame to the game. Then the class says
+what it is:
+
+- **`name`** is what `minigame` lines write: lower-case letters, digits, and `_`.
+- **`title`** is shown as the heading and as a save's description.
+- **`args`** lists the arguments. `Arg()` is required: a line without `pairs=` gets an
+  error when the game starts. `Arg(default=False)` is optional, with that default.
+- **`test_outcome`** is the result a headless run and Shift+F8 use: 9 turns, and 1 point
+  for Hana. Without one, every headless run must give a `finish` input.
+- **`words`** are the texts the game shows, so an author can change them in
+  `config.toml` without touching the plugin (see "Words and look" below).
+
+A `skipped_outcome` (not used here) is what Skip Game gives; a minigame without one can't be
+`skippable`.
+
+### Step 3: checking the arguments
+
+```python
+    def check_args(self, args):
+        pairs = args["pairs"]
+        if type(pairs) is not int or not 2 <= pairs <= len(PICTURES):
+            return f"pairs must be a whole number from 2 to {len(PICTURES)}"
+        if type(args["hints"]) is not bool:
+            return "hints must be True or False"
+        return None
+```
+
+`check_args` runs before the game starts, with every argument (defaults filled in). Return
+`None` when they are fine, or a short reason when they aren't: the story stops with the
+reason at the `minigame` line, `lantern_memory can't use pairs=40: …`. Check every argument
+here, because **`ctx.args` can come from a save** (see "Rules every plugin follows").
+`check_args` must have **no side effects**: it only looks at `args` and returns. Don't
+change `args`, write files, play sounds, or keep anything for later; the engine may call it
+more than once, and on a copy of your class that never starts.
+
+### Step 4: starting
+
+```python
+    def start(self, ctx):
+        self.ctx = ctx
+        self.cards = ctx.random.shuffle(PICTURES[:ctx.args["pairs"]] * 2)
+```
+
+`start` runs once, when the game opens. It keeps `ctx` for later and deals the cards: two of
+each of the first `pairs` pictures, shuffled. Use **`ctx.random`** for anything random. It
+is the story's own random source (the same as `dice` in the script), so a save, a rollback,
+and a test run all deal the same board. Python's `random` module would deal a new one each
+time.
+
+Then it makes one F10 `Button` per card. A button takes two functions: one that gives its
+label (here `face(i)`: the picture, or `?` while the card is face down), and one that runs
+when it is pressed (`pick(i)`). The `lambda i=i:` form makes each button remember its own
+card number. `ctx.scope.set_groups` puts the buttons in the game's focus scope: the engine
+draws them, moves the focus between them with the arrow keys or a gamepad, and presses them
+with Enter, the gamepad's A button, or a click. `set_default` picks the card focused first.
+Last, `ctx.heading(True)` shows the title above the board, and `show_hint` fills the hint
+bar under it.
+
+### Step 5: laying out the board
+
+```python
+    def layout(self, area):
+        rows = (len(self.cards) + COLUMNS - 1) // COLUMNS
+        left = area.x + (area.w - (COLUMNS * CARD_W + (COLUMNS - 1) * GAP)) / 2
+        top = area.y + (area.h - (rows * CARD_H + (rows - 1) * GAP)) / 2
+```
+
+`area` is the part of the screen the game may use (a `Box` on the 1280 × 720 screen,
+already leaving room for the heading and hint bar). `layout` places each button's `box` in a
+grid, centred in the area. `start` calls it once, and the engine calls it again whenever
+the area changes, for example when the player picks a bigger text size.
+
+### Step 6: playing and finishing
+
+`pick(i)` is the whole game. It ignores a card that is already up or found. When two cards
+are up and didn't match, the next pick turns them back down first. When the second card of
+a turn goes up, the turn counts, and a matching pair goes into `found`. When every card is
+found, the game asks for 1 point for Hana with `ctx.points.add("hana", 1)` and ends with
+**`ctx.finish(self.turns)`**: the number of turns is the result.
+
+`ctx.points.add` doesn't change the meter at once: the change waits and happens together
+with the result, as the story goes on. If the player leaves the game (loads a save, goes
+back to the title), nothing happens at all.
+
+The plugin never draws the cards itself: buttons draw themselves with the game's button look.
+A plugin that wants its own pictures defines `draw(self, canvas)` (see the reference).
+
+### Step 7: using it in the story
+
+```
+default turns = 0
+
+label lantern_stall:
+    minigame lantern_memory pairs=6 into turns
+    if turns <= 10:
+        "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said."
+```
+
+Run the game in dev mode and play it. To check the arguments, try `pairs=40`: the game stops
+at that line with the reason from `check_args`. A mistake in the plugin's Python stops the
+game at launch with the plugin's file and line, `minigames/lantern_memory.py, line 30: …`,
+and the log (`game/logs/`) has the details.
+
+### Step 8: testing it
+
+- **Shift+F8** (dev runs) ends the game at once with its test outcome, so you can test the
+  story after it without playing.
+- A **headless run** uses the test outcome too, or a `finish` input:
+  `finish 12` for a slow player, `finish 6; points hana += 1` for a perfect one.
+- Play it once with only the keyboard and once with only a gamepad: every button should be
+  reachable, and the focus always visible.
+
+### Words and look
+
+Every text a player sees should come from `words`, read with `ctx.words.mine("hint")`. An
+author can then change it in `config.toml`, including the title:
+
+```toml
+[words.plugin.lantern_memory]
+title = "Lantern Pairs"
+hint = "Find the two lanterns that match."
+```
+
+A plugin can also declare **tokens**, look values an author can change, such as
+`tokens = {"card.back_color": "#203040"}`. Read one with `ctx.theme.mine("card.back_color")`;
+an author sets it as:
+
+```toml
+[theme.plugin.lantern_memory.card]
+back_color = "#402030"
+```
+
+`ctx.theme.get("button.fill_color")` reads the game's own theme, so a plugin can match it.
+
+### Rules every plugin follows
+
+Plugins are powerful, so a few rules keep players and their saves safe:
+
+- **A plugin is a program.** It runs with the same rights as the game itself and can do
+  anything Python can. Only put plugins you wrote, or whose author you trust, in
+  `game/minigames/`, and treat a plugin from someone else like any program you download.
+- **`ctx.args` can come from a save.** Save files can be edited, so a player (or a damaged
+  save) can start your minigame with any arguments its declaration allows. Check them all
+  in `check_args`, which has no side effects, and never trust them anywhere else.
+- **Never build file paths or `eval` from arguments.** Don't turn an argument into a file
+  name, a folder, a module to import, or code to run. Use arguments to choose between
+  values your plugin already has, like `PICTURES[:pairs]` above. For pictures and sounds, use
+  `ctx.image`, `ctx.gui_image`, and `ctx.play_sound`, which only read files in the game
+  folder.
+- **Use `ctx.log`** for messages to yourself: `ctx.log.info("dealt %d cards", n)`. It goes
+  to the game's log under the area `plugin`, with private paths hidden. Don't `print` or
+  write your own log files.
+- **Keep the player's computer out of results, titles, and logs.** Never put the player's
+  user name, computer name, folders, or anything else about their computer in a result, a
+  title, a word, or a log message. Results are saved with the game, and logs are often
+  shared when someone reports a bug.
+- **Make no API calls from your own threads.** Everything on `ctx`, and every object it gives
+  you, works only on the game's main thread; a call from a thread of your own stops the
+  game with an error. Do your work in `start`, `handle_event`, `update`, and `draw`.
+- **Honour `reduce_motion`.** If your game moves, shakes, or flashes, check
+  `ctx.settings.reduce_motion` in `start` and again in `settings_changed`: when it is
+  `True`, cut instead of animating.
+- **Use relative imports in packages.** A bigger plugin can be a folder with an
+  `__init__.py` (a package), such as `game/minigames/night_sky/`. Its files import each other
+  with relative imports (`from . import rules`, `from .board import Board`), never as
+  `import rules`, which would look outside your plugin.
+
+Two more habits keep the game smooth: do slow work (loading pictures, building big lists) in
+`start`, not in `draw`; and keep `update` and `draw` short. In dev runs the engine warns
+when one frame takes over 8 ms.
+
+### Saves
+
+A save made during a minigame holds the minigame's name, its arguments, and its random seed,
+not the board itself. Loading it starts the game again from the beginning, with the same
+cards. Because players can edit save files, a save can restart any minigame with any
+arguments its plugin accepts. That is why `check_args` must check everything, and why
+changing a plugin's arguments later needs care: if a new version refuses arguments an old
+save holds, that save goes back to the nearest point it can.
+
+## Plugin reference
+
+### Declarations
+
+| Class attribute | Meaning |
+|---|---|
+| `name` | The minigame's name in scripts: lower-case letters, digits, `_`. Required. |
+| `title` | The heading and save description; `[words.plugin.<name>] title` wins. Default: the name. |
+| `api` | The minigame API version the plugin was written for: `"1.0"` (default) or `"1.1"`. |
+| `args` | `{"name": Arg(), "other": Arg(default=value)}`. Names start with a letter. |
+| `test_outcome` | `Outcome(result, changes)` for headless runs and Shift+F8, or `None`. |
+| `skipped_outcome` | `Outcome(…)` for Skip Game, or `None` (then the game can't be `skippable`). |
+| `over_stage` | `True` draws the game over the dimmed story scene instead of its own backdrop. |
+| `tokens` | `{"element.property": default}`: look values authors set in `[theme.plugin.<name>]`. |
+| `words` | `{"key": "text"}`: texts authors set in `[words.plugin.<name>]`. |
+
+`Outcome(result, changes)`: `result` is a plain value (text, a number, `True`, `False`,
+`None`, a list, or a dictionary with text keys); `changes` is a tuple of `add_points(name,
+n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
+
+### Methods the engine calls
+
+| Method | When |
+|---|---|
+| `check_args(self, args)` | Before the game starts and when a save loads. Return `None` or a reason. No side effects. |
+| `check_story(self, args, story)` | API 1.1: after `check_args`; refuse names the story doesn't declare. |
+| `outcome_for(self, kind, args, story)` | API 1.1: a test or skipped outcome worked out from the arguments. |
+| `start(self, ctx)` | Once, when the game opens. |
+| `handle_event(self, ev)` | For each input, before the buttons get it. `ev.nav` is the move (`Nav.UP`, `Nav.ACTIVATE`, `Nav.BACK`, …) or `None`; `ev.ui` is the raw event. Return `True` if you used it (the buttons then don't see it), `False` to pass it on. |
+| `update(self, dt)` | Once a frame; `dt` is the seconds since the last one. Not called while the game menu is open. |
+| `draw(self, canvas)` | Once a frame, before the buttons. `canvas.fill(color, (x, y, w, h))`, `canvas.draw_text(text, font, color, (x, y), anchor="center")`, `canvas.draw_image(image, (x, y))`. |
+| `layout(self, area)` | When the play area changes. |
+| `settings_changed(self, s)` | When the player changes a setting; `s` is the new `ctx.settings`. |
+
+### The context (`ctx`)
+
+| Member | What it is |
+|---|---|
+| `ctx.args` | The checked arguments, a dictionary (yours to read; a copy). |
+| `ctx.random` | The story's random source: `roll(a, b)`, `pick(list)`, `decimal()`, `shuffle(list)` (returns a new list). |
+| `ctx.points` | Meters: `get(name)`, `names()`, `highest()`, and `add(name, n)`, `set(name, n)` (made when the game finishes). |
+| `ctx.codex` | `items()`, `tips()`, `has(kind, name)`, `title(name)`, and `give(item)`, `take(item)`, `unlock_tip(tip)` (made when the game finishes). |
+| `ctx.story` | The story's declared names: `meters`, `items`, `tips`, `item_categories`. |
+| `ctx.settings` | `text_scale`, `reduce_motion`, and the volumes. |
+| `ctx.area` | The play area, a `Box`. |
+| `ctx.scope` | The focus scope: `set_groups([FocusGroup(buttons)])`, `set_default(button)`, `focused`. |
+| `ctx.painter` | F10's painter, for drawing frames in the game's look. |
+| `ctx.theme`, `ctx.words` | `mine(key)` reads your own token or word; `get(key)` the game's. |
+| `ctx.dev`, `ctx.log` | `True` in dev runs; the plugin's logger. |
+| `ctx.image(name)`, `ctx.gui_image(file)` | A story image (`"hana happy"`) or a picture file in the game folder. |
+| `ctx.font(file, size)` | A font; `None` as the file is the game's UI font. |
+| `ctx.play_sound(file, volume=100)`, `ctx.play_ui(token)`, `ctx.music()` | Sounds and the game's music while it runs. |
+| `ctx.heading(on, text=None)`, `ctx.hint(text)` | The heading above the game and the hint bar under it. |
+| `ctx.cue_point((x, y))` | Where the rollback cue shows. |
+| `ctx.confirm(word, on_yes, on_no=None)` | A Yes/No question, its text from your `words`. |
+| `ctx.codex_view(filter=…, pick=…)` | The codex's item list inside the game (as the cross-examination uses it). |
+| `ctx.finish(result)` | Ends the game with `result`. |
+
+### Errors and warnings
+
+| Code | When | What to do |
+|---|---|---|
+| E270 | A `minigame` line names no minigame, or one that isn't loaded, or a bad `into`. | Fix the name, or the `into` variable (it needs a `default`). |
+| E271 | An argument the minigame doesn't have, one missing, or written without `=`. | Use the plugin's argument names, `name=value`. |
+| E272 | `check_args` refused the arguments, or a value can't be saved. | Fix the line, or the plugin's check. |
+| E273 | A plugin has a Python mistake, stopped while loading, or declares something wrong. | Fix the file and line the message names. |
+| E274 | Two plugins use the same name. | Rename one. |
+| E275 | The plugin stopped with an error while running. | Fix the file and line; the log has the details. |
+| E276 | `ctx.finish` gave a result that can't be saved. | Finish with text, a number, a list, or a dictionary. |
+| E277 | The plugin ran 5 seconds without returning: probably a loop. | Check any `while` loop at that line. |
+| E278 | The plugin needs a newer minigame API than this engine has. | Update the engine, or use an older plugin. |
+| E279 | A headless run reached a minigame with no test outcome and no `finish`. | Add `finish …` to the inputs, or a `test_outcome`. |
+| W160 | A plugin replaces a minigame that comes with the engine (dev). | Rename yours to keep both. |
+| W161 | A file in `game/minigames/` registers nothing (dev). | Register a minigame, or move the file into a plugin's folder. |
+| W162 | One frame of a minigame took over 8 ms (dev). | Draw less each frame. |
+| W163 | A plugin file is a link, not a real file (dev). | Put the file itself in `game/minigames/`. |
+| W164 | The folder is named `Minigames`, not `minigames` (dev). | Rename it in lower case. |
+| W165 | A plugin line has hidden text-direction characters (dev). | Delete them. |

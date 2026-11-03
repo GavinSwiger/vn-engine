@@ -357,12 +357,18 @@ def test_ac_f03_68_no_pygame():
     # signature with the real one's arguments and its won result as a plain test outcome.
     # F26-4: seed 4 walks Hana home, so it reaches her phone chat too: the same kind of
     # stand-in, with the first reply of each ask.
+    # F23 s6: every run plays the lantern stall's lantern_memory (game/minigames/, built
+    # from F10's widgets too): a stand-in with its test outcome. F27-4's shed puzzle room
+    # likewise: a stand-in that leaves by the door at once.
     from tests.runtime.corpus import EXAMPLE_PICKS, example_inputs
     from tests.runtime.stage_story import example_minigames
 
     inputs = example_inputs(4, EXAMPLE_PICKS[4])
     present = example_minigames()["present_evidence"]
     phone = example_minigames()["phone_chat"]
+    memory = example_minigames()["lantern_memory"]
+    room = example_minigames()["puzzle_room"]
+    left = {"action": "exit", "hotspot": "door", "item": None, "gone": []}
     won = {"action": "present", "statement": "train", "evidence": "festival_map",
            "correct": True}
     replied = {"frame": "keep", "train": "station"}
@@ -371,7 +377,8 @@ def test_ac_f03_68_no_pygame():
         "from pathlib import Path\n"
         "from engine.core.config import load_config\n"
         "from engine.core.paths import GamePaths\n"
-        "from engine.core.minigame_types import REQUIRED, ArgSpec, MinigameSig, Outcome\n"
+        "from engine.core.minigame_types import REQUIRED, ArgSpec, MeterChange, MinigameSig, "
+        "Outcome\n"
         "from engine.script import LoadOptions, load_story\n"
         "from engine.runtime.headless import run_headless\n"
         "from engine.runtime.commands import StoryEnded\n"
@@ -379,12 +386,18 @@ def test_ac_f03_68_no_pygame():
         f"{present.args!r}, Outcome({won!r}), Outcome({won!r}), None)\n"
         f"phone = MinigameSig('phone_chat', 'Phone', 'engine', "
         f"{phone.args!r}, Outcome({replied!r}), Outcome({replied!r}), None)\n"
+        f"memory = MinigameSig('lantern_memory', 'Lantern Memory', 'game', {memory.args!r}, "
+        "Outcome(9, (MeterChange('hana', '+=', 1),)), None, None)\n"
         "paths = GamePaths(Path('game').resolve())\n"
         # F04 step 8: the example's config.toml names a position its story uses.
         "positions = load_config(paths).config.stage.positions.keys()\n"
+        f"room = MinigameSig('puzzle_room', 'Puzzle Room', 'engine', {room.args!r}, "
+        f"Outcome({left!r}), Outcome({left!r}), None)\n"
+        "games = {'present_evidence': sig, 'phone_chat': phone, 'lantern_memory': memory,\n"
+        "         'puzzle_room': room}\n"
         "result = load_story(paths, LoadOptions(position_names=positions))\n"
         f"cmds = run_headless(result.program, seed=4, inputs={inputs!r},\n"
-        "                    minigames={'present_evidence': sig, 'phone_chat': phone})\n"
+        "                    minigames=games)\n"
         "assert cmds[-1] == StoryEnded(), cmds[-1]\n"
         "assert 'pygame' not in {m.split('.')[0] for m in sys.modules if sys.modules[m]}\n"
         "print('ok')\n")

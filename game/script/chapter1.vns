@@ -85,6 +85,18 @@ label lantern_stall:
     play sound "sfx/chime.wav"
     # {pause} on its own waits for a click; the text so far stays in the box.
     "\"Three hundred yen,\" the stall keeper said. {pause}\"Wishes are extra.\""
+    "\"Unless you can find the pairs,\" she added, and turned a row of paper lanterns face down."
+    # "minigame" plays a small game inside the story; the story waits until it ends.
+    # lantern_memory is this game's own minigame: a plugin in game/minigames/ (see
+    # docs/minigames.md, "Writing a minigame"). pairs=6 deals six pairs of lanterns.
+    # "into turns" keeps the result, the number of turns the player took, in the story
+    # variable turns (main.vns gives it a default). Clearing the board also adds 1 to
+    # Hana's meter: she is watching from the water.
+    minigame lantern_memory pairs=6 into turns
+    if turns <= 10:
+        "\"Only {var=turns} turns? Sharp eyes,\" the stall keeper said. \"Your wish is free.\""
+    else:
+        "\"{var=turns} turns,\" the stall keeper said, and smiled. \"The wish is still extra.\""
     # "menu" stops the story until the player picks one of its choices, shown as buttons.
     # Its first line is the question: it stays in the text box while the player chooses.
     # Each choice is text in quotes ending in ":", with what it does indented below it.
