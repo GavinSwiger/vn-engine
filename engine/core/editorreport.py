@@ -55,3 +55,19 @@ HELPER_REQUEST_MAX = 4_096              # one request line, newline not included
 HELPER_STILL_MAX_WIDTH = 640            # stills are 16:9, at most 640 px wide
 HELPER_THUMB_MAX = 384                  # a thumbnail's longer side (96 px at up to 400 %)
 HELPER_REPLY_TIMEOUT_S = 10             # no answer after this: Studio restarts the child
+
+# --- F42 the build child (F42 ``04`` §2, §7.1, §7.3) ---------------------------------------
+# ``python -E -B -m engine build GAME --out X [--zip] [--replace] --report-to-editor``
+# (``tools/build/command.py``) relays its check grandchild's ``problems`` and ``done`` lines
+# unchanged and writes these events in the framing above; Studio's ``BuildRunner``
+# (``tools/editor/buildrunner.py``) reads them. Every name in them is relative to *Save to*
+# or the game folder, never a full path.
+#   build_step   {i, m, key, files, bytes, staging}   at each step's start
+#   build_done   {folder, exe, files, bytes, zip, zip_bytes, warnings, left_out,
+#                 left_out_total, long_paths, long_path_example}
+#   build_failed {code, values, details}
+BUILD_EVENTS = ("build_step", "build_done", "build_failed")
+BUILD_MAX_LEFT_OUT = 1_000              # [ref, reason] rows sent; the rest are counted
+BUILD_MAX_DETAILS = 200                 # build_failed detail lines (the packer's last 200)
+BUILD_MAX_VALUES = 16                   # build_failed values (key → string or int)
+BUILD_NAME_MAX_CHARS = 1_024            # a folder, zip, exe or staging name; a value

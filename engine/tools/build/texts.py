@@ -37,6 +37,7 @@ HEAD = "Building {name} {version}"
 CLI_HEAD = 'Building "{name}" {version} for Windows (64-bit)'
 SLOW = "This is the slow part. It usually takes about a minute."
 CLI_STEP = "Step {i} of {m}: {text}"
+STEP_OF = "Step {i} of {m}"                                   # the progress view's counter
 DONE = "Your game is built."
 DONE_FOLDER = "{folder} — {size}, {files} files"
 CLI_DONE_FOLDER = "Built: {path} ({size}, {files} files)"
@@ -244,7 +245,16 @@ FAILURES: dict[str, tuple[str, str]] = {
                       "report it with that text."),
     "B_CRASHED": ("The build stopped unexpectedly.",
                   "Build again. If it happens again, report it with Show details."),
+    # The icon is checked again in the build child (P5 decision: the dialog field's message;
+    # the fix names both doors).
+    "BAD_ICON": (FIELD_MESSAGES[BAD_ICON],
+                 "Choose another icon in Build game…, or remove the icon line under [window] "
+                 "in config.toml to use the engine's icon."),
 }
+# P5/P6 decisions (texts not in 01 §6.3): an empty Save to field; a B_PACK_FAILED details line
+# for a bundled library without a license notice.
+SAVE_TO_EMPTY = "Choose a folder to save the build in."
+NO_NOTICE = "No license notice for {dll}: add one to engine/tools/build/notices/."
 B_ERRORS_ONE = "Your game has 1 error, so it can't be built yet."
 
 
