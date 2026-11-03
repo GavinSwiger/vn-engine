@@ -13,7 +13,9 @@ provider for a Studio window, built from what the Database shows:
   (``dbmodel.looks_of``' rule);
 - thumbnails from ``helperhub.ThumbLoader`` (PNG/GIF in-process, JPEG/WebP via the helper
   child; ``changed()`` when one arrives); a colour background is its colour;
-- sounds through the window's ``HelperHub`` (one at a time; ``changed()`` on its replies).
+- sounds through the window's ``HelperHub`` (one at a time; ``changed()`` on its replies);
+- the condition builder's names (F47 P2): story and remembered variables
+  (``persistent.<name>``), meters, codex tips and items, and routes, as declared.
 
 ``refresh()`` re-reads all of it; the Events tab calls it each time a form opens.
 Imports the standard library, ``tkinter`` and its own package; never pygame.
@@ -31,6 +33,9 @@ from engine.tools.editor.helperhub import ThumbLoader, hub_for
 from engine.tools.editor.theme import scale_of
 
 AUDIO_PREFIX = "audio/"
+# Declaration kinds → the name kind the forms' pickers ask for.
+_DECLARED = {dec.VARIABLE: "variable", dec.PERSISTENT: "variable", dec.METER: "meter",
+             dec.TIP: "tip", dec.ITEM: "item", dec.ROUTE: "route"}
 
 
 def _names(entries: Sequence[object]) -> list[str]:
@@ -56,6 +61,7 @@ class WindowAssets(FormAssets):
         self.colors: dict[str, str] = {}               # colour picture name (folded) → hex
         self.image_refs: dict[str, str] = {}           # image name (folded) → images/… ref
         self.image_names: list[str] = []
+        self.declared: dict[str, list[str]] = {}
         self._swatches: dict[str, tk.PhotoImage] = {}
         self._listening = False
         self.refresh()
@@ -71,6 +77,12 @@ class WindowAssets(FormAssets):
                            if d.kind == dec.CHARACTER and d.values is not None}
         self.colors = {d.name.casefold(): str(d.values["color"]) for d in decls
                        if d.kind == dec.COLOR and d.values is not None}
+        self.declared: dict[str, list[str]] = {}
+        for d in decls:
+            kind = _DECLARED.get(d.kind)
+            if kind is not None:
+                name = f"persistent.{d.name}" if d.kind == dec.PERSISTENT else d.name
+                self.declared.setdefault(kind, []).append(name)
         project = getattr(self.win, "project", None)
         refs = project.file_refs("images") if project is not None else []
         self.image_refs = {}
@@ -92,6 +104,8 @@ class WindowAssets(FormAssets):
             return tuple(self.characters)
         if kind == "image":
             return tuple(self.image_names)
+        if kind in self.declared:
+            return tuple(self.declared[kind])
         if kind == "sprite":
             tags = {name.split()[0] for name in self.image_names if len(name.split()) > 1}
             return tuple(sorted((t for t in tags if t.casefold() != dec.BACKGROUND_TAG),

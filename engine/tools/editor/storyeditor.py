@@ -407,7 +407,10 @@ class StoryEditor:
         if doc is None:
             return None
         unit = self._unit()
-        form = forms.form_for_doc(doc)
+        if isinstance(doc, forms.CommandForm):          # Stop effects, Stop sound: no doc
+            form, doc = doc, None
+        else:
+            form = forms.form_for_doc(doc)
         if form is None:
             code, field = assist.insert_text(doc, "", unit)
             plan = self.act(lambda read, lines, start: scriptedit.plan_insert(
@@ -417,7 +420,8 @@ class StoryEditor:
             return plan
         if form is forms.CHOICE:
             values: Any = formdialogs.edit_choice(
-                self.win.root, ChoiceValues(choices=(ChoiceItem(""),)), names=self.names())
+                self.win.root, ChoiceValues(choices=(ChoiceItem(""),)), names=self.names(),
+                assets=self.form_assets())
         else:
             values = formdialogs.edit_form(self.win.root, form,
                                            formdialogs.new_values(form, doc),
@@ -470,7 +474,8 @@ class StoryEditor:
             now = forms.read_choice(read, row.stmt)
             if now is None:
                 return None
-            values: Any = formdialogs.edit_choice(self.win.root, now, names=self.names())
+            values: Any = formdialogs.edit_choice(self.win.root, now, names=self.names(),
+                                                  assets=self.form_assets())
             form = forms.CHOICE
         else:
             form = forms.form_by_key(row.form)

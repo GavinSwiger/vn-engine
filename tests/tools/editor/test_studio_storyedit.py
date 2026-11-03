@@ -13,7 +13,7 @@ import pytest
 
 from engine.script.labelgraph import LabelLink
 from engine.tools.editor import (
-    assist, document, formdialogs, layoutfile, scenes, scriptedit, storymap, views)
+    assist, document, formdialogs, forms, layoutfile, scenes, scriptedit, storymap, views)
 from engine.tools.editor.checker import CheckEvent, CheckResult, CheckState, NameEntry
 from engine.tools.editor.theme import THEME
 
@@ -353,7 +353,8 @@ def test_ac_f46_16_insert(studio, lanterns, monkeypatch):
     picks.append(("Stage", "Background"))
     values.append({"image": "bg room", "transition": "fade"})
     ed.press(tree, "<Insert>")
-    assert [(g, d) for g, docs in assist.insert_menu() for d in docs] == seen["picker"]
+    assert [(g, d) for g, docs in assist.insert_menu() for d in docs] == [
+        (g, d) for g, d in seen["picker"] if not isinstance(d, forms.CommandForm)]  # F47 P2
     assert line(ed, MAIN, 14) == "    scene bg room with fade"
     assert line(ed, MAIN, 15) == "    call stall"
     assert seen["previews"] == [("scene bg room", "scene bg room"),

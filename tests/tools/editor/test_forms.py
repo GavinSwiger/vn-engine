@@ -63,7 +63,7 @@ def test_event_rows(monkeypatch):
         (0, "Go to scene  festival"), (0, "◆")]
     assert _texts(CH2, "stall") == [
         (0, "Choice  (no question)"),
-        (1, '"Buy the red one"  if coins > 0'),
+        (1, '"Buy the red one"  if coins is more than 0'),
         (2, "Script  $ coins = max(0, coins - 1)"), (2, "Go to scene  river"), (2, "◆"),
         (1, '"Just look"'),
         (2, "(nothing)"), (2, "◆"),
@@ -76,8 +76,8 @@ def test_event_rows(monkeypatch):
                           "else:", '    "None."')
     got = [(row.depth, row.text, row.kind) for row in rows(read, lines)]
     assert got == [
-        (0, "If  coins >= 2", "stmt"), (1, "Narration  Two.", "stmt"), (1, "◆", "end"),
-        (0, "Else if  coins == 1", "header"), (1, "Narration  One.", "stmt"), (1, "◆", "end"),
+        (0, "If  coins is at least 2", "stmt"), (1, "Narration  Two.", "stmt"), (1, "◆", "end"),
+        (0, "Else if  coins is 1", "header"), (1, "Narration  One.", "stmt"), (1, "◆", "end"),
         (0, "Else", "header"), (1, "Narration  None.", "stmt"), (1, "◆", "end"),
         (0, "◆", "end")]
 
@@ -358,7 +358,8 @@ def test_should_forms():
     assert [(row.form, row.values) for row in got] == (
         [("set", v) for v in sets] + [("points", meter), (None, None)]
         + [("if", v) for v in heads])
-    assert [row.text for row in got[-3:]] == ["If  coins>=2", 'Else if  name == "Mia"', "Else"]
+    assert [row.text for row in got[-3:]] == ["If  coins is at least 2", "Else if  name is Mia",
+                                              "Else"]
     for row in got:
         if row.form is not None:
             code, _ = code_of(lines[_head(read, row).first - 1:_head(read, row).last])

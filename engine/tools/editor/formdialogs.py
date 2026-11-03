@@ -18,6 +18,16 @@ menu (``assist.insert_menu``).
   looks with the look's thumbnail, a sound field (Music, Sound) gets ▶/■, and a character
   field shows the character's colour dot and shown name. Closing the dialog stops the sound.
   Without one the dialog is F46's.
+- F47 P2 (``formtools``): the If form's condition is the condition builder (rows, + / −, All
+  of / Any of; "Written as script" for a condition it can't show), and a choice's "Only
+  show when" is a button with the condition in words that opens it; Say's text has the text
+  toolbar and its "Reads as" preview; a fade colour (Transition, Flash, Chapter) has a
+  swatch and **Pick…**; Fake crash has **Insert player name**. A field that only one pick
+  uses shows only for that pick (``SWITCHED``: Lock/Unlock show the name field of their
+  "What"); a new Chapter's name is made from its title as you type, unique among the
+  game's chapters. While the builder can't write its rows, the form says why and OK waits.
+- Insert… also lists the forms with no doc of their own (``FORM_ENTRIES``: Stop effects,
+  Stop sound), and a text-only entry shows its ``forms.TEXT_ONLY`` reason, muted, under it.
 - They share ``dialogs``' dark look (F45 ``08`` §7): ``overlay`` fill, padding 20, inputs with
   a 1 px border, a ``raised`` code card for the line, OK primary and right-aligned, Esc and
   the close box cancel.
@@ -36,7 +46,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import dialogs, forms
+from engine.tools.editor import dialogs, forms, forms_more, formtools
 from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
 from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, scale_of
@@ -74,6 +84,19 @@ FIELD_CHARS = 32            # a text field's width in characters
 NUMBER_CHARS = 8
 GAP = 8                     # px between rows and columns (× scale)
 PREVIEW_ROWS = 8            # the Choice form's line preview shows at most this many lines
+COLOUR_KEYS = frozenset(("colour",))          # Transition, Flash, Chapter: the fade colour
+CONDITION_FORMS = frozenset(("if",))          # forms whose ``condition`` is the builder
+# Fields only one pick of another field uses: form key → (that field, pick → keys shown).
+SWITCHED: Mapping[str, tuple[str, Mapping[str, tuple[str, ...]]]] = {
+    "lock": ("what", {what: (what,) for what in forms_more.LOCK_WHAT}),
+    "unlock": ("what", {what: (what,) for what in forms_more.UNLOCK_WHAT}),
+    "transition": ("change", {"background": ("image",),
+                              "show": ("character", "look", "position"),
+                              "hide": ("character",)}),
+    "window_title": ("action", {"set": ("title",), "off": ()}),
+    "voice": ("action", {"play": ("file",), "stop": ("fade",)}),
+    "if": ("keyword", {"if": ("condition",), "elif": ("condition",), "else": ()}),
+}
 
 
 # --- Names and labels -------------------------------------------------------------------------
@@ -247,20 +270,36 @@ class FormDialog:
         self._dot_images: dict[str | None, tk.PhotoImage] = {}
         self.owner = next((f.key for f in form.fields if f.name_kind in WHO_KINDS), None) \
             if assets is not None and any(f.key == LOOK_KEY for f in form.fields) else None
+        self._ready = False
+        self.labels: dict[str, ttk.Label] = {}
+        self.holders: dict[str, ttk.Frame] = {}
+        self.builder: formtools.ConditionBuilder | None = None    # the If form's condition
+        self.toolbar: formtools.TextToolbar | None = None          # Say's text
+        self.colours: dict[str, formtools.ColourBox] = {}
+        self.player_name: ttk.Button | None = None                 # Fake crash
+        self._auto_name = form.key == "chapter" and not str(values.get("name", "")).strip()
+        self._naming = False
+        self._chapters = tuple(names.get("chapter", ()))
         row = 0
         for field in form.fields:
             value = str(values.get(field.key, ""))
-            ttk.Label(grid, text=field.label, style="Dialog.TLabel").grid(
-                row=row, column=0, sticky="w", padx=(0, round(16 * scale)),
-                pady=(0 if row == 0 else gap, 0))
             widget, var = self._field(grid, field, value, names)
-            widget.grid(row=row, column=1, sticky="w" if field.kind == "number" else "ew",
+            tall = widget.winfo_class() == "TFrame"
+            label = ttk.Label(grid, text=field.label, style="Dialog.TLabel")
+            label.grid(row=row, column=0, sticky="nw" if tall else "w",
+                       padx=(0, round(16 * scale)),
+                       pady=(round(4 * scale) if tall and row == 0 else
+                             gap + round(4 * scale) if tall else 0 if row == 0 else gap, 0))
+            self.labels[field.key] = label
+            widget.grid(row=row, column=1,
+                        sticky="w" if field.kind == "number" or tall else "ew",
                         pady=(0 if row == 0 else gap, 0))
             holder = self._holder(field)
             if holder is not None:                      # a thumbnail, ▶/■ or a colour dot
                 self._extras(holder, field)
                 holder.grid(row=row, column=2, sticky="w", padx=(gap, 0),
                             pady=(0 if row == 0 else gap, 0))
+                self.holders[field.key] = holder
             self.vars[field.key], self.widgets[field.key] = var, widget
             row += 1
             if field.key in self.names:
@@ -269,6 +308,8 @@ class FormDialog:
                 hint.grid_remove()
                 row += 1
             var.trace_add("write", lambda *_a: self._changed())
+        if self._auto_name and "name" in self.vars:     # typing a name stops making one
+            self.vars["name"].trace_add("write", lambda *_a: self._name_typed())
         caption = ttk.Label(body, text=LINE_CAPTION, style="Dialog.Hint.TLabel")
         caption.pack(anchor="w", pady=(round(16 * scale), round(4 * scale)))
         self.card = _card(body, _code_font(dialog), scale)
@@ -284,10 +325,70 @@ class FormDialog:
                     widget.bind(key, lambda _e: self._pick(0))
         if assets is not None:
             assets.on_change = self._sync_assets
+        self._ready = True
         self._changed()
+
+    def _offered(self, kind: str, names: Mapping[str, Sequence[str]]) -> list[str]:
+        """The names a ``kind`` picker offers: the check's, then the Database's (assets)."""
+        offered = list(names.get(kind, ()))
+        if self.assets is not None:
+            extra = [n for n in self.assets.names(kind) if n not in offered]
+            if extra:
+                offered = sorted([*offered, *extra], key=str.casefold)
+        return offered
+
+    def _special(self, parent: tk.Misc, field: Field, value: str,
+                 names: Mapping[str, Sequence[str]]) -> tuple[tk.Widget, tk.Variable] | None:
+        """F47 P2's visual fields (module docstring), or None for an ordinary one."""
+        form, key = self.form.key, field.key
+        gap = round(GAP * self.scale)
+        var = tk.StringVar(parent, value=value)
+        if form in CONDITION_FORMS and key == "condition":
+            offered = {kind: self._offered(kind, names)
+                       for kind in formtools.NAME_KINDS.values()}
+            self.builder = formtools.ConditionBuilder(parent, var, offered, required=True,
+                                                      on_change=self._changed)
+            return self.builder.frame, var
+        if form == "say" and key == "text":
+            box = ttk.Frame(parent, style="Dialog.TFrame")
+            entry = ttk.Entry(box, textvariable=var, width=FIELD_CHARS * 2)
+            self.toolbar = formtools.TextToolbar(
+                box, entry, var, names={"variable": self._offered("variable", names)})
+            self.toolbar.frame.pack(anchor="w", pady=(0, round(6 * self.scale)))
+            entry.pack(anchor="w", fill="x")
+            self.toolbar.preview.pack(anchor="w", fill="x", pady=(round(4 * self.scale), 0))
+            self.toolbar.problem.pack(anchor="w")
+            for sequence in ("<Return>", "<KP_Enter>"):
+                entry.bind(sequence, lambda _e: self._pick(0))
+            self.text_entry = entry
+            return box, var
+        if key in COLOUR_KEYS:
+            colour = self.colours[key] = formtools.ColourBox(parent, var)
+            return colour.frame, var
+        if form == "crash" and key == "message":
+            box = ttk.Frame(parent, style="Dialog.TFrame")
+            entry = ttk.Entry(box, textvariable=var, width=FIELD_CHARS)
+            entry.pack(side="left", fill="x", expand=True)
+            self.player_name = ttk.Button(box, text=formtools.PLAYER_NAME,
+                                          style="Secondary.TButton",
+                                          command=lambda: self.insert_player_name(entry))
+            self.player_name.pack(side="left", padx=(gap, 0))
+            for sequence in ("<Return>", "<KP_Enter>"):
+                entry.bind(sequence, lambda _e: self._pick(0))
+            self.text_entry = entry
+            return box, var
+        return None
+
+    def insert_player_name(self, entry: ttk.Entry) -> None:
+        """Fake crash's **Insert player name**: ``{username}`` at the caret."""
+        entry.insert("insert", forms_more.CRASH_PLAYER_NAME)
+        entry.focus_set()
 
     def _field(self, parent: tk.Misc, field: Field, value: str,
                names: Mapping[str, Sequence[str]]) -> tuple[tk.Widget, tk.Variable]:
+        special = self._special(parent, field, value, names)
+        if special is not None:
+            return special
         if field.kind == "flag":
             var: tk.Variable = tk.StringVar(parent, value=value)
             box = ttk.Checkbutton(parent, variable=var, onvalue="True", offvalue="",
@@ -299,11 +400,7 @@ class FormDialog:
                                 state="readonly", width=FIELD_CHARS), var
         if field.kind in ("name", "scene"):
             kind = field.name_kind or "label"
-            offered = list(names.get(kind, ()))
-            if self.assets is not None:
-                extra = [n for n in self.assets.names(kind) if n not in offered]
-                if extra:
-                    offered = sorted([*offered, *extra], key=str.casefold)
+            offered = self._offered(kind, names)
             if kind in PICTURE_KINDS:                   # backgrounds first (bg …)
                 offered.sort(key=lambda n: not n.casefold().startswith("bg "))
             name_box = _NameBox(parent, var, offered, width=FIELD_CHARS,
@@ -441,21 +538,72 @@ class FormDialog:
 
     def preview(self) -> str:
         """The line the form writes now ("" while it can't write one)."""
+        if self.problem() is not None:
+            return ""
         try:
             return self.form.write(self.values())
         except (KeyError, ValueError, TypeError):
             return ""
 
     def _changed(self) -> None:
+        if not self._ready:
+            return
+        self._name_chapter()
         _set_card(self.card, self.preview())
         self._sync_assets()                     # first: a new speaker changes the looks
-        for name_box in self.names.values():
+        hidden = self.hidden()
+        for key, name_box in self.names.items():
             text = name_box.hint_text()
             name_box.hint.configure(text=text)
-            if text:
+            if text and key not in hidden:
                 name_box.hint.grid()
             else:
                 name_box.hint.grid_remove()
+        for key, widget in self.widgets.items():
+            parts = [self.labels[key], widget]
+            if key in self.holders:
+                parts.append(self.holders[key])
+            for part in parts:
+                if key in hidden:
+                    part.grid_remove()
+                else:
+                    part.grid()
+        # The builder says why under its rows; OK waits.
+        self.buttons[0].state(["disabled"] if self.problem() else ["!disabled"])
+
+    def hidden(self) -> set[str]:
+        """Field keys hidden now: ``SWITCHED`` fields another pick uses."""
+        rule = SWITCHED.get(self.form.key)
+        if rule is None or rule[0] not in self.vars:
+            return set()
+        switch, shows = rule
+        every = {key for keys in shows.values() for key in keys}
+        now = str(self.vars[switch].get()).strip()
+        shown = shows.get(now, next(iter(shows.values())))
+        return every - set(shown)
+
+    def problem(self) -> str | None:
+        """Why OK can't write the line yet (the condition builder's rows), or None."""
+        if self.builder is not None and "condition" not in self.hidden():
+            return self.builder.problem()
+        return None
+
+    def _name_chapter(self) -> None:
+        """A new Chapter: its name made from the title, unique among the game's chapters."""
+        if not self._auto_name or "name" not in self.vars or "title" not in self.vars:
+            return
+        title = str(self.vars["title"].get())
+        made = forms_more.chapter_name(title, taken=self._chapters) if title.strip() else ""
+        if str(self.vars["name"].get()) != made:
+            self._naming = True
+            try:
+                self.vars["name"].set(made)
+            finally:
+                self._naming = False
+
+    def _name_typed(self) -> None:
+        if not self._naming:
+            self._auto_name = False
 
     def hints(self) -> dict[str, str]:
         """Field key → the hint shown under it (name fields only)."""
@@ -463,6 +611,8 @@ class FormDialog:
 
     def _pick(self, index: int) -> None:
         if index == 0:
+            if self.problem() is not None:
+                return
             self.result = self.values()
         self._close_assets()
         self.dialog.destroy()
@@ -488,12 +638,19 @@ class ChoiceDialog:
     """The Choice form (§6.7.4): the question (speaker, look, text) and up to six options,
     each with its text, an "only show when" condition and where it goes (a scene or
     ``forms.CONTINUES``; a choice whose lines the form can't hold reads ``forms.IN_TEXT`` and
-    keeps them). Add, Remove, Up and Down act on the chosen option. ``result``: the
-    ``ChoiceValues`` after OK."""
+    keeps them). Add, Remove, Up and Down act on the chosen option. "Only show when" is a
+    button with the condition in words; it opens the condition builder
+    (``formtools.ask_condition``). ``assets``: the Database's names for the builder.
+    ``result``: the ``ChoiceValues`` after OK."""
 
     def __init__(self, parent: tk.Misc, values: ChoiceValues, *,
-                 names: Mapping[str, Sequence[str]], ok: str = OK) -> None:
+                 names: Mapping[str, Sequence[str]], ok: str = OK,
+                 assets: FormAssets | None = None) -> None:
         self.result: ChoiceValues | None = None
+        self.condition_names = {
+            kind: sorted({*names.get(kind, ()), *(assets.names(kind) if assets else ())},
+                         key=str.casefold)
+            for kind in formtools.NAME_KINDS.values()}
         self.scenes = list(names.get("label", ()))
         self.characters = list(names.get("character", ()))
         dialog = self.dialog = dialogs._dialog(parent)
@@ -562,7 +719,10 @@ class ChoiceDialog:
         mark = ttk.Label(self.table, text="", width=2, style="Dialog.TLabel",
                          foreground=THEME["focusBorder"])
         text_entry = ttk.Entry(self.table, textvariable=text, width=24)
-        when_entry = ttk.Entry(self.table, textvariable=when, width=14)
+        when_entry = ttk.Button(self.table, text=formtools.condition_label(item.condition),
+                                width=formtools.SUMMARY_CHARS, style="Secondary.TButton")
+        when.trace_add("write", lambda *_a: when_entry.configure(
+            text=formtools.condition_label(when.get())))
         if item.in_text:
             goes_box = ttk.Combobox(self.table, textvariable=goes, values=(forms.IN_TEXT,),
                                     width=18, state="disabled")
@@ -571,12 +731,25 @@ class ChoiceDialog:
                                     values=[forms.CONTINUES, *self.scenes])
         row = {"item": item, "text": text, "when": when, "goes": goes,
                "widgets": (mark, text_entry, when_entry, goes_box)}
+        when_entry.configure(command=lambda: self.edit_when(row))
         self.items.append(row)
         for var in (text, when, goes):
             var.trace_add("write", lambda *_a: self._changed())
         for widget in (text_entry, when_entry, goes_box):
             widget.bind("<FocusIn>", lambda _e, r=row: self._choose(r), add="+")
         self._grid_rows()
+
+    def edit_when(self, row: dict) -> str | None:
+        """An option's "Only show when" button: the condition builder in a small dialog."""
+        self._choose(row)
+        got = formtools.ask_condition(self.dialog, row["when"].get(), self.condition_names)
+        try:
+            self.dialog.grab_set()          # the nested dialog took the grab
+        except tk.TclError:
+            pass
+        if got is not None:
+            row["when"].set(got)
+        return got
 
     def _grid_rows(self) -> None:
         gap = self.gap
@@ -690,22 +863,56 @@ def _strong(dialog: tk.Misc) -> tkfont.Font:
 
 
 def edit_choice(parent: tk.Misc, values: ChoiceValues, *,
-                names: Mapping[str, Sequence[str]], ok: str = OK) -> ChoiceValues | None:
+                names: Mapping[str, Sequence[str]], ok: str = OK,
+                assets: FormAssets | None = None) -> ChoiceValues | None:
     """The Choice form, modal: its values after OK, or None."""
-    return ChoiceDialog(parent, values, names=names, ok=ok).run(parent)
+    return ChoiceDialog(parent, values, names=names, ok=ok, assets=assets).run(parent)
 
 
 # --- The Insert… picker -------------------------------------------------------------------------
 
+# Forms with no statement doc of their own: form key → (group, the entry they follow).
+FORM_ENTRIES: Mapping[str, tuple[str, str]] = {
+    "effect_off": ("Effects", "Jitter character"),
+    "stop_sound": ("Audio", STOP_MUSIC),
+}
+REASON_INDENT = "      "                    # a text-only entry's reason, under it
+
+
+def _with_form_entries(menu: Sequence[tuple[str, Sequence[StatementDoc]]]
+                       ) -> tuple[tuple[str, tuple[StatementDoc | CommandForm, ...]], ...]:
+    """``menu`` with each ``FORM_ENTRIES`` form after the entry it follows."""
+    out = []
+    for group, docs in menu:
+        entries: list[StatementDoc | CommandForm] = []
+        for doc in docs:
+            entries.append(doc)
+            for key, (in_group, after) in FORM_ENTRIES.items():
+                form = forms.form_by_key(key)
+                if form is not None and group == in_group and entry_title(doc) == after:
+                    entries.append(form)
+        out.append((group, tuple(entries)))
+    return tuple(out)
+
+
+def text_only_reason(entry: StatementDoc | CommandForm) -> str | None:
+    """Why ``entry`` goes in as a script line (``forms.TEXT_ONLY``), or None (a form)."""
+    if isinstance(entry, CommandForm) or forms.form_for_doc(entry) is not None:
+        return None
+    return forms.TEXT_ONLY.get(entry.key) or forms.NO_FORM_YET_REASON
+
+
 class InsertPicker:
     """Insert…: the commands grouped as F45's Insert menu (``menu``: ``(group, docs)``),
-    one entry per statement doc, filtered as you type. Enter or a double-click picks the
-    chosen entry; ``result`` is its doc."""
+    one entry per statement doc, plus the forms with no doc (``FORM_ENTRIES``), filtered
+    as you type; a text-only entry has its reason, muted, under it. Enter or a
+    double-click picks the chosen entry; ``result`` is its doc, or the form for a
+    ``FORM_ENTRIES`` entry."""
 
     def __init__(self, parent: tk.Misc,
                  menu: Sequence[tuple[str, Sequence[StatementDoc]]]) -> None:
-        self.menu = tuple((group, tuple(docs)) for group, docs in menu)
-        self.result: StatementDoc | None = None
+        self.menu = _with_form_entries(menu)
+        self.result: StatementDoc | CommandForm | None = None
         dialog = self.dialog = dialogs._dialog(parent)
         dialog.title(PICKER_TITLE)
         dialog.resizable(False, True)
@@ -725,13 +932,19 @@ class InsertPicker:
         frame.rowconfigure(0, weight=1)
         self.tree = ttk.Treeview(frame, show="tree", selectmode="browse", height=14,
                                  style="Dialog.Treeview")
-        self.tree.column("#0", width=round(320 * scale))
+        self.tree.column("#0", width=round(480 * scale))
         self.tree.grid(row=0, column=0, sticky="nsew")
         bar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
         bar.grid(row=0, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=bar.set)
         self.tree.tag_configure("group", foreground=THEME["muted"])
-        self.docs: dict[str, StatementDoc] = {}
+        family, weight = font_families(dialog)["ui"]
+        self.reason_font = tkfont.Font(root=dialog, family=family, weight=weight,
+                                       size=-round(TYPE_SCALE["small"][0] * scale))
+        self.tree.tag_configure("reason", foreground=THEME["muted"], font=self.reason_font)
+        self.docs: dict[str, StatementDoc | CommandForm] = {}
+        self.reasons: dict[str, str] = {}           # a reason row → the entry above it
+        self.tree.bind("<<TreeviewSelect>>", lambda _e: self._off_reason())
         self.buttons = dialogs._buttons(dialog, body, (INSERT, CANCEL), self._pick)
         self.filter.trace_add("write", lambda *_a: self._fill())
         for widget in (entry, self.tree):
@@ -745,32 +958,62 @@ class InsertPicker:
         self._fill()
 
     def groups(self) -> list[tuple[str, list[str]]]:
-        """(group, entry titles) as shown now."""
+        """(group, entry titles) as shown now (reasons left out: ``reason_of``)."""
         return [(self.tree.item(g, "text"), [self.tree.item(c, "text")
-                                             for c in self.tree.get_children(g)])
+                                             for c in self.tree.get_children(g)
+                                             if c in self.docs])
                 for g in self.tree.get_children("")]
 
-    def entries(self) -> list[tuple[str, StatementDoc]]:
-        """(group, doc) per entry shown now, in order."""
+    def entries(self) -> list[tuple[str, StatementDoc | CommandForm]]:
+        """(group, doc or form) per entry shown now, in order."""
         return [(self.tree.item(g, "text"), self.docs[c])
-                for g in self.tree.get_children("") for c in self.tree.get_children(g)]
+                for g in self.tree.get_children("") for c in self.tree.get_children(g)
+                if c in self.docs]
+
+    def reason_of(self, group: str, title: str) -> str | None:
+        """The muted reason shown under entry ``title`` of ``group``, or None."""
+        for g in self.tree.get_children(""):
+            if self.tree.item(g, "text") != group:
+                continue
+            children = list(self.tree.get_children(g))
+            for n, c in enumerate(children):
+                if c in self.docs and self.tree.item(c, "text") == title:
+                    after = children[n + 1] if n + 1 < len(children) else None
+                    if after in self.reasons:
+                        return str(self.tree.item(after, "text")).strip()
+                    return None
+        raise KeyError((group, title))
+
+    def _off_reason(self) -> None:
+        """A click on a reason chooses its entry."""
+        chosen = self.tree.selection()
+        if chosen and chosen[0] in self.reasons:
+            entry = self.reasons[chosen[0]]
+            self.tree.selection_set(entry)
+            self.tree.focus(entry)
 
     def _fill(self) -> None:
         typed = self.filter.get().strip().lower()
         tree = self.tree
         tree.delete(*tree.get_children(""))
         self.docs.clear()
+        self.reasons.clear()
         first = None
         for group, docs in self.menu:
-            shown = [d for d in docs if not typed or typed in entry_title(d).lower()
+            shown = [d for d in docs if not typed or typed in _title(d).lower()
                      or typed in d.title.lower() or typed in group.lower()]
             if not shown:
                 continue
             node = tree.insert("", "end", text=group, open=True, tags=("group",))
             for doc in shown:
-                item = tree.insert(node, "end", text=entry_title(doc))
+                item = tree.insert(node, "end", text=_title(doc))
                 self.docs[item] = doc
                 first = first or item
+                reason = text_only_reason(doc)
+                if reason:
+                    note = tree.insert(node, "end", text=REASON_INDENT + reason,
+                                       tags=("reason",))
+                    self.reasons[note] = item
         if first is not None:
             tree.selection_set(first)
             tree.focus(first)
@@ -782,7 +1025,7 @@ class InsertPicker:
             if self.tree.item(g, "text") != group:
                 continue
             for c in self.tree.get_children(g):
-                if self.tree.item(c, "text") == title:
+                if c in self.docs and self.tree.item(c, "text") == title:
                     self.tree.selection_set(c)
                     self.tree.focus(c)
                     self.tree.see(c)
@@ -813,14 +1056,19 @@ class InsertPicker:
             self.result = self.docs[chosen[0]]
         self.dialog.destroy()
 
-    def run(self, parent: tk.Misc) -> StatementDoc | None:
+    def run(self, parent: tk.Misc) -> StatementDoc | CommandForm | None:
         dialogs._run(parent, self.dialog, self.entry)
         return self.result
 
 
+def _title(entry: StatementDoc | CommandForm) -> str:
+    return entry.title if isinstance(entry, CommandForm) else entry_title(entry)
+
+
 def pick_insert(parent: tk.Misc, menu: Sequence[tuple[str, Sequence[StatementDoc]]]
-                ) -> StatementDoc | None:
-    """Insert…, modal: the picked doc, or None (Cancel, Esc, the close box)."""
+                ) -> StatementDoc | CommandForm | None:
+    """Insert…, modal: the picked doc (or form, for a ``FORM_ENTRIES`` entry), or None
+    (Cancel, Esc, the close box)."""
     return InsertPicker(parent, menu).run(parent)
 
 # --- New scene and the scene picker (F46 step 5, PR-F46-14, Ctrl+J) -------------------------

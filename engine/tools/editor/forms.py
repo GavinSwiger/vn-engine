@@ -43,7 +43,7 @@ from engine.script.points import PointsChange
 from engine.script.stage import Hide, Scene, Show
 from engine.script.statement_docs import StatementDoc, all_docs
 from engine.script.statements import ParseContext
-from engine.tools.editor import scenes
+from engine.tools.editor import conditions, scenes
 from engine.tools.editor.scenes import SceneRead, Span
 
 Values = Mapping[str, str]
@@ -263,9 +263,19 @@ def _one_line(text: str) -> str:
 CONDITION_CHARS = 32        # a choice row's condition, then "…" (step 5: shown, not hidden)
 
 
+def condition_words(source: str) -> str:
+    """A condition for an Events row: in words when the condition builder reads it
+    ("coins is at least 1 and ending sad seen"), else as written on one line."""
+    found = conditions.read(source)
+    if found is not None and found.rows:
+        return conditions.summary(found)
+    return _one_line(source)
+
+
 def _condition(source: str) -> str:
-    """A conditional choice's row summary: ``if`` and its condition, cut at 32 characters."""
-    text = _one_line(source)
+    """A conditional choice's row summary: ``if`` and its condition (in words when the
+    builder reads it), cut at 32 characters."""
+    text = condition_words(source)
     if len(text) > CONDITION_CHARS:
         text = text[:CONDITION_CHARS - 1].rstrip() + "…"
     return f"if {text}"
@@ -613,7 +623,7 @@ FORMS: tuple[CommandForm, ...] = (
         "if", "If", "If", (("if", ""), ("elif", ""), ("else", "")), If,
         (Field("keyword", "Branch", "pick", options=("if", "elif", "else")),
          Field("condition", "Condition", "text", optional=True)),
-        _if_read, _if_write, lambda v: v.get("condition", ""),
+        _if_read, _if_write, lambda v: condition_words(v.get("condition", "")),
         lambda v: _IF_WORDS.get(v.get("keyword", "if"), "If")),
 )
 
