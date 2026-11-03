@@ -23,7 +23,8 @@ shows, but only the title is story state. So the runtime keeps:
 ``uses_crash``, ``name_lines``, and ``identity_lines`` are read-only program scans for the
 presentation (the Settings row rule, W189, W190); ``name_nodes``/``name_line`` and
 ``identity_nodes``/``identity_hits`` are the same scans node by node, for the launch's text
-check, which runs them in slices. Pure: no file, clock, randomness, pygame, or ``engine.meta``.
+check, which runs them in slices; ``names_identity`` is W190's scan on one piece of text (F40's
+Code line). Pure: no file, clock, randomness, pygame, or ``engine.meta``.
 """
 
 import dataclasses
@@ -186,6 +187,14 @@ def identity_hits(node: object) -> list[tuple[str, int]]:
     return out
 
 
+def names_identity(text: str) -> bool:
+    """W190's scan on one piece of author Python held as text (F40 ``04`` §7.3, SEC-F40-11:
+    the console's Code line, which no load-time scan sees): True when it names ``getpass``,
+    ``getlogin``, ``USERNAME``, ``LOGNAME``, or ``os.environ``. The caller passes the text
+    without its comment. Reads nothing but ``text``."""
+    return type(text) is str and _IDENTITY.search(text) is not None
+
+
 __all__ = ["clear_title", "hold_restored", "identity_hits", "identity_lines", "identity_nodes",
-           "name_line", "name_lines", "name_nodes", "restored_title", "run_crash", "run_title",
-           "title_ok", "uses_crash"]
+           "name_line", "name_lines", "name_nodes", "names_identity", "restored_title",
+           "run_crash", "run_title", "title_ok", "uses_crash"]
