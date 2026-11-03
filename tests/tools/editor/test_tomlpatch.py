@@ -152,3 +152,46 @@ def test_toml_patcher_ac_f47_18(tmp_path, text, section, key, value, outcome):
         wrong = tp.TomlPlan(plan.title, plan.ref, plan.section, plan.key, "other",
                             plan.edits, plan.guards)
         assert not tp.verify(wrong, text)
+
+
+def test_ac_f42_14_build_details_one_plan_strict_parse_back():
+    """AC-F42-14 (SEC-F42-13, 07 I-8): Build's changed title/version/id/icon as one plan:
+    their lines replaced (``# id``/``# icon`` too), every other line unchanged; ``verify``
+    refuses any other parse-level change, even a vanished empty table; a bad icon ref is
+    refused before planning."""
+    changes = [("game", "title", 'Lanterns "2"'), ("game", "version", "0.2.0"),
+               ("game", "id", "lanterns"), ("window", "icon", "gui/logo.png")]
+    plan = tp.plan_changes(EXAMPLE, changes)
+    assert isinstance(plan, tp.TomlPlan) and len(plan.edits) == 1 and tp.verify(plan, EXAMPLE)
+    assert [c[:2] for c in plan.changes] == [c[:2] for c in changes]
+    old = EXAMPLE.split("\n")
+    new = apply_lines(old, plan.edits)
+    assert len(new) == len(old)
+    changed = {i + 1: line for i, line in enumerate(new) if line != old[i]}
+    assert changed == {5: 'title = "Lanterns \\"2\\""', 6: 'version = "0.2.0"',
+                       11: 'id = "lanterns"   # set a unique id before you release',
+                       18: 'icon = "gui/logo.png"   # a PNG in the game folder; unset = '
+                           'the engine icon'}
+    assert tomllib.loads("\n".join(new))["game"]["title"] == 'Lanterns "2"'
+    # Parse-back: the same edit plus one unplanned line change is refused.
+    edit = plan.edits[0]
+    sneaky = [*edit.lines, "width = 1"]          # valid TOML, but not planned
+    assert tomllib.loads("\n".join(apply_lines(old, (type(edit)(edit.first, edit.last,
+                                                                tuple(sneaky)),))))
+    for bad in (tp.TomlPlan(plan.title, plan.ref, plan.section, plan.key, plan.value,
+                            (type(edit)(edit.first, edit.last, tuple(sneaky)),), plan.guards,
+                            more=plan.more),
+                tp.TomlPlan(plan.title, plan.ref, plan.section, plan.key, plan.value,
+                            plan.edits, plan.guards, more=plan.more[:-1])):
+        assert not tp.verify(bad, EXAMPLE)
+    # Strict: a removal may not take an unrelated empty table with it.
+    text = "[engine]\nfps = 60\n[audio]"
+    gone = tp.TomlPlan("t", "config.toml", "engine", "fps", None,
+                       (type(edit)(2, 3, ()),), ((2, "fps = 60"), (3, "[audio]")))
+    assert not tp.verify(gone, text)
+    assert tp.verify(tp.plan_remove(text, "engine", "fps"), text)
+    # The icon is a game-folder ref (check_ref), refused before anything is planned.
+    for ref in ("../icon.png", "C:/icon.png", "saves/icon.png"):
+        refused = tp.plan_changes(EXAMPLE, [("window", "icon", ref)])
+        assert isinstance(refused, Refuse) and refused.text.startswith("[window] icon must")
+    assert tp.plan_changes(EXAMPLE, [("game", "version", "0.1.0")]) is None

@@ -21,8 +21,15 @@ plan (``verify``) against the live editor text before applying it as one undo st
   that is itself a table.
 - Values are written by ``toml_literal``: strings as TOML basic strings with ``"``, ``\\``
   and every control escaped (SEC-F42-13). Every plan is checked by ``verify`` before it is
-  returned: the new text must parse with ``tomllib`` to the old document with only that
-  key changed, and the schema validator must accept the value read back.
+  returned, and ``verify`` is the gate every caller (F47 Settings, F42 Build) passes to
+  ``apply_plan``: the new text must parse with ``tomllib`` to exactly the old document with
+  the planned changes applied (set: that value; remove: absent, and a table only that
+  removal emptied may go too; a new section may appear) and nothing else, and the schema
+  validator must accept each value (F42 ``07`` I-8, SEC-F42-13). ``[window] icon`` must also
+  pass ``check_ref``.
+- Several keys as one undo step (F42's Build: title, version, id, icon): ``plan_changes``
+  plans them one after another and returns one plan whose single edit spans the changed
+  lines; ``verify`` checks all of them.
 """
 
 import copy
@@ -37,6 +44,8 @@ from engine.core.config_schema import (
     EntryMap, HexColor, RawPluginTables, Table, Validator, ValueProblem, config_fields,
     section_class)
 from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES
+from engine.core.errors import AssetRefError
+from engine.core.paths import check_ref
 from engine.tools.editor.scriptedit import (
     FIX_FIRST, UNSAFE, FilePlan, LineEdit, Plan, Refuse, apply_lines)
 
@@ -47,6 +56,10 @@ NOT_A_SETTING: Final = "[{section}] {key} isn't a config.toml setting."
 BAD_VALUE: Final = "[{section}] {key} must be {expected}."
 SET_TITLE: Final = "Change [{section}] {key}"
 REMOVE_TITLE: Final = "Use the default for [{section}] {key}"
+CHANGES_TITLE: Final = "Change config.toml"
+
+# Settings whose value is a game-folder ref: it must also pass ``check_ref`` (SEC-F42-13).
+_REF_KEYS: Final = frozenset({("window", "icon")})
 
 Path_ = tuple[str, ...]
 
@@ -62,7 +75,8 @@ _NAMED_ESCAPES: Final = {"\b": "\\b", "\t": "\\t", "\n": "\\n", "\f": "\\f", "\r
 
 @dataclass(frozen=True, slots=True)
 class TomlPlan:
-    """One key set (``value`` as ``tomllib`` reads it back) or removed (``value`` None)."""
+    """One key set (``value`` as ``tomllib`` reads it back) or removed (``value`` None);
+    ``more`` holds further ``(section, key, value)`` changes of a ``plan_changes`` plan."""
 
     title: str
     ref: str
@@ -72,10 +86,16 @@ class TomlPlan:
     edits: tuple[LineEdit, ...]                       # one, non-overlapping
     guards: tuple[tuple[int, str], ...]               # (line, old text) the plan read
     select: tuple[int, int, int] | None = None        # (line, col0, col1): the new value
+    more: tuple[tuple[str, str, Any], ...] = ()       # plan_changes: the other changes
 
     @property
     def removed(self) -> bool:
         return self.value is None
+
+    @property
+    def changes(self) -> tuple[tuple[str, str, Any], ...]:
+        """Every ``(section, key, value)`` this plan makes (value None: removed)."""
+        return ((self.section, self.key, self.value), *self.more)
 
     def as_plan(self) -> Plan:
         """F46's plan shape for the window's document API (one undo step); its chunk guards
@@ -124,6 +144,16 @@ def toml_literal(value: object, validator: Validator | None = None) -> str:
     if type(value) in (list, tuple):
         return "[" + ", ".join(toml_literal(item) for item in value) + "]"   # type: ignore[union-attr]
     raise ValueError(f"can't write a {type(value).__name__}")
+
+
+def _check_value(section: str, key: str, validator: Validator, value: Any) -> None:
+    """The schema validator's check, plus ``check_ref`` for ref settings (SEC-F42-13).
+    Raises ValueProblem, AssetRefError or ValueError."""
+    validator.check(value)
+    if (section, key) in _REF_KEYS:
+        if type(value) is not str:
+            raise ValueError("not a ref")
+        check_ref(value)
 
 
 def _key_text(part: str) -> str:
@@ -412,8 +442,8 @@ def plan_set(text: str, section: str, key: str, value: object, *, title: str | N
     try:
         literal = toml_literal(value, validator)
         wanted = tomllib.loads("v = " + literal)["v"]
-        validator.check(wanted)
-    except (ValueError, ValueProblem, tomllib.TOMLDecodeError):
+        _check_value(section, key, validator, wanted)
+    except (ValueError, ValueProblem, AssetRefError, tomllib.TOMLDecodeError):
         return bad
     prepared = _prepare(text, section, key, ref)
     if isinstance(prepared, Refuse):
@@ -481,6 +511,50 @@ def plan_remove(text: str, section: str, key: str, *, title: str | None = None,
     return plan if verify(plan, text) else Refuse(UNSAFE)
 
 
+def plan_changes(text: str, changes: Sequence[tuple[str, str, Any]], *,
+                 title: str | None = None, ref: str = CONFIG_FILENAME
+                 ) -> TomlPlan | Refuse | None:
+    """One plan for several ``(section, key, value)`` changes (value None: "Use default"),
+    as one undo step (F42 04 §7.6: Build's title, version, id, icon). Each change is planned
+    on the text the earlier ones made; the result is one edit over the lines that differ,
+    guarded by the original lines around it, and checked by ``verify`` against every
+    change. The first refusal wins; None when nothing changes. A single change gives its
+    own plan (with its selection)."""
+    current, done = text, []
+    for section, key, value in changes:
+        if value is None:
+            step = plan_remove(current, section, key, ref=ref)
+        else:
+            step = plan_set(current, section, key, value, ref=ref)
+        if isinstance(step, Refuse):
+            return step
+        if step is not None:
+            done.append(step)
+            current = "\n".join(apply_lines(current.split("\n"), step.edits))
+    if not done:
+        return None
+    if len(done) == 1:
+        one = done[0]
+        return one if title is None else TomlPlan(title, one.ref, one.section, one.key,
+                                                  one.value, one.edits, one.guards,
+                                                  one.select)
+    old, new = text.split("\n"), current.split("\n")
+    head = 0
+    while head < min(len(old), len(new)) and old[head] == new[head]:
+        head += 1
+    tail = 0
+    while tail < min(len(old), len(new)) - head and old[-1 - tail] == new[-1 - tail]:
+        tail += 1
+    first, last = head + 1, len(old) - tail               # replaced old lines (may be none)
+    edit = LineEdit(first, last, tuple(new[head:len(new) - tail]))
+    low, high = max(1, first - 1), min(len(old), max(last, first))
+    guards = tuple((n, old[n - 1]) for n in range(low, high + 1))
+    plan = TomlPlan(title if title is not None else CHANGES_TITLE, ref, done[0].section,
+                    done[0].key, done[0].value, (edit,), guards,
+                    more=tuple((p.section, p.key, p.value) for p in done[1:]))
+    return plan if verify(plan, text) else Refuse(UNSAFE)
+
+
 # --- Verifying (§7.2 step 5, SEC-F42-13) -------------------------------------------------
 
 def _get(doc: Any, path: Path_) -> Any:
@@ -504,18 +578,31 @@ def _same(a: Any, b: Any) -> bool:
     return bool(a == b)
 
 
-def _pruned(doc: Any) -> Any:
-    """``doc`` without empty tables (a header left after "Use default" is no setting)."""
-    if not isinstance(doc, dict):
-        return doc
-    out = {k: _pruned(v) for k, v in doc.items()}
-    return {k: v for k, v in out.items() if not (isinstance(v, dict) and not v)}
+def _has(doc: Any, path: Path_) -> bool:
+    for part in path:
+        if not isinstance(doc, dict) or part not in doc:
+            return False
+        doc = doc[part]
+    return True
+
+
+def _drop_emptied(expected: dict, got: dict, emptied: set[Path_]) -> None:
+    """Remove from ``expected`` each table in ``emptied`` (deepest first) that is empty
+    there and absent from ``got``: a removal may take the table it alone filled with it (a
+    top-level dotted key), but no other table may vanish."""
+    for path in sorted(emptied, key=len, reverse=True):
+        parent = _get(expected, path[:-1]) if len(path) > 1 else expected
+        if isinstance(parent, dict) and parent.get(path[-1]) == {} and not _has(got, path):
+            del parent[path[-1]]
 
 
 def verify(plan: TomlPlan, text: str) -> bool:
-    """True when ``plan`` still fits editor ``text``: its guarded lines hold their old texts,
-    the new text parses with ``tomllib`` to the old document with only the plan's key
-    changed, and the schema validator accepts the value read back. Never raises."""
+    """True when ``plan`` still fits editor ``text`` (F42 07 I-8, SEC-F42-13): its guarded
+    lines hold their old texts, and the new text parses with ``tomllib`` to exactly the old
+    document with the plan's changes applied: a set key holds its planned value (same type),
+    a removed key is gone (with any table only it filled), a new section may appear, and
+    nothing else differs, not even an empty table. Every set value passes its schema
+    validator (and ``check_ref`` for ``[window] icon``). Never raises."""
     try:
         lines = text.split("\n")
         if any(not 1 <= n <= len(lines) or lines[n - 1] != old for n, old in plan.guards):
@@ -525,26 +612,31 @@ def verify(plan: TomlPlan, text: str) -> bool:
             return False
         expected = copy.deepcopy(tomllib.loads(text))
         got = tomllib.loads(new_text)
-        path = (*plan.section.split("."), plan.key)
-        table = expected
-        for part in path[:-1]:
-            table = table.setdefault(part, {})
-            if not isinstance(table, dict):
-                return False
-        if plan.removed:
-            if path[-1] not in table:
-                return False
-            del table[path[-1]]
-        else:
-            table[path[-1]] = plan.value
-            validator = validator_for(plan.section, plan.key)
-            if validator is None:
-                return False
-            validator.check(_get(got, path))
-        return _same(_pruned(got), _pruned(expected))
+        emptied: set[Path_] = set()
+        for section, key, value in plan.changes:
+            path = (*section.split("."), key)
+            table = expected
+            for part in path[:-1]:
+                table = table.setdefault(part, {})
+                if not isinstance(table, dict):
+                    return False
+            if value is None:
+                if path[-1] not in table:
+                    return False
+                del table[path[-1]]
+                emptied.update(path[:i] for i in range(1, len(path)))
+            else:
+                validator = validator_for(section, key)
+                if validator is None:
+                    return False
+                _check_value(section, key, validator, value)
+                table[path[-1]] = value
+        _drop_emptied(expected, got, emptied)
+        return _same(got, expected)
     except Exception:          # a planner bug must never reach the text (TR-F46-03)
         return False
 
 
-__all__ = ["BAD_VALUE", "COMPLEX", "NOT_A_SETTING", "REMOVE_TITLE", "SET_TITLE", "TomlPlan",
-           "plan_remove", "plan_set", "toml_literal", "validator_for", "verify"]
+__all__ = ["BAD_VALUE", "CHANGES_TITLE", "COMPLEX", "NOT_A_SETTING", "REMOVE_TITLE",
+           "SET_TITLE", "TomlPlan", "plan_changes", "plan_remove", "plan_set", "toml_literal",
+           "validator_for", "verify"]

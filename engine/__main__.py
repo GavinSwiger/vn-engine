@@ -2,6 +2,9 @@
 ``python -m engine edit [GAME_DIR]``: open the scene editor on it (F44, dev runs only).
 ``python -m engine check [GAME_DIR] …``: Studio's check child (F45, dev runs only).
 ``python -m engine helper [GAME_DIR]``: Studio's helper child (F47, dev runs only).
+``python -m engine build [GAME_DIR] [--out FOLDER] [--zip] [--replace]``: build a game
+players can run (F42, dev runs only); ``engine.tools.build`` is imported only inside
+``_build``.
 
 Why this module exists: it is the second launch command (PR-F01-03, TR-F01-02). Like
 ``main.py`` it runs the Python version check before importing modern engine code, so it
@@ -36,8 +39,14 @@ def _helper(game_dir):
     return helper_command(game_dir)
 
 
+def _build(game_dir, *, out, zip, replace, report):
+    """The ``build`` handler given to ``cli.main`` (F42)."""
+    from engine.tools.build.command import build_command
+    return build_command(game_dir, out=out, zip=zip, replace=replace, report=report)
+
+
 if __name__ == "__main__":
     _bootcheck.check_python()
     from engine.app import cli
     sys.exit(cli.main(sys.argv[1:], editor=_edit, checker=_check,
-                      helper=_helper))
+                      helper=_helper, builder=_build))

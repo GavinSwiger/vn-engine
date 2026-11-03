@@ -264,6 +264,25 @@ def engine_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+def exe_dir() -> Path | None:
+    """The folder holding the built game's exe when frozen (F42 A1, SEC-F42-09): taken from
+    ``sys.executable``, the exe's own module file name, never ``argv[0]`` or the CWD. None in
+    a dev run. Resolved once per call, so a link to the exe still finds its real folder."""
+    if not is_frozen() or not sys.executable:
+        return None
+    return Path(sys.executable).resolve().parent
+
+
+def launcher_game_dir() -> Path:
+    """The game folder ``main.py``'s launcher runs (F42 PR-F42-03): ``<exe folder>/game``
+    when frozen, else ``<repo>/game``. Never the CWD, ``_internal``, or ``argv[0]``'s
+    folder."""
+    folder = exe_dir()
+    if folder is not None:
+        return folder / "game"
+    return engine_root() / "game"
+
+
 def engine_data_dir() -> Path:
     """engine_root()/'engine'/'data'."""
     return engine_root() / "engine" / "data"

@@ -59,10 +59,21 @@ SUBPACKAGES: dict[tuple[str, str], set[str]] = {("tools", "editor"): {"core", "s
                                                                      "runtime"},
                                                 ("tools", "helper"): {"core", "script",
                                                                       "runtime", "render",
-                                                                      "ui", "audio"}}
+                                                                      "ui", "audio"},
+                                                ("tools", "build"): {"core", "script",
+                                                                     ROOT_LAYER}}
 SUBPACKAGE_BANNED: dict[str, tuple[str, ...]] = {
     "engine.tools.helper": ("engine.runtime.interpreter",)}
 PYGAME_SUBPACKAGES = {"engine.tools.helper"}
+# F42 (04 §3.4, 07 I-10): tools/build imports core, script, the stdlib and itself (and the
+# engine version, for the build marker, like the tools row); pygame only
+# in icon.py; never PyInstaller (it runs only as a child). tools/editor (Studio) may import
+# only the five shared build modules, and those import only each other within tools/build.
+PYGAME_FILES = {"engine/tools/build/icon.py"}
+EXTERNAL_BANNED: dict[str, tuple[str, ...]] = {"engine.tools.build": ("PyInstaller",)}
+BUILD_PACKAGE = "engine.tools.build"
+SHARED_BUILD = frozenset({"names", "texts", "rules", "tree", "procs"})
+SHARED_BUILD_USERS = {"engine.tools.editor"}
 
 
 def _module_name(path: Path, engine_dir: Path) -> list[str]:
@@ -135,6 +146,18 @@ def _layer(name: str) -> str | None:
     return parts[1]
 
 
+def _build_modules(line: int, name: str,
+                   targets: list[tuple[int, str]]) -> set[str] | None:
+    """The ``tools/build`` modules an import of ``name`` on ``line`` loads (``from
+    engine.tools.build import names`` → ``{"names"}``), or None when it isn't one."""
+    if name.startswith(BUILD_PACKAGE + "."):
+        return {name.split(".")[3]}
+    if name != BUILD_PACKAGE:
+        return None
+    return {target.split(".")[3] for at, target in targets
+            if at == line and target.startswith(BUILD_PACKAGE + ".")}
+
+
 def scan(engine_dir: Path) -> list[str]:
     """Every ADR-0002 violation under ``engine_dir`` as ``"<file>:<line>: <message>"``."""
     violations = []
@@ -157,16 +180,33 @@ def scan(engine_dir: Path) -> list[str]:
             allowed = TOP_LEVEL.get(top, set())
             lazy = LAZY_ONLY.get(top, set())
         in_functions = _function_imports(tree)
+        targets = _module_targets(tree, module, path.name == "__init__.py")
+        # The modules of tools/build this file may import: any (its own child-only
+        # modules), only the shared five (Studio, and the shared five themselves), or
+        # none (every other file, by the sub-package rule).
+        shared_only = own_prefix in SHARED_BUILD_USERS or (
+            own_prefix == BUILD_PACKAGE and len(module) > 3 and module[3] in SHARED_BUILD)
         for line, name in _imports(tree, module, path.name == "__init__.py"):
-            if name.split(".")[0] == "pygame" and (
+            top = name.split(".")[0]
+            if top == "pygame" and rel not in PYGAME_FILES and (
                     package in NO_PYGAME
                     or (own_prefix and own_prefix not in PYGAME_SUBPACKAGES)):
                 violations.append(f"{rel}:{line}: {package} must not import pygame")
                 continue
+            if own_prefix and top in EXTERNAL_BANNED.get(own_prefix, ()):
+                violations.append(f"{rel}:{line}: {package} must not import {name}")
+                continue
             layer = _layer(name)
             if layer is None:
                 continue
-            if own_prefix and layer == name.split(".")[1] == own_prefix.split(".")[1] \
+            build = _build_modules(line, name, targets)
+            if shared_only and build is not None:
+                for extra in sorted(build - SHARED_BUILD):
+                    violations.append(f"{rel}:{line}: {package} must not import "
+                                      f"{BUILD_PACKAGE}.{extra}")
+                continue
+            if own_prefix and layer != ROOT_LAYER \
+                    and layer == name.split(".")[1] == own_prefix.split(".")[1] \
                     and not (name + ".").startswith(own_prefix + "."):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
             elif own_prefix and any(name == banned or name.startswith(banned + ".")
@@ -279,6 +319,45 @@ def test_editor_row_and_lazy_main_import(tmp_path):
         "engine/tools/editor/bad.py:1: tools.editor must not import engine.app",
         "engine/tools/editor/bad.py:2: tools.editor must not import pygame",
         "engine/tools/editor/bad.py:3: tools.editor must not import engine.tools",
+    ]
+
+
+def test_f42_build_rows(tmp_path):
+    """F42 07 I-10 (04 §3.4): tools/build imports core, script and itself, pygame only in
+    ``icon.py``, never PyInstaller; tools/editor imports only the five shared build modules,
+    which import only each other; ``__main__`` imports build only inside a function."""
+    engine = tmp_path / "engine"
+    for package in ("core", "script", "app", "tools", "tools/editor", "tools/build"):
+        (engine / package).mkdir(parents=True)
+        (engine / package / "__init__.py").write_text("", encoding="utf-8")
+    (engine / "__init__.py").write_text("", encoding="utf-8")
+
+    def write(ref: str, *lines: str) -> None:
+        (engine / ref).write_text("".join(line + chr(10) for line in lines), encoding="utf-8")
+
+    write("tools/build/icon.py", "import pygame", "from engine.core import paths",
+          "from engine.tools.build import texts")
+    write("tools/build/command.py", "from engine.tools.build import icon, tree",
+          "from engine.script import assetgroups", "import pygame", "import PyInstaller",
+          "from engine.app import cli")
+    write("tools/build/tree.py", "from engine.tools.build import texts, rules",
+          "from engine.tools.build.icon import make_ico")
+    write("tools/editor/buildmodel.py", "from engine.tools.build import names, procs",
+          "from engine.tools.build.tree import remove_tree",
+          "from engine.tools.build import texts, command", "import engine.tools.build.spec")
+    write("__main__.py", "from engine.app import cli", "", "def _build():",
+          "    from engine.tools.build.command import build_command", "",
+          "import engine.tools.build.command")
+    assert scan(engine) == [
+        "engine/__main__.py:6: __main__ must not import engine.tools.build.command",
+        "engine/tools/build/command.py:3: tools.build must not import pygame",
+        "engine/tools/build/command.py:4: tools.build must not import PyInstaller",
+        "engine/tools/build/command.py:5: tools.build must not import engine.app",
+        "engine/tools/build/tree.py:2: tools.build must not import engine.tools.build.icon",
+        "engine/tools/editor/buildmodel.py:3: tools.editor must not import "
+        "engine.tools.build.command",
+        "engine/tools/editor/buildmodel.py:4: tools.editor must not import "
+        "engine.tools.build.spec",
     ]
 
 

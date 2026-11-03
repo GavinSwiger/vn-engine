@@ -41,7 +41,7 @@ from engine.core.constants import (
     LOGS_DIRNAME,
     MB,
 )
-from engine.core.paths import display_path, home_dir
+from engine.core.paths import display_path, exe_dir, home_dir
 from engine.core.redact import RedactRoot, Redactor, escape_controls
 
 LIFECYCLE = {"lifecycle": True}       # pass as extra=LIFECYCLE
@@ -141,11 +141,15 @@ def redaction_roots(*, game_root: Path | None, game_dir_as_given: Path | None,
                     engine_root: Path) -> list[RedactRoot]:
     """The (token, path) roots of §7.10.4, each only when set, absolute, and not a bare
     drive or filesystem root. Makes no OS call besides reading ``Path.home()``, ``sys``
-    attributes, and environment values (SEC-F01-10 (d))."""
+    attributes, and environment values (SEC-F01-10 (d)), and, in a frozen build only,
+    resolving the exe's path for the ``<app>`` root (F42 SEC-F42-09)."""
     candidates: list[tuple[str, str | os.PathLike | None]] = [
         ("<game>", game_root),
         ("<game>", game_dir_as_given),
         ("<engine>", engine_root),
+        # F42 SEC-F42-09: the built game's exe folder. Longest-first matching keeps
+        # <game> (<app>/game) and <engine> (<app>/_internal) for paths below them.
+        ("<app>", exe_dir()),
         ("~", home_dir()),
         ("<python>", sys.prefix),
         ("<python>", sys.base_prefix),

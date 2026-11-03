@@ -37,6 +37,13 @@ F47 (``04`` §3.3, §7.3): ``main(argv, helper=…)`` adds the dev-only ``helper
 Studio's long-lived helper child (settings stills, thumbnails, ▶). Like ``check`` it runs its
 handler without ``prepare_environment`` or the pygame check (the handler sets up SDL itself);
 ``--release`` is a usage error and a frozen build doesn't define it.
+
+F42 (``04`` §3.3, §7.5; architect decisions 1, 8): ``main(argv, builder=…)`` adds the dev-only
+``build [GAME_DIR] [--out FOLDER] [--zip] [--replace]`` (and the hidden
+``--report-to-editor``); the handler comes from ``engine/__main__.py``, so ``app`` never
+imports ``tools``. In a built game (frozen) ``launcher_main`` is the whole parser: it runs
+``<exe folder>/game`` (``paths.launcher_game_dir``), first running the frozen prelude
+(``_frozen_prelude``), and ``App.dev`` is always false (``_start``).
 """
 
 import argparse
@@ -46,7 +53,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from engine import _bootcheck
-from engine.core.paths import engine_root, is_frozen
+from engine.core import safefile
+from engine.core.paths import engine_root, is_frozen, launcher_game_dir
 from engine.core.startvalues import StartOptions, parse_set_list
 
 LOG_LEVELS = ("debug", "info", "warning", "error")
@@ -66,6 +74,13 @@ SEED_NEEDS_NUMBER = f"--seed needs a whole number from 0 to {SEED_MAX}, like 42"
 EDITOR_DEV_ONLY = "the editor is only available in dev runs"
 CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
 HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
+BUILD_DEV_ONLY = "build is only available in dev runs"           # F42 PR-F42-01
+# F42 01 §6.3; the same text as tools/build/texts.py's, kept here because a built game has
+# no engine/tools (PR-F42-04).
+GAME_FOLDER_MISSING = ("The game folder is missing. "
+                       "Keep {exe}, _internal and game together in one folder.")
+# F42 I-6: build's default --out folder, beside the game folder (D6).
+BUILDS_DIRNAME = "builds"
 
 
 def dev_only(option: str) -> str:
@@ -78,6 +93,8 @@ EditorHandler = Callable[[Path], int]
 CheckHandler = Callable[..., int]
 # F47: helper_handler(game_dir) -> exit code.
 HelperHandler = Callable[[Path], int]
+# F42: build_handler(game_dir, out=…, zip=…, replace=…, report=…) -> exit code.
+BuildHandler = Callable[..., int]
 
 
 def _bench_seconds(text: str) -> float:
@@ -111,25 +128,69 @@ def _add_options(parser: argparse.ArgumentParser) -> None:
 
 def launcher_main(argv: list[str]) -> int:
     """``python main.py [--release] [--bench SECONDS] [--log-level LEVEL]``: always runs
-    ``<repo>/game``. A positional argument prints the usage line and exits 2."""
+    ``<repo>/game``, or ``<exe folder>/game`` in a built game (F42 PR-F42-03). A positional
+    argument prints the usage line and exits 2 (silently in the windowed exe)."""
+    frozen = is_frozen()
+    if frozen:
+        missing = _frozen_prelude()
+        if missing is not None:
+            return missing
     parser = argparse.ArgumentParser(
-        prog="python main.py",
-        description="Run the game in the game folder next to main.py.")
+        prog=Path(sys.executable).name if frozen else "python main.py",
+        description="Run the game in the game folder next to "
+                    + ("this program." if frozen else "main.py."))
     _add_options(parser)
     parser.add_argument("unexpected", nargs="*", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.unexpected:
         parser.error(LAUNCHER_FOLDER_HINT)
-    return _start(engine_root() / "game", args)
+    return _start(launcher_game_dir(), args)
+
+
+def _frozen_prelude() -> int | None:
+    """F42 04 §7.5 (SEC-F42-01, -09, -14): the built game's first steps, before argparse.
+    (1) A windowed exe has no ``sys.stdout``/``sys.stderr``; they become ``os.devnull`` so
+    argparse and F01's console handler can't crash (usage errors exit 2 silently).
+    (2) Only ``sys.path`` entries under ``_MEIPASS`` stay: nothing is imported from the exe
+    folder, ``game/`` or the CWD. (3) No ``__pycache__`` is written. (4) A missing
+    ``<exe folder>/game`` shows ``GAME_FOLDER_MISSING`` in the native error box; the answer
+    is then 1 (else None)."""
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))   # noqa: SIM115
+    bundle = os.path.normcase(os.path.abspath(getattr(sys, "_MEIPASS", "") or os.sep))
+    sys.path[:] = [entry for entry in sys.path if _under(entry, bundle)]
+    sys.dont_write_bytecode = True
+    if safefile.ensure_real_dir(launcher_game_dir(), release=True, create=False):
+        return None
+    exe = Path(sys.executable)
+    prepare_environment()
+    from engine.app import bootstrap
+
+    bootstrap.show_native_error(exe.stem, GAME_FOLDER_MISSING.format(exe=exe.name))
+    return 1
+
+
+def _under(entry: object, bundle: str) -> bool:
+    """Whether the ``sys.path`` entry is an absolute path at or below ``bundle``."""
+    if not isinstance(entry, str) or not entry or not os.path.isabs(entry):
+        return False
+    path = os.path.normcase(os.path.abspath(entry))
+    return path == bundle or path.startswith(bundle.rstrip("\\/") + os.sep)
 
 
 def main(argv: list[str], *, editor: EditorHandler | None = None,
          checker: CheckHandler | None = None,
-         helper: HelperHandler | None = None) -> int:
+         helper: HelperHandler | None = None,
+         builder: BuildHandler | None = None) -> int:
     """``python -m engine run [GAME_DIR] [options]``, and ``edit [GAME_DIR]`` when
     ``editor`` is given (``engine/__main__.py``) and the build isn't frozen; likewise
-    ``check [GAME_DIR] …`` with ``checker`` (F45). ``GAME_DIR`` defaults to
-    ``<repo>/game``; a relative ``GAME_DIR`` is resolved against the CWD once."""
+    ``check [GAME_DIR] …`` with ``checker`` (F45), ``helper`` (F47) and ``build [GAME_DIR]
+    [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42). ``GAME_DIR`` defaults to
+    ``<repo>/game``; a relative ``GAME_DIR`` (or ``--out``) is resolved against the CWD
+    once. ``build``'s ``--out`` defaults to ``builds`` beside the game folder (F42 I-6).
+    F39's dev-only ``run`` options belong under ``dev_tools`` too, never in
+    ``launcher_main`` (a frozen build defines none of them)."""
     dev_tools = not is_frozen()                         # I-15: none of F44 when frozen
     parser = argparse.ArgumentParser(prog="python -m engine")
     commands = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
@@ -170,6 +231,23 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
                                 help="the game folder (default: the game folder next to "
                                      "main.py)")
         helper_cmd.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
+    build = None
+    if builder is not None and dev_tools:               # F42 PR-F42-01
+        build = commands.add_parser("build", help="build a game players can run on Windows",
+                                    description="Make a folder of the game in GAME_DIR that "
+                                                "players can run without installing "
+                                                "anything.")
+        build.add_argument("game_dir", nargs="?", metavar="GAME_DIR", default=None,
+                           help="the game folder (default: the game folder next to main.py)")
+        build.add_argument("--out", metavar="FOLDER", default=None,
+                           help="where to save the build (default: a builds folder next to "
+                                "the game folder)")
+        build.add_argument("--zip", action="store_true",
+                           help="also make a .zip file to share")
+        build.add_argument("--replace", action="store_true",
+                           help="replace an earlier build of the same version")
+        build.add_argument("--report-to-editor", action="store_true", help=argparse.SUPPRESS)
+        build.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.game_dir is None:
         game_dir = engine_root() / "game"
@@ -190,6 +268,14 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
         if args.release:
             helper_cmd.error(HELPER_DEV_ONLY)
         return helper(game_dir)
+    if args.command == "build":
+        if args.release:
+            build.error(BUILD_DEV_ONLY)
+        # Like check: the build child never imports pygame here (only its icon step does).
+        out = (Path(args.out).absolute() if args.out is not None
+               else game_dir.parent / BUILDS_DIRNAME)
+        return builder(game_dir, out=out, zip=args.zip, replace=args.replace,
+                       report=args.report_to_editor)
     if dev_tools:
         _refuse_dev_options(run, args)
         args.start_options = _start_options(run, args)
