@@ -38,6 +38,13 @@ Studio's long-lived helper child (settings stills, thumbnails, ▶). Like ``chec
 handler without ``prepare_environment`` or the pygame check (the handler sets up SDL itself);
 ``--release`` is a usage error and a frozen build doesn't define it.
 
+F39 (``SPEC.md`` §5.4): ``run`` also gains the hidden ``--resume-from-editor`` and
+``--window-at=X,Y``, which Studio adds when it updates a running preview, under the same
+dev-runs-only rule (refused with ``--release``, not defined in a frozen build, not
+``main.py``'s). ``--resume-from-editor`` needs ``--report-to-editor`` (the frame arrives on
+stdin, which is read only then); ``--window-at`` takes two whole numbers, each at most
+100,000 from 0.
+
 F42 (``04`` §3.3, §7.5; architect decisions 1, 8): ``main(argv, builder=…)`` adds the dev-only
 ``build [GAME_DIR] [--out FOLDER] [--zip] [--replace]`` (and the hidden
 ``--report-to-editor``); the handler comes from ``engine/__main__.py``, so ``app`` never
@@ -71,6 +78,10 @@ START_NEEDS_LABEL = "--start needs a label name, like club_poem"
 # F03 step 13 (04 §12.1): --seed N, decimal, 0 <= N < 2**64 (draft for the narrative designer).
 SEED_MAX = (1 << 64) - 1
 SEED_NEEDS_NUMBER = f"--seed needs a whole number from 0 to {SEED_MAX}, like 42"
+# F39 (SPEC §5.4): the window spot of an updated preview.
+WINDOW_AT_MAX = 100_000
+WINDOW_AT_NEEDS_NUMBERS = "--window-at needs two whole numbers, like 120,80"
+RESUME_NEEDS_REPORT = "--resume-from-editor needs --report-to-editor"
 EDITOR_DEV_ONLY = "the editor is only available in dev runs"
 CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
 HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
@@ -279,6 +290,9 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
     if dev_tools:
         _refuse_dev_options(run, args)
         args.start_options = _start_options(run, args)
+        args.window_position = _window_position(run, args.window_at)
+        if args.resume_from_editor and not args.report_to_editor:
+            run.error(RESUME_NEEDS_REPORT)
     return _start(game_dir, args)
 
 
@@ -298,20 +312,47 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
     run.add_argument("--no-persistent", action="store_true",
                      help="don't read or save persistent data in this run, to test a first "
                           "playthrough (dev runs)")
+    # F39: Studio's own (hidden); Studio passes ``--window-at=X,Y`` as one item, so a
+    # negative X isn't read as an option.
+    run.add_argument("--resume-from-editor", action="store_true", help=argparse.SUPPRESS)
+    run.add_argument("--window-at", metavar="X,Y", default=None, help=argparse.SUPPRESS)
 
 
 def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """With ``--release``, the first dev-run option used is a usage error naming it (I-9;
-    F03 ``04`` §12.1 for ``--seed``)."""
+    F03 ``04`` §12.1 for ``--seed``; F39 for its two)."""
     if not args.release:
         return
     for option, given in (("--start", args.start is not None),
                           ("--set", args.set is not None),
                           ("--report-to-editor", args.report_to_editor),
                           ("--seed", args.seed is not None),
-                          ("--no-persistent", args.no_persistent)):
+                          ("--no-persistent", args.no_persistent),
+                          ("--resume-from-editor", args.resume_from_editor),
+                          ("--window-at", args.window_at is not None)):
         if given:
             run.error(dev_only(option))
+
+
+def _window_position(run: argparse.ArgumentParser,
+                     text: str | None) -> tuple[int, int] | None:
+    """F39's ``--window-at X,Y``: two ASCII whole numbers (an optional ``-``, no spaces),
+    each at most ``WINDOW_AT_MAX`` from 0; anything else is ``WINDOW_AT_NEEDS_NUMBERS``."""
+    if text is None:
+        return None
+    parts = text.split(",")
+    if len(parts) != 2:
+        run.error(WINDOW_AT_NEEDS_NUMBERS)
+    values = []
+    for part in parts:
+        digits = part[1:] if part.startswith("-") else part
+        if not (digits.isascii() and digits.isdigit()) or len(digits) > 6:
+            run.error(WINDOW_AT_NEEDS_NUMBERS)
+        value = int(part)
+        if abs(value) > WINDOW_AT_MAX:
+            run.error(WINDOW_AT_NEEDS_NUMBERS)
+        values.append(value)
+    return values[0], values[1]
 
 
 def _start_options(run: argparse.ArgumentParser,
@@ -353,7 +394,9 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        start=getattr(args, "start_options", None),
                        editor_report=getattr(args, "report_to_editor", False),
                        seed=getattr(args, "seed", None),
-                       no_persistent=getattr(args, "no_persistent", False))
+                       no_persistent=getattr(args, "no_persistent", False),
+                       resume=getattr(args, "resume_from_editor", False),
+                       window_at=getattr(args, "window_position", None))
     except KeyboardInterrupt:
         return 0        # Ctrl+C before logging starts exits silently (§7.1 step 19)
 
@@ -361,7 +404,8 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
 def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             log_level_override: str | None, pygame_warning: str | None,
             start: StartOptions | None = None, editor_report: bool = False,
-            seed: int | None = None, no_persistent: bool = False) -> int:
+            seed: int | None = None, no_persistent: bool = False, resume: bool = False,
+            window_at: tuple[int, int] | None = None) -> int:
     """The startup sequence (``engine.app.bootstrap.launch``)."""
     from engine.app import bootstrap
 
@@ -369,4 +413,5 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             log_level_override=log_level_override,
                             pygame_warning=pygame_warning, start=start,
                             editor_report=editor_report, seed=seed,
-                            no_persistent=no_persistent)
+                            no_persistent=no_persistent, resume=resume,
+                            window_at=window_at)

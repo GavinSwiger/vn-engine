@@ -73,6 +73,10 @@ A load (F11 C8, ``show_loaded_game``) restores first, under the menus, and close
 when the restore succeeded: no closing fade, the in-game screens reset with F11's
 ``LoadFadeScreen`` on top (the scene fades in from black), mode GAME.
 
+An updated preview (F39 §5.1 step 5, ``enter_game(start)``) skips the title and the
+pre-title steps and calls ``start()`` (the resume's restore) where a new game would call
+``new_game()``.
+
 Seams kept free for later features: F11's
 ``set_confirm_key`` (it feeds ``confirm_key``) and ``add_before_title`` (run first in
 ``return_to_title``); F12 I-1's flush of persistent data before the title or a quit is the
@@ -605,6 +609,22 @@ class GameShell:
         if not self.reduce_motion and fade_ms > 0:
             screens.append(LoadFadeScreen(fade_ms / 1000.0, self.stack))
         self.stack.replace_all(screens)
+
+    # -- an updated preview (F39 §5.1 step 5) --
+
+    def enter_game(self, start: Callable[[], None]) -> None:
+        """F39: an updated preview's resume enters the game at once: no title and no
+        pre-title step (F33's warning, F30's question), the playthrough look chosen, the
+        in-game screens reset, ``start()`` called exactly once where a new game would call
+        ``new_game()`` (the resume's committing restore; the restored line shows at the next
+        pump), then mode GAME and the in-game screens as the stack. A ``start()`` that
+        didn't restore leaves the next step to the caller (the error screen or a normal
+        start replaces the stack)."""
+        self._choose()                              # F32: before the game starts
+        self._reset_in_game()
+        start()
+        self.mode = Mode.GAME
+        self.stack.replace_all(self.ports.in_game_screens())
 
     def _reset_in_game(self) -> None:
         self.kept_thumbnail = None                  # nothing of the last scene (C3)

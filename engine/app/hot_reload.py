@@ -11,7 +11,8 @@ Everything here is pure or thread-light, so W1 only wires it in:
   Longer, non-ASCII, malformed, ``v`` ≠ 1 or unknown lines are dropped. Input is never logged
   or echoed.
 - ``StdinReader``: a daemon thread that touches only its stream, a ``SimpleQueue`` and the
-  frame slot (ADR-0007 thread note); the frame loop calls ``poll`` once per frame.
+  frame slot (ADR-0007 thread note); the frame loop calls ``poll`` once per frame (W1:
+  ``app/editor_link.py``'s ``EditorLink.listen`` and ``update``).
   ``handle_messages`` turns a frame's messages into N5 (never in error mode) and the reload.
 - **Collection** (§5.2): ``collect_states`` (newest first: the checkpoint, then the rollback
   steps, at most ``FRAME_STATES_MAX`` and ``FRAME_BYTES_MAX``), ``story_states`` (what an
@@ -38,7 +39,17 @@ from dataclasses import dataclass
 from queue import Empty, SimpleQueue
 from typing import TYPE_CHECKING, BinaryIO
 
-from engine.core.editorreport import REPORT_MARKER, REPORT_VERSION
+from engine.core.editorreport import (
+    RELOAD_FRAME_MAX,
+    RELOAD_HELD_MAX,
+    RELOAD_MESSAGE_MAX,
+    RELOAD_STATE_LINE_MAX,
+    RELOAD_STATES_MAX,
+    RELOAD_WAIT_S,
+    RELOAD_WINDOW_MAX,
+    REPORT_MARKER,
+    REPORT_VERSION,
+)
 from engine.core.logsetup import get_logger
 from engine.persist import limits
 from engine.persist.saves import SlotStatus, count_structure, iter_pieces, parse_state_line
@@ -52,17 +63,18 @@ if TYPE_CHECKING:
 
 _log = get_logger("app")
 
-# --- Limits (§5.2; P1 puts the shared ones in ``core/editorreport.py``) -----------------------
+# --- Limits (§5.2; shared with Studio through ``core/editorreport.py``) ----------------------
 
-PROTOCOL_VERSION = 1
-MESSAGE_LINE_MAX = 4_096                 # one stdin line, newline not included
-FRAME_STATES_MAX = 20                    # the checkpoint and up to 19 rollback steps
-FRAME_BYTES_MAX = 32 * 1_048_576         # one frame or state body (32 MiB)
-STATE_LINE_MAX = limits.STATE_MAX_BYTES  # one state line and its "\n" (24 MiB, F11)
-RESUME_WAIT_S = 5.0                      # a resume child waits this long for its frame
-WINDOW_COORD_MAX = 100_000               # |x|, |y| of a window position
-HELD_ERRORS_MAX = 1_000_000_000          # a ``held`` count above this is a bad line
+PROTOCOL_VERSION = REPORT_VERSION
+MESSAGE_LINE_MAX = RELOAD_MESSAGE_MAX    # one stdin line, newline not included
+FRAME_STATES_MAX = RELOAD_STATES_MAX     # the checkpoint and up to 19 rollback steps
+FRAME_BYTES_MAX = RELOAD_FRAME_MAX       # one frame or state body (32 MiB)
+STATE_LINE_MAX = RELOAD_STATE_LINE_MAX   # one state line and its "\n" (24 MiB, F11)
+RESUME_WAIT_S = RELOAD_WAIT_S            # a resume child waits this long for its frame
+WINDOW_COORD_MAX = RELOAD_WINDOW_MAX     # |x|, |y| of a window position
+HELD_ERRORS_MAX = RELOAD_HELD_MAX        # a ``held`` count above this is a bad line
 _SKIP_CHUNK = 1 << 20                    # a refused frame body is skipped in these chunks
+# STATE_LINE_MAX is F11's ``limits.STATE_MAX_BYTES`` (AC-F39-10's test checks they agree).
 
 # --- The notes (§4.3) ------------------------------------------------------------------------
 

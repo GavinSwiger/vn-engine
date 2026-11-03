@@ -37,13 +37,17 @@ if TYPE_CHECKING:
 def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
            log_level_override: str | None, pygame_warning: str | None,
            start: "StartOptions | None" = None, editor_report: bool = False,
-           seed: int | None = None, no_persistent: bool = False) -> int:
+           seed: int | None = None, no_persistent: bool = False, resume: bool = False,
+           window_at: tuple[int, int] | None = None) -> int:
     """Run one session of the game in ``game_dir``; return the process exit code.
 
     F44: ``start`` holds ``run --start``/``--set`` (``App.start``); ``editor_report``
     (``--report-to-editor``) gives the App an ``EditorLink`` on this process's stdout.
     F03 step 13: ``seed`` is ``run --seed`` (``App.seed``), the seed of every new game.
-    F12: ``no_persistent`` is ``run --no-persistent`` (``App.no_persistent``)."""
+    F12: ``no_persistent`` is ``run --no-persistent`` (``App.no_persistent``).
+    F39 (dev runs only): with ``editor_report`` the link also reads Studio's messages on
+    stdin; ``resume`` (``--resume-from-editor``) makes the first screen after the load F39's
+    ``ResumeScreen``; ``window_at`` (``--window-at=X,Y``) opens the window there."""
     log = logsetup.begin(level=log_level_override or "info", engine_root=engine_root())
     app_log = get_logger("app")
     state = _Startup(game_dir, release=release)
@@ -85,7 +89,8 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             # Steps 11–17: pygame, the window, assets, the App.
             code = _run_session(state, log, release=release, bench_seconds=bench_seconds,
                                 start=start, editor_report=editor_report, seed=seed,
-                                no_persistent=no_persistent)
+                                no_persistent=no_persistent, resume=resume,
+                                window_at=window_at)
         except KeyboardInterrupt:
             interrupted = True
             code = 0
@@ -205,7 +210,8 @@ def approx_usable(desktop: tuple[int, int]) -> tuple[int, int]:
 def _run_session(state: _Startup, log: LogSetup, *, release: bool,
                  bench_seconds: float | None, start: "StartOptions | None" = None,
                  editor_report: bool = False, seed: int | None = None,
-                 no_persistent: bool = False) -> int:
+                 no_persistent: bool = False, resume: bool = False,
+                 window_at: tuple[int, int] | None = None) -> int:
     import pygame
 
     from engine.app import platform as osinfo
@@ -238,7 +244,8 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
                             start_fullscreen=bool(launch_value(settings.loaded, config,
                                                                "fullscreen")),
                             letterbox_color=config.window.letterbox_color,
-                            initial_size_for_restore=size)
+                            initial_size_for_restore=size,
+                            position=window_at)              # F39: the old preview's spot
     except WindowCreationError as error:
         get_logger("window").exception("The game window could not be created")
         message = str(error)
@@ -268,10 +275,13 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
     # Step 17: the App. The story loads inside the frame loop (F02 §7.9); the load screen
     # shows build_initial_screens(app) when it is done (I-2: this module never imports
     # engine.script).
+    link = _editor_link() if editor_report else None
     app = App(config=config, paths=state.paths, window=window, assets=assets, log=log,
               dev=not release, bench_seconds=bench_seconds, start=start, seed=seed,
-              no_persistent=no_persistent,
-              editor_link=_editor_link() if editor_report else None)
+              no_persistent=no_persistent, editor_link=link)
+    if link is not None:                      # F39: Studio's messages; the failed place
+        link.listen(_editor_input(), resume=resume)
+        app.add_fatal_hook(lambda: link.fatal_hook(app))
     # F16: ``App.settings`` (the window size is stored at quit in requested units).
     install_settings(app, settings, display_scale=scale,
                      game_root=state.paths.root if state.paths is not None else None,
@@ -287,8 +297,8 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
     else:
         from engine.app.loading import story_load_screen
 
-        app.screens.replace_all([story_load_screen(app, state.paths,
-                                                   on_ready=build_initial_screens)])
+        ready = resume_screens if resume and link is not None else build_initial_screens
+        app.screens.replace_all([story_load_screen(app, state.paths, on_ready=ready)])
     return app.run()
 
 
@@ -314,6 +324,47 @@ def _editor_link():
     from engine.app.editor_link import EditorLink
 
     return EditorLink(getattr(sys.stdout, "buffer", None))
+
+
+def _editor_input():
+    """F39: Studio's messages arrive on this process's stdin (None when there is none).
+
+    Read through an unbuffered file object of its own that never closes the descriptor,
+    not ``sys.stdin.buffer``: the reader thread waits inside a read, and a daemon thread
+    holding ``sys.stdin.buffer``'s lock makes the interpreter abort at exit ("could not
+    acquire lock ... at interpreter shutdown"), which would turn a clean quit into a
+    crash."""
+    try:
+        fd = sys.stdin.fileno()
+    except (AttributeError, OSError, ValueError):      # no stdin, or not a real file
+        return None
+    try:
+        return open(fd, "rb", buffering=0, closefd=False)   # noqa: SIM115
+    except OSError:
+        return None
+
+
+def resume_screens(app: App) -> list:
+    """F39 (§5.1 step 5): ``--resume-from-editor``'s ``on_ready``. With a story, F39's
+    ``ResumeScreen`` waits for Studio's frame and resumes the carried place through
+    ``GameShell.enter_game`` (no title, no F33 warning), else starts normally
+    (``build_initial_screens``) with N1, N3 or N4. Without a story: ``build_initial_screens``.
+    F44's ``started`` follows as usual."""
+    link = app.editor_link
+    shell = app.shell
+    if app.story is None or shell is None or link is None:
+        return build_initial_screens(app)
+    from engine.app.hot_reload import ResumePorts, ResumeScreen
+
+    ports = ResumePorts(
+        take_frame=link.take_frame,
+        driver=lambda: app.story,
+        enter_game=shell.enter_game,
+        start_normally=lambda: app.screens.replace_all(build_initial_screens(app)),
+        notify=lambda text, kind: shell.notify(text, kind=kind),       # type: ignore[arg-type]
+        show_fatal_error=app.show_fatal_error,
+        keep=link.keep)
+    return [ResumeScreen(ports)]
 
 
 def in_game_screens(app: App) -> list:

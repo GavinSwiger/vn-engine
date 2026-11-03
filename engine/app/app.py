@@ -250,6 +250,7 @@ class App:
                     self._update_saves()                     # F11 I-3: minimized wakes too
                     self._update_flow()                      # F20 A6: minimized wakes too
                     self._update_audio()                     # F08 I-4: each minimized wake
+                    self._update_editor()                    # F39: minimized wakes too
                     if not self.minimized:
                         self._limiter.reset()
                         last_start = self._clock()
@@ -275,6 +276,7 @@ class App:
                         self._update_saves()
                         self._update_flow()
                         self._update_audio()
+                        self._update_editor()
                         continue
                     # F10 C3, the story hold: no pump while a menu (a screen that isn't
                     # in_game) is top, so no command is released and no checkpoint taken.
@@ -287,6 +289,7 @@ class App:
                     self._update_saves()                     # F11 C9: before audio
                     self._update_flow()                      # F20 (07 A6): after F11
                     self._update_audio()                     # F08: every frame, error mode too
+                    self._update_editor()                    # F39: every frame, error mode too
                     if self.rollback_release is not None:    # F14 (07 I-11)
                         self.rollback_release()
                     self.screens.update(self.time.dt)
@@ -565,7 +568,14 @@ class App:
         if self.audio is not None:
             self.audio.update(self._clock())
 
-    # --- events (§7.8) ------------------------------------------------------------------------
+    def _update_editor(self) -> None:
+        """F39's slot (``SPEC.md`` §5.1 step 3, §5.2): with ``--report-to-editor``, Studio's
+        messages read since the last frame (one queue poll), in every mode: error mode and
+        minimized wakes too, so a ``reload`` is always answered."""
+        if self.editor_link is not None:
+            self.editor_link.update(self)
+
+    # --- events (§7.8)------------------------------------------------------------------------
 
     def handle_raw(self, event: pygame.event.Event) -> None:
         # F08: the audio service sees every raw event first and consumes only its own

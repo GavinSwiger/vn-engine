@@ -22,14 +22,25 @@ Every string is redacted and cut to ``REPORT_TEXT_MAX_CHARS``. A line that would
 raises: a closed pipe or a missing stdout just loses the report (and the rest of stdout goes
 to the null device, so the exit code stays the game's).
 
+F39 hot reload (``specs/F39-hot-reload/SPEC.md`` §5.1, §5.2): the link also reads Studio's
+messages on the child's stdin (``listen``: only with ``--report-to-editor``; a daemon
+``StdinReader`` that touches only stdin and a queue). ``update`` runs once per frame in every
+mode (error mode and minimized wakes too): ``held`` shows N5 (not on the error screen), and
+``reload`` writes the ``state`` event (the place, newest first, and the window spot) on stdout
+and quits at once (``request_quit(force=True)``: no quit question and no quit Auto save; the
+writers still flush). In error mode the place is the list ``fatal_hook`` kept when the error
+screen came up (or the list a resume that hit ``DEFAULT_FAILED`` handed to ``keep``), so the
+next update resumes at the last line before the error.
+
 Imports ``engine.core`` only (``04`` §2); ``engine_error_message`` is imported from
-``app.app`` when it is needed.
+``app.app`` and F39's ``app.hot_reload`` when they are needed.
 """
 
 import json
 import os
 import re
-from typing import BinaryIO
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, BinaryIO
 
 from engine.core.editorreport import (
     REPORT_MARKER,
@@ -47,6 +58,10 @@ from engine.core.redact import redact
 # raised when items are dropped here, so the panel's problem count stays right.
 _MORE_PROBLEMS = re.compile(r"…and ([\d,]+) more problems?")
 
+if TYPE_CHECKING:
+    from engine.app.app import App
+    from engine.app.hot_reload import ResumeFrame, StdinReader
+
 _log = get_logger("app")
 
 
@@ -57,6 +72,11 @@ class EditorLink:
     def __init__(self, out: BinaryIO | None) -> None:
         self.out = out
         self.started = False
+        # F39: Studio's messages (``listen``), the place an error-mode reload sends
+        # (``fatal_hook``/``keep``; None: it can't be carried), and whether a reload is done.
+        self.reader: "StdinReader | None" = None
+        self.kept: list[bytes] | None = []
+        self.reloaded = False
 
     def story_started(self) -> None:
         """Writes ``started`` once; later calls do nothing."""
@@ -76,11 +96,81 @@ class EditorLink:
             self._write(report)
         return not self.started
 
+    # -- F39 hot reload --
+
+    def listen(self, stream: BinaryIO | None, *, resume: bool) -> None:
+        """Start reading Studio's messages from ``stream`` (``sys.stdin.buffer``) on a
+        daemon thread. ``resume`` (``--resume-from-editor``): the first thing on it is the
+        resume frame. Without a stream nothing is read (a resume then gets a bad frame:
+        N4)."""
+        if stream is None:
+            return
+        from engine.app.hot_reload import StdinReader
+
+        self.reader = StdinReader(stream, expect_resume=resume).start()
+
+    def take_frame(self) -> "ResumeFrame | None":
+        """``ResumeScreen``'s frame: the reader's (None until it is read); a bad frame when
+        nothing is listening."""
+        from engine.app.hot_reload import ResumeFrame
+
+        reader = self.reader
+        return ResumeFrame(None) if reader is None else reader.take_frame()
+
+    def keep(self, lines: Sequence[bytes] | None) -> None:
+        """The place an error-mode ``reload`` sends (``ResumeScreen`` after DEFAULT_FAILED:
+        the states it was handed, so the next update tries the same place)."""
+        self.kept = None if lines is None else list(lines)
+
+    def fatal_hook(self, app: "App") -> None:
+        """``App.add_fatal_hook``: keeps the failed story's place while ``app.story`` is
+        still set (§5.2, PR-F39-05)."""
+        from engine.app.hot_reload import fatal_states
+
+        self.kept = fatal_states(app)
+
+    def update(self, app: "App") -> None:
+        """Once per frame in every mode: handle the messages read since the last frame."""
+        reader = self.reader
+        if reader is None or self.reloaded:
+            return
+        messages = reader.poll()
+        if not messages:
+            return
+        from engine.app.hot_reload import handle_messages
+
+        shell = app.shell
+
+        def notify(text: str, kind: str) -> None:
+            if shell is not None:
+                shell.notify(text, kind=kind)                # type: ignore[arg-type]
+
+        handle_messages(messages, error_mode=app.error_mode, notify=notify,
+                        reload=lambda: self._reload(app))
+
+    def _reload(self, app: "App") -> None:
+        """§5.1 step 3: the ``state`` event (none when the place can't be carried: Studio
+        then starts afresh with N4), then quit at once. Never raises."""
+        from engine.app.hot_reload import state_event, story_states, window_at
+
+        self.reloaded = True
+        try:
+            lines = self.kept if app.error_mode else story_states(app)
+            if lines is not None:
+                self._write_bytes(state_event(lines, window_at(app.window)))
+                _log.debug("Story update: handed %d step(s) to Studio", len(lines))
+        except Exception:
+            _log.debug("The place couldn't be handed to Studio", exc_info=True)
+        app.request_quit(force=True)
+
     def _write(self, report: dict) -> None:
+        self._write_bytes(encode_line(report) + b"\n")
+
+    def _write_bytes(self, data: bytes) -> None:
         if self.out is None:
             return
         try:
-            self.out.write(encode_line(report) + b"\n")
+            self.out.write(data)
             self.out.flush()
         except Exception:                        # a closed pipe, a stdout that can't write
             _log.debug("The editor report could not be written", exc_info=True)
