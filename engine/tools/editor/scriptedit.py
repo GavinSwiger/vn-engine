@@ -195,6 +195,7 @@ def verify(plan: Plan, texts: Mapping[str, str], expect: Expect | None = None,
             if any(first_digest.get(name) != want for name, want in file_plan.guards):
                 return False
             old_digests = {digest(chunk) for *_, chunk in before}
+            old_bare = {chunk.rstrip() for *_, chunk in before}
             guarded = {name for name, _ in file_plan.guards}
             reads = after.setdefault(file_plan.ref, {})
             for name, _, _, chunk in _chunk_texts(apply_lines(old, file_plan.edits)):
@@ -204,6 +205,10 @@ def verify(plan: Plan, texts: Mapping[str, str], expect: Expect | None = None,
                     continue
                 read = parse_chunk(file_plan.ref, chunk, positions=positions)
                 if read is None or read.error is not None:
+                    if chunk.rstrip() in old_bare:
+                        # Broken before, and the plan only added blank lines after it (a
+                        # new scene after F45's new file's lone ``label x:``).
+                        continue
                     return False
                 reads[name] = read
         return check is None or bool(check(after))

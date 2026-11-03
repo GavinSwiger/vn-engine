@@ -24,7 +24,7 @@ Imports: ``tkinter``, ``dialogs``, ``forms``, ``theme`` (no pygame; ADR-0008).
 
 import math
 import tkinter as tk
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from tkinter import font as tkfont
 from tkinter import ttk
 
@@ -603,6 +603,7 @@ SCENE_NAME = "Scene name"
 SCENE_FILE = "File"
 SCENE_NAMED = "Its name in the script: {name}"
 SCENE_CREATE = "Add scene"
+NEW_FILE = "New file…"
 PICK_SCENE_TITLE = "Go to scene"
 PICK_SCENE_OK = "Go to"
 NO_SCENES = "No scene matches."
@@ -616,11 +617,15 @@ def scene_name(text: str) -> str:
 class NewSceneDialog:
     """New scene: a name (its script name shown as you type, with the problem when it
     can't be one, or is taken) and the script file it goes in. ``result`` after OK is
-    ``(name, ref)`` with the suggested name; OK stays disabled while there is a problem."""
+    ``(name, ref)`` with the suggested name; OK stays disabled while there is a problem.
+    **New file…** (PR-F46-15) runs ``new_file(dialog)`` (F45's new script flow, giving the
+    new file's ref or None) and chooses the file it made."""
 
     def __init__(self, parent: tk.Misc, files: Sequence[str], default: str, *,
-                 taken: Sequence[str] = (), problem: object = None) -> None:
+                 taken: Sequence[str] = (), problem: object = None,
+                 new_file: Callable[[tk.Misc], str | None] | None = None) -> None:
         self.result: tuple[str, str] | None = None
+        self.new_file = new_file
         self.taken = frozenset(taken)
         self.problem = problem              # (name) -> problem text | None (label_problem)
         self.refs = tuple(files)
@@ -647,6 +652,11 @@ class NewSceneDialog:
         self.files = ttk.Combobox(grid, textvariable=self.file, values=shown,
                                   state="readonly", width=FIELD_CHARS)
         self.files.grid(row=2, column=1, sticky="ew", pady=(gap, 0))
+        self.new_button: ttk.Button | None = None
+        if new_file is not None:
+            self.new_button = ttk.Button(grid, text=NEW_FILE, style="Secondary.TButton",
+                                         command=self.add_file)
+            self.new_button.grid(row=2, column=2, sticky="w", padx=(gap, 0), pady=(gap, 0))
         self.buttons = dialogs._buttons(dialog, body, (SCENE_CREATE, CANCEL), self._pick)
         dialog.bind("<Escape>", lambda _e: self._pick(1))
         dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
@@ -667,6 +677,24 @@ class NewSceneDialog:
         if name in self.taken:
             return f"There is already a scene named `{name}`."
         return None
+
+    def add_file(self) -> str | None:
+        """**New file…**: F45's new script flow; the file it made is listed and chosen."""
+        if self.new_file is None:
+            return None
+        ref = self.new_file(self.dialog)
+        try:
+            self.dialog.grab_set()          # the nested dialog took the grab
+        except tk.TclError:
+            pass
+        if not ref:
+            return None
+        if ref not in self.refs:
+            self.refs = (*self.refs, ref)
+            self.files.configure(values=[show_ref(r) for r in self.refs])
+        self.file.set(show_ref(ref))
+        self.entry.focus_set()
+        return ref
 
     def _changed(self) -> None:
         name = scene_name(self.name.get())
@@ -695,10 +723,12 @@ def show_ref(ref: str) -> str:
 
 
 def ask_new_scene(parent: tk.Misc, files: Sequence[str], default: str, *,
-                  taken: Sequence[str] = (), problem: object = None
+                  taken: Sequence[str] = (), problem: object = None,
+                  new_file: Callable[[tk.Misc], str | None] | None = None
                   ) -> tuple[str, str] | None:
     """New scene, modal: ``(name, ref)``, or None (Cancel, Esc, the close box)."""
-    return NewSceneDialog(parent, files, default, taken=taken, problem=problem).run(parent)
+    return NewSceneDialog(parent, files, default, taken=taken, problem=problem,
+                          new_file=new_file).run(parent)
 
 
 class ScenePicker:

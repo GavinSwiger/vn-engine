@@ -140,6 +140,7 @@ from engine.tools.editor.storymap import (
     MapStep,
     place_free,
     label_notes,
+    layout_places,
     map_undo,
     undo_blocked_text,
 )
@@ -166,8 +167,11 @@ from engine.tools.editor.views import (
     StoryMapView,
     TabStrip,
     autohide,
+    entry_enabled,
+    menu_command,
     panel_header,
     read_asset,
+    set_entry_enabled,
 )
 
 # --- Text (03 §1.1, §2, §4; I-6, I-14; F45 01 §6) -------------------------------------------
@@ -207,6 +211,11 @@ STORY_EDIT = "Edit command"
 STORY_UP = "Move up"
 STORY_DOWN = "Move down"
 STORY_DELETE_ROW = "Delete command"
+STORY_PREVIEW = "Preview from this scene"
+RENAME_SCENE_ASK = "Rename the scene `{name}`. Type its new name:"
+RENAME_SCENE_OK = "Continue"
+CHANGE_TARGET_TITLE = "Change target"
+CHANGE_TARGET_OK = "Change"
 CHOICE_STATUS = "Choice: {text}"
 NO_SCRIPT_FOR_SCENE = "Add a script file first: a scene lives in one."
 CONTEXT_MENUS_POST = True               # tests set False: tk_popup would wait for a click
@@ -707,6 +716,7 @@ class EditorWindow:
         view.on_delete = lambda: self.map_delete()
         view.on_edit_choice = lambda: self.edit_choice_text()
         view.on_rename = lambda: self.rename_scene()
+        view.on_retarget = lambda index, target: self._head_dropped(index, target)
         view.on_context = lambda kind, what, x, y: self.map_context(kind, what, x, y)
         canvas = self.map_canvas
         for key in (f"<{self.mod}-j>", f"<{self.mod}-J>"):
@@ -975,11 +985,14 @@ class EditorWindow:
         self.file_menu = menu = tk.Menu(bar, tearoff=0)
         menu.add_command(label="New game…", command=self.new_game)
         menu.add_command(label="New script file", accelerator=f"{key}+N",
-                         command=self.new_script_file)
+                         command=menu_command(menu, "New script file",
+                                              lambda: self.new_script_file()))
         menu.add_command(label=ADD_BUTTON, accelerator=f"{key}+Shift+O",
-                         command=self.add_files)
-        menu.add_command(label="Rename", accelerator="F2", command=self.rename_selected)
-        menu.add_command(label="Delete", accelerator="Delete", command=self.delete_selected)
+                         command=menu_command(menu, ADD_BUTTON, self.add_files))
+        menu.add_command(label="Rename", accelerator="F2",
+                         command=menu_command(menu, "Rename", self.rename_selected))
+        menu.add_command(label="Delete", accelerator="Delete",
+                         command=menu_command(menu, "Delete", self.delete_selected))
         menu.add_separator()
         menu.add_command(label="Save", accelerator=f"{key}+S", command=self.save_current)
         menu.add_command(label="Save all", accelerator=f"{key}+Shift+S", command=self.save_all)
@@ -1022,7 +1035,7 @@ class EditorWindow:
                 continue
             label, accel, run, _when, _kinds = entry
             self.story_menu.add_command(label=label, accelerator=accel.replace("Ctrl", key),
-                                        command=run)
+                                        command=menu_command(self.story_menu, label, run))
         bar.add_cascade(label="Story", menu=self.story_menu)
 
         view = tk.Menu(bar, tearoff=0)
@@ -1070,11 +1083,11 @@ class EditorWindow:
     def _set_file_ops(self, enabled: bool) -> None:
         state = "normal" if enabled else "disabled"
         for label in self.file_ops:
-            self.file_menu.entryconfigure(label, state=state)
+            set_entry_enabled(self.file_menu, label, enabled)
         self.add_button.configure(state=state)
 
     def file_ops_enabled(self) -> bool:
-        return str(self.file_menu.entrycget(ADD_BUTTON, "state")) == "normal"
+        return entry_enabled(self.file_menu, ADD_BUTTON)
 
     def show_tab(self, index: int) -> None:
         """Ctrl+1 / Ctrl+2 / Ctrl+3: the Editor, Story map, or Asset tab, with the keyboard
@@ -1470,27 +1483,32 @@ class EditorWindow:
             self.project_view.select(added[-1])
         show_info(self.root, files.add_summary(self._add_outcomes))
 
-    def new_script_file(self) -> None:
+    def new_script_file(self, parent: tk.Misc | None = None) -> str | None:
         """Ctrl+N: a new ``.vns`` file in ``script/`` (or the selected script subfolder),
-        with an ``include`` line added to ``main.vns``'s text when the option is ticked."""
+        with an ``include`` line added to ``main.vns``'s text when the option is ticked.
+        From New scene's **New file…** (``parent``: that dialog) the file isn't shown in the
+        editor. The new file's ref, or None."""
         if self.closed or not self.file_ops_enabled():
-            return
-        target = self._target_folder()
+            return None
+        owner = self.root if parent is None else parent
+        target = self._target_folder() if parent is None else None
         folder = target[1] if target is not None and target[0] == "script" else "script"
-        answer = ask_text(self.root, NEW_SCRIPT_ASK.format(folder=show(folder)), "new.vns",
+        answer = ask_text(owner, NEW_SCRIPT_ASK.format(folder=show(folder)), "new.vns",
                           ok="Create", option=NEW_SCRIPT_OPTION, option_value=True)
         if answer is None:
-            return
+            return None
         name, include = answer
         result = files.new_script(self.paths, folder, name)
         if isinstance(result, files.Refusal):
-            show_error(self.root, result.text)
-            return
+            show_error(owner, result.text)
+            return None
         self.refresh_project()
         if include and result != files.MAIN_REF:
             self._add_include(result)
-        self.open_file(result)
-        self.notebook.select(0)
+        if parent is None:
+            self.open_file(result)
+            self.notebook.select(0)
+        return result
 
     def _add_include(self, new_ref: str) -> None:
         """Put ``include "<path>"`` into ``main.vns``'s text as one undo step; it stays
@@ -2334,8 +2352,7 @@ class EditorWindow:
     def story_actions(self) -> list:
         """The action table (04 §6.11): ``(label, accelerator, run, enabled, targets)`` rows
         and None for a separator. ``targets`` names the context menus that show it: box,
-        edge, map (empty space) and row. Rename scene, Delete scene and Change target… land
-        in step 6 (disabled until then)."""
+        edge, map (empty space) and row."""
         view = self.story_map
         alt = "Option" if self.mod == "Command" else "Alt"
 
@@ -2356,20 +2373,17 @@ class EditorWindow:
         def editable_row() -> bool:
             return row() and not (self.story is not None and self.story.stale)
 
-        def later() -> bool:
-            return False
-
         return [
             (STORY_NEW_SCENE, "Ctrl+Shift+N", lambda: self.new_scene(), lambda: True,
              ("map", "box")),
             (STORY_GO_TO, "Ctrl+J", lambda: self.go_to_scene(), box, ("box",)),
-            (STORY_RENAME, "F2", lambda: self.rename_scene(), later, ("box",)),
-            (STORY_DELETE_SCENE, "Delete", lambda: self.delete_scene(), later, ("box",)),
+            (STORY_RENAME, "F2", lambda: self.rename_scene(), box, ("box",)),
+            (STORY_DELETE_SCENE, "Delete", lambda: self.delete_scene(), box, ("box",)),
             (STORY_MOVE_BOX, "", lambda: self.move_box(), box, ("box",)),
             None,
             (STORY_DELETE_ARROW, "Delete", lambda: self.delete_arrow(), edge, ("edge",)),
             (STORY_CHOICE_TEXT, "F2", lambda: self.edit_choice_text(), choice, ("edge",)),
-            (STORY_CHANGE_TARGET, "", lambda: self.change_target(), later, ("edge",)),
+            (STORY_CHANGE_TARGET, "", lambda: self.change_target(), edge, ("edge",)),
             None,
             (STORY_TIDY_UP, "", lambda: self.tidy_up(), lambda: bool(view.places),
              ("map", "box")),
@@ -2385,8 +2399,7 @@ class EditorWindow:
         """The Story menu's entries, enabled for what is focused or selected now."""
         for entry in self.story_actions():
             if entry is not None:
-                self.story_menu.entryconfigure(
-                    entry[0], state="normal" if entry[3]() else "disabled")
+                set_entry_enabled(self.story_menu, entry[0], entry[3]())
 
     def context_menu(self, kind: str) -> tk.Menu:
         """The context menu for a ``box``, an ``edge``, the ``map``'s empty space or an
@@ -2413,6 +2426,10 @@ class EditorWindow:
             menu.add_command(label=label, accelerator=accel.replace("Ctrl", self._key_word()),
                              command=run)
             last_was_item = True
+        if kind == "box" and self.story_map.focused_name() is not None:
+            if last_was_item:
+                menu.add_separator()
+            menu.add_command(label=STORY_PREVIEW, command=self.preview_scene)
         if menu.index("end") is not None and menu.type("end") == "separator":
             menu.delete("end")
         self.last_context = menu            # tests read it
@@ -2500,7 +2517,8 @@ class EditorWindow:
             default = "script/main.vns" if "script/main.vns" in refs else refs[0]
         taken = self._scene_names()
         answer = formdialogs.ask_new_scene(self.root, refs, default, taken=taken,
-                                           problem=files.label_problem)
+                                           problem=files.label_problem,
+                                           new_file=self.new_script_file)
         if answer is None:
             return
         name, ref = answer
@@ -2649,14 +2667,198 @@ class EditorWindow:
         else:
             self.delete_scene()
 
-    def rename_scene(self) -> None:
-        """Rename scene (F2 on a box): step 6."""
+    def _script_refs(self) -> list[str]:
+        return [ref for ref in self.refs if ref.startswith("script/") and ref.endswith(".vns")]
 
-    def delete_scene(self) -> None:
-        """Delete scene (Delete on a box): step 6."""
+    def _script_text(self, ref: str) -> tuple[str, str | None]:
+        """``ref``'s text as the editor holds it (an open file) or as on disk, without
+        opening a record; and F44's read-only reason when it can't be edited (its text is
+        then read leniently, only to find names in it)."""
+        record = self.files.get(ref)
+        if record is not None and record.editable:
+            return record.widget.get("1.0", "end-1c"), None
+        got = record.error if record is not None else open_document(self.paths, ref)
+        if isinstance(got, ScriptDocument):
+            return got.text, None
+        reason = got.format() if got is not None else scriptedit.UNSAFE
+        try:
+            raw = (self.paths.root / ref).read_bytes()
+        except OSError:
+            raw = b""
+        return raw.decode("utf-8", "replace").replace("\r\n", "\n"), reason
 
-    def change_target(self) -> None:
-        """Change target… on an arrow: step 6."""
+    def rename_scene(self) -> object:
+        """Rename scene (F2 or a double-click on a box, PR-F46-09, 04 §6.5): the new name
+        (its script name shown as you type), the question, then the label line and every
+        line that goes to it changed in every script file as one undo step per file
+        (closed files open unsaved) and one map step; the box keeps its place."""
+        view = self.story_map
+        old = view.focused_name()
+        if self.closed or old is None or view.layout is None:
+            return None
+        if old == scriptedit.START:
+            show_error(self.root, scriptedit.RENAME_START)
+            return None
+        taken = set(self._scene_names()) - {old}
+
+        def hint(text: str) -> str:
+            name = formdialogs.scene_name(text)
+            if not name or name == old:
+                return ""
+            problem = files.label_problem(name)
+            if problem is not None:
+                return problem
+            if name in taken:
+                return scriptedit.NAME_TAKEN.format(name=show(name))
+            return formdialogs.SCENE_NAMED.format(name=name)
+
+        answer = ask_text(self.root, RENAME_SCENE_ASK.format(name=show(old)), old,
+                          ok=RENAME_SCENE_OK, hint=hint)
+        if answer is None:
+            return None
+        new = formdialogs.scene_name(answer[0])
+        if not new or new == old:
+            return None
+        positions = self._positions()
+        hits: dict[str, list] = {}
+        locked: dict[str, str] = {}
+        texts: dict[str, list[str]] = {}
+        busy = self._busy(True)
+        try:
+            for ref in self._script_refs():
+                text, reason = self._script_text(ref)
+                if reason is not None:
+                    locked[ref] = reason
+                found = scriptedit.rename_hits(ref, text, old, positions=positions)
+                if found:
+                    hits[ref] = found
+                texts[ref] = text.split("\n")
+        finally:
+            self._busy(busy)
+        place = view.places.get(old) or layout_places(view.layout).get(old)
+
+        def plan(confirm: bool) -> object:
+            try:
+                return scriptedit.plan_rename(hits, old, new, taken=taken, locked=locked,
+                                              texts=texts, place=place, confirm=confirm)
+            except Exception:           # a planner bug must never reach the text
+                return scriptedit.Refuse(scriptedit.UNSAFE)
+        result = plan(False)
+        if isinstance(result, scriptedit.Ask):
+            if self.story_ask(result.text, result.buttons, escape=result.escape,
+                              default=result.default) != 0:
+                return None
+            result = plan(True)
+        if isinstance(result, scriptedit.Refuse):
+            show_error(self.root, result.text)
+            return None
+        if not isinstance(result, scriptedit.Plan):
+            return None
+        records = {fp.ref: self._record(fp.ref) for fp in result.files}
+        if any(not record.editable for record in records.values()):
+            show_error(self.root, scriptedit.UNSAFE)
+            return None
+        now = {ref: record.widget.get("1.0", "end-1c") for ref, record in records.items()}
+        if not scriptedit.verify(result, now, positions=positions):
+            show_error(self.root, scriptedit.UNSAFE)
+            return None
+        for file_plan in result.files:
+            widget = records[file_plan.ref].widget
+            self._as_one_step(widget, lambda w=widget, e=file_plan.edits: apply_edits(w, e))
+        self.follow()
+        self.map_plan_done(result)
+        story = self.story
+        if story is not None and story.key is not None and story.key[0] == old:
+            story.key = (new, story.key[1])
+            story.refresh()
+        self._map_done(result)
+        self._update_marks()
+        index = view.layout.index_of(new) if view.layout is not None else None
+        if index is not None:
+            view.focus_box(index)
+        return result
+
+    def _busy(self, on: bool) -> bool:
+        """The busy cursor on (or back off); gives whether it was on."""
+        was = str(self.root.cget("cursor")) == "watch"
+        try:
+            self.root.configure(cursor="watch" if on else "")
+            if on:
+                self.root.update_idletasks()
+        except tk.TclError:
+            pass
+        return was
+
+    def delete_scene(self) -> object:
+        """Delete scene (Delete on a box, PR-F46-16): after the question naming the arrows
+        that lead there, its label and block go as one undo step."""
+        view = self.story_map
+        name = view.focused_name()
+        if self.closed or name is None or self.story is None or view.layout is None:
+            return None
+        if name == scriptedit.START:
+            self._map_say(scriptedit.DELETE_START)
+            return None
+        ref = self._scene_file(name)
+        if ref is None:
+            return None
+        self._record(ref)
+        here = view.layout.index_of(name)
+        arrows = sum(1 for edge in view.layout.edges if edge.dst == here)
+        plan = self.story.act_on(ref, name, lambda read, lines, start, **kw:
+                                 scriptedit.plan_delete_scene(read, lines, start,
+                                                              arrows=arrows, **kw))
+        self._map_done(plan)
+        return plan
+
+    def change_target(self) -> object:
+        """Change target… on an arrow (PR-F46-10): pick a scene; only the line's target
+        word changes."""
+        view = self.story_map
+        found = view.selected_edge()
+        if self.closed or found is None or self.story is None:
+            return None
+        src, dst, kind, _choice = found
+        ref = self._scene_file(src)
+        if ref is None:
+            return None
+        names = [name for name in self._scene_names() if name != dst]
+        picked = formdialogs.pick_scene(self.root, names, title=CHANGE_TARGET_TITLE,
+                                        ok=CHANGE_TARGET_OK)
+        if picked is None:
+            return None
+        return self.retarget(src, dst, kind, picked)
+
+    def retarget(self, src: str, dst: str, kind: str, new: str) -> object:
+        """Point the arrow ``src → dst`` (``kind``) at ``new`` (Change target…, or its
+        head dragged onto another box)."""
+        ref = self._scene_file(src)
+        if ref is None or self.story is None:
+            return None
+        self._record(ref)
+        plan = self.story.act_on(ref, src, lambda read, lines, start, **_kw:
+                                 scriptedit.plan_retarget(read, lines, start, dst, new, kind))
+        self._map_done(plan)
+        index = self.story_map.edge_index(src, new, kind)
+        if plan is not None and index is not None:
+            self.story_map.select_edge(index)
+        return plan
+
+    def _head_dropped(self, index: int, target: int) -> object:
+        """A selected arrow's head dropped on box ``target`` (PR-F46-10)."""
+        layout = self.story_map.layout
+        if layout is None or not 0 <= index < len(layout.edges):
+            return None
+        edge = layout.edges[index]
+        return self.retarget(layout.boxes[edge.src].name, layout.boxes[edge.dst].name,
+                             edge.kind, layout.boxes[target].name)
+
+    def preview_scene(self) -> None:
+        """Preview from this scene (a box's context menu, PR-F46-17): F44's preview,
+        started at the focused box's label."""
+        name = self.story_map.focused_name()
+        if name is not None:
+            self.preview(at=name)
 
     def move_box(self) -> None:
         """Move box (G3): the focused box follows the arrow keys until Enter."""
@@ -3542,9 +3744,9 @@ class EditorWindow:
 
     # --- Preview (PR-F44-09-14, §7.6 "Preview (F5)") ---------------------------------------
 
-    def preview(self, from_cursor: bool = True) -> None:
+    def preview(self, from_cursor: bool = True, *, at: str | None = None) -> None:
         """F5, the Preview button (``from_cursor``: start at the label above the cursor),
-        and Shift+F5 (start at ``start``). Saves every unsaved file first: the first failure
+        Shift+F5 (start at ``start``) and Preview from this scene (``at``: that label). Saves every unsaved file first: the first failure
         shows its dialog and nothing starts. Start-value problems go to the panel, and
         nothing starts (I-5). Focus stays where it was (03 §4)."""
         if self.closed:
@@ -3561,7 +3763,7 @@ class EditorWindow:
             self.show_event(PreviewEvent(PreviewState.DIDNT_START,
                                          start_values_report(problems)))
             return
-        label = self.start_label_name() if from_cursor else None
+        label = at if at is not None else self.start_label_name() if from_cursor else None
         self.runner.start(preview_argv(self.paths.root, label, args))
         self.apply_events(self.runner.poll())
 

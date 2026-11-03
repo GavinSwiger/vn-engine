@@ -50,7 +50,7 @@ I/O (config, assets, logs, DPI queries) that exists before F31.
    Persistent-data files (F12): `persistent.json`, `persistent.bad.json` (one quarantined
    copy, never read), and the writer's temp files `.persistent.json.<8 hex>.tmp`. Nothing else.
    | Meta files (F31): only the script's literal names (≤ 32, `META_NAME_RE`) and their temps `.<name>.<8 hex>.tmp` | a real `<game>/characters/`, through `engine/meta/` and writer owner `meta` (the dev real-folder rule in every run; no fallback; W197 when unwritable) | same |
-   | Dev tool: F44 editor / F45 Studio (ADR-0008, Amendment 1) | the `.vns` files under the real `<game>/script` that the editor listed and the author opened; from F45, files created, replaced, renamed, or deleted in the real group folders (`script`, `images`, `audio`, `gui`, `fonts`, `minigames`, and F31's `files`) and their real subfolders, a missing group folder, `config.toml`, and an author-chosen new game folder; plus its own temp file beside each; never from the game process or the check child | not available |
+   | Dev tool: F44 editor / F45 Studio (ADR-0008, Amendment 1) | the `.vns` files under the real `<game>/script` that the editor listed and the author opened; from F45, files created, replaced, renamed, or deleted in the real group folders (`script`, `images`, `audio`, `gui`, `fonts`, `minigames`, and F31's `files`) and their real subfolders, a missing group folder, `config.toml`, and an author-chosen new game folder; `<game>/.studio/storymap.json` (F46, ADR-0008 Am. 2); plus its own temp file beside each; never from the game process or the check child | not available |
    | Settings (F16) | `<game>/settings/` (a real directory) | `user_data_dir(app_id)/settings/` |
 
    Settings files (F16): `settings.json`, `settings.bad.json` (one quarantined copy, never
@@ -181,3 +181,6 @@ buffered early log records; invariant 9 wording.
   in every run, with no fallback (W197 when unwritable). Changes run as writer jobs of owner
   `meta` (ADR-0007). The dev-tool row's group folders add `files` (ADR-0008 Amendment 1);
   `characters` is never a group folder. Status remains accepted.
+- 2026-11-02: amended at F46 (F46 `07` §5, I-11): §2's dev-tool row adds
+  `<game>/.studio/storymap.json` (ADR-0008 Amendment 2). `.studio/` is not a write root; packaged builds exclude it (F42). Status
+  remains accepted.

@@ -9,7 +9,9 @@ module the editor process takes from ``app``, ADR-0008), and every ``engine.rend
 
 AC-F45-47 re-runs it on Studio W (game S, a fake check runner) after a fake ``DONE``, Ctrl+2,
 the ``room.png`` preview and a completion, with ``engine.tools.check`` banned as well, and
-checks that ``pyproject.toml``'s dependencies are still F44's.
+checks that ``pyproject.toml``'s dependencies are still F44's. AC-F46-45 adds, in the same
+child: the Events tab, an Events action, a rename across files, a moved box and the layout
+file's write, and checks F46's Studio modules were loaded.
 """
 
 import subprocess
@@ -140,6 +142,26 @@ def build_window(game_dir):
     root.update()
     assert win.popup.is_open
     win.close_completion()
+
+    # AC-F46-45: Events open, an Events action and a rename applied, a box moved, and the
+    # layout file written.
+    import engine.tools.editor.window as window_module
+    view = win.story_map
+    win.side_tab = "events"
+    win.open_label_beside(view.layout.boxes[view.layout.index_of("river")])
+    root.update()
+    assert win.story is not None and win.story.rows
+    win.story.move(0, 1)
+    window_module.ask_text = lambda *args, **kwargs: ("river bank", True)
+    window_module.ask = lambda *args, **kwargs: 0
+    view.focus_box(view.layout.index_of("river"))
+    assert win.rename_scene() is not None
+    view.move_to(view.layout.index_of("club"), (300, 300))
+    win.save_layout()
+    assert (game_dir / ".studio" / "storymap.json").is_file()
+    for name in ("scenes", "forms", "eventsview", "scriptedit", "formdialogs",
+                 "layoutfile", "storyeditor"):
+        assert "engine.tools.editor." + name in sys.modules, name
     done.append(win)
     root.destroy()
     return 0

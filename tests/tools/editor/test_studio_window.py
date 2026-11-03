@@ -265,7 +265,7 @@ def test_ac26_a_missing_game_folder_turns_file_operations_off(studio, studio_gam
         "The game folder can't be found."]
     assert not ed.win.file_ops_enabled()
     for label in ("New script file", "Add files…", "Rename", "Delete"):
-        assert ed.win.file_menu.entrycget(label, "state") == "disabled"
+        assert not window.entry_enabled(ed.win.file_menu, label)
     assert str(ed.win.add_button.cget("state")) == "disabled"
     ed.win.add_files()
     ed.win.new_script_file()

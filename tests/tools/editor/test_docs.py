@@ -160,3 +160,25 @@ def test_ac_f45_48_page_tells_builders_about_register_doc():
     assert "register_doc(StatementDoc(" in flat
     test = re.search(r"`(tests/[\w/]+\.py)`", flat)
     assert test is not None and (REPO / test.group(1)).is_file()
+
+
+# --- AC-F46-44: the story map page -----------------------------------------------------------
+
+STORY_PAGE = REPO / "docs" / "story-map.md"
+
+
+def test_ac_f46_44_the_story_map_page():
+    from engine.tools.editor import forms, scriptedit
+
+    flat = _flat(STORY_PAGE.read_text(encoding="utf-8"))
+    assert "(story-map.md)" in _text()                      # scene-editor.md links to it
+    for needed in ("drag", "Alt+arrows", "Ctrl+J", "**Make a choice**", "F2",
+                   "double-click empty space", "Ctrl+Shift+N", "**Events**", "Ctrl+E",
+                   "**Insert…**", "**Script** row", f"`{forms.NOTHING}`", "Alt+Up",
+                   "Alt+Down", "Ctrl+Z on the map", "Undo blocked", "**Rename scene:**",
+                   "Python code that names the scene", scriptedit.RENAME_SAVES,
+                   "`.studio/storymap.json`", "The game never reads it",
+                   "version control is your choice", "screen-reader", "**Change target…:**",
+                   "**Delete scene:**", "**New file…**", "**Preview from this scene:**"):
+        assert needed in flat, needed
+    assert "proposed" not in flat

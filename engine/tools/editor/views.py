@@ -723,6 +723,9 @@ class _Drag:
     moved: bool = False
 
 
+HEAD_HIT_PX = 10                        # a selected arrow's head grabs within this (× dpi)
+
+
 @dataclass(slots=True)
 class _Link:
     """An arrow being drawn from box ``src``'s handle (F46 04 §6.8): the dashed line's
@@ -732,6 +735,7 @@ class _Link:
     line: int | None = None
     target: int | None = None
     away: bool = False                  # the pointer has left the source (a loop needs it)
+    edge: int | None = None             # a selected arrow's head being dragged (retarget)
 
 
 @dataclass(slots=True)
@@ -798,6 +802,7 @@ class StoryMapView:
         self.on_choice_text: Callable[[int, str], None] | None = None
         self.on_delete: Callable[[], None] | None = None
         self.on_rename: Callable[[], None] | None = None
+        self.on_retarget: Callable[[int, int], None] | None = None
         self.on_edit_choice: Callable[[], None] | None = None
         self.on_context: Callable[[str, object, int, int], None] | None = None
         self.new_button = ttk.Button(self.filter, text=NEW_SCENE_BUTTON, takefocus=0,
@@ -1622,6 +1627,11 @@ class StoryMapView:
         self.cancel_link()
         self._drop_field()
         self.canvas.focus_set()
+        head = self.head_at(event.x, event.y)
+        if head is not None and self.layout is not None and self.on_retarget is not None:
+            self.link = _Link(self.layout.edges[head].src, edge=head, away=True)
+            self._sync_escape()                 # F46: the selected arrow's head moves
+            return
         found = self.box_at(event.x, event.y)
         if found is None and self.layout is not None:
             self.select_edge(self.edge_at(event.x, event.y))   # F46: an arrow or its chip
@@ -1702,6 +1712,10 @@ class StoryMapView:
             self._link_to(event)
             link, target = self.link, self.link.target
             self.cancel_link()
+            if link.edge is not None:
+                if target is not None and self.on_retarget is not None                         and self.layout is not None                         and target != self.layout.edges[link.edge].dst:
+                    self.on_retarget(link.edge, target)
+                return
             if target is not None and self.on_arrow is not None:
                 self.on_arrow(link.src, target)
             return
@@ -1804,6 +1818,21 @@ class StoryMapView:
             self.canvas.delete(link.line)
         self._paint_box(link.target)
         self._sync_escape()
+
+    def head_at(self, x: int, y: int) -> int | None:
+        """The selected arrow, when window point (``x``, ``y``) is on its head (dragging
+        it onto another box changes the target, PR-F46-10), else None."""
+        if self.edge is None:
+            return None
+        canvas = self.canvas
+        cx, cy = canvas.canvasx(x), canvas.canvasy(y)
+        for item in canvas.find_withtag(f"edge{self.edge}"):
+            if canvas.type(item) != "line":
+                continue
+            coords = canvas.coords(item)
+            if len(coords) >= 4 and math.hypot(cx - coords[-2], cy - coords[-1])                     <= HEAD_HIT_PX * self.dpi:
+                return self.edge
+        return None
 
     def edge_at(self, x: int, y: int) -> int | None:
         """The arrow (or choice chip) within 4 px of window point (``x``, ``y``), or None."""
@@ -2451,6 +2480,55 @@ _WM_KEYDOWN, _WM_MOUSEMOVE, _WM_LBUTTONDOWN = 0x0100, 0x0200, 0x0201
 _VK_LEFT, _VK_RIGHT, _VK_DOWN = 0x25, 0x27, 0x28
 _MN_GETHMENU = 0x01E1
 _MF_BYPOSITION, _MF_HILITE = 0x0400, 0x0080
+
+
+# Tk on Windows draws a disabled menu entry "embossed": its text again in the system's white
+# highlight, one pixel off, which reads brighter than the enabled entries on Studio's dark
+# menus. There an entry that can't be used now stays "normal" but is drawn in the theme's
+# disabled color with no hover, and its command does nothing (``set_entry_enabled``).
+MENU_DIM_ENTRIES = sys.platform == "win32"
+
+
+def _menu_off(menu: tk.Menu) -> set[str]:
+    off = getattr(menu, "_studio_off", None)
+    if off is None:
+        off = set()
+        menu._studio_off = off              # type: ignore[attr-defined]
+    return off
+
+
+def menu_command(menu: tk.Menu, label: str, run: Callable[[], object]) -> Callable[[], None]:
+    """``run`` as entry ``label``'s command: it does nothing while the entry is off."""
+    def command() -> None:
+        if label not in _menu_off(menu):
+            run()
+    return command
+
+
+def set_entry_enabled(menu: tk.Menu, entry: str | int, enabled: bool) -> None:
+    """Turn a menu entry on or off; on Windows, without Tk's embossed disabled look (its
+    command must come from ``menu_command``)."""
+    if not MENU_DIM_ENTRIES:
+        menu.entryconfigure(entry, state="normal" if enabled else "disabled")
+        return
+    label = str(menu.entrycget(entry, "label"))
+    off = _menu_off(menu)
+    if enabled:
+        off.discard(label)
+        menu.entryconfigure(entry, state="normal", foreground="", activeforeground="",
+                            activebackground="")
+    else:
+        off.add(label)
+        dim = THEME["button.disabledForeground"]
+        menu.entryconfigure(entry, state="normal", foreground=dim, activeforeground=dim,
+                            activebackground=str(menu.cget("background")))
+
+
+def entry_enabled(menu: tk.Menu, entry: str | int) -> bool:
+    """Whether a menu entry is on (``set_entry_enabled``)."""
+    if str(menu.entrycget(entry, "state")) == "disabled":
+        return False
+    return str(menu.entrycget(entry, "label")) not in _menu_off(menu)
 
 
 class MenuBar:

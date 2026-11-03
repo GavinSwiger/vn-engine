@@ -639,12 +639,23 @@ def insert_lines(form: CommandForm, values: Values | ChoiceValues, indent: str,
 
 # --- Shape and the probe (§6.7.2) -------------------------------------------------------------
 
+_PLAIN: Final = (str, int, float, bool, type(None))
+_SHAPE_FIELDS: dict[type, tuple[str, ...] | None] = {}     # a type's compared fields
+
+
 def shape(value: object) -> object:
     """A node's fields compared recursively, without places, ids, blocks and compiled code."""
-    if is_dataclass(value) and not isinstance(value, type):
-        return (type(value).__name__,
-                tuple((f.name, shape(getattr(value, f.name)))
-                      for f in fields(value) if f.name not in _SHAPE_SKIP))
+    kind = type(value)
+    if kind in _PLAIN:
+        return value
+    try:
+        names = _SHAPE_FIELDS[kind]
+    except KeyError:
+        names = _SHAPE_FIELDS[kind] = (
+            tuple(f.name for f in fields(value) if f.name not in _SHAPE_SKIP)  # type: ignore[arg-type]
+            if is_dataclass(value) and not isinstance(value, type) else None)
+    if names is not None:
+        return (kind.__name__, tuple((name, shape(getattr(value, name))) for name in names))
     if isinstance(value, (tuple, list)):
         return tuple(shape(item) for item in value)
     if isinstance(value, dict):

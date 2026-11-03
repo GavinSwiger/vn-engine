@@ -68,9 +68,9 @@ for `call`, dotted for a `menu` choice. Boxes are marked `start`, `not reached`,
 The **Outline** tab (Ctrl+4) lists chapters, endings, routes, codex entries, meters,
 minigames, and flowchart boxes; Enter opens one.
 
-Click a box, or select it and press Enter, to open its label in a side editor sharing the
-Editor tab's text; F6 reaches it and Esc closes it. Ctrl+Enter or Ctrl+click uses the Editor
-tab. Ctrl+= and Ctrl+- zoom.
+Click a box, or press Enter on it, to open the scene beside the map; F6 reaches it and Esc
+closes it. Editing the story on the map: [Story map editing](story-map.md). Ctrl+Enter or
+Ctrl+click uses the Editor tab. Ctrl+= and Ctrl+- zoom.
 
 If a change stops the script loading, the map keeps its last drawing, marked "out of date".
 **Go to label** (Ctrl+G) jumps to a label by name.

@@ -13,7 +13,7 @@ import pytest
 
 from engine.script.labelgraph import LabelLink
 from engine.tools.editor import (
-    assist, document, formdialogs, layoutfile, scenes, scriptedit, storymap)
+    assist, document, formdialogs, layoutfile, scenes, scriptedit, storymap, views)
 from engine.tools.editor.checker import CheckEvent, CheckResult, CheckState, NameEntry
 from engine.tools.editor.theme import THEME
 
@@ -816,9 +816,9 @@ def studio_n(studio, game: Path):
 def answer_new_scene(monkeypatch, names: list, seen: dict) -> None:
     """``formdialogs.ask_new_scene`` answered with the real dialog: each queued answer is
     (typed name, file shown) or None (Cancel)."""
-    def ask(parent, files, default, *, taken=(), problem=None):
+    def ask(parent, files, default, *, taken=(), problem=None, new_file=None):
         dialog = formdialogs.NewSceneDialog(parent, files, default, taken=taken,
-                                            problem=problem)
+                                            problem=problem, new_file=new_file)
         seen.setdefault("defaults", []).append(dialog.file.get())
         answer = names.pop(0)
         if answer is None:
@@ -966,7 +966,8 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     calls: list[tuple] = []
     with monkeypatch.context() as patch:
         for name in ("new_scene", "go_to_scene", "rename_scene", "delete_scene",
-                     "move_box", "delete_arrow", "edit_choice_text", "tidy_up"):
+                     "move_box", "delete_arrow", "edit_choice_text", "change_target",
+                     "tidy_up"):
             patch.setattr(window.EditorWindow, name,
                           lambda self, *a, n=name: calls.append((n, *a)))
         for name in ("insert", "edit", "move"):
@@ -981,9 +982,6 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
             ed.press(canvas, key)
             assert calls == [call], key
             win._update_story_menu()
-            if entry in ("Rename scene", "Delete scene"):        # step 6
-                assert menu.entrycget(entry, "state") == "disabled"
-                continue
             calls.clear()
             menu.invoke(entry)
             assert calls == [call], entry
@@ -999,6 +997,15 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
             win._update_story_menu()
             menu.invoke(entry)
             assert calls == [call, call], entry
+        calls.clear()
+        win._update_story_menu()
+        menu.invoke("Change target…")
+        assert calls == [("change_target",)]
+        view.select_edge(None)
+        win._update_story_menu()                 # off: drawn dim, and does nothing
+        assert not views.entry_enabled(menu, "Change target…")
+        menu.invoke("Change target…")
+        assert calls == [("change_target",)]
         view.places = {"stall": (0, 0)}
         calls.clear()
         win._update_story_menu()
@@ -1026,17 +1033,20 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     ed.root.update()
     assert view.focused_name() == "festival"
     assert shown() == [("New scene", "normal"), ("Go to scene…", "normal"),
-                       ("Move box", "normal")]                  # enabled actions only
+                       ("Rename scene", "normal"), ("Delete scene", "normal"),
+                       ("Move box", "normal"), ("Preview from this scene", "normal")]
     win.last_context = None
     ed.press(canvas, "<Shift-F10>")
     assert [label for label, _ in shown()][:2] == ["New scene", "Go to scene…"]
     view.select_edge(view.edge_index("stall", "river", "menu"))
     win.last_context = None
     ed.press(canvas, "<App>")
-    assert shown() == [("Delete arrow", "normal"), ("Edit choice text", "normal")]
+    assert shown() == [("Delete arrow", "normal"), ("Edit choice text", "normal"),
+                       ("Change target…", "normal")]
     view.select_edge(view.edge_index("stall", "river", "jump"))
     ed.press(canvas, "<Shift-F10>")
-    assert shown() == [("Delete arrow", "normal")]              # no text on a "go to"
+    assert shown() == [("Delete arrow", "normal"),
+                       ("Change target…", "normal")]           # no text on a "go to"
     win.last_context = None
     canvas.event_generate("<Button-3>", x=4, y=canvas.winfo_height() - 4)
     ed.root.update()
@@ -1183,3 +1193,149 @@ def test_ac_f46_37_empty_states(studio, blank, lanterns):
     assert not other.story_map.start_only.shown
     events_on(other, "river")
     assert not other.events_view.empty.shown
+
+
+# --- Step 6: rename, delete scene, change target, New file…, Preview from this scene --------
+
+RENAME_TEXT = ("Rename `stall` to `lantern_stall`? 2 lines that go to it change too. Python "
+               "code that names it doesn't. (2 places, first `ch2.vns`, line 14) Saves made "
+               "inside this scene will start it from the beginning.")
+
+
+def test_ac_f46_39_rename_in_studio(studio, lanterns, monkeypatch):
+    seen: list = []
+
+    def ask_text(parent, message, initial, *, ok, hint=None, **_kw):
+        seen.append((message, initial, ok, hint("Lantern Stall")))
+        return "Lantern Stall", True
+    monkeypatch.setattr(window, "ask_text", ask_text)
+    ed = studio_l(studio, lanterns)
+    win, view, canvas = ed.win, ed.story_map, ed.map_canvas
+    for ref in [ref for ref in win.files if ref != MAIN]:
+        win.files.pop(ref)
+    assert set(win.files) == {MAIN}
+    original = {ref: (lanterns / ref).read_text(encoding="utf-8").rstrip()
+                for ref in (MAIN, CH2)}
+    before = places(view)
+    view.focus_box(view.layout.index_of("stall"))
+    ed.answers.append(0)                                         # Rename
+    ed.press(canvas, "<F2>")
+    assert seen == [("Rename the scene `stall`. Type its new name:", "stall", "Continue",
+                     "Its name in the script: lantern_stall")]
+    assert ed.dialogs == [("ask", RENAME_TEXT, ("Rename", "Cancel"), 1, 1)]
+    assert CH2 in win.files and win.files[CH2].dirty and win.files[MAIN].dirty
+    assert ed.row(MAIN).startswith("* ") and ed.row(CH2).startswith("* ")
+    assert line(ed, MAIN, 14) == "    call lantern_stall"
+    assert line(ed, CH2, 1) == "label lantern_stall:"
+    assert line(ed, CH2, 16) == "    flowchart forget lantern_stall"
+    assert line(ed, CH2, 14) == '    $ stall = "visited"'
+    assert places(view)["lantern_stall"] == before["stall"]
+    assert view.focused_name() == "lantern_stall"
+
+    def texts() -> dict[str, str]:
+        return {ref: win.files[ref].widget.get("1.0", "end-1c") for ref in (MAIN, CH2)}
+    renamed = texts()
+    ed.press(canvas, "<Control-z>")                              # one map undo: both
+    assert texts() == original
+    assert places(view)["stall"] == before["stall"] and "lantern_stall" not in places(view)
+
+    view.focus_box(view.layout.index_of("stall"))                # again; text undo per file
+    ed.answers.append(0)
+    ed.press(canvas, "<F2>")
+    assert texts() == renamed
+    for ref in (MAIN, CH2):
+        win.files[ref].widget.edit_undo()
+        assert win.files[ref].widget.get("1.0", "end-1c") == original[ref], ref
+
+    ed.dialogs.clear()                                           # start keeps its name
+    view.focus_box(view.layout.index_of("start"))
+    ed.press(canvas, "<F2>")
+    assert ed.dialogs == [("error", "The story starts at `start`, so it keeps its name.")]
+
+
+def test_ac_f46_41_change_target_in_studio(studio, lanterns, monkeypatch):
+    offered: list = []
+    monkeypatch.setattr(formdialogs, "pick_scene", lambda parent, names, **kw: (
+        offered.append((list(names), kw)), "festival")[1])
+    monkeypatch.setattr(window, "CONTEXT_MENUS_POST", False)
+    ed = studio_l(studio, lanterns)
+    win, view = ed.win, ed.story_map
+    view.select_edge(view.edge_index("stall", "river", "jump"))
+    win.context_menu("edge").invoke("Change target…")
+    assert offered == [(["festival", "stall", "start"],
+                        {"title": "Change target", "ok": "Change"})]
+    assert line(ed, CH2, 9) == "    jump festival"
+    assert view.selected_edge()[:3] == ("stall", "festival", "jump")
+    ed.press(ed.map_canvas, "<Control-z>")
+    assert line(ed, CH2, 9) == "    jump river"
+
+    # Dragging the selected arrow's head onto another box does the same.
+    view.select_edge(view.edge_index("stall", "river", "jump"))
+    ed.root.update()
+    canvas = ed.map_canvas
+    item = canvas.find_withtag(f"edge{view.edge}")[0]
+    hx, hy = canvas.coords(item)[-2:]
+    x, y = int(hx - canvas.canvasx(0)), int(hy - canvas.canvasy(0))
+    take_focus(canvas)
+    canvas.event_generate("<Button-1>", x=x, y=y)
+    tx, ty = point(ed, "festival")
+    for f in (0.5, 1.0):
+        canvas.event_generate("<B1-Motion>", x=x + round((tx - x) * f),
+                              y=y + round((ty - y) * f))
+        ed.root.update()
+    canvas.event_generate("<ButtonRelease-1>", x=tx, y=ty)
+    ed.root.update()
+    assert line(ed, CH2, 9) == "    jump festival"
+
+
+def test_ac_f46_42_new_file(studio, lanterns, monkeypatch):
+    seen: dict = {}
+    made: list = []
+
+    def ask(parent, files, default, *, taken=(), problem=None, new_file=None):
+        dialog = formdialogs.NewSceneDialog(parent, files, default, taken=taken,
+                                            problem=problem, new_file=new_file)
+        seen.setdefault("defaults", []).append(dialog.file.get())
+        seen.setdefault("lists", []).append(list(dialog.files.cget("values")))
+        if made:
+            assert dialog.new_button is not None
+            made.append(dialog.add_file())
+            seen["chosen"] = dialog.file.get()
+        dialog.name.set("shop front" if made else "lantern shop")
+        dialog._pick(0)
+        return dialog.result
+    monkeypatch.setattr(formdialogs, "ask_new_scene", ask)
+    ed = studio_l(studio, lanterns)
+    win, view = ed.win, ed.story_map
+    view.focus_box(view.layout.index_of("stall"))
+    view.select_box(view.layout.index_of("stall"))
+    win.new_scene()
+    assert seen["defaults"] == ["ch2.vns"] and seen["lists"] == [["main.vns", "ch2.vns"]]
+    assert line(ed, CH2, 19) == "label lantern_shop:"
+    ed.press(ed.map_canvas, "<Control-z>")
+    view.focus_box(None)
+    view.select_box(None)
+    made.append("go")
+    ed.answers.append(("shop.vns", True))                       # F45's new script flow
+    win.new_scene()
+    assert seen["defaults"][-1] == "main.vns"
+    assert made[-1] == "script/shop.vns" and seen["chosen"] == "shop.vns", ed.dialogs
+    assert (lanterns / "script" / "shop.vns").exists()
+    record = win.files["script/shop.vns"]
+    assert "label shop_front:" in record.widget.get("1.0", "end-1c"), (ed.dialogs, seen)
+    assert 'include "shop.vns"' in win.files[MAIN].widget.get("1.0", "end-1c")
+    assert view.layout.index_of("shop_front") is not None
+
+
+def test_ac_f46_43_preview_from_this_scene(studio, lanterns, monkeypatch):
+    monkeypatch.setattr(window, "CONTEXT_MENUS_POST", False)
+    ed = studio_l(studio, lanterns)
+    win, view = ed.win, ed.story_map
+    started: list = []
+    monkeypatch.setattr(win.runner, "start", lambda argv: started.append(list(argv)))
+    monkeypatch.setattr(win.runner, "poll", lambda: [])
+    view.focus_box(view.layout.index_of("river"))
+    win.context_menu("box").invoke("Preview from this scene")
+    assert len(started) == 1
+    argv = started[0]
+    assert argv[argv.index("--start") + 1] == "river"
