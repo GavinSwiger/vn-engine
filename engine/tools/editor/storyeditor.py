@@ -30,8 +30,9 @@ from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.menu import Menu
 from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import assist, formdialogs, forms, scenes, scriptedit
+from engine.tools.editor import assist, formdialogs, forms, minigameview, scenes, scriptedit
 from engine.tools.editor.eventsview import EventsView
+from engine.tools.editor.minigamedata import MINIGAME_FORM
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, Row
 from engine.tools.editor.scenes import Key, SceneIndex, SceneRead, Span
 from engine.tools.editor.scriptedit import Ask, LineEdit, Plan, Refuse
@@ -422,6 +423,8 @@ class StoryEditor:
             values: Any = formdialogs.edit_choice(
                 self.win.root, ChoiceValues(choices=(ChoiceItem(""),)), names=self.names(),
                 assets=self.form_assets())
+        elif form.key == MINIGAME_FORM:                 # F47 W8: fields from the game
+            values = minigameview.edit_minigame(self.win, None)
         else:
             values = formdialogs.edit_form(self.win.root, form,
                                            formdialogs.new_values(form, doc),
@@ -481,8 +484,11 @@ class StoryEditor:
             form = forms.form_by_key(row.form)
             if form is None:
                 return None
-            values = formdialogs.edit_form(self.win.root, form, dict(row.values or {}),
-                                           names=self.names(), assets=self.form_assets())
+            if form.key == MINIGAME_FORM:               # F47 W8: fields from the game
+                values = minigameview.edit_minigame(self.win, dict(row.values or {}))
+            else:
+                values = formdialogs.edit_form(self.win.root, form, dict(row.values or {}),
+                                               names=self.names(), assets=self.form_assets())
         if values is None:
             return None
         return self.act(lambda read_, lines, start: scriptedit.plan_form(

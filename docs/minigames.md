@@ -66,6 +66,40 @@ the running minigame with its test outcome, so you can test the story around it 
 The script language reference has the full form of the line and its error messages:
 [script-language.md](script-language.md), "minigame".
 
+## Setting up a minigame in Studio
+
+You don't have to type the data or the line. In Studio, open **Database ▸ Minigame data**.
+The list shows the story's word lists, evidence, phone chats and puzzle rooms. **+ New**
+makes one in `script/database.vns`, ready to change. Each change is saved into the script
+straight away, and **Edit ▸ Undo** takes it back. If the game wouldn't accept a change yet,
+for example a room with no way out, the panel shows "Not saved yet" and the reason, and
+saves once you fix it.
+
+- **Poem words**: one row per word and one column per meter, each with a 0 to 3 spinner.
+  **+ Add word** adds a row, and ✕ removes it.
+- **Evidence**: the witness's statements in order. For each statement, type what the
+  witness says and tick the items that contradict it. The items come from **Codex ▸ Items**.
+  Studio writes the testimony and its answer for you.
+- **Phone chat**: the steps in order. **+ Add ▾** adds a message from the contact, from
+  you, or from someone else, a time, or a reply point. A reply point holds up to four
+  buttons, and each button can have its own follow-up steps. Tick "Don't reply" to add
+  that button too.
+- **Puzzle room**: pick the background, then drag on the picture to draw a hotspot. Drag
+  a hotspot to move it, or drag a corner to resize it. The arrow keys move the selected
+  hotspot, and Shift with the arrow keys resizes it. The panel beside the picture sets the
+  hotspot's name tag and what a click does: show its text, give an item, need an item
+  (the items that work, plus the text for a wrong one), or leave the room. It also sets
+  which hotspot it appears after, and its picture. The recipes below the picture combine
+  two items into a third.
+
+Then, in a scene's **Events**, use **Insert ▸ Minigame**. Pick the game. The form shows
+that game's arguments. A data argument lists that game's data, with **Set up…** to edit
+the data and **New…** to make more. **Result goes to** picks the variable that gets the
+result. Your own minigames (`minigames/*.py`) are listed too, with the arguments they
+declare. A data set written in a way the panel can't show, such as one built with Python,
+offers **Edit as script**. If a data set has comments, Studio asks before saving it, because
+saving rewrites it without them.
+
 ## Poem game
 
 The poem game (`poem_game`) comes with the engine. It shows a notebook page with two columns

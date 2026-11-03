@@ -1080,6 +1080,47 @@ def scan(texts: Mapping[str, str]) -> tuple[DataSet, ...]:
     return tuple(out)
 
 
+def data_set(texts: Mapping[str, str], name: str, kind: str) -> DataSet | None:
+    """The top-level ``define name`` in ``texts`` read as ``kind`` (``model`` None when it
+    isn't that shape), whether or not a ``minigame`` line names it yet: a new evidence's
+    answer, which ``scan`` can't tell from its shape (F47 W8)."""
+    found = None
+    for ref, text in texts.items():
+        for first, last, lines in dec.statements(text):
+            match = _DEFINE.match("\n".join(lines))
+            if match is None or match.group(1) != name:
+                continue
+            if found is not None:
+                return None                     # declared twice: the check's to report
+            ok, value = _literal_value(match.group(2))
+            found = DataSet(kind, name, ref, first, last, tuple(lines),
+                            read_value(kind, value) if ok else None,
+                            tuple(uses(texts).get(name, ())), True,
+                            ok and _has_comment(match.group(2)))
+    return found
+
+
+def answer_for(testimony: DataSet, texts: Mapping[str, str]) -> DataSet | None:
+    """The answer that goes with ``testimony``: the one a ``present_evidence`` line passes
+    with it; else the only answer-shaped ``define`` whose statements are all the
+    testimony's; else ``<testimony>_answer`` (F47 W8)."""
+    name = answer_name(testimony.name, texts)
+    if name is None:
+        keys = {k for k, _ in testimony.model or ()}            # type: ignore[union-attr]
+        found = []
+        for text in texts.values():
+            for _first, _last, lines in dec.statements(text):
+                match = _DEFINE.match("\n".join(lines))
+                if match is None or match.group(1) == testimony.name:
+                    continue
+                ok, value = _literal_value(match.group(2))
+                model = _read_answer(value) if ok else None
+                if model and {k for k, _ in model} <= keys:
+                    found.append(match.group(1))
+        name = found[0] if len(found) == 1 else f"{testimony.name}_answer"
+    return data_set(texts, name, ANSWER)
+
+
 def _value_at(text: str, name: str) -> list[object]:
     """The literal values of every top-level ``define name`` in ``text``."""
     found = []
@@ -1493,6 +1534,48 @@ def call_from_form(form: GameForm, values: Mapping[str, str], *, skippable: bool
                 old.indent if old else INDENT, old.comment if old else "")
 
 
+# --- The Events row (F47 W8) -------------------------------------------------------------------
+
+MINIGAME_FORM: Final = "minigame"
+GAME_TITLES: Final[Mapping[str, str]] = {
+    "poem_game": "Poem", "present_evidence": "Present evidence",
+    "phone_chat": "Phone chat", "puzzle_room": "Puzzle room"}
+
+
+def game_title(game: str) -> str:
+    """A minigame as the author sees it: the bundled ones by title, a plugin by its name."""
+    return GAME_TITLES.get(game, game)
+
+
+def _row_read(node: object, code: str) -> dict[str, str] | None:
+    from engine.script.minigame import Minigame
+    if not isinstance(node, Minigame) or read_call(code) is None:
+        return None
+    return {"line": code.strip()}
+
+
+def _row_summary(values: Mapping[str, str]) -> str:
+    call = read_call(values.get("line", ""))
+    if call is None:
+        return values.get("line", "")
+    data = [v for k, v in call.args if (call.game, k) in USE_KINDS or k == "words"]
+    parts = [game_title(call.game), *dict.fromkeys(data)]
+    text = " · ".join(parts)
+    return f"{text} → {call.into}" if call.into else text
+
+
+def _row_form() -> object:
+    """The Minigame ``CommandForm`` (its dialog is ``minigameview``'s: the fields depend on
+    the game). Values: ``{"line": <the line without indent or comment>}``."""
+    from engine.script.minigame import Minigame
+    from engine.tools.editor.forms import CommandForm
+    return CommandForm(MINIGAME_FORM, "Minigame", "Minigame", (("minigame", ""),), Minigame,
+                       (), _row_read, lambda v: v["line"], _row_summary)
+
+
+FORM: Final = _row_form()
+
+
 __all__ = [
     "ADDED", "ANSWER", "ASK", "AskStep", "ArgField", "BUILTIN_FIELDS", "BUNDLED", "CANVAS",
     "CHANGED", "CHAT", "CHOICE", "Call", "ChatStep", "DATA", "DONT_REPLY", "DataPlan",
@@ -1502,6 +1585,7 @@ __all__ = [
     "Room", "STEP_TITLES", "Statement", "Step", "TESTIMONY", "TEXT", "TIME", "TOGGLE",
     "USE_KINDS", "VALUE", "VARIABLE", "answer_name", "call_from_form", "call_line", "calls",
     "clamp_rect", "data_choices", "define_lines", "evidence_of", "evidence_values",
+    "FORM", "GAME_TITLES", "MINIGAME_FORM", "answer_for", "data_set", "game_title",
     "form_fields", "form_values", "games", "literal", "plan_edit", "plan_evidence",
     "plan_new", "poem_meters", "poem_points", "poem_set", "problem", "read_call",
     "read_value", "scan", "slug", "uses", "value_of", "verify"]

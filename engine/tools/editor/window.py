@@ -580,6 +580,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         """F47 W2/W3: the Database (``database.DatabasePane``)."""
         from engine.tools.editor.database import DatabasePane
         self.database = DatabasePane(self, self.notebook)
+        from engine.tools.editor.minigameview import attach    # F47 W8: Minigame data
+        attach(self.database)
         return self.database.frame
 
     def refresh_database(self) -> None:
