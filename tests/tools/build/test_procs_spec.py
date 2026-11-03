@@ -114,7 +114,11 @@ def test_ac_f42_39_build_side_children_spec_and_redaction(tmp_path, monkeypatch)
     analysis = {k.arg: ast.literal_eval(k.value) for k in calls_by_name["Analysis"].keywords}
     assert analysis["pathex"] == []
     assert [dest for _, dest in analysis["datas"]] == ["engine/data/fonts", "engine/data"]
-    assert {"tkinter", "engine.tools", "PyInstaller"} <= set(analysis["excludes"])
+    assert {"tkinter", "engine.tools", "PyInstaller", "_hashlib", "_socket"} <= set(
+        analysis["excludes"])
+    # P8: the network/OpenSSL trim stays off when a plugin may need it.
+    assert "_hashlib" not in spec.excludes(["json", "urllib.request"])
+    assert "_hashlib" not in spec.excludes(["hashlib"])
     hidden = analysis["hiddenimports"]
     assert "engine.core.paths" in hidden and "json" in hidden
     assert not [m for m in hidden if m.startswith(("engine.tools", "engine.data"))]

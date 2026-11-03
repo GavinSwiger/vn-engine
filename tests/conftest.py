@@ -9,9 +9,11 @@ display).
 about 0.15 s on every ``pygame.init()`` (the engine uses no joysticks). Subprocess launches
 inherit it. It roughly halves the F01 default run (test-review-F01.md).
 
-``slow`` and ``perf`` tests anywhere under ``tests/`` are skipped unless ``VN_SLOW=1`` /
-``VN_PERF=1`` is set or ``-m`` names the marker (pyproject markers; F02/F03 06 §0.3), so a
-bare ``pytest`` and CI's ``-m "not perf and not manual"`` run neither (test-review-F02.md).
+``slow``, ``perf`` and ``build`` tests anywhere under ``tests/`` are skipped unless
+``VN_SLOW=1`` / ``VN_PERF=1`` / ``VN_BUILD=1`` is set or ``-m`` names the marker (pyproject
+markers; F02/F03 06 §0.3; F42 P8), so a bare ``pytest`` and CI's ``-m "not perf and not
+manual"`` run none of them (test-review-F02.md). ``build`` tests make real PyInstaller builds
+and run only in CI's build job or on request.
 """
 
 import os
@@ -26,12 +28,13 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 
 def pytest_collection_modifyitems(config, items):
-    # Reference runs (AC-F04-48 is four 600 s runs) and human checks have no time limit.
+    # Reference runs (AC-F04-48 is four 600 s runs), human checks and real builds have no
+    # time limit.
     for item in items:
-        if item.get_closest_marker("perf") or item.get_closest_marker("manual"):
+        if any(item.get_closest_marker(mark) for mark in ("perf", "manual", "build")):
             item.add_marker(pytest.mark.timeout(0))
     marks = config.getoption("-m") or ""
-    for mark, env in (("slow", "VN_SLOW"), ("perf", "VN_PERF")):
+    for mark, env in (("slow", "VN_SLOW"), ("perf", "VN_PERF"), ("build", "VN_BUILD")):
         if os.environ.get(env) == "1" or mark in marks:
             continue
         skip = pytest.mark.skip(reason=f"{mark}: set {env}=1 or use -m {mark}")

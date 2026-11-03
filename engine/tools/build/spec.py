@@ -8,7 +8,8 @@ Why this module exists: the build drives PyInstaller as a child from a generated
   ``launcher_main``. ``hiddenimports`` = ``engine_modules()`` (every real ``engine``
   package and module except ``engine/tools`` and ``engine/data``, so engine modules imported
   by name are bundled) + the plugins' standard-library modules (``plugins.scan_imports``).
-  ``excludes``: ``tkinter``, ``_tkinter``, ``engine.tools``, ``PyInstaller``.
+  ``excludes``: ``tkinter``, ``_tkinter``, ``engine.tools``, ``PyInstaller``, and the
+  network/OpenSSL modules unless a plugin may need them (``excludes()``).
 - ``datas``: only ``engine/data/fonts`` and ``engine/data/icon.png``, placed at
   ``engine/data/...`` inside the bundle so ``engine_data_dir()`` finds them under
   ``_MEIPASS`` (I-5). ``engine/data/starter/`` and ``engine/data/sample/`` never ship.
@@ -39,6 +40,19 @@ ENTRY_SCRIPT: Final = "main.py"
 COLLECT_NAME: Final = "app"              # dist/app/* is moved into the build folder
 CONTENTS_DIR: Final = "_internal"
 EXCLUDES: Final = ("tkinter", "_tkinter", "engine.tools", "PyInstaller")
+# Network and OpenSSL modules the engine never uses at run time (P8). PyInstaller follows
+# every import it can see, including ones inside functions: stdlib ``platform`` (which
+# ``engine.app.platform`` imports for the OS name) imports ``socket`` inside ``node()``, and
+# ``hashlib`` imports the OpenSSL-backed ``_hashlib`` (libcrypto-3.dll, about 5 MB) when it
+# can. The engine only calls ``platform.system()``/``release()``/``version()`` (``uname()``
+# returns an empty node name without ``socket``) and ``hashlib.blake2b``/``sha256``, which
+# come from Python's built-in ``_blake2``/``_sha2``. So a build leaves them out, unless a
+# plugin imports something that may need them (``NEEDS_NETWORK``), when they stay.
+NETWORK_EXCLUDES: Final = ("_hashlib", "_ssl", "ssl", "_socket", "socket")
+NEEDS_NETWORK: Final = frozenset({
+    "asyncio", "concurrent", "email", "ftplib", "hashlib", "hmac", "http", "imaplib",
+    "logging.handlers", "mailbox", "multiprocessing", "poplib", "secrets", "selectors",
+    "smtplib", "socket", "socketserver", "ssl", "urllib", "uuid", "wsgiref", "xmlrpc"})
 SKIPPED_PACKAGES: Final = frozenset({"tools", "data"})     # under engine/
 SKIPPED_MODULES: Final = frozenset({"__main__"})           # the frozen exe runs main.py
 MAX_VERSION_PART: Final = 0xFFFF
@@ -89,6 +103,14 @@ def version_numbers(file_version: str) -> tuple[int, int, int, int]:
     return numbers  # type: ignore[return-value]
 
 
+def excludes(hidden: Iterable[str] = ()) -> list[str]:
+    """The spec's ``excludes``: ``EXCLUDES``, plus ``NETWORK_EXCLUDES`` unless a plugin
+    module in ``hidden`` is (or is inside) one of ``NEEDS_NETWORK``."""
+    needs = any(name == wanted or name.startswith(wanted + ".")
+                for name in hidden for wanted in NEEDS_NETWORK)
+    return [*EXCLUDES, *(() if needs else NETWORK_EXCLUDES)]
+
+
 def version_text(*, title: str, version: str, file_version: str, exe_name: str) -> str:
     """The Windows version resource (PR-F42-20): Product name and File description = title,
     Product version = the version text, File version = ``file_version`` (``1.2.0.0``),
@@ -124,7 +146,8 @@ def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
     plugins' standard-library modules."""
     base = Path(root) if root is not None else engine_root()
     data = base / "engine" / "data"
-    hiddenimports = engine_modules(base) + sorted(set(hidden))
+    plugin_modules = sorted(set(hidden))
+    hiddenimports = engine_modules(base) + plugin_modules
     datas = [(str(data / "fonts"), "engine/data/fonts"),
              (str(data / "icon.png"), "engine/data")]
     return (
@@ -138,7 +161,7 @@ def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
         "    hookspath=[],\n"
         "    hooksconfig={},\n"
         "    runtime_hooks=[],\n"
-        f"    excludes={list(EXCLUDES)!r},\n"
+        f"    excludes={excludes(plugin_modules)!r},\n"
         "    noarchive=False,\n"
         ")\n"
         "pyz = PYZ(a.pure)\n"
@@ -177,5 +200,6 @@ def packer_argv(spec_file: Path, staging: Path) -> list[str]:
             "--workpath", str(staging / WORK_DIR), str(spec_file)]
 
 
-__all__ = ["COLLECT_NAME", "CONTENTS_DIR", "ENTRY_SCRIPT", "EXCLUDES", "engine_modules",
-           "packer_argv", "spec_text", "version_numbers", "version_text"]
+__all__ = ["COLLECT_NAME", "CONTENTS_DIR", "ENTRY_SCRIPT", "EXCLUDES", "NEEDS_NETWORK",
+           "NETWORK_EXCLUDES", "engine_modules", "excludes", "packer_argv", "spec_text",
+           "version_numbers", "version_text"]

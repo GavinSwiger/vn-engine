@@ -38,3 +38,24 @@ jobs:
       # this runs chunks 1-9, which are `slow` so the local default run stays fast.
       - name: Fuzz the script loader (cases 100-999)
         run: python -m pytest -m slow tests/script/test_fuzz.py -k one_thousand_cases
+
+  # F42 P8: real builds. Builds the example game and F47's sample with the pinned
+  # PyInstaller (requirements-build.txt), runs each exe (`--bench 1` under SDL's dummy
+  # drivers), checks isolation, licences and the version resource, and runs the SEC-F42-10
+  # leak scan. Only `build` tests run here; the job above skips them.
+  build:
+    name: real build (windows-latest, Python 3.12)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned, hashed dependencies and the build tool
+        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.txt -r requirements-build.txt
+
+      - name: Build, run and scan the builds
+        run: python -m pytest -m build

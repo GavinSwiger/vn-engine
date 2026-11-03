@@ -27,8 +27,11 @@ engine = ["data/**/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-# A hung test fails after 5 minutes instead of stalling the run; perf and manual tests
-# have no limit (tests/conftest.py).
+# pytest's default list minus "build": it would skip tests/tools/build/ (F42) in every run
+# that doesn't name the folder. The top-level build/ output folder is outside testpaths.
+norecursedirs = ["*.egg", ".*", "_darcs", "CVS", "dist", "node_modules", "venv", "{arch}"]
+# A hung test fails after 5 minutes instead of stalling the run; perf, manual and build
+# tests have no limit (tests/conftest.py).
 timeout = 300
 markers = [
     "display: needs pygame with SDL_VIDEODRIVER=dummy (set in tests/conftest.py)",
@@ -36,5 +39,6 @@ markers = [
     "manual: a human checks the result; never runs in CI",
     "slow: long-running (fuzz, large inputs); skipped unless VN_SLOW=1 or -m slow",
     "tk: builds a Tk window (the scene editor); skipped when Tk or a display is missing",
+    "build: makes a real build with PyInstaller (requirements-build.txt) and runs the exe; skipped unless VN_BUILD=1 or -m build (F42 P8; the CI build job)",
     "mixer: the real pygame mixer on SDL's dummy or disk audio driver (F08 06 §0.2; the CI mixer job)",
 ]
