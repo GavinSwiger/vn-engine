@@ -17,6 +17,7 @@ import pytest
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import (
     database,
+    dbmore,
     fileactions,
     files,
     formdialogs,
@@ -266,6 +267,7 @@ def test_ac_f47_26_new_texts_are_the_design_s_in_plain_words(studio, tmp_path):
     # sentences (its "script name" rows are §6.2's).
     other = strings(playbar) + [studiostate.READ_TEXT, studiostate.WRITE_TEXT]
     other += [t for t in strings(database) if " " in t]
+    other += [t for t in strings(dbmore) if " " in t]           # W7's P2 categories
     assert len(guide_texts) > 30 and len(other) > 40
     for texts, words in ((guide_texts, first_time), (other, banned)):
         for text in texts:

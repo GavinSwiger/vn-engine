@@ -122,9 +122,12 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     assert win.current_tab() == "database"
     assert ed.tab_strip.words()[:3] == ["Editor", "Story map", "Database"]
     db = win.database
-    assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()] == [
-        "Characters", "Pictures", "Sounds", "Variables"]
-    assert db.counts() == {"character": 2, "picture": 6, "sound": 4, "variable": 1}
+    assert [db.cat_tree.item(k, "text") for k in db.cat_tree.get_children()][:10] == [
+        "Characters", "Pictures", "Sounds", "Variables", "Meters", "Codex",
+        "Endings & routes", "Chapters", "Transitions", "Positions"]   # P1, then W7's P2
+    assert db.counts() == {"character": 2, "picture": 6, "sound": 4, "variable": 1,
+                           "meter": 0, "codex": 0, "ending": 2, "chapter": 0,
+                           "transition": 0, "position": 3}
     assert [r.text for r in db.visible_rows()] == ["Daichi", "Hana"]
 
     # Used in N lines from the check; Show uses lists the lines; Delete is refused.
@@ -152,7 +155,9 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
     blank = files.new_game(tmp_path / "blank", template=files.TEMPLATE_EMPTY)
     ed2 = studio(blank, mapped=True)
     db2 = open_database(ed2, "character")
-    assert db2.counts() == {"character": 0, "picture": 0, "sound": 0, "variable": 0}
+    assert {k: v for k, v in db2.counts().items() if k != "position"} == dict.fromkeys(
+        ("character", "picture", "sound", "variable", "meter", "codex", "ending", "chapter",
+         "transition"), 0)
     for category, things in (("character", "characters"), ("picture", "pictures"),
                              ("sound", "sounds"), ("variable", "variables")):
         db2.select_category(category)

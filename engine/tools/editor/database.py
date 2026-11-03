@@ -17,7 +17,11 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   + Add backgrounds… and + Colour background (``image bg <n> = "#rrggbb"``).
 - **Sounds**: Music, Sound effects, Voices, Blips, Other (by folder), ▶/■ through the
   helper child (one sound at a time, stopped on a tab or category switch).
-- **Variables**: name, kind (Number, Text, Yes-No) and starting value (``default``).
+- **Variables**: name, kind (Number, Text, Yes-No) and starting value (``default``), and
+  "Remembered across playthroughs" (``default persistent.<n>``).
+- W7's P2 categories (Meters, Codex, Endings & routes, Chapters, Transitions, Positions)
+  live in ``dbmore.MoreCategories``, a mixin of the pane; the Positions canvas is
+  ``stagecanvas.StageCanvas``.
 
 Every entry shows "Used in N lines" (the last check's ``*_use`` rows) with **Show uses**
 (the Problems panel lists the lines), and Delete is refused while it is used. The lists are
@@ -35,6 +39,18 @@ from engine.script.messages import show
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declplan, files
+from engine.tools.editor.dbmore import (
+    ABOUT_MORE,
+    DELETE,
+    DELETE_BUTTONS,
+    IN_SCRIPT,
+    PREFIXES,
+    READ_ONLY,
+    REMEMBERED_HINT,
+    RENAME_LOCKED,
+    MoreCategories,
+    Row,
+)
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
 from engine.tools.editor.fieldwidgets import (
@@ -57,12 +73,13 @@ from engine.tools.editor.views import EmptyState, panel_header
 
 # --- Texts (design §6.4; the rest are this step's, in the same voice) --------------------------
 
-TITLES: Mapping[str, str] = {
-    db.CATEGORY_CHARACTER: "Characters", db.CATEGORY_PICTURE: "Pictures",
-    db.CATEGORY_SOUND: "Sounds", db.CATEGORY_VARIABLE: "Variables"}
+# Every category, P1 then P2, in the design's order (§4.3).
+ALL_CATEGORIES = (*db.CATEGORIES, *db.P2_CATEGORIES)
+TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
 # core/constants.py (the meta-files write root; tests/core/test_paths_meta.py).
-THINGS: Mapping[str, str] = {key: title.lower() for key, title in TITLES.items()}
+THINGS: Mapping[str, str] = {key: db.EMPTY_THINGS.get(key, title.lower())
+                             for key, title in TITLES.items()}
 CATEGORIES_HEADING = "Categories"
 NEW_BUTTON = "+ New"
 SEARCH_HINT = "Search…"
@@ -72,9 +89,8 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     db.CATEGORY_CHARACTER: "Characters are the people who speak in your story. Each has a "
                            "name, a colour, pictures (looks) and, if you like, a voice blip.",
     db.CATEGORY_VARIABLE: "Variables remember things while the game plays, such as a choice "
-                          "the player made or how many coins they have."}
-DELETE = "Delete"
-DELETE_BUTTONS = ("Delete", "Cancel")
+                          "the player made or how many coins they have.",
+    **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
 DELETE_FILE_ASK = "Delete {ref} from the game folder? This can't be undone."
@@ -84,8 +100,6 @@ NEW_CHARACTER_ASK = "Name of the new character, as players will see it:"
 NEW_VARIABLE_ASK = "Name of the new variable:"
 NEW_COLOR_ASK = "Name of the new colour background:"
 RENAME_ASK = "New script name for {name}:"
-RENAME_LOCKED = "The script uses this name, so it can't change here yet."
-IN_SCRIPT = "In the script: {line}"
 ADD_LOOKS = "+ Add looks…"
 ADD_BACKGROUNDS = "Add backgrounds…"
 ADD_COLOR = "Colour background…"
@@ -144,21 +158,6 @@ IMAGES_PREFIX = "images/"
 # --- Rows ---------------------------------------------------------------------------------------
 
 @dataclass(frozen=True)
-class Row:
-    """One list row: an entry, or a group (``entry`` None) of pictures or sounds."""
-
-    iid: str
-    text: str
-    detail: str
-    entry: db.Entry | None = None
-    parent: str = ""
-    ref: str | None = None              # a file's ref (pictures, sounds)
-    color: str | None = None            # a character's name colour (the dot)
-    group: str | None = None            # a picture's or sound's group key
-    title: str = ""                     # a group's title
-
-
-@dataclass(frozen=True)
 class UseItem:
     """A Show uses paragraph (a ``preview.ReportItem`` with an info icon)."""
 
@@ -208,7 +207,7 @@ class _Form:
     fields: dict[str, Any] = field(default_factory=dict)
 
 
-class DatabasePane:
+class DatabasePane(MoreCategories):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -217,8 +216,8 @@ class DatabasePane:
         self.scale = win.scale
         px = self._px
         self.category = db.CATEGORY_CHARACTER
-        self.rows: dict[str, list[Row]] = {key: [] for key in db.CATEGORIES}
-        self.chosen: dict[str, str | None] = {key: None for key in db.CATEGORIES}
+        self.rows: dict[str, list[Row]] = {key: [] for key in ALL_CATEGORIES}
+        self.chosen: dict[str, str | None] = {key: None for key in ALL_CATEGORIES}
         self.texts: dict[str, str] = {}
         self.decls: tuple[dec.Decl, ...] = ()
         self.names: Mapping = {}
@@ -249,7 +248,7 @@ class DatabasePane:
         self.cat_tree.column("#0", width=px(110), stretch=True)
         self.cat_tree.column("count", width=px(40), anchor="e", stretch=False)
         self.cat_tree.pack(fill="both", expand=True)
-        for key in db.CATEGORIES:
+        for key in ALL_CATEGORIES:
             self.cat_tree.insert("", "end", iid=key, text=TITLES[key], values=("",))
         self.cat_tree.bind("<<TreeviewSelect>>", self._on_category, add="+")
         self.cat_tree.bind("<Return>", lambda _e: (self.list_tree.focus_set(), "break")[1])
@@ -262,7 +261,7 @@ class DatabasePane:
         self.new_button = ttk.Button(self.list_head, text=NEW_BUTTON, command=self.new_entry,
                                      style="Chrome.Ghost.TButton", takefocus=1)
         self.new_button.pack(side="right", padx=(0, px(4)))
-        self.cat_choice = ChoiceField(self.list_frame, [(k, TITLES[k]) for k in db.CATEGORIES],
+        self.cat_choice = ChoiceField(self.list_frame, [(k, TITLES[k]) for k in ALL_CATEGORIES],
                                       self.category,
                                       on_change=lambda key: self.select_category(str(key)))
         self.search_var = tk.StringVar(master=self.root)
@@ -295,6 +294,7 @@ class DatabasePane:
         self._dots: dict[str | None, tk.PhotoImage] = {}
         self.empty = EmptyState(self.list_body, icon="add", title="", hint=db.EMPTY_HINT,
                                 button=NEW_BUTTON, command=self.new_entry, scale=self.scale)
+        self.empty.hint.configure(wraplength=px(LIST_WIDTH - 40))   # fits the list column
 
         # The form.
         self.form_frame = ttk.Frame(self.paned)
@@ -376,8 +376,9 @@ class DatabasePane:
         self.rows = {db.CATEGORY_CHARACTER: self._character_rows(),
                      db.CATEGORY_PICTURE: self._picture_rows(),
                      db.CATEGORY_SOUND: self._sound_rows(),
-                     db.CATEGORY_VARIABLE: self._variable_rows()}
-        for key in db.CATEGORIES:
+                     db.CATEGORY_VARIABLE: self._variable_rows(),
+                     **self._p2_rows()}
+        for key in ALL_CATEGORIES:
             count = sum(1 for row in self.rows[key] if row.entry is not None)
             self.cat_tree.item(key, values=(str(count),))
         if select is not None:
@@ -385,7 +386,10 @@ class DatabasePane:
         self._fill_list()
 
     def counts(self) -> dict[str, int]:
-        return {key: int(self.cat_tree.set(key, "count") or 0) for key in db.CATEGORIES}
+        return {key: int(self.cat_tree.set(key, "count") or 0) for key in ALL_CATEGORIES}
+
+    def _read_texts(self) -> dict[str, str]:
+        return script_texts(self.win)
 
     def _check_ran(self) -> bool:
         return self.win.check_result is not None
@@ -410,8 +414,10 @@ class DatabasePane:
         return rows
 
     def _variable_rows(self) -> list[Row]:
-        return [Row(f"v:{entry.name}", entry.name, self._short(entry), entry)
+        rows = [Row(f"v:{entry.name}", entry.name, self._short(entry), entry)
                 for entry in db.variable_entries(self.decls, self.names)]
+        rows += self._remembered_rows()
+        return sorted(rows, key=lambda r: (r.text.casefold(), r.iid))
 
     def _project_refs(self, group: str) -> list[str]:
         project = self.win.project
@@ -495,7 +501,7 @@ class DatabasePane:
             self.select_category(chosen[0])
 
     def select_category(self, key: str) -> None:
-        if key not in db.CATEGORIES:
+        if key not in ALL_CATEGORIES:
             return
         self.stop_sound()
         changed = key != self.category
@@ -504,6 +510,10 @@ class DatabasePane:
             self.cat_tree.selection_set(key)
         self.cat_choice.set(key)
         self.list_title.configure(text=TITLES[key].upper())
+        if key in READ_ONLY:
+            self.new_button.pack_forget()
+        elif not self.new_button.winfo_ismapped():
+            self.new_button.pack(side="right", padx=(0, self._px(4)))
         if changed:
             self.set_search("")
             self._search_placeholder(self.root.focus_get() is not self.search)
@@ -548,14 +558,24 @@ class DatabasePane:
                 row.iid.startswith("k:") else ""
             tags = ("group",) if row.entry is None else \
                 ("muted",) if row.entry is not None and not row.entry.editable and \
-                row.entry.kind in (dec.CHARACTER, dec.VARIABLE) else ()
+                row.entry.kind in dec.EDITABLE_KINDS | {dec.POSITION} else ()
             tree.insert(row.parent, "end", iid=row.iid, text=" " + row.text if image else
                         row.text, values=(row.detail,), image=image, open=True, tags=tags)
         has_entries = any(r.entry is not None for r in self.rows[self.category])
+        if self.category == db.CATEGORY_POSITION and self.positions is None:
+            self.empty.hide()
+            self._broken_positions_form()
+            return
         if not has_entries:
             self.empty.title.configure(text=db.EMPTY_TITLE.format(
                 things=THINGS[self.category]))
-            self.empty.hint.configure(text=db.EMPTY_HINT)
+            read_only = self.category in READ_ONLY
+            self.empty.hint.configure(text=db.CHAPTERS_HINT if read_only else db.EMPTY_HINT)
+            if self.empty.button is not None:
+                if read_only:
+                    self.empty.button.pack_forget()
+                elif not self.empty.button.winfo_ismapped():
+                    self.empty.button.pack(pady=(self._px(16), 0))
             self.empty.show(self.list_body)
         else:
             self.empty.hide()
@@ -575,8 +595,7 @@ class DatabasePane:
                 self._show_form(first)
             elif self.search_text().strip() and not rows:
                 self._message_form(NO_MATCH.format(text=self.search_text().strip()))
-            elif not has_entries and self.category in (db.CATEGORY_CHARACTER,
-                                                        db.CATEGORY_VARIABLE):
+            elif not has_entries and self.category in ABOUT:
                 self._message_form(ABOUT[self.category])
             else:
                 group = next((r for r in rows if r.entry is None), None)
@@ -658,9 +677,12 @@ class DatabasePane:
         shape: tuple = (entry.editable, entry.uses > 0, entry.place)
         if entry.kind == dec.CHARACTER and values is not None:
             shape += (values.get("name_from") is None, tuple(self._looks(entry)))
-        if entry.kind == dec.VARIABLE and values is not None:
+        if entry.kind in (dec.VARIABLE, dec.PERSISTENT) and values is not None:
             shape += (values.get("kind"),)
-        return (self.category, row.iid, entry.kind, shape)
+        more = self._p2_key(entry, shape)
+        if more == ("stage",):
+            return (self.category, "stage")
+        return (self.category, row.iid, entry.kind, more or shape)
 
     def _show_form(self, row: Row | None) -> None:
         if row is None:
@@ -677,12 +699,15 @@ class DatabasePane:
             self._group_form(row, key)
         elif entry.kind == dec.CHARACTER:
             self._character_form(row, key)
-        elif entry.kind == dec.VARIABLE:
+        elif entry.kind in (dec.VARIABLE, dec.PERSISTENT):
             self._variable_form(row, key)
         elif entry.kind in (db.BACKGROUND, dec.COLOR):
             self._picture_form(row, key)
         elif entry.kind == db.SOUND:
             self._sound_form(row, key)
+        else:
+            self._p2_form(row, key)
+        self._wrap_hints()
 
     def _title(self, body: ttk.Frame, text: str, row: int = 0) -> ttk.Label:
         label = ttk.Label(body, text=text, style="Title.TLabel")
@@ -878,7 +903,16 @@ class DatabasePane:
             f["value"] = TextField(grid.frame, str(values["value"]), width=28,
                                    on_change=lambda v: self._edit(entry, {"value": v}))
         grid.row(LABEL_START, f["value"])
-        grid.widget(self._uses_line(grid.frame, entry), pady=(8, 0))
+        remembered = entry.kind == dec.PERSISTENT
+        f["remembered"] = ToggleField(
+            grid.frame, db.REMEMBERED, remembered,
+            on_change=lambda v: self._swap(entry, dec.PERSISTENT if v else dec.VARIABLE))
+        grid.widget(f["remembered"].widget, pady=(6, 2))
+        if remembered:
+            grid.widget(ttk.Label(grid.frame, text=REMEMBERED_HINT.format(name=entry.name),
+                                  style="Hint.TLabel"), pady=(0, 4))
+        if not remembered:                  # the check counts no uses of persistent.<n>
+            grid.widget(self._uses_line(grid.frame, entry), pady=(8, 0))
         self._bottom(body, 2, entry, lambda: self._delete_decl(entry))
 
         def update(new: Row) -> None:
@@ -887,6 +921,7 @@ class DatabasePane:
             assert entry is not None and entry.decl is not None and entry.decl.values
             now = entry.decl.values
             title.configure(text=entry.name)
+            f["remembered"].set(entry.kind == dec.PERSISTENT)
             if "name" in f:
                 f["name"].set(entry.name)
             value = now["value"]
@@ -916,6 +951,9 @@ class DatabasePane:
     # Pictures ----------------------------------------------------------------------------
 
     def _group_form(self, row: Row, key: tuple) -> None:
+        if self.category not in (db.CATEGORY_PICTURE, db.CATEGORY_SOUND):
+            self._p2_group_form(row, key)
+            return
         body, _form = self._new_body(key)
         self._title(body, row.title)
         buttons = ttk.Frame(body)
@@ -1155,7 +1193,7 @@ class DatabasePane:
             return False
         if name == decl.name:
             return True
-        prefix = {dec.CHARACTER: "c:", dec.VARIABLE: "v:", dec.COLOR: "k:"}[decl.kind]
+        prefix = PREFIXES[decl.kind]
         return self._write(declplan.plan_edit(decl, decl.values, self.texts, name=name),
                            select=prefix + name)
 
@@ -1190,8 +1228,10 @@ class DatabasePane:
             self.new_character()
         elif self.category == db.CATEGORY_VARIABLE:
             self.new_variable()
-        else:
+        elif self.category in (db.CATEGORY_PICTURE, db.CATEGORY_SOUND):
             self._new_menu()
+        else:
+            self._p2_new()
 
     def _new_menu(self) -> None:
         menu = tk.Menu(self.root, tearoff=False)
@@ -1251,14 +1291,16 @@ class DatabasePane:
         answer = ask_text(self.root, NEW_VARIABLE_ASK, "", ok="Add",
                           hint=lambda shown: IN_SCRIPT.format(
                               line=f"default {dec.script_name(shown, taken, dec.VARIABLE)}"
-                                   " = 0") if shown.strip() else None)
+                                   " = 0") if shown.strip() else None,
+                          option=db.REMEMBERED, option_value=False)
         if answer is None or not answer[0].strip():
             return False
-        name = dec.script_name(answer[0].strip(), taken, dec.VARIABLE)
+        kind = dec.PERSISTENT if answer[1] else dec.VARIABLE
+        name = dec.script_name(answer[0].strip(), self._taken(kind), kind)
         self.select_category(db.CATEGORY_VARIABLE)
-        return self._write(declplan.plan_new(dec.VARIABLE, name,
+        return self._write(declplan.plan_new(kind, name,
                                              {"kind": dec.NUMBER, "value": 0}, self.texts),
-                           select=f"v:{name}")
+                           select=PREFIXES[kind] + name)
 
     def new_color(self) -> bool:
         """+ Colour background: a name, then a colour (``image bg <n> = "#rrggbb"``)."""
@@ -1344,6 +1386,9 @@ class DatabasePane:
         entry = row.entry
         if entry.kind in (db.BACKGROUND, db.SOUND):
             self.delete_entry(entry, lambda: self._delete_file(entry, row.ref))
+        elif entry.kind == dec.POSITION:
+            if entry.values and not entry.values.get("builtin"):
+                self.delete_entry(entry, lambda: self.delete_position(entry))
         elif entry.editable:
             self.delete_entry(entry, lambda: self._delete_decl(entry))
 
@@ -1376,4 +1421,5 @@ class DatabasePane:
         return True
 
 
-__all__ = ["DatabasePane", "Row", "TITLES", "THINGS", "UseItem", "script_texts"]
+__all__ = ["ALL_CATEGORIES", "DatabasePane", "Row", "TITLES", "THINGS", "UseItem",
+           "script_texts"]
