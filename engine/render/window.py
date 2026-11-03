@@ -96,11 +96,16 @@ class GameWindow:
 
     def __init__(self, *, title: str, size: tuple[int, int], resizable: bool,
                  start_fullscreen: bool, letterbox_color: RGB,
-                 initial_size_for_restore: tuple[int, int]) -> None:
+                 initial_size_for_restore: tuple[int, int],
+                 position: tuple[int, int] | None = None) -> None:
         """pygame.Window(hidden=True, allow_high_dpi=True, resizable=…,
-        position=WINDOWPOS_CENTERED); minimum_size = MIN_WINDOW_SIZE; optional
+        position=``position`` or WINDOWPOS_CENTERED); minimum_size = MIN_WINDOW_SIZE; optional
         set_fullscreen(desktop=True); fill framebuffer with letterbox_color; flip(); show()
-        (PR-F01-19). Raises WindowCreationError (wraps pygame.error)."""
+        (PR-F01-19). Raises WindowCreationError (wraps pygame.error).
+
+        ``position`` (F39 PR-F39-09): the window's top-left corner in desktop coordinates,
+        where an updated preview reopens the old window; None centers it. Only the windowed
+        position: a fullscreen start still covers the display."""
         self._initial_size_for_restore = tuple(initial_size_for_restore)
         self._fullscreen = False
         self._restore: _Restore | None = None
@@ -113,7 +118,9 @@ class GameWindow:
         try:
             self._window = pygame.Window(
                 title=sanitize_title(title), size=tuple(size),
-                position=pygame.WINDOWPOS_CENTERED, hidden=True, allow_high_dpi=True,
+                position=(pygame.WINDOWPOS_CENTERED if position is None
+                          else (int(position[0]), int(position[1]))),
+                hidden=True, allow_high_dpi=True,
                 resizable=resizable)
         except pygame.error as exc:
             raise WindowCreationError(f"The game window could not be created: {exc}") from exc

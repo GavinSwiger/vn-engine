@@ -14,7 +14,8 @@ author controls how far with ``rollback block|off|on|fixed``. It holds:
   remembered future, only matched and counted, never restored or shown (§7.1). ``record`` is
   checkpoint step 4b; ``reset`` is new game's and every non-landing restore's (G12);
   ``land`` is a back landing's (restore's commit with ``landing=True``); ``view`` is what the
-  presentation reads (§7.6). With ``defer_release`` (set by the App, 07 I-11) the states it
+  presentation reads (§7.6); ``carry`` puts an updated preview's earlier steps before the
+  resumed one (F39 PR-F39-08). With ``defer_release`` (set by the App, 07 I-11) the states it
   drops wait in a queue that ``release`` frees a few at a time, once per frame.
 - ``same_step``: "the story arrived at the remembered step" (§7.3), a loose compare that is
   safe because the remembered future is never shown.
@@ -33,7 +34,7 @@ Layering (as ``chapters.py``): ``state.py`` holds a ``RollbackState``, so this m
 (TR-F03-05): no file, clock, randomness, or thread.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, fields, replace
 from typing import TYPE_CHECKING, Final
 
@@ -233,6 +234,33 @@ class Timeline:
         states[i] = snapshot
         self.cursor = self.shown = i
         self.landings += 1
+
+    def carry(self, older: "Sequence[GameState]") -> int:
+        """F39 (PR-F39-08): an updated preview resumed at the current step; ``older`` are
+        the earlier steps carried over from the old child, **newest first**. They go before
+        the current step, oldest first, trimmed so at most ``depth`` stand before it (the
+        newest are kept). Carries nothing at depth 0, with an empty timeline, or when the
+        current step has rollback off (it is a wall, 04 §7.2). The remembered future stays
+        (a resume has none). A carried step whose line is gone stays: Back stops there with
+        W90 and drops it with every older step (PR-F14-23). Returns how many went in."""
+        if self.depth == 0 or self.cursor < 0 or not older:
+            return 0
+        if not self.states[self.cursor].rollback.enabled:
+            return 0
+        room = self.depth - self.cursor
+        if room <= 0:
+            return 0
+        added = list(older[:room])
+        added.reverse()
+        self.states[:0] = added
+        n = len(added)
+        self.cursor += n
+        self.shown += n
+        extra = len(self.states) - 1 - self.depth       # the remembered future past depth
+        if extra > 0:
+            self._let_go(self.states[len(self.states) - extra:])
+            del self.states[len(self.states) - extra:]
+        return n
 
     def remembered_pick(self, menu_sid: str) -> str | None:
         """§7.4: the key of the last pick in the remembered next step, if that pick was made

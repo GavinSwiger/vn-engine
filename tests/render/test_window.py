@@ -266,3 +266,15 @@ def test_fake_window_windowed_size_follows_the_same_rule():
     assert started.fullscreen and started.windowed_size() == (1164, 655)
     started.set_fullscreen(False)
     assert started.size == (1164, 655)
+
+
+# --- AC-F39-09: an updated preview reopens at the old window's position ----------------------
+
+def test_ac_f39_09_window_opens_at_the_given_position_and_none_centers():
+    window = make_window(position=(140, 90))
+    assert SpyWindow.log[0][1]["position"] == (140, 90)
+    window.destroy()
+    SpyWindow.log.clear()
+    window = make_window(position=None)
+    assert SpyWindow.log[0][1]["position"] == pygame.WINDOWPOS_CENTERED
+    window.destroy()

@@ -107,7 +107,9 @@ def test_ac_f20_27_only_the_jump_paths_pass_fresh_menu(run):
                     and isinstance(node.value, ast.Constant) and node.value.value is True):
                 users.add(path.relative_to(REPO).as_posix())
     assert "engine/app/flowchart.py" in users
-    assert users <= {"engine/app/flowchart.py", "engine/runtime/headless.py"}
+    # F39 §4.1: a hot-reload resume is a jump too (its menu shows its current choices).
+    assert users <= {"engine/app/flowchart.py", "engine/runtime/headless.py",
+                     "engine/app/hot_reload.py"}
     # Behaviour: at M21 with ``promise`` opened since, a slot load presents the saved
     # waiting; a jump offers the menu again.
     holder = launched(run.program)
