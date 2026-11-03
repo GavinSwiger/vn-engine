@@ -28,7 +28,8 @@ from tests.persist.writer_support import base, game  # noqa: F401
 from tests.runtime.flow_story import (RUN_1, key, launched, load_l, node, play, records_r,
                                       store_r, visited_ids)
 
-BUILT_KINDS = {"chapter", "ending", "route", "tip", "codex_read", FLOW_KIND, EDGE_KIND}
+BUILT_KINDS = {"chapter", "ending", "route", "tip", "codex_read", FLOW_KIND, EDGE_KIND,
+               "gallery"}                                   # F34 W2
 
 
 def gate_script(width: int, *, scenes: bool = False) -> str:

@@ -8,6 +8,7 @@ apply them. Stages are written in §0.5's notation (``stage_story.stage``).
 
 import json
 import math
+from types import SimpleNamespace
 
 import pytest
 
@@ -56,6 +57,8 @@ class FakeInterp:
     stage = EMPTY_STAGE
     glitch = EMPTY_GLITCH                   # F28: hide and scene prune jitter
     pending_glitch = PendingGlitch()
+    timeline = SimpleNamespace(replaying=False)                 # F34: scene/show call
+    program = SimpleNamespace(gallery_pictures={})              # gallery.seen (no picture)
 
 
 def test_executors_change_only_the_stage_and_continue():

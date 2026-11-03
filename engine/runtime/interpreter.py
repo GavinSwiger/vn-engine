@@ -186,6 +186,7 @@ from engine.runtime import codex as codex_mod
 from engine.runtime import endings as endings_mod
 from engine.runtime import flowchart as flowchart_mod
 from engine.runtime import fourthwall as fourthwall_mod
+from engine.runtime import gallery as gallery_mod
 from engine.runtime import glitch as glitch_mod
 from engine.runtime import menu as menu_mod
 from engine.runtime import metafiles as metafiles_mod
@@ -466,6 +467,7 @@ class Interpreter:
         # F21 (04 §7.3): the codex (held items are story state, runtime-held like ``points``;
         # tips are the store's), the store's "tip" and "codex_read" kinds, G's reader bound.
         self.codex: Codex = codex_mod.install(self)
+        gallery_mod.register(self)          # F34 (04 §3): the store's "gallery" kind
         # F23 (04 §3, 07 I-12): the launch's plugin signatures (loaded before the runtime
         # starts; no plugin object), the story's declared names (F24 A2, built once), and,
         # runtime-only, the minigame waited at, its start count (only counts up), whether

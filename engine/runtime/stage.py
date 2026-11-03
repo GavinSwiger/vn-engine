@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Final
 from engine.core.constants import (LAYER_RANGE, STAGE_COORD_RANGE, STAGE_WORDS,
                                    STATEMENT_WORDS_F02, ZOOM_RANGE)
 from engine.core.logsetup import get_logger
+from engine.runtime import gallery as gallery_mod
 from engine.runtime import glitch as glitch_mod
 from engine.runtime.commands import PrefetchImages, ShowStage
 from engine.runtime.limits import STAGE_MAX_SPRITES, STAGE_WORD_MAX_CHARS, saved_tag_ok
@@ -220,16 +221,23 @@ def run_scene(interp: "Interpreter", stmt: Scene) -> "Step":
     background (SR-F04-07). F07 clears ``kept_line`` here (a question-less menu after a
     ``scene`` hides the textbox, PR-F07-04); F09 sets ``scene_since_line`` (the textbox is
     hidden during the waits until the next line, PR-F09-09). F28 (04 §6.1): every jitter goes
-    (``glitch.scene_cleared``)."""
+    (``glitch.scene_cleared``). F34 (04 §7.1): a gallery background unlocks."""
     interp.stage = StageState(stmt.image, ())
     interp.kept_line = None
     interp.scene_since_line = True
     glitch_mod.scene_cleared(interp)
+    gallery_mod.seen(interp, stmt.image)
     return _after_change(interp, stmt)
 
 
 def run_show(interp: "Interpreter", stmt: Show) -> "Step":
-    interp.stage = shown(interp.stage, stmt)
+    """``show``; F34 (04 §7.1): the sprite's picture as the stage now holds it (the one-word
+    form keeps its image) unlocks when it is a gallery picture."""
+    stage = shown(interp.stage, stmt)
+    interp.stage = stage
+    i = stage.index_of(stmt.tag or first_word(stmt.image))
+    if i is not None:                                   # always: ``shown`` puts it there
+        gallery_mod.seen(interp, stage.sprites[i].image)
     return _after_change(interp, stmt)
 
 
@@ -262,6 +270,7 @@ def apply_dialogue_words(interp: "Interpreter", stmt: "Say", c: "Character") -> 
             sprites = list(stage.sprites)
             sprites[i] = replace(old, image=image)
             interp.stage = StageState(stage.background, tuple(sprites))
+            gallery_mod.seen(interp, image)             # F34 (04 §7.1): only on a change
     elif interp.dev and stmt.sid not in interp._words_logged:
         interp._words_logged.add(stmt.sid)
         text = format_message("I-stage-words", (tag, " ".join(words)))
