@@ -234,8 +234,9 @@ def test_ac_f36_32_lock_unlock_form_scene_replay():
         field = next(f for f in form.fields if f.key == "replay")
         assert (field.label, field.kind, field.name_kind) == ("Scene replay", "name", "replay")
     got = _rows("unlock replay river", "lock replay river")
-    blank_u = {"route": "", "tip": "", "item": "", "gallery": "", "replay": ""}
-    blank_l = {**blank_u, "ending": ""}
+    blank_u = {"route": "", "tip": "", "item": "", "gallery": "", "replay": "",
+               "achievement": ""}                   # F37-S3: Unlock achievement
+    blank_l = {"route": "", "ending": "", "tip": "", "item": "", "gallery": "", "replay": ""}
     assert [(r.form, r.values, r.text) for r in got if r.form is not None] == [
         ("unlock", {**blank_u, "what": "replay", "replay": "river"},
          "Unlock scene replay  river"),

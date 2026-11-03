@@ -16,7 +16,7 @@ undo step per file), checked against the live texts right before it is applied.
   shared ``points`` line: that line without it, then its own line). ``plan_edit``'s ``kind``
   switches between ``declarations.SWAPS`` kinds (P2-D: a variable remembered across
   playthroughs, a tip that becomes an item).
-- **Moves** (F34-W4, reused by F35 and F37): ``plan_move`` swaps one declaration's lines
+- **Moves** (F34-W4, reused by F35, F36 and F37): ``plan_move`` swaps one declaration's lines
   with a neighbour's in the same file (what lies between them stays between them); one
   in another file is refused (``MOVE_ACROSS_FILES``).
 - **Positions** (P2-D) live in config.toml: ``plan_position``/``plan_position_remove`` are
@@ -66,7 +66,7 @@ KIND_WORDS: Final[Mapping[str, str]] = {
     dec.PERSISTENT: "remembered variable", dec.METER: "meter", dec.TIP: "tip",
     dec.ITEM: "item", dec.ROUTE: "route", dec.TRANSITION: "transition",
     dec.POSITION: "position", dec.GALLERY: "gallery picture", dec.TRACK: "music-room track",
-    dec.REPLAY: "scene replay"}
+    dec.REPLAY: "scene replay", dec.ACHIEVEMENT: "achievement"}
 SWAP_REFUSED: Final = "Studio can't turn that into another kind of entry."
 MOVE_ACROSS_FILES: Final = ("These pictures are in different script files. Move their lines in "
                             "the text to reorder them.")

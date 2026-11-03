@@ -219,7 +219,7 @@ def test_p2_form_dialogs_and_insert_picker(studio, tmp_path, helper, monkeypatch
     assert card(lock) == "lock gallery cg festival"
     lock._pick(1)
     assert tuple(dialog("unlock", {}).widgets["what"].cget("values")) == (
-        "Route", "Codex tip", "Item", "Gallery picture", "Scene replay")
+        "Route", "Codex tip", "Item", "Gallery picture", "Scene replay", "Achievement")
 
     # A new Chapter's name: made from the title, unique; typing one stops that.
     names = dict(story.names(), chapter=["the_old_footbridge"])

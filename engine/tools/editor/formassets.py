@@ -99,6 +99,8 @@ class WindowAssets(FormAssets):
         self.declared["gallery"] = sorted(pictures, key=str.casefold)
         self.declared["replay"] = list(dict.fromkeys(      # F36: the Scenes page's scenes
             d.name for d in decls if d.kind == dec.REPLAY))
+        self.declared["achievement"] = list(dict.fromkeys(  # F37: the Achievements page's
+            d.name for d in decls if d.kind == dec.ACHIEVEMENT))
         project = getattr(self.win, "project", None)
         refs = project.file_refs("images") if project is not None else []
         self.image_refs = {}

@@ -240,8 +240,9 @@ def test_ac_f34_32_lock_unlock_form_gallery_picture():
                                                               "gallery")
         assert "gallery" in form.fields[0].options
     got = _rows("unlock gallery cg festival", "lock gallery cg river_smile")
-    blank_u = {"route": "", "tip": "", "item": "", "gallery": "", "replay": ""}
-    blank_l = {**blank_u, "ending": ""}
+    blank_u = {"route": "", "tip": "", "item": "", "gallery": "", "replay": "",
+               "achievement": ""}
+    blank_l = {"route": "", "ending": "", "tip": "", "item": "", "gallery": "", "replay": ""}
     assert [(r.form, r.values, r.text) for r in got if r.form is not None] == [
         ("unlock", {**blank_u, "what": "gallery", "gallery": "cg festival"},
          "Unlock gallery picture  cg festival"),
@@ -274,6 +275,7 @@ def test_ac_f34_33_game_settings_extras_page():
     words = config_fields(section_class("words"))                 # F35-S3: the music room's
     want |= {f"words.{k}" for k in sm.MUSIC_ROOM_WORDS if k in words}
     want |= {f"words.{k}" for k in sm.REPLAY_WORDS if k in words}   # F36-W4: endings
+    want |= {f"words.{k}" for k in sm.ACHIEVEMENT_WORDS if k in words}   # F37-S3
     endings = section_class("endings")
     want |= {f"endings.{k}" for k in ("list", "replay")
              if endings is not None and k in config_fields(endings)}

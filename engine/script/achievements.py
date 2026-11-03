@@ -31,8 +31,8 @@ whole-game checks (E340, W224) are ``checks.py``'s; ``Program.achievements`` is 
 **Registration.** Importing this module registers the declaration's identity
 (``"achievement:" + name``) and calls ``register_words()`` once, after F36's ``replay``
 (``script/__init__.py`` imports it right after ``replay``). Calling it again does nothing.
-The in-label Help doc (``LABEL_DOCS``) is registered by F37-S3 with Studio's Unlock form's
-"achievement" choice (AC-F47-33's ``missing_forms``).
+The in-label Help doc (``LABEL_DOCS``) is registered with it: Studio's Unlock form has the
+"achievement" choice (F37-S3; AC-F47-33's ``missing_forms``).
 """
 
 from dataclasses import dataclass
@@ -267,15 +267,14 @@ DOCS: Final = (
         "F37", fields=("first_steps", "First Steps", "Finish the prologue.")),
 )
 
-# The in-label line's doc: Insert opens Studio's Lock/Unlock form on "Achievement". Not
-# registered yet: F37-S3 registers it in ``register_words`` together with that form's
-# "achievement" choice (Studio's form registry checks every in-label lock/unlock doc has a
-# form, AC-F47-33, F45's ``missing_forms``).
+# The in-label line's doc: Insert opens Studio's Unlock form on "Achievement" (F37-S3
+# registered it with that form's choice: Studio's form registry checks every in-label
+# lock/unlock doc has a form, AC-F47-33, F45's ``missing_forms``).
 LABEL_DOCS: Final = (
     StatementDoc(
         "unlock", "Unlock achievement", "Story flow", "unlock achievement <name>",
         "Gives the player an achievement for good, with its notice.",
-        "unlock achievement first_steps", DOCS_HEADING, "F37", fields=("first_steps",)),
+        "unlock achievement garden", DOCS_HEADING, "F37", fields=("garden",)),
 )
 
 
@@ -285,7 +284,7 @@ def register_words() -> None:
     if LOCK_TARGETS.get(WORD_ACHIEVEMENT) is ACHIEVEMENT_TARGET:
         return
     register_target(ACHIEVEMENT_TARGET)
-    for doc in DOCS:                     # LABEL_DOCS: F37-S3 (see above)
+    for doc in (*DOCS, *LABEL_DOCS):     # LABEL_DOCS: Studio's Unlock "Achievement"
         register_doc(doc)
 
 

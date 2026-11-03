@@ -38,6 +38,8 @@ positions go into `config.toml`.
   marker (or use the arrow keys, or type x and y) and `[stage.positions]` in `config.toml`
   changes. A drop near the bottom edge lands on it. **Use default** puts a moved left,
   center or right back; your own positions can be deleted while unused.
+- **Achievements**: the rewards players keep across playthroughs, in the order the
+  Achievements page shows them. See [Achievements](#achievements).
 
 ## Blinking and talking
 
@@ -175,3 +177,41 @@ In Endings & routes, each ending has **▶ Play replay** too (it plays the endin
 while Game settings ▸ **Extras** ▸ "Let players replay endings they've reached" is on. The
 same page has "Show an Endings page in Extras" and the Endings and Scenes words. A replay's
 scene name keeps players' records, so Studio doesn't rename it.
+
+## Achievements
+
+Achievements reward players for what they do, with a notice ("Achievement unlocked: First
+Steps") and a list under the title screen's Extras ▸ Achievements, kept across
+playthroughs. Studio writes one line per achievement into `database.vns`, in the page's
+order:
+
+```
+lock achievement first_steps "First Steps" "Finish the prologue." image achievements first_steps
+lock achievement garden "Secret Garden" "Find the hidden garden." hidden
+lock achievement completionist "Completionist" "See every ending." when "lantern" in persistent.endings and "next_year" in persistent.endings
+```
+
+- **+ New achievement** asks for the **Name shown**; the script name is made from it
+  (`First Steps` → `first_steps`) and the achievement goes at the end.
+- Click one to see its form: the **Name shown**, a **Description**, an **Icon** (a picture;
+  a square one, 64 × 64 or larger, looks best) and **Hidden** (players see "Hidden
+  achievement" until they unlock it).
+- **Unlocked**: **By an Unlock achievement line in the story** (add Events ▸ Unlock ▸
+  Achievement where the player earns it; the form says so while no line gives it), or
+  **Automatically, when:** — the same checks as an If (an ending was seen, a variable, a
+  meter, a codex tip or item, a route, the playthrough), All of or Any of them. The game
+  checks them at every line and choice, and when the story ends. A condition the checks
+  can't show stays as you typed it ("Written as script"). Picking By a line again removes
+  the condition. A story has up to 200 achievements, 64 of them automatic.
+- **▲ Move up** and **▼ Move down** (or Alt+Up / Alt+Down in the list) change the order.
+  Both must be in the same script file.
+- **▶ Preview achievements** opens Extras ▸ Achievements through the Play bar with every
+  achievement unlocked. Nothing is saved.
+- **Delete** is refused while an Unlock achievement line names it, with **Show uses**.
+  Players' unlocked achievements are kept under the script name, so Studio doesn't rename
+  it.
+
+Game settings ▸ **Extras** ▸ Achievement words (and Button words ▸ Achievements) change the
+page's heading, the notice's start, the "Unlocked" count and a hidden achievement's words.
+Sending achievements to a store such as Steam needs a platform hook written in Python: see
+[minigames.md](minigames.md), "Achievement hook". Achievements always work without one.

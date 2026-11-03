@@ -1,6 +1,6 @@
 """The Database's Extras categories: **Music room** (F35 ``SPEC.md`` §4, step 3; AC-F35-11,
-12, 13). F37-S3 adds Achievements here (F36/07's Studio chain: F34-W4 → F35-S3 → F36-W4 →
-F37-S3).
+12, 13). F37-S3's Achievements live in ``dbachievements`` (F36/07's Studio chain: F34-W4 → F35-S3 →
+F36-W4 → F37-S3).
 
 Why this module exists: the music room is the Extras page where players listen again to the
 songs they have heard. A non-programmer never types ``lock track``: in Database ▸ **Music
@@ -388,7 +388,7 @@ class MusicRoomCategory:
         words."""
         on = self.category == db.CATEGORY_MUSIC_ROOM
         if not on and self.category not in (db.CATEGORY_GALLERY,     # they set their own
-                                            db.CATEGORY_REPLAY):
+                                            db.CATEGORY_REPLAY, db.CATEGORY_ACHIEVEMENT):
             self.new_button.configure(text=NEW)
             if self.empty.button is not None:
                 self.empty.button.configure(text=NEW)

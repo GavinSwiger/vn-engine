@@ -25,8 +25,13 @@ label bridge:
     unlock gallery cg festival
     scene cg river
     call lantern_stall
+    unlock achievement garden
     jump river
 
 # lantern_stall is the scene replay examples' scene (F36): its declaration is here so the
 # unlock replay and lock replay examples name a replay.
 lock replay lantern_stall "The Stall"
+
+# garden is the unlock achievement example's achievement (F37-S3); the bridge's line gives
+# it, so its dev load is free of W224.
+lock achievement garden "Secret Garden" hidden

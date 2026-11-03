@@ -30,6 +30,8 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   switch live in ``dbextras.MusicRoomCategory``.
 - F36-W4: **Scene replays** (after Endings & routes) and the ending rows' ▶ Play replay
   live in ``dbreplays.ReplaysCategory``.
+- F37-S3: **Achievements** (after Scene replays) lives in
+  ``dbachievements.AchievementsCategory``.
 - F31: **Character files** (last; the originals in ``files/``, + Add…, a text preview) lives
   in ``dbmeta.MetaFilesCategory``.
 
@@ -51,6 +53,7 @@ from engine.tools.editor import declarations as dec
 from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.animpanel import FRAME_PX, LookPanel
+from engine.tools.editor.dbachievements import ABOUT_ACHIEVEMENTS, AchievementsCategory
 from engine.tools.editor.dbextras import ABOUT_MUSIC, MusicRoomCategory
 from engine.tools.editor.dbgallery import ABOUT_GALLERY, GalleryCategory
 from engine.tools.editor.dbmeta import ABOUT_META, MetaFilesCategory
@@ -98,8 +101,8 @@ ALL_CATEGORIES = (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE, db.CATEGORY_GALLER
                     if key not in (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE,
                                    db.CATEGORY_SOUND)),
                   *(key for p2 in db.P2_CATEGORIES        # F36: Scene replays after Endings
-                    for key in ((p2, db.CATEGORY_REPLAY) if p2 == db.CATEGORY_ENDING
-                                else (p2,))),
+                    for key in ((p2, db.CATEGORY_REPLAY, db.CATEGORY_ACHIEVEMENT)
+                                if p2 == db.CATEGORY_ENDING else (p2,))),
                   db.CATEGORY_META)
 TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
@@ -120,6 +123,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     db.CATEGORY_MUSIC_ROOM: ABOUT_MUSIC,
     db.CATEGORY_META: ABOUT_META,
     db.CATEGORY_REPLAY: ABOUT_REPLAYS,
+    db.CATEGORY_ACHIEVEMENT: ABOUT_ACHIEVEMENTS,
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
@@ -238,7 +242,7 @@ class _Form:
 
 
 class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCategory,
-                   MetaFilesCategory):
+                   AchievementsCategory, MetaFilesCategory):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -422,6 +426,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                      **self._p2_rows()}
         self.rows[db.CATEGORY_MUSIC_ROOM] = self._track_rows()
         self.rows[db.CATEGORY_REPLAY] = self._replay_rows()
+        self.rows[db.CATEGORY_ACHIEVEMENT] = self._achievement_rows()
         self.rows[db.CATEGORY_META] = self._meta_rows()
         for key in ALL_CATEGORIES:
             count = sum(1 for row in self.rows[key] if row.entry is not None)
@@ -695,6 +700,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self._music_after_fill(has_entries)
         self._meta_after_fill(has_entries)
         self._replay_after_fill(has_entries)
+        self._achievement_after_fill(has_entries)
 
     def _row(self, iid: str) -> Row | None:
         return next((r for r in self.rows[self.category] if r.iid == iid), None)
@@ -788,6 +794,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             return (self.category, row.iid, entry.kind, self._track_key(entry, shape))
         if entry.kind == dec.REPLAY:                            # F36: Scene replays
             return (self.category, row.iid, entry.kind, self._replay_key(entry, shape))
+        if entry.kind == dec.ACHIEVEMENT:                       # F37: Achievements
+            return (self.category, row.iid, entry.kind, self._achievement_key(entry, shape))
         if entry.kind == db.META_FILE:                          # F31: Character files
             return (self.category, row.iid, entry.kind, self._meta_key(row, shape))
         more = self._p2_key(entry, shape)
@@ -822,6 +830,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self._track_form(row, key)
         elif entry.kind == dec.REPLAY:
             self._replay_form(row, key)
+        elif entry.kind == dec.ACHIEVEMENT:
+            self._achievement_form(row, key)
         elif entry.kind == db.META_FILE:
             self._meta_form(row, key)
         else:
@@ -1159,6 +1169,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.anim_panel.thumb_ready(ref)
         self._gallery_thumb_ready(ref)
         self._replay_thumb_ready(ref)
+        self._achievement_thumb_ready(ref)
         if self.form is not None and self.form.update is not None and \
                 getattr(self, "_preview_ref", None) == ref:
             row = self.selected_row()
@@ -1392,6 +1403,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.add_tracks()
         elif self.category == db.CATEGORY_REPLAY:
             self.new_replay()
+        elif self.category == db.CATEGORY_ACHIEVEMENT:
+            self.new_achievement()
         elif self.category == db.CATEGORY_META:
             self.add_meta_files()
         else:
@@ -1500,7 +1513,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                     new = answer[0].strip()
                     self.rename_everywhere(dec.POSITION, entry.name, new, select=f"o:{new}")
             return
-        if entry.kind in (dec.TRACK, dec.REPLAY):  # its name keys players' records
+        if entry.kind in (dec.TRACK, dec.REPLAY, dec.ACHIEVEMENT):  # names key players' records
             return
         if entry.kind not in dec.EDITABLE_KINDS or not (
                 entry.name_editable or (entry.editable and entry.kind in declrename.RENAMABLE)):
@@ -1573,6 +1586,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.delete_track(entry)
         elif entry.kind == dec.REPLAY:
             self.delete_replay(entry)
+        elif entry.kind == dec.ACHIEVEMENT:
+            self.delete_achievement(entry)
         elif entry.editable:
             self.delete_entry(entry, lambda: self._delete_decl(entry))
 

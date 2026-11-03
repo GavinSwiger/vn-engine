@@ -280,6 +280,9 @@ MUSIC_ROOM_WORDS: Final = ("music_room", "music_play", "music_pause", "music_pre
 # WordsConfig).
 REPLAY_WORDS: Final = ("endings", "endings_count", "ending_locked", "ending_replay", "replays",
                        "replay_end", "replay_no_saving")
+# F37's Achievements page and notice words (SPEC §5.1; F37-S2 adds them to WordsConfig).
+ACHIEVEMENT_WORDS: Final = ("achievements", "achievement_unlocked", "achievements_progress",
+                            "achievement_hidden", "achievement_hidden_text")
 PAGES: Final[tuple[PageDef, ...]] = (
     PageDef("game", "Game", (
         Row("game", "Game", ("title", "version")),
@@ -365,7 +368,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.gallery.viewer", "Gallery picture viewer"),
         Row("words", "Music room words", MUSIC_ROOM_WORDS, later=True),
         Row("endings", "Endings list", ("list", "replay"), later=True),
-        Row("words", "Endings and scene replay words", REPLAY_WORDS, later=True))),
+        Row("words", "Endings and scene replay words", REPLAY_WORDS, later=True),
+        Row("words", "Achievement words", ACHIEVEMENT_WORDS, later=True))),
     PageDef("words", "Button words", (
         Row("words", "Title screen and game menu", (
             "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
@@ -405,6 +409,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("words", "Content warning", ("warning_heading", "warning_continue")),
         Row("words", "Music room", MUSIC_ROOM_WORDS, later=True),
         Row("words", "Endings and scene replays", REPLAY_WORDS, later=True),
+        Row("words", "Achievements", ACHIEVEMENT_WORDS, later=True),
         Row("words", "Fake crash and user name", (
             "fake_crash_message", "fake_crash_hint", "fake_crash_label", "ask_username",
             "ask_username_yes", "ask_username_no")),
@@ -463,6 +468,11 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "words.ending_locked": "Ending not reached yet", "words.ending_replay": "Replay button",
     "words.replays": "Scenes page heading", "words.replay_end": "End Replay button",
     "words.replay_no_saving": "No saving during a replay",
+    "words.achievements": "Achievements page heading",             # F37 §5.1
+    "words.achievement_unlocked": "Unlock notice",
+    "words.achievements_progress": "Unlocked count",
+    "words.achievement_hidden": "Hidden achievement title",
+    "words.achievement_hidden_text": "Hidden achievement text",
 })
 _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "id": "ID",
                  "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",

@@ -55,6 +55,8 @@ from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, s
 
 NOT_FOUND = "Not found yet; the check will tell you."
 NEW_NAME = {"ending": "A new ending."}         # name kinds where a new name is normal
+# Name kinds made only in the Database: what the hint says while there is none (F37 §4).
+EMPTY_NAMES = {"achievement": "Make achievements in Database ▸ Achievements."}
 NO_PICTURE = "No picture"
 DOT_PX = 12
 PICTURE_KINDS = frozenset(("image", "gallery"))  # name kinds whose value is a picture
@@ -232,15 +234,18 @@ class FormAssets:
 class _NameBox:
     """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
     while its text is a name it doesn't offer (``new``: the hint for a name kind where a new
-    name is normal; ``quiet``: no hint while it offers nothing)."""
+    name is normal; ``quiet``: no hint while it offers nothing; ``empty``: the hint while it
+    offers nothing)."""
 
     def __init__(self, parent: tk.Misc, var: tk.StringVar, names: Sequence[str], *,
                  width: int, hint_parent: tk.Misc | None = None, wrap: int = 300,
-                 new: str | None = None, quiet: bool = False) -> None:
+                 new: str | None = None, quiet: bool = False,
+                 empty: str | None = None) -> None:
         self.names = list(names)
         self.var = var
         self.new = new
         self.quiet = quiet
+        self.empty = empty
         self.box = ttk.Combobox(parent, textvariable=var, values=self.names, width=width,
                                 postcommand=self._filter)
         self.hint = ttk.Label(hint_parent or parent, text="", style="Dialog.Hint.TLabel",
@@ -258,6 +263,8 @@ class _NameBox:
 
     def hint_text(self) -> str:
         value = self.var.get().strip()
+        if not self.names and self.empty is not None:
+            return self.empty
         if not value or value in self.names or (self.quiet and not self.names):
             return ""
         return self.new if self.new is not None else NOT_FOUND
@@ -434,7 +441,8 @@ class FormDialog:
             if kind in PICTURE_KINDS:                   # backgrounds first (bg …)
                 offered.sort(key=lambda n: not n.casefold().startswith("bg "))
             name_box = _NameBox(parent, var, offered, width=FIELD_CHARS,
-                                wrap=round(300 * self.scale), new=NEW_NAME.get(kind))
+                                wrap=round(300 * self.scale), new=NEW_NAME.get(kind),
+                                empty=EMPTY_NAMES.get(kind))
             self.names[field.key] = name_box
             return name_box.box, var
         if field.key == LOOK_KEY and self.owner is not None:

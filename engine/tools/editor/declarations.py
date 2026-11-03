@@ -34,6 +34,10 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
   value) pairs in written order). ``replay_uses(texts)`` finds the ``lock|unlock replay
   <scene>`` lines in labels; ``label_places(texts)`` the scenes and ``scene_title`` a new
   replay's title (the scene's ``flowchart scene`` title, else its name in words).
+- F37-S3: ``ACHIEVEMENT`` (``lock achievement n "Title" ["Description"] [image <picture>]
+  [hidden] [when <condition>]``, one line): values ``{"title", "description", "image",
+  "hidden", "when"}`` (``ACHIEVEMENT_KEYS``; ``when`` the condition as written, None: given
+  only by an ``unlock achievement`` line). ``achievement_uses(texts)`` finds those lines.
 - Titles and categories are values as shown (``{{`` read as ``{``, written back doubled);
   codex paragraphs are kept as written (their ``{b}``/``{i}``/``{color}`` tags stay).
 - ``CHARACTER_OPTIONS`` is Studio's own copy of the runtime's option table, in doc order with
@@ -60,6 +64,9 @@ from engine.core.constants import (
 from engine.core.errors import AssetRefError
 from engine.core.paths import check_ref
 from engine.script.audio import file_problem as audio_file_problem
+from engine.script.achievements import CONDITION_MAX as ACHIEVEMENT_CONDITION_MAX
+from engine.script.achievements import DESCRIPTION_MAX as ACHIEVEMENT_DESCRIPTION_MAX
+from engine.script.achievements import TITLE_MAX as ACHIEVEMENT_TITLE_MAX
 from engine.script.codex import CATEGORY_MAX as CODEX_CATEGORY_MAX
 from engine.script.codex import NAME_MAX as CODEX_NAME_MAX
 from engine.script.codex import PARAGRAPH_MAX as CODEX_PARAGRAPH_MAX
@@ -100,8 +107,9 @@ POSITION: Final = "position"      # a [stage.positions] key of config.toml (F04)
 GALLERY: Final = "gallery"        # lock gallery <picture> "Title" … : (F34)
 TRACK: Final = "track"            # lock track n "Title" file "…" [open | until a, b] (F35)
 REPLAY: Final = "replay"          # lock replay <scene> "Title" [image …] [to …] … : (F36)
+ACHIEVEMENT: Final = "achievement"  # lock achievement n "Title" … [hidden] [when …] (F37)
 EDITABLE_KINDS: Final = frozenset((CHARACTER, COLOR, VARIABLE, PERSISTENT, METER, TIP, ITEM,
-                                   ROUTE, TRANSITION, GALLERY, TRACK, REPLAY))
+                                   ROUTE, TRANSITION, GALLERY, TRACK, REPLAY, ACHIEVEMENT))
 # Kinds one form switches between (``declplan.plan_edit``'s ``kind``): the Variables form's
 # "Remembered across playthroughs" and the Codex form's Tips / Items.
 SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
@@ -111,7 +119,7 @@ _NAMESPACES: Final[Mapping[str, str]] = MappingProxyType({   # kinds sharing one
     CHARACTER: "python", DEFINE: "python", VARIABLE: "python", TRANSITION: "python",
     PERSISTENT: "persistent", METER: "points", TIP: "codex", ITEM: "codex", ROUTE: "route",
     COLOR: "image", IMAGE: "image", GALLERY: "gallery", TRACK: "track",
-    REPLAY: "replay"})
+    REPLAY: "replay", ACHIEVEMENT: "achievement"})
 
 # Meters (design §4.3): the values of a points declaration. None: not written (no range: the
 # engine's ±1,000,000,000; no start: 0, or low when 0 is outside the range).
@@ -135,6 +143,12 @@ TRACK_KEYS: Final = ("title", "file", "open", "until")
 # values, (variable, literal) pairs in written order.
 REPLAY_KEYS: Final = ("title", "image", "to", "values")
 _REPLAY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+replay[ \t]+([^\W\d]\w*)[ \t]*(?:#.*)?$")
+# Achievements (F37 SPEC §3): the title and description as shown, the icon's picture name
+# (None: no icon), ``hidden`` and the ``when`` condition as written (None: by a line only).
+ACHIEVEMENT_KEYS: Final = ("title", "description", "image", "hidden", "when")
+_ACHIEVEMENT_HEAD = re.compile(r"lock[ \t]+achievement[ \t]")
+_ACHIEVEMENT_LINE = re.compile(
+    r"[ \t]+unlock[ \t]+achievement[ \t]+([^\W\d]\w*)[ \t]*(?:#.*)?$")
 _VALUE_LINE = re.compile(r"([^\W\d]\w*)[ \t]*=(?!=)(.*)", re.DOTALL)
 _LABEL_LINE = re.compile(r"label[ \t]+([^\W\d]\w*)[ \t]*(?:\(|:)")
 _FLOW_TITLE = re.compile(r'[ \t]+flowchart[ \t]+scene[ \t]+("(?:[^"\\\n]|\\.)*")')
@@ -921,8 +935,124 @@ def scene_title(name: str, texts: Mapping[str, str] | None = None) -> str:
     return shown[:REPLAY_TITLE_MAX].strip() or "Scene"
 
 
+# --- Achievements (F37 lock achievement) ---
+
+def condition_ok(text: object) -> bool:
+    """True when ``text`` is a ``when`` condition Studio may write: one line of at most
+    ``ACHIEVEMENT_CONDITION_MAX`` characters that reads as a Python expression (parsed,
+    never run)."""
+    if type(text) is not str or not text.strip() or "\n" in text \
+            or len(text.strip()) > ACHIEVEMENT_CONDITION_MAX:
+        return False
+    try:
+        ast.parse(text.strip(), mode="eval")
+    except (SyntaxError, ValueError):
+        return False
+    return True
+
+
+def achievement_ok(values: Mapping[str, object]) -> bool:
+    """True when ``values`` make a valid one-line ``lock achievement``."""
+    title, description, image, hidden, when = (values.get(k) for k in ACHIEVEMENT_KEYS)
+    if type(title) is not str or not title.strip() or len(title) > ACHIEVEMENT_TITLE_MAX \
+            or "\n" in title:
+        return False
+    if type(description) is not str or len(description) > ACHIEVEMENT_DESCRIPTION_MAX \
+            or "\n" in description:
+        return False
+    if image is not None and (type(image) is not str or _image_name(image) != image
+                              or len(image.split()) > 5):
+        return False
+    if type(hidden) is not bool:
+        return False
+    return when is None or condition_ok(when)
+
+
+def _achievement_read(code: str) -> tuple[str, dict[str, object]] | None:
+    """``lock achievement <name> "Title" ["Description"] [image <picture>] [hidden] [when
+    <condition>]`` (one line), or None. The condition is the text after the first ``when``
+    word past the title, as written."""
+    found = list(_WORD_TOKEN.finditer(code))
+    at = next((i for i, m in enumerate(found) if i >= 4 and m.group() == "when"), None)
+    when: str | None = None
+    head = code
+    if at is not None:
+        head, when = code[:found[at].start()], code[found[at].end():].strip()
+        if not when:
+            return None
+    tokens = _split(head)
+    if tokens is None or len(tokens) < 4 or tokens[:2] != ["lock", ACHIEVEMENT] \
+            or not tokens[3].startswith('"'):
+        return None
+    name, title = _name_token(tokens[2]), _title_token(tokens[3])
+    rest = tokens[4:]
+    description = ""
+    if rest and rest[0].startswith('"'):
+        text = _title_token(rest[0])
+        if text is None:
+            return None
+        description, rest = text, rest[1:]
+    image: str | None = None
+    if rest and rest[0] == "image":
+        end = next((i for i in range(2, len(rest)) if rest[i] == "hidden"), len(rest))
+        image = _image_name(" ".join(rest[1:end])) if end > 1 else None
+        if image is None or any(t.startswith('"') or t in (",", ":") for t in rest[1:end]):
+            return None
+        rest = rest[end:]
+    hidden = rest[:1] == ["hidden"]
+    if hidden:
+        rest = rest[1:]
+    if rest or name is None or title is None:
+        return None
+    values = {"title": title, "description": description, "image": image, "hidden": hidden,
+              "when": when}
+    return (name, values) if achievement_ok(values) else None
+
+
+def achievement_line(name: str, values: Mapping[str, object]) -> str:
+    """``lock achievement <name> "Title" ["Description"] [image <picture>] [hidden] [when
+    <condition>]``. Raises ValueError for bad values."""
+    if _name_token(name) != name or not achievement_ok(values):
+        raise ValueError("bad achievement")
+    line = f"lock achievement {name} {quote(written_text(str(values['title'])))}"
+    if values.get("description"):
+        line += f" {quote(written_text(str(values['description'])))}"
+    if values.get("image"):
+        line += f" image {values['image']}"
+    if values.get("hidden"):
+        line += " hidden"
+    if values.get("when") is not None:
+        line += f" when {str(values['when']).strip()}"
+    return line
+
+
+def achievement_uses(texts: Mapping[str, str]) -> tuple[tuple[str, str, int], ...]:
+    """Every ``unlock achievement <name>`` line in a label: ``(name, ref, line)``, in ref
+    order, then line order."""
+    found: list[tuple[str, str, int]] = []
+    for ref in sorted(texts):
+        for number, line in enumerate(texts[ref].split("\n"), start=1):
+            match = _ACHIEVEMENT_LINE.match(line)
+            if match is not None:
+                found.append((canonical_name(match.group(1)), ref, number))
+    return tuple(found)
+
+
+def _achievement_decl(ref: str, first: int, last: int, lines: list[str],
+                      count: int) -> Decl | None:
+    code, _comment = code_of(lines[:count])
+    found = _achievement_read(code) if count == 1 and last == first else None
+    if found is not None:
+        return Decl(ACHIEVEMENT, found[0], ref, first, last, found[1])
+    words = code.split()                   # read-only: Edit as script
+    name = _name_token(words[2]) if len(words) > 2 else None
+    return None if name is None else Decl(ACHIEVEMENT, name, ref, first, last, None)
+
+
 def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None:
     count = _head_lines(lines)
+    if _ACHIEVEMENT_HEAD.match(lines[0]):
+        return _achievement_decl(ref, first, last, lines, count)
     code, _comment = code_of(lines[:count])
     tokens = _split(code)
     if tokens is not None and len(tokens) >= 3 and tokens[:2] == ["lock", GALLERY]:
@@ -1286,6 +1416,8 @@ def line_for(kind: str, name: str, values: Mapping[str, object]) -> str:
         return route_line(name, values)
     if kind == TRACK:
         return track_line(name, values)
+    if kind == ACHIEVEMENT:
+        return achievement_line(name, values)
     if kind == TRANSITION:
         return f"define {name} = {transition_call(values)}"
     if kind in (TIP, ITEM):
@@ -1347,6 +1479,7 @@ def script_name(shown: str, taken: Collection[str], kind: str = CHARACTER) -> st
     A ``COLOR`` name is one image word after ``bg ``."""
     fallback = {COLOR: "color", VARIABLE: "variable", PERSISTENT: "variable",
                 ROUTE: "route", TIP: "tip", ITEM: "item", METER: "meter", TRACK: "track",
+                ACHIEVEMENT: "achievement",
                 TRANSITION: "transition", POSITION: "position"}.get(kind, "character")
     base = _slug(shown) or fallback
     if base[0].isdigit():
@@ -1387,6 +1520,9 @@ __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX
            "character_call", "character_values", "codex_lines", "codex_ok", "color_ok",
            "TRACK", "TRACKS_MAX", "TRACK_KEYS", "TRACK_TITLE_MAX", "TRACK_UNTIL_MAX",
            "REPLAY", "REPLAY_KEYS", "REPLAY_TITLE_MAX", "REPLAY_VALUES_MAX", "label_places",
+           "ACHIEVEMENT", "ACHIEVEMENT_CONDITION_MAX", "ACHIEVEMENT_DESCRIPTION_MAX",
+           "ACHIEVEMENT_KEYS", "ACHIEVEMENT_TITLE_MAX", "achievement_line", "achievement_ok",
+           "achievement_uses", "condition_ok",
            "literal_text", "replay_lines", "replay_ok", "replay_uses", "scene_title",
            "start_value_ok",
            "find", "gallery_lines", "gallery_ok", "gallery_title", "gallery_uses",

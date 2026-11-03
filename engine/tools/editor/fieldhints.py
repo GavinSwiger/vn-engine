@@ -110,7 +110,9 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
              "tip": "The codex tip players lose.",
              "item": "The item players lose."},
     "unlock": {"what": "What to open or give: a route, a codex tip, an item, a gallery "
-                       "picture or a scene replay.",
+                       "picture, a scene replay or an achievement.",
+               "achievement": "The achievement players earn here, for good, with its "
+                              "notice. Make achievements in Database ▸ Achievements.",
                "replay": "The scene that joins the player's Scenes page without being played.",
                "gallery": "The picture that joins the player's gallery without being shown.",
                "route": "The route to open.",
