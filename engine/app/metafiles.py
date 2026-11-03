@@ -363,7 +363,7 @@ def install_metafiles(app: "App", interp: "Interpreter") -> DiskFolder | None:
             attach(interp, disk.files)
         return disk
     writer = getattr(app, "writer", None)
-    if not names or writer is None:
+    if not names or writer is None or getattr(app, "try_run", False):   # F47 P2-F: Try it
         return None
     if not first:
         if getattr(app, "dev", False):

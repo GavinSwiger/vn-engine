@@ -1415,7 +1415,8 @@ def install_saves(app: "App") -> SaveService:
     client: WriterClient | None = None
     if release and app.config.game.id is None:
         _log.warning("%s", W80_TEXT, extra={"code": "W80"})
-    elif writer is not None and (game_root is not None or release):
+    elif writer is not None and (game_root is not None or release) and \
+            not getattr(app, "try_run", False):             # F47 P2-F: Try it saves nothing
         folder = saves_root(game_root=game_root, release=release,   # type: ignore[arg-type]
                             app_id=app.config.game.id)
     if folder is not None and writer is not None:

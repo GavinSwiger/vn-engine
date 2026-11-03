@@ -133,6 +133,9 @@ class App:
         self.seed = seed
         # F12: ``run --no-persistent`` (dev runs only): persistent data stays in memory.
         self.no_persistent = no_persistent
+        # F47 P2-F: Studio's Try it run (``run --try-stdin``, ``app/trystory.py``): saves
+        # and meta files stay off the disk, so the run writes nothing.
+        self.try_run = False
         # F12 step 6: the process's one file writer (ADR-0007; ``persist/writer.py``), shared
         # by F12's persistent data, F16's settings, and F11's saves. Its thread starts on the
         # first write. ``persist`` is F12's ``PersistentSync`` (``app/persistence.py``:

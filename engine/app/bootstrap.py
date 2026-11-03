@@ -12,6 +12,7 @@ the system dialog (``show_native_error``, the only ``message_box`` caller).
 """
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -38,7 +39,8 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
            log_level_override: str | None, pygame_warning: str | None,
            start: "StartOptions | None" = None, editor_report: bool = False,
            seed: int | None = None, no_persistent: bool = False, resume: bool = False,
-           window_at: tuple[int, int] | None = None) -> int:
+           window_at: tuple[int, int] | None = None,
+           try_lines: Sequence[str] | None = None) -> int:
     """Run one session of the game in ``game_dir``; return the process exit code.
 
     F44: ``start`` holds ``run --start``/``--set`` (``App.start``); ``editor_report``
@@ -47,10 +49,14 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
     F12: ``no_persistent`` is ``run --no-persistent`` (``App.no_persistent``).
     F39 (dev runs only): with ``editor_report`` the link also reads Studio's messages on
     stdin; ``resume`` (``--resume-from-editor``) makes the first screen after the load F39's
-    ``ResumeScreen``; ``window_at`` (``--window-at=X,Y``) opens the window there."""
+    ``ResumeScreen``; ``window_at`` (``--window-at=X,Y``) opens the window there.
+    F47 P2-F: ``try_lines`` (``--try-stdin``) makes it Studio's Try it run
+    (``app/trystory.py``): no log file, no settings read, a small window, the label's
+    lines played from the start, persistent data in memory, and nothing written."""
     log = logsetup.begin(level=log_level_override or "info", engine_root=engine_root())
     app_log = get_logger("app")
     state = _Startup(game_dir, release=release)
+    state.try_lines = tuple(try_lines) if try_lines is not None else None
     code = 0
     interrupted = False
     try:
@@ -127,6 +133,7 @@ class _Startup:
         self.window = None                 # GameWindow once created (step 13)
         self.pygame_started = False
         self.settings: SettingsLaunch | None = None     # F16 step 10b
+        self.try_lines: tuple[str, ...] | None = None   # F47 P2-F: --try-stdin's lines
 
 
 def _read_settings(state: _Startup) -> SettingsLaunch:
@@ -135,7 +142,8 @@ def _read_settings(state: _Startup) -> SettingsLaunch:
     app_id, fallback = choose_app_id(state)
     return launch_settings(game_root=state.paths.root if state.paths is not None else None,
                            release=state.release, app_id=app_id, id_is_fallback=fallback,
-                           skip=state.fatal is not None or state.paths is None)
+                           skip=state.fatal is not None or state.paths is None
+                           or state.try_lines is not None)      # F47 P2-F: defaults
 
 
 def choose_app_id(state: "_Startup") -> tuple[str, bool]:
@@ -160,7 +168,10 @@ def log_candidates(paths: GamePaths | None, app_id: str, *,
 
 def _open_log(log: LogSetup, state: _Startup) -> None:
     app_id, fallback = choose_app_id(state)
-    session = log.open_file(log_candidates(state.paths, app_id, release=state.release))
+    # F47 P2-F: a Try it run opens no log file (console only), so it writes nothing.
+    candidates = ([] if state.try_lines is not None else
+                  log_candidates(state.paths, app_id, release=state.release))
+    session = log.open_file(candidates)
     lifecycle(get_logger("app"), logsetup.header_log_line(session, fallback_id=fallback))
 
 
@@ -236,13 +247,18 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
         usable, source = work, "work area"
     else:
         usable, source = approx_usable(tuple(pygame.display.get_desktop_sizes()[0])), "estimated"
+    trying = state.try_lines is not None
+    if trying:                                  # F47 P2-F: a small window, never fullscreen
+        from engine.app.trystory import try_size
+
+        requested = try_size(requested)
     size = initial_window_size(requested, scale, usable)
     # Step 13: the window, in the player's stored mode (F16), else the config's.
     try:
-        window = GameWindow(title=config.game.title, size=size,
+        window = GameWindow(title=_window_title(config.game.title, trying), size=size,
                             resizable=config.window.resizable,
-                            start_fullscreen=bool(launch_value(settings.loaded, config,
-                                                               "fullscreen")),
+                            start_fullscreen=not trying and bool(
+                                launch_value(settings.loaded, config, "fullscreen")),
                             letterbox_color=config.window.letterbox_color,
                             initial_size_for_restore=size,
                             position=window_at)              # F39: the old preview's spot
@@ -278,9 +294,11 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
     link = _editor_link() if editor_report else None
     app = App(config=config, paths=state.paths, window=window, assets=assets, log=log,
               dev=not release, bench_seconds=bench_seconds, start=start, seed=seed,
-              no_persistent=no_persistent, editor_link=link)
+              no_persistent=no_persistent or trying, editor_link=link)
+    app.try_run = trying
     if link is not None:                      # F39: Studio's messages; the failed place
-        link.listen(_editor_input(), resume=resume)
+        if not trying:                        # a try run's stdin held its lines
+            link.listen(_editor_input(), resume=resume)
         app.add_fatal_hook(lambda: link.fatal_hook(app))
     # F16: ``App.settings`` (the window size is stored at quit in requested units).
     install_settings(app, settings, display_scale=scale,
@@ -298,8 +316,22 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
         from engine.app.loading import story_load_screen
 
         ready = resume_screens if resume and link is not None else build_initial_screens
-        app.screens.replace_all([story_load_screen(app, state.paths, on_ready=ready)])
+        paths = state.paths
+        if state.try_lines is not None:       # F47 P2-F: the label rides on main.vns
+            from engine.app.trystory import TryPaths, try_screens
+
+            paths, ready = TryPaths.over(paths, state.try_lines), try_screens
+        app.screens.replace_all([story_load_screen(app, paths, on_ready=ready)])
     return app.run()
+
+
+def _window_title(title: str, trying: bool) -> str:
+    """The game's title; a Try it run's says so (F47 P2-F)."""
+    if not trying:
+        return title
+    from engine.app.trystory import WINDOW_TITLE
+
+    return WINDOW_TITLE.format(title=title)
 
 
 def open_audio(app: App, paths: GamePaths | None) -> None:

@@ -28,6 +28,8 @@ menu (``assist.insert_menu``).
   game's chapters. While the builder can't write its rows, the form says why and OK waits.
 - Insert… also lists the forms with no doc of their own (``FORM_ENTRIES``: Stop effects,
   Stop sound), and a text-only entry shows its ``forms.TEXT_ONLY`` reason, muted, under it.
+- F47 P2-F: the effect forms (``TRY_FORMS``) get **Try it** under the line (``add_try_it``):
+  the line plays in a small game window over the row's stage (``FormAssets.try_line``).
 - They share ``dialogs``' dark look (F45 ``08`` §7): ``overlay`` fill, padding 20, inputs with
   a 1 px border, a ``raised`` code card for the line, OK primary and right-aligned, Esc and
   the close box cancel.
@@ -206,6 +208,17 @@ class FormAssets:
 
 class _NameBox:
     """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
+    def can_try(self) -> bool:
+        """Whether ``try_line`` can play a line (F47 P2-F): a Studio window's assets can."""
+        return getattr(self, "win", None) is not None
+
+    def try_line(self, line: str, on_problem: Callable[[str], None]) -> None:
+        """Try it: play ``line`` in a small game window over the stage at the form's row;
+        a failure's text goes to ``on_problem`` (``trywiring``)."""
+        from engine.tools.editor import trywiring
+
+        trywiring.try_form_line(getattr(self, "win"), line, on_problem)
+
     while its text is a name it doesn't offer (``new``: the hint for a name kind where a new
     name is normal; ``quiet``: no hint while it offers nothing)."""
 
@@ -319,6 +332,7 @@ class FormDialog:
         self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
         dialog.bind("<Escape>", lambda _e: self._pick(1))
         dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
+        self.try_button, self.try_note = add_try_it(self, body)    # F47 P2-F
         for widget in self.widgets.values():
             if isinstance(widget, (ttk.Entry, ttk.Combobox)):
                 for key in ("<Return>", "<KP_Enter>"):
@@ -657,6 +671,43 @@ class ChoiceDialog:
         dialog.title(forms.CHOICE.title)
         body, scale = dialogs._body(dialog)
         self.scale = scale
+# --- Try it (F47 P2-F, PR-F47-20) -------------------------------------------------------------
+
+TRY_IT = "Try it"
+TRY_FORMS = frozenset(("transition", "shake", "flash", "glitch", "jitter"))
+TRY_NEEDS_LINE = "Fill in the form first; then Try it plays its line."
+
+
+def add_try_it(form_dialog: FormDialog, body: ttk.Frame
+               ) -> tuple[ttk.Button | None, ttk.Label | None]:
+    """The effect forms' **Try it** under the line card, when the assets can play a line:
+    a click plays the line the form writes now in a small game window (a failure shows
+    under it). Returns the button and its note, or (None, None) for other forms."""
+    assets = form_dialog.assets
+    if assets is None or form_dialog.form.key not in TRY_FORMS or not assets.can_try():
+        return None, None
+    scale = form_dialog.scale
+    row = ttk.Frame(body, style="Dialog.TFrame")
+    row.pack(anchor="w", fill="x", pady=(round(GAP * scale), 0))
+    note = ttk.Label(row, text="", style="Dialog.Hint.TLabel", justify="left",
+                     wraplength=round(400 * scale))
+
+    def show(text: str) -> None:
+        if note.winfo_exists():
+            note.configure(text=text)
+
+    def try_now() -> None:
+        line = form_dialog.preview()
+        show("" if line else TRY_NEEDS_LINE)
+        if line:
+            assets.try_line(line, show)
+
+    button = ttk.Button(row, text=TRY_IT, style="Secondary.TButton", command=try_now)
+    button.pack(anchor="w")
+    note.pack(anchor="w", pady=(round(4 * scale), 0))
+    return button, note
+
+
         gap = round(GAP * scale)
         self.gap = gap
         # The question

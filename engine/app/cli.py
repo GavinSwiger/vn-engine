@@ -51,6 +51,12 @@ F42 (``04`` §3.3, §7.5; architect decisions 1, 8): ``main(argv, builder=…)``
 imports ``tools``. In a built game (frozen) ``launcher_main`` is the whole parser: it runs
 ``<exe folder>/game`` (``paths.launcher_game_dir``), first running the frozen prelude
 (``_frozen_prelude``), and ``App.dev`` is always false (``_start``).
+
+F47 P2-F (``04`` §7.5): ``run`` also gains ``--try-stdin``, Studio's Try it, under the same
+dev-runs-only rule (refused with ``--release``, not defined in a frozen build, not
+``main.py``'s). It reads a few script lines from stdin (at most ``TRY_MAX_BYTES``; bad text
+is a usage error) and plays them as a throwaway label from the start, with nothing written
+(``app/trystory.py``); ``--start`` and ``--resume-from-editor`` can't go with it.
 """
 
 import argparse
@@ -289,10 +295,18 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
                        report=args.report_to_editor)
     if dev_tools:
         _refuse_dev_options(run, args)
+        if args.try_stdin:                              # F47 P2-F: the throwaway label
+            from engine.app import trystory     # only here: Studio imports this module
+
+            if args.start is not None or args.resume_from_editor:
+                run.error(trystory.TRY_WITH_START)
+            args.start = trystory.TRY_LABEL
         args.start_options = _start_options(run, args)
         args.window_position = _window_position(run, args.window_at)
         if args.resume_from_editor and not args.report_to_editor:
             run.error(RESUME_NEEDS_REPORT)
+        if args.try_stdin:
+            args.try_lines = _try_lines(run)
     return _start(game_dir, args)
 
 
@@ -316,6 +330,26 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
     # negative X isn't read as an option.
     run.add_argument("--resume-from-editor", action="store_true", help=argparse.SUPPRESS)
     run.add_argument("--window-at", metavar="X,Y", default=None, help=argparse.SUPPRESS)
+    # F47 P2-F: Studio's Try it.
+    run.add_argument("--try-stdin", action="store_true",
+                     help="play the script lines read from stdin in a small window, then "
+                          "quit; nothing is saved or written (dev runs)")
+
+
+def _try_lines(run: argparse.ArgumentParser) -> tuple[str, ...]:
+    """``--try-stdin``'s lines: stdin read to its end (at most ``TRY_MAX_BYTES`` + 1), or a
+    usage error (exit 2) before anything loads."""
+    from engine.app import trystory
+
+    stream = getattr(sys.stdin, "buffer", None)
+    try:
+        data = stream.read(trystory.TRY_MAX_BYTES + 1) if stream is not None else b""
+    except (OSError, ValueError):
+        data = b""
+    lines = trystory.parse_try_text(data or b"")
+    if isinstance(lines, str):
+        run.error(lines)
+    return lines
 
 
 def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -329,7 +363,8 @@ def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) 
                           ("--seed", args.seed is not None),
                           ("--no-persistent", args.no_persistent),
                           ("--resume-from-editor", args.resume_from_editor),
-                          ("--window-at", args.window_at is not None)):
+                          ("--window-at", args.window_at is not None),
+                          ("--try-stdin", args.try_stdin)):
         if given:
             run.error(dev_only(option))
 
@@ -396,7 +431,8 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        seed=getattr(args, "seed", None),
                        no_persistent=getattr(args, "no_persistent", False),
                        resume=getattr(args, "resume_from_editor", False),
-                       window_at=getattr(args, "window_position", None))
+                       window_at=getattr(args, "window_position", None),
+                       try_lines=getattr(args, "try_lines", None))
     except KeyboardInterrupt:
         return 0        # Ctrl+C before logging starts exits silently (§7.1 step 19)
 
@@ -405,7 +441,8 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             log_level_override: str | None, pygame_warning: str | None,
             start: StartOptions | None = None, editor_report: bool = False,
             seed: int | None = None, no_persistent: bool = False, resume: bool = False,
-            window_at: tuple[int, int] | None = None) -> int:
+            window_at: tuple[int, int] | None = None,
+            try_lines: tuple[str, ...] | None = None) -> int:
     """The startup sequence (``engine.app.bootstrap.launch``)."""
     from engine.app import bootstrap
 
@@ -414,4 +451,4 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             pygame_warning=pygame_warning, start=start,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
-                            window_at=window_at)
+                            window_at=window_at, try_lines=try_lines)

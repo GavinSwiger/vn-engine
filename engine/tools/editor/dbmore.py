@@ -14,7 +14,8 @@ plans) or, for positions, ``tomlpatch`` plans on ``config.toml``'s open document
   endings, read-only, with Go to.
 - **Chapters**: read-only, in story order, with Go to and ▶ Play its scene.
 - **Transitions**: Dissolve, Fade or Mask with seconds, colour, mask picture, soft and
-  reverse. **Try it** waits for the game's ``--try-stdin`` (P2-F) and is disabled.
+  reverse. **Try it** (P2-F, ``trywiring``) plays the form's values onto the first
+  background in a small game window (``stageat.transition_entry_lines``).
 - **Positions**: ``stagecanvas.StageCanvas`` (drag a marker), x and y fields, **Use
   default** for a moved built-in, Delete for one of the author's.
 - **Variables** gain "Remembered across playthroughs" (``default persistent.<n>``).
@@ -34,7 +35,8 @@ from engine.script.messages import show
 from engine.script.points import POINTS_LIMIT
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
-from engine.tools.editor import declplan, fieldwidgets, files, tomlpatch
+from engine.tools.editor import (declplan, fieldwidgets, files, stageat, tomlpatch,
+                                  trywiring)
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.fieldwidgets import (
     AssetPicker,
@@ -46,7 +48,6 @@ from engine.tools.editor.fieldwidgets import (
     ToggleField,
 )
 from engine.tools.editor.formdialogs import pick_scene
-from engine.tools.editor.playbar import Tooltip
 from engine.tools.editor.scriptedit import STALE, Refuse
 from engine.tools.editor.settingsview import LongTextField
 from engine.tools.editor.stagecanvas import STAGE_H, STAGE_W, StageCanvas
@@ -99,9 +100,10 @@ NO_ENDINGS = "No endings yet. Endings come from the Ending lines of your story."
 ROUTES_EMPTY = "No routes yet. Add one with + New."
 IN_FILE = "{ref}, line {line}"
 SEEN_BY = "Routes waiting for it: {n}"
-TRY_IT = "Try it"
-TRY_LATER = "Try it comes with a later Studio update. Until then, use it in a scene and " \
-            "press ▶ Play this scene."
+TRY_IT = trywiring.TRY_IT
+TRY_HINT = "Plays it onto your first background in a small game window. A Mask uses " \
+           "its saved picture."
+TRY_CANT = "This transition can't play yet: check its seconds and picture."
 MASK_NEEDS = "A Mask needs a picture. Add one under Pictures first."
 REVERSE = "Uncover the white parts first"
 SECONDS_HINT = "The built-in length is {seconds} s."
@@ -794,12 +796,13 @@ class MoreCategories:
                          style="Hint.TLabel")
         grid.widget(hint, pady=(6, 2))
         tryline = ttk.Frame(grid.frame)
+        try_note = ttk.Label(tryline, text=TRY_HINT, style="Hint.TLabel",
+                             wraplength=self._px(280), justify="left")
         f["try"] = ttk.Button(tryline, text=TRY_IT, style="Secondary.TButton",
-                              state="disabled")
+                              command=lambda: self.try_transition(entry, try_note))
         f["try"].pack(anchor="w")
-        f["try"].tooltip = Tooltip(f["try"], TRY_LATER, self.fonts.get("small"))
-        ttk.Label(tryline, text=TRY_LATER, style="Hint.TLabel", wraplength=self._px(280),
-                  justify="left").pack(anchor="w", pady=(self._px(4), 0))
+        try_note.pack(anchor="w", pady=(self._px(4), 0))
+        f["try_note"] = try_note
         grid.widget(tryline, pady=(4, 4))
         grid.widget(self._uses_line(grid.frame, entry), pady=(4, 0))
         self._bottom(body, 2, entry, lambda: self._delete_decl(entry))
@@ -825,6 +828,36 @@ class MoreCategories:
             hint.configure(text=IN_SCRIPT.format(line=f"scene bg … with {entry.name}"))
 
         form.update = update
+
+    def try_background(self) -> str | None:
+        """Try it's background: the first ``bg …`` picture (the project's ``images/``
+        files, then the check's image names), else None (black)."""
+        project = getattr(self.win, "project", None)
+        names = [name for ref in (project.file_refs("images") if project is not None else ())
+                 if (name := files.image_name_of(ref)) is not None]
+        for entry in (getattr(self.win, "check_names", {}) or {}).get("image", ()):
+            name = entry if isinstance(entry, str) else getattr(entry, "name", None)
+            if isinstance(name, str):
+                names.append(name)
+        return stageat.first_background(names)
+
+    def try_transition(self, entry: db.Entry, note: ttk.Label) -> None:
+        """Try it (F47 P2-F): the transition as the form shows it now, onto the first
+        background, in a small game window; a failure shows in ``note``."""
+        values = self._now_values(entry)
+        try:
+            lines = stageat.transition_entry_lines(entry.name, values or {},
+                                                   self.try_background())
+        except (ValueError, KeyError, TypeError):
+            note.configure(text=TRY_CANT)
+            return
+        note.configure(text=TRY_HINT)
+
+        def problem(text: str) -> None:
+            if note.winfo_exists():
+                note.configure(text=text)
+
+        trywiring.try_it(self.win).play(lines, problem)
 
     def _transition_kind(self, entry: db.Entry, kind: str) -> bool:
         change: dict[str, object] = {"kind": kind}
