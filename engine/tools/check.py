@@ -24,12 +24,18 @@ one ``done``, each event split into lines of at most 1 MiB and 5,000 items.
 - **Not checked here** (``07`` I-8): ``app``-only launch checks (F05/F17's text check, F18's
   W111, F23's plugin load). They show on Preview.
 
+- **Lint** (F41 ``04`` §7.3). When the story loaded with no error at all, ``tools/lint.py``'s
+  findings (W237–W242) go to Studio as names rows (``unreached``, ``unused_*``), never as
+  problem items. ``CheckJob.collect`` returns a run's results; ``run`` sends them, and
+  ``lint_command`` prints them with the findings for editors and CI.
+
 ``NAME_SOURCES`` is the table later features extend: one row per name kind a statement doc
 lists (``07`` O-2). A row returns ``(name, file, line)`` entries, or None when it has no
 inputs; a row that raises is skipped, and its kind isn't sent.
 
-Imports ``core``, ``script``, and ``runtime`` only (never pygame, ``app``, ``render``,
-``ui``, ``audio``, ``persist``, ``meta``, or ``minigames``; ``tests/test_import_rules.py``).
+Imports ``core``, ``script``, ``runtime`` and ``tools.lint`` only (never pygame, ``app``,
+``render``, ``ui``, ``audio``, ``persist``, ``meta``, or ``minigames``;
+``tests/test_import_rules.py``).
 """
 
 import ast
@@ -42,7 +48,7 @@ import sys
 import time
 import tomllib
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass, replace
 from pathlib import Path
 from typing import BinaryIO
 
@@ -65,6 +71,7 @@ from engine.core.editorreport import (
     REPORT_VERSION,
 )
 from engine.core.errors import (
+    AssetMissing,
     AssetNotFile,
     AssetRefError,
     AssetTooLarge,
@@ -106,6 +113,7 @@ from engine.script.ui import FORMS as UI_FORMS
 from engine.script.ui import SAVES as UI_SAVES
 from engine.script.ui import STYLE as UI_STYLE
 from engine.script.ui import UiStatement
+from engine.tools.lint import LINT_KINDS, Finding, findings, rows_by_kind  # F41 P3 (07 I-9)
 
 SCRIPT_PREFIX = "script/"
 SCRIPT_SUFFIX = ".vns"
@@ -299,13 +307,17 @@ def _config_warning(text: str) -> dict:
 @dataclass(frozen=True)
 class CheckContext:
     """What a ``NAME_SOURCES`` row may read. ``program`` is None when the script didn't load;
-    ``launch`` is None when the launch phase didn't run (``--no-launch``, or no program)."""
+    ``launch`` is None when the launch phase didn't run (``--no-launch``, or no program).
+    ``errors`` counts the run's errors (config, load and launch); ``lint`` holds the lint
+    phase's findings, None when it didn't run (F41 ``04`` §7.3)."""
 
     paths: GamePaths
     config: Config
     program: Program | None
     launch: LaunchResult | None = None
     namespace: Mapping[str, object] | None = None
+    errors: int = 0
+    lint: tuple[Finding, ...] | None = None
 
 
 def _where(node: object) -> tuple[str | None, int | None]:
@@ -823,6 +835,8 @@ class _UseWalk:
                 self.add("image_use", picture, gallery.file, gallery.line)
         for entry in program.codex:
             self.add("image_use", entry.image, entry.file, entry.line)
+            for paragraph in entry.paragraphs:           # {var} tags, at the entry's line
+                self.node(paragraph, entry.file, entry.line, 0)
         for replay in program.replays:
             self.add("image_use", replay.image, replay.file, replay.line)
             for name, _value in replay.values:
@@ -871,10 +885,13 @@ def _index_of(ctx: CheckContext) -> ImageIndex:
 
 
 def _config_text(ctx: CheckContext) -> str | None:
-    """config.toml's text through ``ctx.paths`` (an overlay counts), None when unreadable."""
+    """config.toml's text through ``ctx.paths`` (an overlay counts): ``""`` when the game
+    has none (nothing to count, and no error), None when unreadable."""
     try:
         return ctx.paths.read_file(CONFIG_FILENAME, max_bytes=CONFIG_MAX_BYTES).decode(
             "utf-8-sig")
+    except AssetMissing:
+        return ""
     except (UserFacingError, AssetNotFile, AssetTooLarge, AssetUnreadable, AssetRefError,
             OSError, ValueError):
         return None
@@ -983,6 +1000,31 @@ def _meta_file_names(ctx: CheckContext) -> Iterable[NameRow] | None:
     return list(rows.values())
 
 
+def _lint_phase(ctx: CheckContext) -> tuple[Finding, ...] | None:
+    """F41 ``04`` §7.3 step 2: the lint findings of a story that loaded with no error at all
+    (config, load or launch; decision 4), else None. Under ``--no-launch`` ``ctx.namespace``
+    is None: no W238, and transitions are read from their literal calls."""
+    program = ctx.program
+    if program is None or ctx.errors:
+        return None
+    try:
+        sounds = [name for name, _file, _line in _audio_names(ctx) or ()]
+    except Exception:                                    # no audio/ walk: no sound findings
+        sounds = []
+    return findings(program, ctx.config, ctx.paths, _index_of(ctx), sounds, ctx.namespace,
+                    _story_uses(ctx), _config_text(ctx))
+
+
+def _lint_rows(kind: str) -> Callable[[CheckContext], Iterable[NameRow] | None]:
+    """A lint kind's names rows (04 §7.3 step 3): not sent when lint didn't run, nor
+    ``unused_character`` without launch values (PR-F41-01)."""
+    def rows(ctx: CheckContext) -> Iterable[NameRow] | None:
+        if ctx.lint is None:
+            return None
+        return rows_by_kind(ctx.lint, characters=ctx.namespace is not None).get(kind)
+    return rows
+
+
 NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "label": _label_names,
     "image": _image_names,
@@ -1024,14 +1066,39 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "replay_scene": _replay_scenes,         # F41 P1: each scene replay's label, at its line
     "meta_file": _meta_file_names,          # F31: names in file lines and files/ originals
     "meta_file_use": _meta_file_uses,       # F31: each file line's name, at its line
+    # F41 P3: the lint findings, kind by kind (unreached, unused_*): Studio's Clean up reads
+    # them; they never travel as problem items (PR-F45-08 holds).
+    **{kind: _lint_rows(kind) for kind in LINT_KINDS},
 }
 
 
 # --- The check (04 §7.1 steps 3-10) ----------------------------------------------------------
 
+SEVERITIES = ("error", "warning", "info")
+
+
+@dataclass(frozen=True)
+class CheckOutcome:
+    """One check's results (F41 ``04`` §7.3 step 1): ``problems`` in engine order (all of
+    them; the wire sends the first ``CHECK_MAX_PROBLEMS``), ``counts`` the true totals per
+    severity (``error``, ``warning``, ``info``) and ``total`` their sum, the ``names`` rows
+    by kind, the ``program`` (None: it didn't load), the run's ``seconds``, and the lint
+    findings (None: lint didn't run). Lint findings are never in ``problems`` or the
+    counts."""
+
+    problems: list[dict]
+    counts: dict[str, int]
+    total: int
+    names: dict[str, list[NameRow]]
+    program: Program | None
+    seconds: float
+    lint: tuple[Finding, ...] | None = None
+
+
 class CheckJob:
     """One check of ``paths``: config, load, launch (``launch=False``: skipped, 07 I-1),
-    names, graph; every event goes to ``emit`` as a dict, ``done`` last."""
+    lint (F41), names, graph. ``run`` sends every event to ``emit`` as a dict, ``done``
+    last; ``collect`` returns the results instead (the ``lint`` command)."""
 
     def __init__(self, paths: GamePaths, emit: Emit, *, launch: bool = True,
                  clock: Callable[[], float] = time.perf_counter) -> None:
@@ -1041,23 +1108,29 @@ class CheckJob:
         self._clock = clock
 
     def run(self) -> None:
+        outcome = self.collect()
+        emit_results(self.emit, outcome.problems, outcome.total, outcome.names,
+                     outcome.program, outcome.seconds)
+
+    def collect(self) -> CheckOutcome:
         started = self._clock()
         paths = self.paths
+        counts = dict.fromkeys(SEVERITIES, 0)
         try:
             GamePaths.for_game(paths.root)               # the folder is still there
         except UserFacingError as error:
-            emit_results(self.emit, [_error_item(error, "load")], 1, {}, None,
-                         self._clock() - started)
-            return
+            counts["error"] = 1
+            return CheckOutcome([_error_item(error, "load")], counts, 1, {}, None,
+                                self._clock() - started)
         problems: list[dict] = []
-        total = 0
 
         config_result = load_config(paths)
         config = config_result.config
         for error in config_result.errors:
             problems.append(_config_item(error))
         problems += [_config_warning(text) for text in config_result.warnings]
-        total += len(config_result.errors) + len(config_result.warnings)
+        counts["error"] += len(config_result.errors)
+        counts["warning"] += len(config_result.warnings)
 
         options = LoadOptions(collect_todos=True,
                               position_names=frozenset(config.stage.positions),
@@ -1072,8 +1145,9 @@ class CheckJob:
         problems += [_error_item(warning, "load", "warning") for warning in loaded.warnings]
         problems += [problem_item("info", "TODO", "load", todo.text, todo.file.ref, todo.line,
                                   None) for todo in loaded.todos]
-        total += (max(loaded.error_count, len(loaded.errors)) + len(loaded.warnings)
-                  + max(loaded.todo_count, len(loaded.todos)))
+        counts["error"] += max(loaded.error_count, len(loaded.errors))
+        counts["warning"] += len(loaded.warnings)
+        counts["info"] += max(loaded.todo_count, len(loaded.todos))
         program = loaded.program
 
         launch: LaunchResult | None = None
@@ -1090,11 +1164,17 @@ class CheckJob:
             problems += [_error_item(error, "launch") for error in launch.errors]
             problems += [_error_item(warning, "launch", "warning")
                          for warning in launch.warnings]
-            total += max(launch.error_count, len(launch.errors)) + len(launch.warnings)
+            counts["error"] += max(launch.error_count, len(launch.errors))
+            counts["warning"] += len(launch.warnings)
 
-        context = CheckContext(paths, config, program, launch, namespace)
+        context = CheckContext(paths, config, program, launch, namespace, counts["error"])
+        try:
+            context = replace(context, lint=_lint_phase(context))
+        except Exception:                                # a broken lint loses its kinds only
+            pass
         names = self._names(context)
-        emit_results(self.emit, problems, total, names, program, self._clock() - started)
+        return CheckOutcome(problems, counts, sum(counts.values()), names, program,
+                            self._clock() - started, context.lint)
 
     def _names(self, context: CheckContext) -> dict[str, list[NameRow]]:
         names: dict[str, list[NameRow]] = {}
@@ -1224,6 +1304,84 @@ def check_command(game_dir: Path, *, report: bool, overlay: bool, launch: bool =
             out.flush()
 
 
-__all__ = ["CheckContext", "CheckJob", "NAME_SOURCES", "OverlayError", "OverlayPaths",
-           "check_command", "chunk_event", "emit_results", "encode_event", "problem_item",
-           "read_overlay"]
+# --- The lint command (F41 04 §7.3 step 5; PR-F41-08..11) ------------------------------------
+
+EXIT_PROBLEMS = 1                       # errors (with --strict, warnings too)
+LINT_SOURCE = "lint"
+_SUMMARY_WORDS = (("error", "errors"), ("warning", "warnings"), ("note", "notes"))
+
+
+def lint_item(finding: Finding) -> dict:
+    """A finding as a ``lint`` item: a warning from ``source: "lint"`` at its place."""
+    return problem_item("warning", finding.code, LINT_SOURCE, finding.text, finding.file,
+                        finding.line, None)
+
+
+def lint_line(item: dict) -> str:
+    """``{file}:{line}:{column}: {severity} {code}: {text}`` (PR-F41-08): missing parts drop
+    from the right, ``{file}: `` without a file, `` {code}`` without a code."""
+    head = ""
+    if item["file"] is not None:
+        head = item["file"]
+        if item["line"] is not None:
+            head += f":{item['line']}"
+            if item["column"] is not None:
+                head += f":{item['column']}"
+        head += ": "
+    code = f" {item['code']}" if item["code"] else ""
+    return f"{head}{item['severity']}{code}: {item['text']}"
+
+
+def lint_summary(errors: int, warnings: int, notes: int) -> str:
+    """``{n} errors, {n} warnings, {n} notes.`` (``1 error``, ``1 warning``, ``1 note``)."""
+    return ", ".join(f"{n} {one if n == 1 else many}" for n, (one, many)
+                     in zip((errors, warnings, notes), _SUMMARY_WORDS)) + "."
+
+
+def lint_report(outcome: CheckOutcome, *, as_json: bool) -> tuple[bytes, int, int]:
+    """The ``lint`` output of a check (UTF-8 text, or one ASCII JSON document), with its
+    error and warning totals. Items: the problems, then each lint finding; the first
+    ``CHECK_MAX_PROBLEMS`` are shown, the counts and ``more`` cover them all."""
+    found = outcome.lint or ()
+    items = outcome.problems + [lint_item(finding) for finding in found]
+    shown = items[:CHECK_MAX_PROBLEMS]
+    errors = outcome.counts["error"]
+    warnings = outcome.counts["warning"] + len(found)
+    notes = outcome.counts["info"]
+    more = max(max(outcome.total, len(outcome.problems)) + len(found) - len(shown), 0)
+    if as_json:
+        text = json.dumps({"v": REPORT_VERSION, "items": shown, "errors": errors,
+                           "warnings": warnings, "notes": notes, "more": more},
+                          ensure_ascii=True)
+        return (text + "\n").encode("ascii"), errors, warnings
+    lines = [lint_line(item) for item in shown] + [lint_summary(errors, warnings, notes)]
+    return ("\n".join(lines) + "\n").encode("utf-8"), errors, warnings
+
+
+def lint_command(game_dir: Path, *, as_json: bool, strict: bool) -> int:
+    """The engine side of ``python -m engine lint [GAME_DIR] [--json] [--strict]``: a full
+    check (config, load, launch, lint) printed for editors and CI, paths relative to the
+    game folder. Exit 0 when there are no errors, 1 with errors (with ``strict``, with
+    warnings too), 2 when ``game_dir`` isn't a game folder (its message on stderr). Writes
+    nothing in the game folder, and the author's ``print`` can't reach the output."""
+    sys.dont_write_bytecode = True
+    _quiet_logs()
+    try:
+        root = GamePaths.for_game(game_dir).root
+    except UserFacingError as error:
+        sys.stderr.write(f"{error.message}\n")
+        return EXIT_BAD_INPUT
+    out = _isolate_stdout()
+    try:
+        outcome = CheckJob(GamePaths(root), lambda event: None).collect()
+        data, errors, warnings = lint_report(outcome, as_json=as_json)
+        out.write(data)
+    finally:
+        out.flush()
+    return EXIT_PROBLEMS if errors or (strict and warnings) else EXIT_DONE
+
+
+__all__ = ["CheckContext", "CheckJob", "CheckOutcome", "NAME_SOURCES", "OverlayError",
+           "OverlayPaths", "check_command", "chunk_event", "emit_results", "encode_event",
+           "lint_command", "lint_item", "lint_line", "lint_report", "lint_summary",
+           "problem_item", "read_overlay"]

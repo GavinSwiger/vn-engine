@@ -82,6 +82,9 @@ SHARED_BUILD_USERS = {"engine.tools.editor"}
 # F41 (04 §3; F43 07 I-9): tools/lint.py, the linter's rules, has tools/check.py's row; it
 # never imports tools.check (check imports lint).
 SUBPACKAGES[("tools", "lint")] = {"core", "script", "runtime"}
+# Narrow sibling exceptions to the sub-package rule: importer → the one module it may load.
+# F41 P3 (04 §3): the check child runs the linter's rules.
+SUBPACKAGE_ALLOWED: dict[str, tuple[str, ...]] = {"engine.tools.check": ("engine.tools.lint",)}
 
 
 def _module_name(path: Path, engine_dir: Path) -> list[str]:
@@ -215,7 +218,9 @@ def scan(engine_dir: Path) -> list[str]:
                 continue
             if own_prefix and layer != ROOT_LAYER \
                     and layer == name.split(".")[1] == own_prefix.split(".")[1] \
-                    and not (name + ".").startswith(own_prefix + "."):
+                    and not (name + ".").startswith(own_prefix + ".") \
+                    and not any((name + ".").startswith(ok + ".")
+                                for ok in SUBPACKAGE_ALLOWED.get(own_prefix, ())):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
             elif own_prefix and any(name == banned or name.startswith(banned + ".")
                                     for banned in SUBPACKAGE_BANNED.get(own_prefix, ())):
