@@ -97,7 +97,7 @@ from engine.render.typewriter import (
     Waiting,
     deliver,
 )
-from engine.runtime.commands import Advance, NvlPage, Say
+from engine.runtime.commands import Advance, NvlPage, Say, Span, TaggedText
 from engine.ui.builtin.nvl_page import NvlPresenter
 from engine.ui.input import UiEvent
 from engine.ui.screen import InGameOverlay, Screen
@@ -195,6 +195,10 @@ class TextboxScreen(Screen):
         # F14 A4, NVL branch (I-8): F17 Step 2's mode switch sets this to its NVL window while
         # NVL is shown (None in ADV), so ``cue_anchor``/``set_bump`` answer for the panel.
         self.nvl_cue: CueTarget | None = None
+        # F30 (04 §6.4, §6.6): the player's name for {username} spans (None: the fallback
+        # word), and the shell's clean capture, called before a frame that draws the name.
+        self._name_source: Callable[[], str | None] = lambda: None
+        self._clean_capture: Callable[[Canvas], None] | None = None
 
     # -- settings --
 
@@ -328,6 +332,56 @@ class TextboxScreen(Screen):
         self.view.forget_line()
         self.nvl_view.forget_line()
 
+    # -- F30: the player's name --
+
+    def set_name_source(self, fn: Callable[[], str | None]) -> None:
+        """F30 (04 §4.3): where ``{username}`` spans get the name (``app``'s
+        ``UsernameSource.name``); None from ``fn`` draws the span's fallback word."""
+        self._name_source = fn
+        self.nvl.name_source = fn
+
+    def set_clean_capture(self, fn: Callable[[Canvas], None] | None) -> None:
+        """F30 (04 §6.6): called with the canvas at the start of a draw that shows the name,
+        before the box is drawn, so a thumbnail taken this frame leaves the box out."""
+        self._clean_capture = fn
+
+    def name_drawn(self) -> bool:
+        """F30 SEC-F30-03(a): the box is shown, the source gives a name, and the current line
+        (any page, revealed or not) or any entry on the NVL page holds a ``{username}``
+        span."""
+        if not self.box_shown:
+            return False
+        line = self.line
+        holds = (line is not None and _holds_name(line.body)) or self.nvl.holds_name()
+        return holds and self._name_source() is not None
+
+    def names_changed(self) -> None:
+        """F30 (04 §6.4 step 5; the ``username_use`` listener): lay the shown line out again
+        with the name now allowed (or not) and show it complete. No say listener runs, no
+        typing event goes out, and no ``Advance`` is posted. NVL lays its page out again."""
+        self.nvl.names_changed()
+        line = self.line
+        if line is None or not _holds_name(line.body):
+            return
+        if self.nvl.on:
+            entry = self.nvl.current
+            if entry is None:
+                return
+            ctx = self.nvl.ctx_for(self.nvl.entries[entry])
+        else:
+            if self.layout is None:
+                return
+            ctx = replace(self.layout.ctx, name=self._name_source())
+        layout = LineLayout(line.body, ctx)
+        typer = Typewriter(layout, self.cps)
+        typer.complete_all()
+        typer.take_events()
+        self.layout, self.typer = layout, typer
+        self._laid_ahead = 0
+        self._bob_t = 0.0
+        self.view.forget_line()
+        self.nvl_view.forget_line()
+
     # -- F17: NVL --
 
     @property
@@ -403,7 +457,8 @@ class TextboxScreen(Screen):
             theme = self.config.theme.textbox
             geometry = box_geometry(theme, self.text_size())
             ctx = LayoutContext(self.view.assets, self.faces, geometry.text_size,
-                                rgb_hex(theme.text_color), geometry.area[2], geometry.area[3])
+                                rgb_hex(theme.text_color), geometry.area[2], geometry.area[3],
+                                self._name_source() if _holds_name(cmd.body) else None)
             layout = LineLayout(cmd.body, ctx)
             self.geometry = geometry
             self._fx_t = 0.0                       # F29: ADV line time starts again
@@ -584,6 +639,8 @@ class TextboxScreen(Screen):
 
     def draw(self, canvas: Canvas) -> None:
         shown = self.box_shown
+        if shown and self._clean_capture is not None and self.name_drawn():
+            self._clean_capture(canvas)            # F30: the picture before the box
         if shown:
             if self.nvl.on:
                 self._draw_nvl(canvas)
@@ -623,6 +680,11 @@ class TextboxScreen(Screen):
             bob = 0.0 if self.reduce_motion() else bob_offset(self._bob_t)
             view.draw_indicator(canvas, page, self._line_id, typer.shown, geometry,
                                 page_kind=kind == "page", bob=bob)
+
+
+def _holds_name(body: TaggedText) -> bool:
+    """F30: ``body`` holds a ``{username}`` span."""
+    return any(isinstance(piece, Span) and piece.style.username for piece in body.pieces)
 
 
 def _is_hex(color: str | None) -> bool:

@@ -224,7 +224,7 @@ def test_ac_f16_03_example_encodes_to_the_04_4_text():
     assert data == EXAMPLE
     assert data == (FILES / "valid.json").read_bytes()
     lines = data.decode("ascii").splitlines()
-    assert lines[1] == '  "format": 2,' and lines[3] == '    "music_volume": 40,'   # indent=2
+    assert lines[1] == '  "format": 3,' and lines[3] == '    "music_volume": 40,'   # indent=2
     assert _ordered_pairs(data) == [
         ["music_volume", "reduce_motion", "text_size_pct", "window_size"],
         ["format", "values"]]
@@ -234,7 +234,7 @@ def test_ac_f16_03_example_encodes_to_the_04_4_text():
 
 def test_ac_f16_03_empty_values():
     data = encode_settings({})
-    assert json.loads(data) == {"format": 2, "values": {}}
+    assert json.loads(data) == {"format": 3, "values": {}}
     assert parse_settings(data).outcome is Outcome.OK
 
 
@@ -328,16 +328,17 @@ def test_ac_f16_04_parse_outcomes(monkeypatch):
     assert [p.key for p in loaded.problems] == list(KEYS)
     assert [p.found for p in loaded.problems] == [
         "5", "400", "24", "text", "1", "-1", "101", "null", "a long number", "an object",
-        "a list", "0", "text", "a decimal number", "text", "text", "a list", "1001"]
+        "a list", "0", "text", "a decimal number", "text", "text", "a list", "1001", "3",
+        "text"]
 
     loaded = parse_settings((FILES / "newer.json").read_bytes())
     assert loaded.outcome is Outcome.NEWER and not loaded.writable
     assert dict(loaded.values) == {"music_volume": 40}
     assert loaded.problems == () and loaded.unknown == 1
     for data, values in [
-            (b'{"format": 3, "values": {"music_volume": 40}, "extra": 1}', {"music_volume": 40}),
-            (b'{"format": 3, "values": "x"}', {}),
-            (b'{"format": 3}', {}),
+            (b'{"format": 4, "values": {"music_volume": 40}, "extra": 1}', {"music_volume": 40}),
+            (b'{"format": 4, "values": "x"}', {}),
+            (b'{"format": 4}', {}),
             (b'{"format": ' + b"9" * 20 + b', "values": {"mono": true}}', {"mono": True})]:
         loaded = parse_settings(data)
         assert loaded.outcome is Outcome.NEWER and not loaded.writable, data

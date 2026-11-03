@@ -164,7 +164,7 @@ def test_ac08_precedence_defaults_and_set(tmp_path):
     clock.now = 1.0
     service.update(1.0)
     [(_, job)] = writer.fake.submitted
-    assert json.loads(job.pieces[0]) == {"format": 2, "values": {}}
+    assert json.loads(job.pieces[0]) == {"format": 3, "values": {}}
 
     # setting the current value does nothing
     window = FakeWindow()
@@ -210,7 +210,7 @@ def test_reset_clears_and_applies_only_what_changed(tmp_path):
     assert heard == [frozenset({"music_volume", "fullscreen"})]
     clock.now = 0.5
     service.update(0.5)
-    assert json.loads(writer.fake.submitted[0][1].pieces[0]) == {"format": 2, "values": {}}
+    assert json.loads(writer.fake.submitted[0][1].pieces[0]) == {"format": 3, "values": {}}
 
 
 # --- AC-F16-12 — fullscreen follows the window ----------------------------------------------------
@@ -600,7 +600,7 @@ def test_ac31_w72_w73(game, caplog):
     write(game, '{"format": 1, "values": {"a": 1}}')
     assert launch_logs(game, caplog)[1] == [("W72", unknown_keys_text(file, 1))]
     assert unknown_keys_text(file, 1).endswith("had 1 unknown entry; it was ignored.")
-    write(game, '{"format": 3, "values": {"music_volume": 40}}')
+    write(game, '{"format": 4, "values": {"music_volume": 40}}')
     result, logs = launch_logs(game, caplog)
     assert logs == [("W73", f"settings in {file} were made by a newer engine version, so only "
                      "the settings this version knows are used, and the file won't be "
@@ -652,13 +652,13 @@ def test_ac31_order_and_counts(game, caplog):
     digits = "0123456789abcdefghijklmnopqrstuvwxyz"
     data["values"].update({digits[i // 1296] + digits[i // 36 % 36] + digits[i % 36]: 0
                            for i in range(8000)})            # 8,000 short unknown keys
-    data["format"] = 3
+    data["format"] = 4
     text = json.dumps(data, separators=(",", ":"))
     assert len(text) <= 65_536
     write(game, text)
     _, logs = launch_logs(game, caplog)
     codes = [code for code, _ in logs]
-    assert codes == ["W73"] + ["W71"] * 18 + ["W72"]
+    assert codes == ["W73"] + ["W71"] * 20 + ["W72"]
     keys = [message.split(": ", 1)[1].split(" must", 1)[0] for code, message in logs
             if code == "W71"]
     assert keys == list(KEYS)
@@ -709,7 +709,7 @@ def test_ac32_written_files_hold_only_ints_bools_and_the_pair(real):
 
 def test_ac34_only_a_w70_launch_gives_one_notice(game, caplog):
     """AC-F16-34: no file, a newer file, and bad values give no notice; W70 gives one."""
-    for data in (None, '{"format": 3, "values": {}}',
+    for data in (None, '{"format": 4, "values": {}}',
                  '{"format": 1, "values": {"x": 1, "music_volume": 900}}'):
         if data is not None:
             write(game, data)

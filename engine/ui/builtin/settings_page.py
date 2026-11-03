@@ -108,9 +108,15 @@ GROUPS: Final[tuple[tuple[str, tuple[tuple[str, str, RowKind], ...]], ...]] = (
                         ("audio_unfocused", "audio_unfocused", "toggle"),
                         ("audio_minimized", "audio_minimized", "toggle"),
                         ("mono", "mono", "toggle"))),
-    ("settings_data", (("reset_settings", "", "button"),
+    ("settings_data", (("settings_username", "username_use", "toggle"),      # F30
+                       ("settings_crash_label", "crash_label", "toggle"),     # F30
+                       ("reset_settings", "", "button"),
                        ("delete_progress", "", "button"))),
 )
+
+
+# F30 (04 §6.7): rows shown only when the port's ``row_shown`` says so (hidden without it).
+RULED_ROWS: Final = frozenset({"settings_username", "settings_crash_label"})
 
 
 @dataclass
@@ -280,6 +286,9 @@ class SettingsPage(MenuPageBase):
             for word, key, kind in rows:
                 if word == "delete_progress" and not title:
                     continue
+                row_shown = getattr(port, "row_shown", None)            # F30 (04 §6.7)
+                if not (row_shown(word) if row_shown is not None else word not in RULED_ROWS):
+                    continue
                 widget = self._widget(word, key, kind)
                 self.widgets[word] = widget
                 items.append(_Item(word, widget, button=kind == "button"))
@@ -299,6 +308,10 @@ class SettingsPage(MenuPageBase):
     def _widget(self, word: str, key: str, kind: RowKind) -> Widget:
         port = self.port
         label = self._word(word)
+        if word == "settings_username":         # F30: on is 2 (allowed); off stores 1
+            return Toggle(label, lambda: port.value(key) == 2,
+                          lambda on: port.set(key, 2 if on else 1),
+                          state_word=self._state_word)
         if word == "reduce_motion":
             return Toggle(label, self._reduce_shown, lambda on: port.set(key, on),
                           enabled=lambda: not port.locked(key), state_word=self._state_word)
@@ -507,5 +520,5 @@ def _quick(ctx: EntryContext) -> None:
     open_settings_from_quick(ctx.shell, ctx.by)
 
 
-__all__ = ["GROUPS", "INSTANT", "SettingsColumn", "SettingsPage", "SettingsPort",
+__all__ = ["GROUPS", "INSTANT", "RULED_ROWS", "SettingsColumn", "SettingsPage", "SettingsPort",
            "open_settings_from_quick", "register_settings"]

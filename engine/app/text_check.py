@@ -66,6 +66,13 @@ F17 (``04`` §7.6, SR-F17-06, 07 I-8, I-11), dev runs too:
 
 Records are logged in this order when the check ends: W41, W100 (theme, then characters),
 W40, W40b, W101, W101s in area ``text``, then W47 in area ``choice``.
+
+F30 (``04`` §6.8; SEC-F30-13), dev runs too, worked out at once when the check is made
+(``fourthwall_warnings``) and logged after the rest: **W189** at the first line using
+``{username}`` while ``[meta] username`` is off, then ``…and N more lines use {username}.``
+(area ``text``); **W190** at the first piece of author Python naming ``getpass``,
+``getlogin``, ``USERNAME``, ``LOGNAME``, or ``os.environ``, then ``…and N more lines read
+identity.`` (area ``script``). Neither blocks the launch.
 """
 
 import ast
@@ -89,6 +96,7 @@ from engine.runtime.character import Character
 from engine.runtime.commands import NameMark, NvlPage, Say, Span, Style, TaggedText, VarMark
 # Through runtime: only loading.py of engine.app imports engine.script (AC-F02-66).
 from engine.runtime.errors import format_message
+from engine.runtime.fourthwall import identity_lines, name_lines   # F30 W189, W190
 from engine.runtime.nvl import Nvl                 # F17 07 I-8: the statement, through runtime
 from engine.runtime.text import format_value
 from engine.ui.blips import BlipPlayer
@@ -112,6 +120,7 @@ W101_MAX_LINES: Final = 20                # F17: W101 records, then one W101s (a
 
 _log = get_logger("text")
 _choice_log = get_logger("choice")        # F07 W47 (07 I-11)
+_script_log = get_logger("script")        # F30 W190
 
 
 # --- Contrast (UI-F05-05, W41, W44) -----------------------------------------------------------
@@ -401,6 +410,8 @@ class TextLaunchCheck:
         self.nvl_ctx = {named: line_context(assets, faces, self.nvl, metrics, named)
                         for named in (False, True)}
         self.warnings: tuple[str, ...] = ()
+        # F30 W189/W190 as (area, text), logged after the rest (fourthwall_warnings).
+        self.fourthwall: tuple[tuple[str, str], ...] = ()
         self._found: list[str] = []
         self._w100: list[str] = []            # F17 character form, kept until the walk ends
         self._w101: list[str] = []
@@ -469,9 +480,12 @@ class TextLaunchCheck:
         return self.warnings
 
     def log(self) -> None:
-        """W41, W40, W40b in area ``text``, then W47 in area ``choice`` (F07 07 I-11)."""
+        """W41, W40, W40b in area ``text``, then W47 in area ``choice`` (F07 07 I-11), then
+        F30's W189 (area ``text``) and W190 (area ``script``)."""
         for index, text in enumerate(self.warnings):
             (_log if index < self._text_count else _choice_log).warning("%s", text)
+        for area, text in self.fourthwall:
+            (_log if area == "text" else _script_log).warning("%s", text)
 
     # -- F07: menus (W40 on the question, W47 per choice) --
 
@@ -697,15 +711,38 @@ def text_launch_check(app: "App", program: object, G: Mapping[str, object]
     if not app.dev or textbox is None:
         return None
     choices = getattr(app, "choices", None)
-    return TextLaunchCheck(program, G, assets=app.assets, faces=textbox.faces,
-                           theme=app.config.theme.textbox,
-                           choice_theme=app.config.theme.choice,
-                           choice_faces=getattr(choices, "faces", None),
-                           nvl=nvl_look(app.config.theme))
+    check = TextLaunchCheck(program, G, assets=app.assets, faces=textbox.faces,
+                            theme=app.config.theme.textbox,
+                            choice_theme=app.config.theme.choice,
+                            choice_faces=getattr(choices, "faces", None),
+                            nvl=nvl_look(app.config.theme))
+    meta = app.config.meta
+    check.fourthwall = fourthwall_warnings(program, offered=meta.username,
+                                           fallback=meta.username_fallback)
+    return check
+
+
+def fourthwall_warnings(program: object, *, offered: bool, fallback: str
+                        ) -> tuple[tuple[str, str], ...]:
+    """F30's dev warnings as ``(area, text)`` (module docstring): W189 and its summary when
+    ``offered`` is False, then W190 and its summary. ``program`` is a loaded story."""
+    out: list[tuple[str, str]] = []
+    for area, lines, code, summary in (
+            ("text", [] if offered else name_lines(program), "W189", "W189s"),   # type: ignore
+            ("script", identity_lines(program), "W190", "W190s")):              # type: ignore
+        if not lines:
+            continue
+        ref, line = lines[0]
+        args = (fallback,) if code == "W189" else ()
+        out.append((area, UserFacingError(format_message(code, args), file=ref or None,
+                                          line=line).format()))
+        if len(lines) > 1:
+            out.append((area, format_message(summary, (len(lines) - 1,))))
+    return tuple(out)
 
 
 __all__ = ["NAME_MIN_RATIO", "TEXT_CHECK_CHARS", "TEXT_CHECK_CHUNK", "TEXT_MIN_RATIO", "W40_MAX_LINES",
            "W47_MAX_CHOICES", "W101_MAX_LINES", "TextLaunchCheck", "box_colors_warning", "box_contrast",
-           "character_warnings", "composite", "contrast_ratio", "install_blips", "install_nvl", "install_textbox",
+           "character_warnings", "composite", "contrast_ratio", "fourthwall_warnings", "install_blips", "install_nvl", "install_textbox",
            "nvl_character_warning", "nvl_colors_warnings", "relative_luminance", "resolve_faces",
            "text_launch_check", "w47_more"]

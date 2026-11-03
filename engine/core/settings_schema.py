@@ -24,13 +24,12 @@ from typing import Final
 
 Value = int | bool | tuple[int, int]
 
-FORMAT: Final = 2                       # 2: F33's warning_seen
+FORMAT: Final = 3                       # 2: F33's warning_seen; 3: F30's two keys
 MAX_FILE_BYTES: Final = 65_536          # 64 KiB read cap (PR-F16-22)
 MAX_INT_DIGITS: Final = 20              # longer integers parse as "a long number"
 MAX_FOUND_CHARS: Final = 7              # TR-F16-03: no file text longer than 7 characters
 TEXT_SIZE_MAX: Final = 48               # F05's largest text size (TEXT_SIZE_RANGE)
 # F30 (SEC-F30-07): the consent defaults are engine constants, never read from config.toml.
-# Their keys (``username_use``, ``crash_label``) and FORMAT 3 come with F30 step 5.
 USERNAME_USE_DEFAULT: Final = 0         # 0 never answered, 1 don't allow, 2 allow
 CRASH_LABEL_DEFAULT: Final = False      # "Label fake error screens" off
 
@@ -110,6 +109,8 @@ KEYS: Final[Mapping[str, KeySpec]] = MappingProxyType({
     "reduce_motion": BoolKey(),
     "window_size": SizeKey(),
     "warning_seen": IntKey(1, 1000, zero=True),       # F33 (format 2)
+    "username_use": IntKey(0, 2),                     # F30 (format 3): 2 = allowed
+    "crash_label": BoolKey(),                         # F30 (format 3)
 })
 
 
@@ -176,6 +177,6 @@ def effective_text_size(base: int, pct: int) -> int:
     return min(TEXT_SIZE_MAX, (2 * base * pct + 100) // 200)
 
 
-__all__ = ["BoolKey", "FORMAT", "IntKey", "KEYS", "KeySpec", "LONG_NUMBER", "LongNumber",
+__all__ = ["BoolKey", "CRASH_LABEL_DEFAULT", "FORMAT", "IntKey", "KEYS", "KeySpec", "LONG_NUMBER", "LongNumber",
            "MAX_FILE_BYTES", "MAX_FOUND_CHARS", "MAX_INT_DIGITS", "Problem", "SizeKey",
-           "TEXT_SIZE_MAX", "Value", "check", "effective_text_size", "found_word"]
+           "TEXT_SIZE_MAX", "USERNAME_USE_DEFAULT", "Value", "check", "effective_text_size", "found_word"]

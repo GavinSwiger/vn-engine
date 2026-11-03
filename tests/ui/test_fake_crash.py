@@ -115,3 +115,42 @@ def test_ac_f30_18_the_crash_screens_fixed_look(monkeypatch):
                         or real(self, font, size_px))
     drawn(monkeypatch, crash("x"), size=(640, 360))
     assert (28, 14) in sizes and not [s for f, s in sizes if f == 28 and s not in (14, 28)]
+
+
+# --- F30 step 5: AC-F30-36 ---------------------------------------------------------------------
+
+def test_ac_f30_36_label_fake_error_screens(monkeypatch):
+    from types import SimpleNamespace
+
+    from engine.app.settings import SettingsService
+    from engine.core.config_schema import Config
+    from engine.persist.settings_file import LoadedSettings, Outcome
+    from engine.ui.builtin.settings_page import SettingsPage
+
+    def labelled(label):
+        screen = FakeCrashScreen(message="x", game_title="Paper Test", game_version="1.0",
+                                 hint=WORDS.get("fake_crash_hint"), label=label, fade=False,
+                                 on_continue=lambda: None, waiting=lambda: True,
+                                 stack=ScreenStack())
+        calls, _ = drawn(monkeypatch, screen)
+        return [(c.text, c.font.size, c.color, c.pos) for c in calls if c.pos[1] == 680]
+
+    assert labelled(WORDS.get("fake_crash_label")) == [
+        ("This is part of the story.", 28, DETAIL, (80, 680))]
+    story = Words(WordsConfig(fake_crash_label="Story event."))
+    assert labelled(story.get("fake_crash_label"))[0][0] == "Story event."
+    assert labelled(None) == []
+    # The row: in the Data group iff the story has an `effect crash`; default off; Reset.
+    host = SimpleNamespace(shell=SimpleNamespace(words=WORDS))
+    for crash in (True, False):
+        settings = SettingsService(LoadedSettings({}, Outcome.OK), Config())
+        settings.row_rules["settings_crash_label"] = lambda crash=crash: crash
+        widgets = SettingsPage(host, settings, title=False).widgets
+        assert ("settings_crash_label" in widgets) is crash
+    settings.row_rules["settings_crash_label"] = lambda: True
+    row = SettingsPage(host, settings, title=False).widgets["settings_crash_label"]
+    assert row.get() is False
+    row.set(True)
+    assert settings.value("crash_label") is True
+    settings.reset()
+    assert row.get() is False

@@ -105,12 +105,13 @@ def hex_color(color: RGB) -> str:
 
 
 def line_context(assets: object, faces: FaceSet, look: NvlLook, m: NvlMetrics,
-                 named: bool) -> LayoutContext:
+                 named: bool, name: str | None = None) -> LayoutContext:
     """A line's layout context: the area's width, its height less a name row when the line
-    is ``named`` (every page of a named line repeats the name, so one height serves all)."""
+    is ``named`` (every page of a named line repeats the name, so one height serves all).
+    ``name`` (F30): the player's name for ``{username}`` spans, or None."""
     name_h = m.pitch if named else 0
     return LayoutContext(assets, faces, m.size, hex_color(look.text_color), m.width,
-                         m.height - name_h)
+                         m.height - name_h, name)
 
 
 # --- Heights (04 §7.3) ----------------------------------------------------------------------------
@@ -132,7 +133,8 @@ _stats = [0, 0]                         # hits, misses
 def heights(line: NvlLine, m: NvlMetrics, ctx: LayoutContext) -> Heights:
     """``line``'s heights in ``ctx`` (``line_context``), from the LRU when known. Computed
     from ``TaggedText(line.spans)`` by ``LineLayout``'s breaking, without glyph positions."""
-    key = (line, ctx.width, ctx.height, ctx.text_size, tuple(ctx.faces.faces.items()))
+    key = (line, ctx.width, ctx.height, ctx.text_size, tuple(ctx.faces.faces.items()),
+           ctx.name)
     found = _heights.get(key)
     if found is not None:
         _heights.move_to_end(key)

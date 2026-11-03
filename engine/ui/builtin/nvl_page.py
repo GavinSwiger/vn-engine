@@ -34,7 +34,8 @@ Presentation-only: nothing here reaches the runtime (PR-F17-13). Imports ``core`
 from collections.abc import Callable
 from typing import Final
 
-from engine.render.nvllayout import (NvlLook, NvlMetrics, PagePlan, Row, empty_plan, heights,
+from engine.render.nvllayout import (NvlLook, NvlMetrics, PagePlan, Row, clear_heights,
+                                     empty_plan, heights,
                                      line_context, nvl_metrics, plan_add, plan_from)
 from engine.render.textlayout import FaceSet, LayoutContext, LineLayout, Page
 from engine.runtime.commands import NvlLine, Say, TaggedText
@@ -59,6 +60,8 @@ class NvlPresenter:
         self._view_of: tuple[PagePlan, PagePlan] | None = None   # (plan, its view plan)
         self.version = 0                      # bumped on every change of plan or entries
         self._layouts: dict[int, tuple[NvlLine, NvlMetrics, LineLayout]] = {}
+        # F30 (04 §6.4): the player's name for {username} spans; None draws the fallback.
+        self.name_source: Callable[[], str | None] = lambda: None
 
     # -- geometry --
 
@@ -68,7 +71,21 @@ class NvlPresenter:
     def ctx_for(self, line: NvlLine, m: NvlMetrics | None = None) -> LayoutContext:
         """``line``'s layout context at ``m`` (default: the plan's): a name takes a row."""
         return line_context(self.assets, self.faces, self.look,
-                            self.metrics if m is None else m, bool(line.name))
+                            self.metrics if m is None else m, bool(line.name),
+                            self.name_source() if has_name_span(line) else None)
+
+    def holds_name(self) -> bool:
+        """F30 SEC-F30-03(a): some entry on the page holds a ``{username}`` span."""
+        return self.on and any(has_name_span(line) for line in self.entries)
+
+    def names_changed(self) -> None:
+        """F30 (04 §6.4 step 5): the name was allowed or turned off; lay the page out
+        again, as a text-scale change does (the heights cache is keyed by the name too)."""
+        if not any(has_name_span(line) for line in self.entries):
+            return
+        clear_heights()
+        self._layouts.clear()
+        self._replan(self.metrics)
 
     def rows(self) -> tuple[Row, ...]:
         """The rows on screen: a menu's view plan while one is set, else the page."""
@@ -195,4 +212,9 @@ class NvlPresenter:
             self.current = self.current - 1 if self.current > 0 else None
 
 
-__all__ = ["CHOICE_GAP", "NvlPresenter"]
+def has_name_span(line: NvlLine) -> bool:
+    """``line`` holds a ``{username}`` span (its record keeps the flag, F30 step 3)."""
+    return any(span.style.username for span in line.spans)
+
+
+__all__ = ["CHOICE_GAP", "NvlPresenter", "has_name_span"]

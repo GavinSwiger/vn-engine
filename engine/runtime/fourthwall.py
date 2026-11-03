@@ -24,6 +24,8 @@ shows, but only the title is story state. So the runtime keeps:
 Settings row rule, W189). Pure: no file, clock, randomness, pygame, or ``engine.meta``.
 """
 
+import dataclasses
+import re
 from collections.abc import Iterator
 from functools import partial
 from typing import TYPE_CHECKING
@@ -32,7 +34,7 @@ from engine.runtime.commands import FakeCrash, NameMark, TaggedText, WindowTitle
 from engine.runtime.stage import flush_stage
 from engine.runtime.text import resolve_tagged
 from engine.script.fourthwall import CrashEffect, TitleEffect
-from engine.script.nodes import Say, Statement
+from engine.script.nodes import PyCode, Say, Statement
 from engine.script.program import Program
 
 if TYPE_CHECKING:
@@ -127,5 +129,40 @@ def name_lines(program: Program) -> list[tuple[str, int]]:
     return out
 
 
-__all__ = ["clear_title", "hold_restored", "name_lines", "restored_title", "run_crash",
+# W190 (SEC-F30-13): words in author Python that read OS identity (a lexical scan).
+_IDENTITY = re.compile(r"\b(?:getpass|getlogin|USERNAME|LOGNAME)\b|\bos\s*\.\s*environ\b")
+
+
+def _codes(node: object) -> Iterator[PyCode]:
+    """Every ``PyCode`` held by ``node``'s fields (one level, tuples included)."""
+    if not dataclasses.is_dataclass(node):
+        return
+    for f in dataclasses.fields(node):
+        value = getattr(node, f.name, None)
+        if isinstance(value, PyCode):
+            yield value
+        elif isinstance(value, tuple):
+            for item in value:
+                if isinstance(item, PyCode):
+                    yield item
+                elif dataclasses.is_dataclass(item) and not isinstance(item, Statement):
+                    yield from _codes(item)
+
+
+def identity_lines(program: Program) -> list[tuple[str, int]]:
+    """``(file ref, line)`` of each piece of author Python (``$`` lines, ``define``,
+    ``default``, conditions) naming ``getpass``, ``getlogin``, ``USERNAME``, ``LOGNAME``, or
+    ``os.environ`` (W190, SEC-F30-13), comments left out, in reading order."""
+    out: list[tuple[str, int]] = []
+    nodes = (*program.defines, *program.defaults,
+             *getattr(program, "persistent_defaults", ()), *_statements(program))
+    for node in nodes:
+        for code in _codes(node):
+            if _IDENTITY.search(code.without_comments()):
+                file = getattr(node, "file", None)
+                out.append((getattr(file, "ref", ""), code.line))
+    return out
+
+
+__all__ = ["clear_title", "hold_restored", "identity_lines", "name_lines", "restored_title", "run_crash",
            "run_title", "title_ok", "uses_crash"]

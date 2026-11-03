@@ -38,6 +38,7 @@ from engine.runtime.launch import run_launch
 from engine.script import LoadOptions, load_story as _load_story
 from engine.script.messages import format_message
 from tests.fakes.text_app import Session, make_text_game
+from tests.fakes.username import no_real_username, reader  # noqa: F401  (name guard)
 from tests.fixtures.F05.gen_text_corpus import write_game as write_corpus
 from tests.render.conftest import make_assets
 
@@ -494,3 +495,60 @@ def test_ac47_the_example_game_launches_without_warnings(tmp_path, caplog):
                                     inputs=inputs, minigames=example_minigames())
             assert commands[-1] == StoryEnded(), seed
     assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+# --- F30 step 5: AC-F30-34 (W189), AC-F30-35 (W190) ----------------------------------------------
+
+def _f30_logs(tmp_path, monkeypatch, caplog, script: str, *, offer: bool, dev: bool = True):
+    from engine.app import fourthwall
+    monkeypatch.setattr(fourthwall, "read_login_name", reader())
+    root = make_text_game(tmp_path / f"g{offer}{dev}", script=script,
+                          config=f"[meta]\nusername = {'true' if offer else 'false'}\n")
+    s = Session(root, dev=dev)
+    caplog.clear()
+
+    def run(s: Session):
+        yield from s.until(lambda: s.line_text() is not None)
+        for _ in range(30):
+            yield
+
+    with caplog.at_level(logging.DEBUG):
+        s.play(run, last=600)
+    return [(r.name.rsplit(".", 1)[-1], r.getMessage()) for r in caplog.records
+            if r.levelno >= logging.WARNING]
+
+
+def test_ac_f30_34_w189_the_offer_is_off(tmp_path, monkeypatch, caplog):
+    lines = ['define hana = Character("Hana")', "label start:"] + ['    "Plain."'] * 28
+    for n in (7, 12, 15, 20, 30):
+        lines[n - 1] = '    hana "Hi, {username}."'
+    script = "\n".join(lines) + "\n"
+    logs = _f30_logs(tmp_path, monkeypatch, caplog, script, offer=False)
+    w189 = [(area, m) for area, m in logs if "username" in m]
+    assert len(w189) == 2, w189
+    assert w189[0][0] == "text" and "line 7: this line uses {username}, but [meta] username " \
+        'is off in config.toml, so every player sees "friend". Set username = true under ' \
+        "[meta] to let players choose." in w189[0][1]
+    assert w189[1] == ("text", "…and 4 more lines use {username}.")
+    assert not [m for _, m in _f30_logs(tmp_path, monkeypatch, caplog, script, offer=False,
+                                        dev=False) if "username" in m]
+    assert not [m for _, m in _f30_logs(tmp_path, monkeypatch, caplog, script, offer=True)
+                if "{username}" in m]
+
+
+def test_ac_f30_35_w190_identity_in_dollar_code(tmp_path, monkeypatch, caplog):
+    lines = ["init:", "label start:"] + ['    "Plain."'] * 14
+    lines[0] = "define hana = Character(\"Hana\")"
+    lines[8] = "    $ me = getpass.getuser() if False else 'x'"
+    lines[11] = "    $ env = 'os.environ' and len(str(os.environ)) if False else 0"
+    lines[14] = '    $ k = "USERNAME"'
+    script = "\n".join(lines) + "\n"
+    logs = _f30_logs(tmp_path, monkeypatch, caplog, script, offer=True)
+    w190 = [(area, m) for area, m in logs if "reads the computer's user name" in m
+            or "read identity" in m]
+    assert len(w190) == 2, logs
+    assert w190[0][0] == "script" and "line 9: this Python code reads the computer's user " \
+        "name or environment." in w190[0][1]
+    assert w190[1] == ("script", "…and 2 more lines read identity.")
+    assert not [m for _, m in _f30_logs(tmp_path, monkeypatch, caplog, script, offer=True,
+                                        dev=False) if "identity" in m or "user name" in m]

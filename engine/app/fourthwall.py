@@ -19,18 +19,35 @@ once per launch by ``install_fourthwall`` (from ``install_story``):
   ``[words]`` hint, the label only when the player turned it on, and a fade only under
   reduced effects.
 
-Step 5 adds the player's name (``name_source``, the ``UsernameSource`` wiring, W188, and the
-redaction term); until then ``name_source`` gives None and a ``{username}`` span shows its
-fallback word. Only this module may import ``engine.meta.username``.
+- **The name** (step 5, ``04`` §6.3, §6.4, §6.7; SEC-F30-01, 03, 04, 07): a real
+  ``UsernameSource`` exists only when the author offers the name (``[meta] username``) and
+  the launch has no F44 start options; otherwise ``name_source`` gives None and every
+  ``{username}`` span draws its fallback word. The source reads (``read_login_name``, looked
+  up here at install time so tests swap in a fake reader) only while ``username_use`` is 2,
+  at most once per opt-in, at the first draw of a line holding the name. An unreadable name
+  logs W188 once per session (it names only the fallback word). The first name read (3
+  graphemes or more) becomes ``redact``'s session term, so a leaked exception text shows
+  ``<user>``; ``forget()`` clears it. The textbox and the NVL page get ``name`` as their
+  source and ``names_changed`` as the ``username_use`` listener. The Settings rows follow
+  ``row_rules``: the name row iff ``[meta] username``, the label row iff the story has an
+  ``effect crash``. ``UsernameGate`` answers the first-launch question (``due``/``answer``)
+  for the shell's pre-title slot.
+
+Only this module may import ``engine.meta.username``. Nothing here logs or stores the name.
 """
 
 import unicodedata
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Final
 
+from engine.core import redact
 from engine.core.constants import WINDOW_TITLE_MAX
+from engine.core.graphemes import graphemes
 from engine.core.logsetup import get_logger
+from engine.meta.username import UsernameSource, read_login_name
 from engine.runtime.commands import FakeCrash, WaitDone, WindowTitle
+from engine.runtime.errors import format_message
+from engine.runtime.fourthwall import uses_crash
 from engine.ui.builtin.fake_crash import FakeCrashScreen, crash_text
 from engine.ui.theme import Words
 
@@ -41,6 +58,7 @@ _log = get_logger("app")
 
 _REPLACED: Final = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
 _REPLACEMENT: Final = "�"
+TERM_MIN_GRAPHEMES: Final = 3          # SEC-F30-04: shorter names add no redaction term
 
 
 def display_title(text: str) -> str:
@@ -56,9 +74,55 @@ class FourthWall:
 
     def __init__(self, app: "App") -> None:
         self.app = app
-        # F30 s5: the player's name for ``{username}`` (``UsernameSource.name``); None: the
-        # fallback word.
+        # F30 s5: the player's name for ``{username}`` (``name``); None: the fallback word.
         self.name_source: Callable[[], str | None] = lambda: None
+        self.source: UsernameSource | None = None
+        self.gate: UsernameGate | None = None
+        self._term = False                      # the session redaction term is set
+
+    # -- the name (04 §6.3, §6.4) --
+
+    def wire_name(self, read: Callable[[], str | None]) -> None:
+        """A real source (module docstring): only with ``[meta] username`` on, settings,
+        and no start options."""
+        app = self.app
+        settings = getattr(app, "settings", None)
+        if not app.config.meta.username or settings is None \
+                or getattr(app, "start", None) is not None:
+            return
+        self.source = UsernameSource(allowed=lambda: settings.value("username_use") == 2,
+                                     read=read, on_failure=self._w188)
+        self.name_source = self.name
+
+    def name(self) -> str | None:
+        """The name to draw, or None; the first name read becomes the redaction term."""
+        source = self.source
+        if source is None:
+            return None
+        name = source.name()
+        if name is not None and not self._term and len(graphemes(name)) >= TERM_MIN_GRAPHEMES:
+            redact.set_session_term(name)
+            self._term = True
+        return name
+
+    def settings_changed(self, keys: frozenset[str]) -> None:
+        """The ``username_use`` listener: off forgets the name and its term; the textbox
+        and NVL page show the line again with the name or the fallback."""
+        if "username_use" not in keys:
+            return
+        settings = getattr(self.app, "settings", None)
+        if self.source is not None and (settings is None
+                                        or settings.value("username_use") != 2):
+            self.source.forget()
+            redact.set_session_term(None)
+            self._term = False
+        textbox = getattr(self.app, "textbox", None)
+        if textbox is not None:
+            textbox.names_changed()
+
+    def _w188(self) -> None:
+        fallback = self.app.config.meta.username_fallback
+        _log.warning("%s", format_message("W188", (fallback,)), extra={"code": "W188"})
 
     # -- the title (04 §6.1) --
 
@@ -96,7 +160,8 @@ class FourthWall:
         words = self._words()
         config = app.config
         screen = FakeCrashScreen(
-            message=crash_text(cmd.body, self.name_source(), words.get("fake_crash_message")),
+            message=crash_text(cmd.body, self.name_source() if _holds_name(cmd.body) else None,
+                               words.get("fake_crash_message")),
             game_title=config.game.title, game_version=config.game.version,
             hint=words.get("fake_crash_hint"),
             label=words.get("fake_crash_label") if self._label_on() else None,
@@ -111,14 +176,14 @@ class FourthWall:
 
     def _label_on(self) -> bool:
         """The player's ``crash_label`` setting (F30 s5 adds the key; off until then)."""
-        settings = self.app.settings
+        settings = getattr(self.app, "settings", None)
         if settings is None or "crash_label" not in settings.defaults:
             return False
         return bool(settings.value("crash_label"))
 
     def _reduce(self) -> bool:
         """Reduced effects: ``[effects] reduce`` OR the player's setting (F16)."""
-        settings = self.app.settings
+        settings = getattr(self.app, "settings", None)
         if settings is not None:
             return settings.effective_reduce()
         stage = self.app.stage_screen
@@ -126,12 +191,64 @@ class FourthWall:
             else bool(self.app.config.effects.reduce)
 
 
-def install_fourthwall(app: "App") -> FourthWall:
+class UsernameGate:
+    """F30's first-launch question for the shell's pre-title slot (04 §6.7; 07 I-2):
+    ``due()`` is True at most once per session, when the author offers the name, settings
+    exist, ``username_use`` is 0 (never answered), and there are no start options.
+    ``answer(allow)`` stores 2 or 1 (the only writer besides the Settings row and Reset)."""
+
+    def __init__(self, app: "App") -> None:
+        self.app = app
+        self._asked = False
+
+    def due(self) -> bool:
+        app = self.app
+        settings = getattr(app, "settings", None)
+        due = (not self._asked and bool(app.config.meta.username) and settings is not None
+               and settings.value("username_use") == 0
+               and getattr(app, "start", None) is None)
+        if due:
+            self._asked = True
+        return due
+
+    def answer(self, allow: bool) -> None:
+        settings = getattr(self.app, "settings", None)
+        if settings is not None:
+            settings.set("username_use", 2 if allow else 1)
+
+
+def _holds_name(body: object) -> bool:
+    """``body`` (a resolved crash message, or None) holds a ``{username}`` span."""
+    pieces = getattr(body, "pieces", ())
+    return any(getattr(getattr(p, "style", None), "username", False) for p in pieces)
+
+
+def install_fourthwall(app: "App", *, read: Callable[[], str | None] | None = None
+                       ) -> FourthWall:
     """Once per launch, after ``install_ui`` (``install_story``): register ``WindowTitle`` →
     ``apply_title`` and ``FakeCrash`` → ``open_crash`` (always: the router picks the most
     specific type, so ``StageScreen``'s ``StoryWait`` handler never sees a crash), and the
-    title reset as a shell in-game reset."""
+    title reset as a shell in-game reset. Step 5: the name's source (``read``: default this
+    module's ``read_login_name``), the textbox and NVL seams, the ``username_use`` listener,
+    the Settings row rules, and the question's gate (``app.fourthwall``)."""
     fourthwall = FourthWall(app)
+    fourthwall.wire_name(read if read is not None else read_login_name)
+    fourthwall.gate = UsernameGate(app)
+    textbox = getattr(app, "textbox", None)
+    if textbox is not None:
+        textbox.set_name_source(fourthwall.name_source)
+        clean = getattr(app.shell, "clean_capture", None)      # the shell's (04 §6.6)
+        if clean is not None:
+            textbox.set_clean_capture(clean)
+    settings = getattr(app, "settings", None)
+    if settings is not None:
+        settings.add_listener(fourthwall.settings_changed)
+        offered = bool(app.config.meta.username)
+        program = getattr(getattr(app.story, "interp", None), "program", None)
+        crash = program is not None and uses_crash(program)
+        settings.row_rules["settings_username"] = lambda: offered
+        settings.row_rules["settings_crash_label"] = lambda: crash
+    app.fourthwall = fourthwall                                 # type: ignore[attr-defined]
     router = app.router
     router.unregister(WindowTitle)              # nothing else applies a title
     router.register(WindowTitle, fourthwall.apply_title)
@@ -142,4 +259,5 @@ def install_fourthwall(app: "App") -> FourthWall:
     return fourthwall
 
 
-__all__ = ["FourthWall", "display_title", "install_fourthwall"]
+__all__ = ["FourthWall", "TERM_MIN_GRAPHEMES", "UsernameGate", "display_title",
+           "install_fourthwall"]

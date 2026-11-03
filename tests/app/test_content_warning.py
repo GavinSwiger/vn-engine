@@ -83,7 +83,7 @@ def test_ac_f33_02_due():
 # --- AC-F33-03 --------------------------------------------------------------------------------
 
 def test_ac_f33_03_settings_key():
-    assert FORMAT == 2 and list(KEYS)[-1] == "warning_seen"
+    assert FORMAT >= 2 and list(KEYS).index("warning_seen") == 17   # F30 added 2 after
     assert KEYS["warning_seen"] == IntKey(1, 1000, zero=True)
     for value in (0, 1, 1000):
         assert check("warning_seen", value) is None, value
@@ -97,7 +97,7 @@ def test_ac_f33_03_settings_key():
     loaded = parse_settings(b'{"format": 1, "values": {"warning_seen": 2, "mono": true}}')
     assert loaded.outcome is Outcome.OK and loaded.writable
     assert dict(loaded.values) == {"warning_seen": 2, "mono": True}
-    assert b'"format": 2' in encode_settings({"warning_seen": 2})
+    assert b'"format": 3' in encode_settings({"warning_seen": 2})
     # Not on the Settings page; Reset clears it (so the warning shows at the next launch).
     assert "warning_seen" not in {row[1] for _, rows in GROUPS for row in rows}
     service = service_from({"warning_seen": 3, "music_volume": 40})

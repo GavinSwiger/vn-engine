@@ -21,6 +21,8 @@
       1,
       2
     ],
-    "warning_seen": 1001
+    "warning_seen": 1001,
+    "username_use": 3,
+    "crash_label": "on"
   }
 }

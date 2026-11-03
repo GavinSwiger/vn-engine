@@ -274,31 +274,281 @@ def test_ac_f30_19_input_the_guard_the_continue_inputs_and_nothing_else(tmp_path
     assert not (root / "saves").exists() or not list((root / "saves").glob("*.vnsave"))
 
 
-# --- Not built in step 4 (wind-down): the code paths exist; these tables still need tests -------
+# --- AC-F30-20 .. 24 (written in step 5; lean where noted) ---------------------------------------
 
-_LATER = "F30 s4 wound down early: behaviour built, AC table not yet written (follow-up)"
+class _Persist:
+    """A stand-in for F12's ``PersistentSync``: counts ``flush_now``; ``fail`` raises."""
 
+    def __init__(self, s: Session) -> None:
+        self.s, self.flushes, self.fail = s, [], None
 
-@pytest.mark.skip(reason=_LATER + " (fade hashes, 50% ± 3 at c + 9)")
-def test_ac_f30_20_still_with_one_cut_or_a_300_ms_fade():
-    pass
+    def flush_now(self, until=None):
+        self.flushes.append(self.s.frame)
+        if self.fail is not None:
+            raise self.fail
+        return True
 
-
-@pytest.mark.skip(reason=_LATER + " (window spy, QUIT at c + 5 quit save without picture)")
-def test_ac_f30_21_honest_and_escapable():
-    pass
-
-
-@pytest.mark.skip(reason=_LATER + " (skip, auto, flush spy, can_save rows, real error)")
-def test_ac_f30_22_a_wait_never_a_step():
-    pass
+    def __getattr__(self, name):
+        return lambda *a, **k: None
 
 
-@pytest.mark.skip(reason=_LATER + " (all/ fixture vs run_headless under five input modes)")
-def test_ac_f30_23_windowed_equals_headless():
-    pass
+def _gray(s: Session) -> int:
+    return s.px(10, 10)[0]
 
 
-@pytest.mark.skip(reason=_LATER + "; also needs step 5's name (Reader Z) for its first row")
-def test_ac_f30_24_crash_text_stays_on_the_canvas():
-    pass
+def test_ac_f30_20_still_with_one_cut_or_a_300_ms_fade(tmp_path):
+    bg, page = 0xC8, 0x14
+    for reduce in (False, True):
+        root = game(tmp_path, f"r{reduce}", template_w("effect crash"),
+                    config="[effects]\nreduce = true\n" if reduce else "")
+        s = Session(root)
+        out: dict = {}
+
+        def script(s: Session):
+            frames: list[tuple[int, int, bytes]] = []
+            n = 0
+            while crash_up(s) is None:
+                if n % 6 == 0 and s.line_text() is not None \
+                        and s.app.stage_screen.wait_kind is None:
+                    s.key(pygame.K_SPACE)
+                n += 1
+                frames.append((s.frame - 1, _gray(s), s.snapshot()))
+                yield
+            c = s.frame - 1
+            out["before"] = frames[-1][1]                    # frame c - 1: the story
+            shots = {}
+            for f in range(c, c + 61):
+                yield from to_frame(s, f + 1)
+                shots[f] = (_gray(s), s.snapshot())
+            out["shots"] = {f - c: v for f, v in shots.items()}
+            s.key(pygame.K_RETURN)
+            after = []
+            for _ in range(20):
+                yield
+                after.append(_gray(s))
+            out["after"] = after
+            out["line"] = s.line_text()
+
+        s.play(script, last=900)
+        shots = out["shots"]
+        assert out["before"] == bg, reduce
+        if not reduce:
+            assert shots[0][0] == page                       # frame c: the full page
+            assert len({shot for _, shot in shots.values()}) == 1   # c .. c + 60 identical
+            assert out["after"][0] == bg                     # one cut back, no blend
+        else:
+            mid = (bg + page) / 2
+            assert any(abs(shots[k][0] - mid) <= 0.03 * (bg - page) + 1 for k in (8, 9, 10)), \
+                [shots[k][0] for k in range(0, 20)]
+            assert len({shots[k][1] for k in range(19, 61)}) == 1   # opaque and still
+            assert shots[19][0] == page
+            assert out["after"][0] < bg and out["after"][-1] == bg   # an 18-frame fall
+        assert out["line"] == L7
+
+
+def test_ac_f30_21_honest_and_escapable(tmp_path, monkeypatch):
+    # Lean: 120 shown frames (not 600) with input spam and 60 frames unfocused; the quit row
+    # asks the shell's guard directly (the quit Auto save's picture is AC-F30-22's
+    # capture_scene row).
+    calls: list[str] = []
+    for owner, name in ((pygame.display, "message_box"), (pygame.mouse, "set_visible"),
+                        (pygame.mouse, "set_cursor"), (pygame.display, "set_mode")):
+        real = getattr(owner, name)
+        monkeypatch.setattr(owner, name, lambda *a, _n=name, _r=real, **k:
+                            (calls.append(_n), _r(*a, **k))[1])
+    root = game(tmp_path, "w", template_w("effect crash"))
+    s = Session(root)
+    out: dict = {}
+    titles: list[str] = []
+    real_title = type(s.app).set_title
+    monkeypatch.setattr(type(s.app), "set_title",
+                        lambda app, t: (titles.append(t), real_title(app, t)))
+
+    def script(s: Session):
+        c = yield from to_crash(s)
+        calls.clear()
+        titles.clear()
+        screen = crash_up(s)
+        out["widgets"] = [a for a in ("widgets", "scope", "focus") if getattr(screen, a, None)]
+        s.event(pygame.WINDOWFOCUSLOST)
+        for f in range(c + 1, c + 121):
+            yield from to_frame(s, f)
+            if f % 3 == 0:
+                _ignored_keys()
+            if f == c + 60:
+                s.event(pygame.WINDOWFOCUSGAINED)
+        out["calls"], out["titles"] = list(calls), list(titles)
+        shell = s.app.shell
+        out["quit"] = shell.quit_guard()
+        out["stack"] = [type(x).__name__ for x in s.app.screens]
+
+    s.play(script, last=900)
+    assert out["widgets"] == []
+    assert out["calls"] == [] and out["titles"] == []
+    assert out["quit"] is True                               # no quit question: quits now
+    assert "ConfirmScreen" not in out["stack"] and out["stack"][-1] == "FakeCrashScreen"
+
+
+def test_ac_f30_22_a_wait_never_a_step(tmp_path, caplog):
+    root = game(tmp_path, "w", template_w("effect crash"))
+    s = Session(root)
+    out: dict = {}
+
+    def script(s: Session):
+        yield from s.until(lambda: s.app.story is not None)
+        persist = s.app.persist = _Persist(s)
+        persist.fail = OSError("disk")                      # one DEBUG line; the page shows
+        c = yield from to_crash(s)
+        out["flush"] = (list(persist.flushes), c, crash_up(s) is not None)
+        saves, shell = s.app.saves, s.app.shell
+        out["can_save"] = (saves.can_save(), saves.can_save(quitting=True))
+        got = []
+        shell.capture_scene(got.append)
+        for _ in range(3):
+            yield
+        out["capture"] = got
+        s.app.skip_auto.set_auto(True)                       # auto: the screen stays
+        for _ in range(120):
+            yield
+        out["auto"] = crash_up(s) is not None
+        s.app.skip_auto.set_auto(False)
+        # A real error during the crash: the real ErrorScreen and the game's title.
+        s.app.show_fatal_error(RuntimeError("engine broke"))
+        yield
+        out["error"] = (type(s.app.screens.top).__name__, crash_up(s), s.window.title)
+
+    with caplog.at_level(logging.DEBUG):
+        s.play(script, last=1500)
+    flushes, c, shown = out["flush"]
+    assert len(flushes) == 1 and flushes[0] <= c and shown
+    assert out["can_save"] == (False, True) and out["capture"] in ([], [None])
+    assert out["auto"]
+    assert len([r for r in caplog.records if "before the fake crash" in r.getMessage()
+                and r.levelno == logging.DEBUG]) == 1
+    assert out["error"] == ("ErrorScreen", None, "Paper Test")
+
+    # Skip held through the crash: no screen, no flush; then a New Game by the driver while
+    # a crash shows removes it in that frame.
+    root = game(tmp_path, "skip", template_w("effect crash"),
+                config="[skip]\nall = true\n")
+    s = Session(root)
+    out = {"crash_frames": 0}
+
+    def script(s: Session):
+        yield from s.until(lambda: s.app.story is not None)
+        persist = s.app.persist = _Persist(s)
+        yield from s.until_line("Hello.")
+        s.app.skip_auto.start_skip()
+        for _ in range(120):
+            yield
+            out["crash_frames"] += crash_up(s) is not None
+            if s.line_text() == "Goodbye.":
+                break
+        out["skip"] = (list(persist.flushes), s.line_text())
+        s.app.skip_auto.stop_skip()
+        s.app.shell._new_game_cut()                    # the driver's New Game
+        yield from s.until_line("Hello.")
+        c = yield from to_crash(s)
+        yield from to_frame(s, c + 10)
+        s.app.shell._new_game_cut()
+        yield
+        out["new_game"] = crash_up(s) is None
+
+    s.play(script, last=1500)
+    assert out["crash_frames"] == 0
+    assert out["skip"][0] == [] and out["skip"][1] in (L7, "Goodbye.", "End.")
+    assert out["new_game"]
+
+
+def test_ac_f30_23_windowed_equals_headless(tmp_path):
+    # Lean: defaults and reduce on, every crash continued by Space (the click wait), seed 7;
+    # the crash inside a menu branch and the skip and auto runs of the row are not run.
+    from tests.app.test_windowed_equals_headless import windowed
+    from tests.runtime.corpus import canon
+    from tests.runtime.effects_story import load_game
+    from engine.runtime.headless import run_headless
+    script = ('define hana = Character("Hana")\n'
+              'image bg room = "#c8c8c8"\n'
+              "label start:\n"
+              "    scene bg room\n"
+              '    effect window_title "She is here"\n'
+              '    hana "I know who you are, {username}."\n'
+              '    effect crash "Hi {username}"\n'
+              "    effect crash\n"
+              "    effect window_title off\n"
+              '    "Morning came."\n')
+    for config in ("", "[effects]\nreduce = true\n"):
+        root = game(tmp_path, f"a{len(config)}", script, config=config)
+        expected = canon(run_headless(load_game(root), seed=7))
+        assert canon(windowed(root, click_through=False)) == expected, config
+
+
+def test_ac_f30_24_crash_text_stays_on_the_canvas(tmp_path, monkeypatch, caplog):
+    from engine.app import fourthwall as fourthwall_module
+    from engine.app.settings import SettingsService
+    from engine.persist.settings_file import LoadedSettings, Outcome
+    from engine.runtime.commands import FakeCrash
+    from engine.ui.builtin import error_look
+    from tests.fakes.draw_spy import spy_draw_text
+    from tests.fakes.username import reader
+    import ast
+    from pathlib import Path
+
+    monkeypatch.setattr(fourthwall_module, "read_login_name", reader())
+    root = game(tmp_path, "w", template_w('effect crash "Hi {username}, CrashMark"'),
+                config="[meta]\nusername = true\n")
+    s = Session(root)
+    s.app.settings = SettingsService(LoadedSettings({"username_use": 2}, Outcome.OK),
+                                     s.app.config)
+    out: dict = {}
+
+    def script(s: Session):
+        yield from s.until(lambda: s.app.story is not None)
+        commands = spy_commands(s)
+        yield from to_crash(s)
+        out["message"] = crash_up(s).message
+        body = next(c for c in commands if isinstance(c, FakeCrash)).body
+        out["body"] = [sp.text for sp in body.plain(names=True) if sp.style.username]
+        out["repr"] = repr(body)
+
+        real_draw_page = error_look.draw_page
+
+        def boom(*a, **k):                                   # once: ErrorScreen draws it too
+            monkeypatch.setattr(error_look, "draw_page", real_draw_page)
+            raise pygame.error("boom")
+
+        monkeypatch.setattr(error_look, "draw_page", boom)
+        crash_up(s)._page = None                             # the page is built again
+        for _ in range(3):
+            yield
+        with monkeypatch.context() as patch, spy_draw_text(patch) as draws:
+            yield
+            yield
+        out["error"] = (type(s.app.screens.top).__name__, [d.text for d in draws],
+                        s.window.title)
+
+    with caplog.at_level(logging.DEBUG):
+        s.play(script, last=900)
+    assert out["message"] == "Hi Zq9Name, CrashMark"
+    assert out["body"] == ["friend"] and "zq9name" not in out["repr"].lower()
+    name, texts, title = out["error"]
+    assert name == "ErrorScreen" and title == "Paper Test"
+    assert texts and not [t for t in texts if "CrashMark" in t or "zq9name" in t.lower()]
+    # Check Z: no log record and no file under the game folder holds the name.
+    assert not [r for r in caplog.records if "zq9name" in r.getMessage().lower()
+                or "zq9name" in (r.exc_text or "").lower()]
+    for path in root.rglob("*"):
+        if path.is_file():
+            assert b"zq9name" not in path.read_bytes().lower(), path
+    # Static: the crash page never reaches the clipboard or the real error screen's code.
+    ui = Path(__file__).resolve().parents[2] / "engine" / "ui" / "builtin"
+    tree = ast.parse((ui / "fake_crash.py").read_text(encoding="utf-8"))
+    imported = {f"{n.module}.{a.name}" for n in ast.walk(tree)
+                if isinstance(n, ast.ImportFrom) for a in n.names} | {
+        n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)} | {
+        a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
+    assert "engine.ui.builtin.error_look" in imported
+    assert "engine.ui.builtin.error" not in imported and "pygame.scrap" not in imported
+    writers = sorted(p.name for p in (ui.parent.parent).rglob("*.py")
+                     if "scrap.put" in p.read_text(encoding="utf-8"))
+    assert writers == ["error.py"], writers

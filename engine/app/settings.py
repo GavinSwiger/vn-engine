@@ -48,7 +48,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 from engine.core.logsetup import get_logger
-from engine.core.settings_schema import KEYS, SizeKey, Value, check, effective_text_size
+from engine.core.settings_schema import (
+    CRASH_LABEL_DEFAULT,
+    KEYS,
+    USERNAME_USE_DEFAULT,
+    SizeKey,
+    Value,
+    check,
+    effective_text_size,
+)
 from engine.persist.settings_file import (
     BAD_NAME,
     FILE_NAME,
@@ -209,6 +217,9 @@ def config_defaults(config: "Config") -> dict[str, Value]:
         "reduce_motion": False,
         "window_size": (window.width, window.height),
         "warning_seen": 0,          # F33: no apply group, not on the page; Reset clears it
+        # F30 (SEC-F30-07): engine constants, never from config.toml; no apply group.
+        "username_use": USERNAME_USE_DEFAULT,
+        "crash_label": CRASH_LABEL_DEFAULT,
     }
 
 
@@ -304,6 +315,8 @@ class SettingsService:
         self._quit_logged = False
         self._seen_fullscreen = False
         self._listeners: list[Listener] = []
+        # F30 (04 §6.7): rows shown only under a rule (install_fourthwall sets them).
+        self.row_rules: dict[str, Callable[[], bool]] = {}
         self._notices: list[str] = list(notices)
         if window is not None:
             self.attach_window(window)
@@ -338,6 +351,13 @@ class SettingsService:
         if changed:
             self._apply(changed)
             self._notify(changed)
+
+    def row_shown(self, word: str) -> bool:
+        """F30: whether the Settings page shows the row ``word`` (default: shown)."""
+        rule = self.row_rules.get(word)
+        if rule is None:                        # F30's two rows need their rule
+            return word not in ("settings_username", "settings_crash_label")
+        return bool(rule())
 
     def locked(self, key: str) -> bool:
         """``reduce_motion`` is locked on while ``[effects] reduce`` is set (§7.2)."""

@@ -17,6 +17,8 @@ from collections.abc import Callable
 
 import pytest
 
+from engine.core import redact
+
 Z = "Zq9Name"                                   # 06 §0.3 "Names"
 Z32 = Z + "Ｗ" * 25                         # 32 graphemes, wide
 
@@ -37,6 +39,7 @@ def no_real_username(monkeypatch, tmp_path_factory):
     tmp_path_factory.getbasetemp()
     monkeypatch.setattr(getpass, "getuser", _refuse)
     yield
+    redact.set_session_term(None)       # F30 s5: a fake name read never outlives its test
 
 
 def reader(value: "str | None | BaseException" = Z) -> Callable[[], str | None]:

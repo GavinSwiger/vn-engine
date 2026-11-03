@@ -128,7 +128,10 @@ class Font(Protocol):
 class LayoutContext:
     """``assets.font(ref, size_px, *, bundled=, synth=)`` must return a handle with a
     ``.font`` (``AssetManager``). ``width``/``height`` are the text area's, in canvas units
-    (920 and H − top − bottom padding); ``base_color`` colors spans with no color."""
+    (920 and H − top − bottom padding); ``base_color`` colors spans with no color.
+    ``name`` (F30 ``04`` §6.4): the player's name drawn for each ``{username}`` span
+    (``style.username``), literally; None draws the span's own text (the fallback word). Only
+    the textbox and NVL page pass one."""
 
     assets: Any
     faces: FaceSet
@@ -136,6 +139,7 @@ class LayoutContext:
     base_color: str
     width: float
     height: float
+    name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +251,7 @@ class LineLayout:
 
     def __init__(self, body: TaggedText, ctx: LayoutContext) -> None:
         self.ctx = ctx
+        self.has_name = False                        # F30: a flagged span drew ``ctx.name``
         self._fonts: list[Font] = []
         self._caches: list[OrderedDict[str, int]] = []
         self._font_index: dict[tuple[FaceSource, int], int] = {}
@@ -329,12 +334,17 @@ class LineLayout:
     def _flatten(self, body: TaggedText) -> None:
         chars, looks, space = self._chars, self._looks, self._space
         known: dict[Style, _Look] = {}
+        name = self.ctx.name
         for piece in body.pieces:
             if isinstance(piece, Span):
                 look = known.get(piece.style)
                 if look is None:
                     look = known[piece.style] = self._look(piece.style)
-                for grapheme in iter_graphemes(render_safe(piece.text)):
+                text = piece.text
+                if name is not None and piece.style.username:   # F30: literal, after tags
+                    text = name
+                    self.has_name = True
+                for grapheme in iter_graphemes(render_safe(text)):
                     if grapheme == "\n":
                         at = len(chars)
                         self._breaks[at] = self._breaks.get(at, 0) + 1
