@@ -194,7 +194,9 @@ def test_ac_f42_06_dev_options_and_commands_are_not_accepted_by_the_built_exe(
                 # F34: the Extras preview, likewise dev runs only.
                 ["--extras"],
                 # F36: Studio's Play replay, likewise dev runs only.
-                ["--replay", "x"]]
+                ["--replay", "x"],
+                # F41 AC-F41-15: the lint command, likewise dev runs only.
+                ["lint"]]
     codes = {" ".join(args): _run(example_build.exe, args, tmp_path).returncode
              for args in rejected}
     assert codes == {key: 2 for key in codes}

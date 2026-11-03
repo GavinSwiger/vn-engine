@@ -70,6 +70,11 @@ same dev-runs-only rule. The scene replay of LABEL starts at once (no title; a `
 of it gives its end scene and starting values) and the game closes at its end. LABEL that
 isn't a name is a usage error, and ``--start``, ``--extras`` and ``--try-stdin`` can't go
 with it; a LABEL the story doesn't have is an error at launch (``app/replays.py``).
+
+F41 (``04`` §16 W1; PR-F41-08..12): ``main(argv, linter=…)`` adds the dev-only
+``lint [GAME_DIR] [--json] [--strict]``, the full check printed for editors and CI. Its
+handler (``engine/__main__.py``) has no release mode, so ``--release`` is refused here and a
+frozen build doesn't define it.
 """
 
 import argparse
@@ -118,6 +123,7 @@ EDITOR_DEV_ONLY = "the editor is only available in dev runs"
 CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
 HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
 BUILD_DEV_ONLY = "build is only available in dev runs"           # F42 PR-F42-01
+LINT_DEV_ONLY = "lint is only available in dev runs"             # F41 PR-F41-12
 # F42 01 §6.3; the same text as tools/build/texts.py's, kept here because a built game has
 # no engine/tools (PR-F42-04).
 GAME_FOLDER_MISSING = ("The game folder is missing. "
@@ -138,6 +144,8 @@ CheckHandler = Callable[..., int]
 HelperHandler = Callable[[Path], int]
 # F42: build_handler(game_dir, out=…, zip=…, replace=…, report=…) -> exit code.
 BuildHandler = Callable[..., int]
+# F41: lint_handler(game_dir, as_json=…, strict=…) -> exit code.
+LintHandler = Callable[..., int]
 
 
 def _bench_seconds(text: str) -> float:
@@ -240,11 +248,13 @@ def _under(entry: object, bundle: str) -> bool:
 def main(argv: list[str], *, editor: EditorHandler | None = None,
          checker: CheckHandler | None = None,
          helper: HelperHandler | None = None,
-         builder: BuildHandler | None = None) -> int:
+         builder: BuildHandler | None = None,
+         linter: LintHandler | None = None) -> int:
     """``python -m engine run [GAME_DIR] [options]``, and ``edit [GAME_DIR]`` when
     ``editor`` is given (``engine/__main__.py``) and the build isn't frozen; likewise
-    ``check [GAME_DIR] …`` with ``checker`` (F45), ``helper`` (F47) and ``build [GAME_DIR]
-    [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42). ``GAME_DIR`` defaults to
+    ``check [GAME_DIR] …`` with ``checker`` (F45), ``helper`` (F47), ``build [GAME_DIR]
+    [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42) and ``lint [GAME_DIR]
+    [--json] [--strict]`` with ``linter`` (F41). ``GAME_DIR`` defaults to
     ``<repo>/game``; a relative ``GAME_DIR`` (or ``--out``) is resolved against the CWD
     once. ``build``'s ``--out`` defaults to ``builds`` beside the game folder (F42 I-6).
     F39's dev-only ``run`` options belong under ``dev_tools`` too, never in
@@ -306,6 +316,18 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
                            help="replace an earlier build of the same version")
         build.add_argument("--report-to-editor", action="store_true", help=argparse.SUPPRESS)
         build.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
+    lint = None
+    if linter is not None and dev_tools:                # F41 PR-F41-08, PR-F41-12
+        lint = commands.add_parser("lint", help="list every problem in a game folder",
+                                   description="Check the game in GAME_DIR and print every "
+                                               "problem and unused thing, one per line.")
+        lint.add_argument("game_dir", nargs="?", metavar="GAME_DIR", default=None,
+                          help="the game folder (default: the game folder next to main.py)")
+        lint.add_argument("--json", action="store_true",
+                          help="print one JSON document instead of lines")
+        lint.add_argument("--strict", action="store_true",
+                          help="exit 1 on warnings too, not only on errors")
+        lint.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.game_dir is None:
         game_dir = engine_root() / "game"
@@ -334,6 +356,11 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
                else game_dir.parent / BUILDS_DIRNAME)
         return builder(game_dir, out=out, zip=args.zip, replace=args.replace,
                        report=args.report_to_editor)
+    if args.command == "lint":
+        if args.release:
+            lint.error(LINT_DEV_ONLY)
+        # Like check: no pygame; the handler writes nothing in the game folder.
+        return linter(game_dir, as_json=args.json, strict=args.strict)
     if dev_tools:
         _refuse_dev_options(run, args)
         if args.extras is not None and (args.start is not None or args.try_stdin):

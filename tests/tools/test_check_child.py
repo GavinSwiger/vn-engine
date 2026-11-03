@@ -99,14 +99,14 @@ def test_ac_f45_13_bad_input_and_release_runs_exit_2(tmp_path, capsys):
                     checker=checker) == 0
     assert calls == [(game, {"report": True, "overlay": False, "launch": False})]
 
-    # (c) __main__ imports engine.tools.check only inside _check.
+    # (c) __main__ imports engine.tools.check only inside _check (and F41's _lint).
     module = ast.parse((Path(cli.__file__).resolve().parents[1] / "__main__.py")
                        .read_text("utf-8"))
     found = [node.name for node in ast.walk(module) if isinstance(node, ast.FunctionDef)
              for inner in ast.walk(node)
              if isinstance(inner, ast.ImportFrom) and inner.module == "engine.tools.check"]
     top = [node for node in module.body if isinstance(node, (ast.Import, ast.ImportFrom))]
-    assert found == ["_check"]
+    assert found == ["_check", "_lint"]
     assert all("tools" not in (getattr(node, "module", "") or "") for node in top)
 
 
