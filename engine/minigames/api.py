@@ -1,4 +1,4 @@
-"""The public minigame plugin API, version 1.1 (F23 ``04`` §4.3; ADR-0009).
+"""The public minigame plugin API, version 1.2 (F23 ``04`` §4.3; ADR-0009).
 
 Why this module exists: a plugin in ``game/minigames/`` subclasses ``Minigame``, declares
 its name, arguments, and outcomes as class attributes, and calls ``register(cls)``. Plugins
@@ -17,6 +17,10 @@ API 1.1 (F24 A1; F23 I-19) adds two optional hooks, used only when a plugin decl
 story's declared names) and ``outcome_for(kind, args, story)`` (a test or skipped outcome
 that depends on the arguments). ``story`` is ``StoryNames``; ``closest`` is the engine's
 did-you-mean rule for a reason text.
+
+API 1.2 (F37 §5.3) adds ``register_achievement_hook(hook)``: a game's one achievement
+platform hook (``achievement_hook.py``), an object with ``unlocked(name)`` and, optionally,
+``started(unlocked)``. A plugin file that only registers a hook loads (no W161).
 """
 
 import keyword
@@ -41,6 +45,7 @@ from engine.core.minigame_types import (
     StoryNames,
 )
 from engine.minigames import messages
+from engine.minigames.achievement_hook import AchievementHook
 from engine.minigames.context import Context, MinigameThreadError, PlayerSettings
 from engine.minigames.registry import DeclarationError, PluginClass, Registry
 from engine.runtime.errors import suggest
@@ -389,7 +394,42 @@ def register(cls):
     return cls
 
 
+def _hook_method(hook: object, name: str) -> object:
+    """``hook.<name>`` if it is callable, else None (a property that raises counts as
+    missing; it runs here, inside the loader's guard)."""
+    try:
+        method = getattr(hook, name, None)
+    except Exception:
+        return None
+    return method if callable(method) else None
+
+
+def register_achievement_hook(hook: object) -> object:
+    """API 1.2 (F37 §5.3): register the game's achievement platform hook, an object (not a
+    class) with an ``unlocked(name)`` method and, optionally, ``started(unlocked)``. Its
+    methods are looked up now, once. One per game: a second call is refused (E273). Works
+    only while plugins load. Returns ``hook``."""
+    registry = _registry
+    collector = registry.active() if registry is not None else None
+    if collector is None:
+        raise RuntimeError("register_achievement_hook() works only while minigame plugins load")
+    try:
+        unlocked = None if isinstance(hook, type) else _hook_method(hook, "unlocked")
+        if unlocked is None:
+            raise DeclarationError(messages.E273_HOOK_SHAPE)
+        if registry.hook_taken():                             # type: ignore[union-attr]
+            raise DeclarationError(messages.E273_HOOK_TWICE)
+        started = _hook_method(hook, "started")
+    except DeclarationError as error:
+        error.file, error.line = _plugin_place()
+        collector.errors.append(error)
+        raise
+    collector.achievement_hook = AchievementHook(collector.unit, unlocked,  # type: ignore
+                                                 started)                   # type: ignore
+    return hook
+
+
 __all__ = ["API_VERSION", "Arg", "CodexChange", "CodexFilter", "Context", "MeterChange",
            "Minigame", "MinigameThreadError", "Outcome", "PickAction", "PlayerSettings",
            "PluginEvent", "StoryNames", "TokenDecl", "add_points", "closest", "give", "register",
-           "set_points", "take", "unlock_tip"]
+           "register_achievement_hook", "set_points", "take", "unlock_tip"]

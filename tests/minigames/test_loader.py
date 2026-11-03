@@ -313,8 +313,8 @@ def test_newer_minor_is_e278(game, load):
     write(game, "minigames/x.py", plugin("x", body="    api = '1.4'\n"))
     loaded = load(game)
     assert loaded.codes == ["E278"]
-    assert loaded.errors == ["minigames/x.py needs minigame API 1.4, but this engine has 1.1. "
-                             "Update the engine, or use a version of the plugin made for 1.1."]
+    assert loaded.errors == ["minigames/x.py needs minigame API 1.4, but this engine has 1.2. "
+                             "Update the engine, or use a version of the plugin made for 1.2."]
 
 
 @pytest.mark.parametrize("version", ["1.0", "1"])

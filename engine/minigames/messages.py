@@ -214,6 +214,29 @@ def w64_plugin_image(name: str, ref: str, kind: str, suggestion: str | None) -> 
     return _cut(text)
 
 
+# --- The achievement hook (F37 §3; API 1.2) ------------------------------------------------
+# Registration errors are E273 P forms (the plugin file and line come from the error): F37's
+# §3 calls them "F23's E272 plugin form", but E272 is the run-time argument code and these
+# are load-time declaration errors, which F23 numbers E273 (F37-S1 decision).
+
+E273_HOOK_SHAPE = "register_achievement_hook needs an object with an unlocked(name) method."
+E273_HOOK_TWICE = ("register_achievement_hook was called twice; a game has one achievement "
+                   "hook.")
+W225_TOO_LONG = "it ran too long"       # W225's reason when the watchdog stopped the call
+
+
+def w225_failed(method: str, reason: str) -> str:
+    """W225 G run: ``reason`` is the exception's type name or ``W225_TOO_LONG``."""
+    return (f"the achievement platform hook failed in {method} ({show(reason)}), so it is off "
+            "until the game restarts. Achievements are still kept on this computer.")
+
+
+def w225_slow(method: str, seconds: float) -> str:
+    """W225 G run, once per session."""
+    return (f"the achievement platform hook took {seconds:.1f} s in {method}; keep hook calls "
+            "under 0.1 s so the game doesn't stall.")
+
+
 # --- The dev key, Shift+F8 (03 "Dev: Shift+F8 notice"; fixed English, not words) ------------
 
 def dev_ended(title: str) -> str:

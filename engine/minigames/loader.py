@@ -447,8 +447,8 @@ class PluginLoadJob:
         self._commit(collector, unit.ref)
 
     def _commit(self, collector: Collector, unit: str | None) -> None:
-        if unit is not None and not collector.entries:
-            self._warn("W161", messages.w161_registers_nothing(unit))
+        if unit is not None and not collector.entries and collector.achievement_hook is None:
+            self._warn("W161", messages.w161_registers_nothing(unit))   # F37: a hook counts
         for outcome in self.registry.commit(collector):
             if outcome.error is not None:
                 self._add(outcome.error)

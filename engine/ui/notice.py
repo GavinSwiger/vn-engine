@@ -24,6 +24,11 @@ Rules (03-ui "Notice (toast)", ui-system §5 and §9):
   shown time pauses while the window is unfocused and while the pointer is over that notice.
   Restacking moves over ``fade_ms`` (``ease_in_out``). Under reduced motion all three are
   cuts. While the top screen ``holds_notices`` (C7), new notices wait.
+- **Icon** (F37 §5.1): ``notify(icon=)`` with an ``ImageRef`` puts it in a 48×48 box at the
+  panel's inner left (top-aligned, 12 down; scaled to fit, never up, centred in the box), the
+  text 12 after it, and the panel at least 48 + 24 tall; a shorter text block is centred
+  against the icon. A placeholder (missing or unreadable picture) draws a 48×48 frame in the
+  marker color instead. Without an icon the layout is unchanged.
 
 Times are kept in seconds from ``update(dt)`` (the caller's clock), so tests drive it with a
 fake clock. Text is measured with an injected ``layouts.Measure`` (reference metrics), so
@@ -63,6 +68,9 @@ NOTICE_MIN_WIDTH: Final = 160
 PAD_X: Final = 20                   # text inset, left and right
 PAD_Y: Final = 12                   # text inset, top and bottom
 PROBLEM_EXTRA: Final = 18           # a problem's text starts at 38
+ICON_SIZE: Final = 48               # F37: the notice icon's box
+ICON_GAP: Final = 12                # from the icon to the text
+ICON_RADIUS: Final = 8              # the placeholder frame's corners
 BAR_WIDTH: Final = 6
 BAR_INSET: Final = 12
 MAX_LINES: Final = 4
@@ -133,26 +141,39 @@ class NoticePanel:
     lines: tuple[str, ...]
     size: int                   # text size after the text scale
     pitch: int
-    text_x: int                 # 20, or 38 for a problem
+    text_x: int                 # 20, or 38 for a problem (+ 60 with an icon)
     truncated: bool             # the last line ends in "…"
     bar: Box | None             # the problem bar, relative to the panel
+    icon: Box | None = None     # F37: the icon box, relative to the panel
+    text_y: float = PAD_Y       # the first line's top, relative to the panel
 
 
 def notice_panel(text: str, kind: Kind, measure: Measure, *, size: int,
-                 max_width: int = 560) -> NoticePanel:
+                 max_width: int = 560, icon: bool = False) -> NoticePanel:
     """03-ui's notice table: width = text + 40 (+ 18 for a problem), 160 to ``max_width``;
     the text wraps at the inner width in at most 4 lines, then "…"; height = lines × pitch
-    + 24; the problem bar is 6 × (height − 24), 12 inside the left edge."""
+    + 24; the problem bar is 6 × (height − 24), 12 inside the left edge. ``icon`` (F37):
+    the 48×48 icon box at the inner left, the text 60 further right, height at least 72,
+    a text block shorter than the icon centred against it."""
     problem = kind == "problem"
-    text_x = PAD_X + (PROBLEM_EXTRA if problem else 0)
+    icon_x = PAD_X + (PROBLEM_EXTRA if problem else 0)
+    text_x = icon_x + (ICON_SIZE + ICON_GAP if icon else 0)
     natural = measure(text, size) + text_x + PAD_X
     width = min(float(max_width), max(float(NOTICE_MIN_WIDTH), natural))
     fit = fit_message(text, width - text_x - PAD_X, size, measure, max_lines=MAX_LINES,
                       min_size=size)
     line_pitch = pitch(size)
-    height = len(fit.lines) * line_pitch + 2 * PAD_Y
+    text_h = len(fit.lines) * line_pitch
+    height = text_h + 2 * PAD_Y
+    icon_box = None
+    text_y: float = PAD_Y
+    if icon:
+        icon_box = Box(icon_x, PAD_Y, ICON_SIZE, ICON_SIZE)
+        height = max(height, ICON_SIZE + 2 * PAD_Y)
+        text_y = PAD_Y + max(0.0, (ICON_SIZE - text_h) / 2)
     bar = Box(BAR_INSET, PAD_Y, BAR_WIDTH, height - 2 * PAD_Y) if problem else None
-    return NoticePanel(width, height, fit.lines, size, line_pitch, text_x, fit.truncated, bar)
+    return NoticePanel(width, height, fit.lines, size, line_pitch, text_x, fit.truncated, bar,
+                       icon_box, text_y)
 
 
 # --- Style ---------------------------------------------------------------------------------
@@ -196,7 +217,7 @@ def notice_style(theme: "UiTheme") -> NoticeStyle:
 
 @dataclass(frozen=True)
 class NoticeView:
-    """A shown notice as drawn this frame (tests, F37's icon later)."""
+    """A shown notice as drawn this frame (tests; F37's icon and its box on the canvas)."""
 
     text: str
     kind: Kind
@@ -207,15 +228,18 @@ class NoticeView:
     size: int
     shown_s: float              # its shown time
     elapsed_s: float            # time spent in the current phase
+    icon: "ImageRef | None" = None
+    icon_box: Box | None = None
 
 
 class _Notice:
-    __slots__ = ("text", "kind", "chars", "phase", "t", "slide", "shown_s", "panel",
+    __slots__ = ("text", "kind", "icon", "chars", "phase", "t", "slide", "shown_s", "panel",
                  "panel_key", "y", "y_from", "y_to", "y_t")
 
-    def __init__(self, text: str, kind: Kind) -> None:
+    def __init__(self, text: str, kind: Kind, icon: "ImageRef | None" = None) -> None:
         self.text = text
         self.kind = kind
+        self.icon = icon
         self.chars = len(graphemes(text))
         self.phase: Phase = "in"
         self.t = 0.0
@@ -265,12 +289,14 @@ class NoticeLayer:
 
     # -- notify --
 
-    def notify(self, text: str, *, kind: Kind = "info", hold: bool | None = None) -> None:
+    def notify(self, text: str, *, kind: Kind = "info", hold: bool | None = None,
+               icon: "ImageRef | None" = None) -> None:
         """Show ``text`` (cleaned, cut to 1,000 code points). A text equal to one shown
         restarts its shown time (from a fade-out it fades back in, without the slide); equal
         to one waiting, nothing changes. Otherwise it waits in order, past 10 the oldest
         waiting is dropped, and it shows now if there is room and ``hold`` (the top screen's
-        ``holds_notices``; None keeps the last value) is False."""
+        ``holds_notices``; None keeps the last value) is False. ``icon`` (F37): a picture
+        drawn left of the text (module docstring)."""
         if kind not in KINDS:
             raise ValueError(f"notice kind must be 'info' or 'problem', not {kind!r}")
         if hold is not None:
@@ -282,7 +308,7 @@ class NoticeLayer:
                 return
         if any(notice.text == text for notice in self._waiting):
             return
-        self._waiting.append(_Notice(text, kind))
+        self._waiting.append(_Notice(text, kind, icon))
         while len(self._waiting) > MAX_WAITING:
             self._waiting.popleft()
             self.dropped += 1
@@ -374,7 +400,7 @@ class NoticeLayer:
         if notice.panel is not None and notice.panel_key == key:
             return False
         notice.panel = notice_panel(notice.text, notice.kind, self._measure, size=size,
-                                    max_width=style.max_width)
+                                    max_width=style.max_width, icon=notice.icon is not None)
         notice.panel_key = key
         return True
 
@@ -444,9 +470,11 @@ class NoticeLayer:
         for notice in self._shown:
             panel = notice.panel
             assert panel is not None
-            out.append(NoticeView(notice.text, notice.kind, notice.phase,
-                                  self._box(notice, fade), self._opacity(notice, fade),
-                                  panel.lines, panel.size, notice.shown_s, notice.t))
+            box = self._box(notice, fade)
+            icon_box = None if panel.icon is None else panel.icon.moved(box.x, box.y)
+            out.append(NoticeView(notice.text, notice.kind, notice.phase, box,
+                                  self._opacity(notice, fade), panel.lines, panel.size,
+                                  notice.shown_s, notice.t, notice.icon, icon_box))
         return tuple(out)
 
     def waiting(self) -> tuple[str, ...]:
@@ -480,12 +508,54 @@ class NoticeLayer:
                 bar = panel.bar
                 canvas.fill((*style.marker_color, round(255 * opacity)),
                             (box.x + bar.x, box.y + bar.y, bar.w, bar.h))
+            if panel.icon is not None and notice.icon is not None:
+                icon = panel.icon.moved(box.x, box.y)
+                if notice.icon.is_placeholder:
+                    painter.shape(icon, FrameSpec(style.marker_color, 1.0,
+                                                  corner_radius=ICON_RADIUS), alpha=opacity)
+                else:
+                    draw_fitted(canvas, notice.icon, icon, opacity)
             font = replace(style.font, size=panel.size)
+            top = box.y + panel.text_y
             for index, line in enumerate(panel.lines):
                 if line:
                     _draw_line(canvas, line, font, style.text_color,
-                               (box.x + panel.text_x, box.y + PAD_Y + index * panel.pitch),
-                               opacity)
+                               (box.x + panel.text_x, top + index * panel.pitch), opacity)
+
+
+def fit_box(size: tuple[float, float], box: Box) -> Box:
+    """``size`` scaled to fit ``box`` keeping its shape, never up, centred, in whole canvas
+    units (F21's ``fit_picture`` rule)."""
+    w, h = size
+    if w <= 0 or h <= 0:
+        return Box(box.x + box.w / 2, box.y + box.h / 2, 0, 0)
+    s = min(1.0, box.w / w, box.h / h)
+    tw, th = round(w * s), round(h * s)
+    return Box(box.x + (box.w - tw) / 2, box.y + (box.h - th) / 2, tw, th)
+
+
+def draw_fitted(canvas: "Canvas", image: "ImageRef", box: Box, opacity: float = 1.0) -> None:
+    """``image`` fitted into ``box`` (``fit_box``) through the asset variant cache, at
+    ``opacity`` (surface alpha on the cached variant, restored after). F37's notice icon
+    and achievements page. A placeholder draws nothing (the caller draws its frame)."""
+    if opacity <= 0.0 or image.is_placeholder:
+        return
+    target = fit_box(image.size, box)
+    rect = canvas.rect_to_px((target.x, target.y, target.w, target.h))
+    if rect.width <= 0 or rect.height <= 0:
+        return
+    surface, _offset = canvas.assets.variant(image, rect.size, canvas.quality)
+    framebuffer = canvas.surface
+    assert framebuffer is not None
+    if opacity >= 1.0:
+        framebuffer.blit(surface, rect.topleft)
+        return
+    previous = surface.get_alpha()
+    surface.set_alpha(round(255 * opacity))
+    try:
+        framebuffer.blit(surface, rect.topleft)
+    finally:
+        surface.set_alpha(previous)
 
 
 def _draw_line(canvas: "Canvas", text: str, font: FontSpec, color: RGB,
@@ -507,6 +577,7 @@ def _draw_line(canvas: "Canvas", text: str, font: FontSpec, color: RGB,
         rendered.set_alpha(previous)
 
 
-__all__ = ["KINDS", "MAX_SHOWN", "MAX_WAITING", "NOTICE_LIMIT", "NOTICE_RIGHT", "NOTICE_TOP",
-           "Kind", "NoticeLayer", "NoticePanel", "NoticeStyle", "NoticeView", "clean_text",
-           "ease_in_out", "notice_panel", "notice_style", "shown_ms"]
+__all__ = ["ICON_GAP", "ICON_SIZE", "KINDS", "MAX_SHOWN", "MAX_WAITING", "NOTICE_LIMIT",
+           "NOTICE_RIGHT", "NOTICE_TOP", "Kind", "NoticeLayer", "NoticePanel", "NoticeStyle",
+           "NoticeView", "clean_text", "draw_fitted", "ease_in_out", "fit_box", "notice_panel",
+           "notice_style", "shown_ms"]

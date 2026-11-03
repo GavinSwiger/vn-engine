@@ -18,6 +18,7 @@ from types import MappingProxyType
 from engine.core.errors import UserFacingError
 from engine.core.minigame_types import PLUGIN_NAME_RE, MinigameSig
 from engine.minigames import messages
+from engine.minigames.achievement_hook import AchievementHook
 
 MAX_REGISTRATIONS = 256
 ENGINE_SOURCE = "engine"
@@ -93,10 +94,12 @@ class PluginClass:
 @dataclass
 class Collector:
     """What one unit registers while its top level runs. Committed only if the unit ran to
-    the end with no declaration error (one caught by the plugin still counts)."""
+    the end with no declaration error (one caught by the plugin still counts).
+    ``achievement_hook`` (F37, API 1.2): the hook it registered, if any."""
     unit: str
     entries: list[PluginClass] = field(default_factory=list)
     errors: list[DeclarationError] = field(default_factory=list)
+    achievement_hook: AchievementHook | None = None
 
 
 @dataclass(frozen=True)
@@ -107,10 +110,12 @@ class AddOutcome:
 
 class Registry:
     """Minigames by name, filled by the loader. ``main_thread`` is the thread the loader
-    ran on; every API object checks calls against it (SEC-F23-11)."""
+    ran on; every API object checks calls against it (SEC-F23-11). ``achievement_hook``
+    (F37): the one committed hook, or None."""
 
     def __init__(self, *, main_thread: int) -> None:
         self.main_thread = main_thread
+        self.achievement_hook: AchievementHook | None = None
         self._entries: dict[str, PluginClass] = {}
         self._count = 0
         self._active: Collector | None = None
@@ -166,8 +171,16 @@ class Registry:
         collector.entries.append(entry)
 
     def commit(self, collector: Collector) -> list[AddOutcome]:
-        """Add a finished unit's registrations in the order made."""
+        """Add a finished unit's registrations in the order made, and its hook."""
+        if collector.achievement_hook is not None:
+            self.achievement_hook = collector.achievement_hook
         return [self.add(entry) for entry in collector.entries]
+
+    def hook_taken(self) -> bool:
+        """A hook is registered: committed, or by the unit running now."""
+        active = self._active
+        return self.achievement_hook is not None or (
+            active is not None and active.achievement_hook is not None)
 
     def add(self, entry: PluginClass) -> AddOutcome:
         """§7.10 step 8: two game units with one name → E274 (the first stays); a game unit
