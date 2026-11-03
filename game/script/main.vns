@@ -144,6 +144,12 @@ lock replay shed_room "The Stall Keeper's Shed" image bg festival_shed
 # walk home here (endings.vns), uses its starting values there too.
 lock replay river_end "The Walk Home":
     hana_name = "Hana"
+# The good and true endings get their own lines too, so their replays start with Hana's
+# name known (a replay starts every variable at its default).
+lock replay festival_end "The Lantern Festival":
+    hana_name = "Hana"
+lock replay promise "Hana's Promise":
+    hana_name = "Hana"
 
 # "label" names a scene. The story begins at the label called start. Once players
 # have saves, keep your label names: a save finds its line again inside its label, even

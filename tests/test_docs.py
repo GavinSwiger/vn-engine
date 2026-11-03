@@ -2327,6 +2327,10 @@ def test_ac_f36_35_replay_docs_and_example(tmp_path):
          (("hana_name", "Hana"),)),
         ("shed_room", "The Stall Keeper's Shed", "bg festival_shed", None, None, ()),
         ("river_end", "The Walk Home", None, "cg last_lantern_ashes", None,
+         (("hana_name", "Hana"),)),
+        ("festival_end", "The Lantern Festival", None, "cg big_lantern", None,
+         (("hana_name", "Hana"),)),
+        ("promise", "Hana's Promise", None, "cg last_lantern", None,
          (("hana_name", "Hana"),))]
     assert run_for(program, "river_end") == ReplayRun("river_end", None, (("hana_name", "Hana"),))
     dev = corpus.load_example()
@@ -2350,6 +2354,6 @@ def test_ac_f36_35_replay_docs_and_example(tmp_path):
         assert type(commands[-1]) is StoryEnded, label
         if first is not None:
             assert says[0].text.startswith(first) and says[-1].text.startswith(last), label
-        if label in ("bridge", "river_end"):     # their starting value names Hana's plate
+        if label in ("bridge", "river_end", "festival_end"):   # starting value names Hana's plate
             assert "Hana" in {c.name for c in says}, label
         assert not store.in_sandbox and parse(decode(encode_bytes(store))) == before, label
