@@ -36,6 +36,7 @@ SOUND_TITLES: Final[Mapping[str, str]] = {
     OTHER_SOUNDS: "Other"}
 
 NOT_USED: Final = "Not used yet"
+BUILT_IN: Final = "Built-in"      # F41 decision 7: an unused built-in position (left, center…)
 USED_IN: Final = "Used in {lines}"
 DELETE_REFUSED: Final = "{name} is used in {lines}, so it can't be deleted yet."
 SHOW_USES: Final = "Show uses"
@@ -64,6 +65,7 @@ CATEGORY_MUSIC_ROOM: Final = "music_room"  # F35-S3: after Sounds (database.ALL_
 CATEGORY_REPLAY: Final = "replay"          # F36-W4: after Endings & routes (ALL_CATEGORIES)
 CATEGORY_ACHIEVEMENT: Final = "achievement"  # F37-S3: after Scene replays (ALL_CATEGORIES)
 CATEGORY_META: Final = "meta_file"         # F31 originals in files/: last (dbmeta)
+CATEGORY_CLEANUP: Final = "cleanup"        # F41: Clean up, after every other (W2: dbcleanup)
 P2_CATEGORIES: Final = (CATEGORY_METER, CATEGORY_CODEX, CATEGORY_ENDING, CATEGORY_CHAPTER,
                         CATEGORY_TRANSITION, CATEGORY_POSITION)
 CATEGORY_TITLES: Final[Mapping[str, str]] = {
@@ -73,7 +75,7 @@ CATEGORY_TITLES: Final[Mapping[str, str]] = {
     CATEGORY_TRANSITION: "Transitions", CATEGORY_POSITION: "Positions",
     CATEGORY_GALLERY: "Gallery", CATEGORY_MUSIC_ROOM: "Music room",
     CATEGORY_REPLAY: "Scene replays", CATEGORY_ACHIEVEMENT: "Achievements",
-    CATEGORY_META: "Character files"}
+    CATEGORY_META: "Character files", CATEGORY_CLEANUP: "Clean up"}
 # The "{things}" of each P2 category's empty state (§6.4 "No {things} yet").
 EMPTY_THINGS: Final[Mapping[str, str]] = {
     CATEGORY_METER: "meters", CATEGORY_CODEX: "tips or items", CATEGORY_ENDING: "routes",
@@ -92,13 +94,15 @@ BACKGROUND: Final = "background"   # an image named bg …: a file, or a colour 
 SOUND: Final = "sound"
 META_FILE: Final = "meta_file"     # F31: an original in files/ (``file write`` copies it)
 
-# Which check rows count an entry's uses. An ending is "used" by the routes that wait for
-# it (``route_until``); chapters and remembered variables have no rows.
-USE_KINDS: Final[Mapping[str, str]] = {
+# Which check rows count an entry's uses (a tuple: each kind's rows, distinct lines across
+# them). An ending is "used" by the routes that wait for it (``route_until``); chapters and
+# remembered variables have no rows. F41 decision 9: a transition also counts ``define_use``
+# (``define t = make_fade()`` reads as a plain define until a launch shows it's a transition).
+USE_KINDS: Final[Mapping[str, str | tuple[str, ...]]] = {
     dec.CHARACTER: "character_use", dec.COLOR: "image_use", BACKGROUND: "image_use",
     dec.VARIABLE: "variable_use", SOUND: "audio_use", dec.METER: "meter_use",
     dec.TIP: "codex_use", dec.ITEM: "codex_use", dec.ROUTE: "route_use",
-    dec.TRANSITION: "transition_use", dec.POSITION: "position_use",
+    dec.TRANSITION: ("transition_use", "define_use"), dec.POSITION: "position_use",
     dec.ENDING: "route_until", META_FILE: "meta_file_use"}
 _FOLDED: Final = frozenset((dec.COLOR, BACKGROUND))    # image names compare without case
 
@@ -136,6 +140,10 @@ class Entry:
 
     @property
     def used_text(self) -> str:
+        """"Used in N lines", "Not used yet", or (F41 decision 7) "Built-in" for a built-in
+        position nothing uses."""
+        if self.uses <= 0 and self.kind == dec.POSITION and (self.values or {}).get("builtin"):
+            return BUILT_IN
         return used_text(self.uses)
 
 
@@ -153,14 +161,37 @@ def used_text(uses: int) -> str:
 def use_places(names: Names, kind: str, name: str) -> tuple[tuple[str | None, int | None], ...]:
     """The distinct ``(file, line)`` where entry ``kind`` ``name`` is used, in check order
     (for **Show uses**)."""
-    rows = names.get(USE_KINDS.get(kind, ""), ())
+    kinds = USE_KINDS.get(kind, ())
     folded = kind in _FOLDED
     want = name.casefold() if folded else name
     seen: dict[tuple[str | None, int | None], None] = {}
-    for row in rows:
-        if (row.name.casefold() if folded else row.name) == want:
-            seen[(row.file, row.line)] = None
+    for use_kind in (kinds,) if isinstance(kinds, str) else kinds:
+        for row in names.get(use_kind, ()):
+            if (row.name.casefold() if folded else row.name) == want:
+                seen[(row.file, row.line)] = None
     return tuple(seen)
+
+
+CONFIG_REF: Final = "config.toml"
+_DECLARATION: Final = "lock "      # lock gallery|item|tip|replay|achievement … (top level)
+
+
+def story_places(names: Names, texts: Mapping[str, str], kind: str,
+                 name: str) -> tuple[tuple[str | None, int | None], ...]:
+    """The lines of the story that use entry ``kind`` ``name`` (``use_places``) except
+    config.toml's and the top-level ``lock …`` declarations'. F41 P1 counts a gallery,
+    codex, replay or achievement picture and a music-room track as used there, but only a
+    story line shows a gallery picture (unlocking it) or plays a track."""
+    out = []
+    for ref, line in use_places(names, kind, name):
+        if ref == CONFIG_REF:
+            continue
+        lines = texts.get(ref or "", "").split("\n")
+        if line is not None and 0 < line <= len(lines) \
+                and lines[line - 1].startswith(_DECLARATION):
+            continue
+        out.append((ref, line))
+    return tuple(out)
 
 
 def uses_of(names: Names, kind: str, name: str) -> int:
@@ -506,7 +537,8 @@ def search(entries: Iterable[Entry], text: str) -> list[Entry]:
             if not needle or needle in e.shown.casefold() or needle in e.name.casefold()]
 
 
-__all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
+__all__ = ["BACKGROUND", "BUILT_IN", "CATEGORIES", "CATEGORY_CLEANUP",
+           "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
            "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_META", "CATEGORY_METER",
            "CATEGORY_MUSIC_ROOM", "CATEGORY_PICTURE", "CATEGORY_REPLAY", "replay_entries",
            "CATEGORY_ACHIEVEMENT", "achievement_entries",
@@ -521,5 +553,6 @@ __all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
            "gallery_pictures", "include_order", "looks_in", "looks_of", "meter_entries",
            "position_entries",
            "remembered_entries", "route_entries", "search", "sound_entries", "sound_folder",
+           "story_places",
            "track_entries", "transition_entries", "use_places", "used_text", "uses_of", "variable_entries",
            "variable_names"]

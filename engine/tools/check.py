@@ -40,6 +40,7 @@ import re
 import stat
 import sys
 import time
+import tomllib
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
@@ -97,6 +98,7 @@ from engine.script.minigame import Minigame
 from engine.script.nodes import Chapter, Define, PyCode, Say, Statement
 from engine.script.pluginsigs import PluginSig, dict_keys, plugin_sigs
 from engine.script.program import Program
+from engine.script.spriteframes import frame_of
 from engine.script.stage import At, Scene, Show
 from engine.script.texttags import NameMark, TaggedText, VarMark
 from engine.script.ui import DELETE as UI_DELETE
@@ -537,18 +539,27 @@ def _minigame_uses(ctx: CheckContext) -> Iterable[NameRow] | None:
     return [(s.name, *_where(s)) for s in _statements(ctx.program) if isinstance(s, Minigame)]
 
 
-# --- F47 usage rows (04 §3.3, §7.1 step 5; AC-F47-15) ----------------------------------------
+# --- F47 usage rows (04 §3.3, §7.1 step 5; AC-F47-15), widened by F41 P1 (F41 04 §7.1) ------
 # Syntactic, so they are sent under --no-launch too. One row per (name, file, line): Studio's
-# Database counts a name's distinct lines ("Used in N lines").
+# Database counts a name's distinct lines ("Used in N lines"). F41 counts every kind of use:
+# the gallery's, codex's, replays' and achievements' pictures, music-room tracks, minigame
+# arguments (and the defines they name), F38 frames of a used look, config.toml values, and
+# code or text that names any other define (``define_use``).
 
 USE_KINDS = ("character_use", "image_use", "audio_use", "variable_use",
              # F47 P2-D: meters, codex entries, routes, transitions, positions.
-             "meter_use", "codex_use", "route_use", "transition_use", "position_use")
-_USE_MAX_DEPTH = 8                              # nested node data walked per statement
-_USES_CACHE: list[tuple[Program, dict[str, list[NameRow]]]] = []   # the last program's rows
+             "meter_use", "codex_use", "route_use", "transition_use", "position_use",
+             # F41 P1: code or text that names a define that isn't a character or transition.
+             "define_use")
+_USE_MAX_DEPTH = 8          # nested node data walked per statement; nested literal/TOML data
+# The last program's rows, with the launch's image index they were counted against.
+_USES_CACHE: list[tuple[Program, ImageIndex | None, dict[str, list[NameRow]]]] = []
 # ``"x" in <view>`` in code: which use row the view's names count for.
 _IN_VIEWS = {("codex", "tips"): "codex_use", ("codex", "items"): "codex_use",
              ("persistent", "routes"): "route_use"}
+_CHARACTER_CALL = frozenset(("Character",))
+_TRANSITION_CALLS = frozenset(("Dissolve", "Fade", "Mask"))   # F09: a define read as one
+_CONTAINERS = (ast.Dict, ast.List, ast.Tuple, ast.Set)
 
 
 def _is_name(node: ast.AST, name: str) -> bool:
@@ -582,24 +593,76 @@ def _python_tree(source: str, mode: str) -> ast.AST | None:
         return None
 
 
-def _character_call(define: Define) -> ast.Call | None:
-    """A define's value when it is a ``Character(...)`` call (read, never run)."""
-    tree = _python_tree(define.value.source.strip(), "eval")
+def _call_of(value: PyCode, callees: frozenset[str]) -> ast.Call | None:
+    """A define's value when it is a call of one of ``callees`` (read, never run)."""
+    tree = _python_tree(value.source.strip(), "eval")
     body = getattr(tree, "body", None)
     if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) \
-            and body.func.id == "Character":
+            and body.func.id in callees:
         return body
     return None
 
 
-class _UseWalk:
-    """Collects the use rows of one program: who speaks, what is shown, what plays, and which
-    story variables code, conditions and ``{var=…}`` tags name."""
+def _character_call(define: Define) -> ast.Call | None:
+    """A define's value when it is a ``Character(...)`` call (read, never run)."""
+    return _call_of(define.value, _CHARACTER_CALL)
 
-    def __init__(self, program: Program) -> None:
+
+def _strings(tree: ast.AST) -> Iterator[str]:
+    """Every string constant of a parsed value, in source order, inside at most
+    ``_USE_MAX_DEPTH`` nested dicts, lists, tuples and sets."""
+    stack: list[tuple[ast.AST, int]] = [(tree, 0)]
+    while stack:
+        node, depth = stack.pop()
+        text = _text_of(node)
+        if text is not None:
+            yield text
+            continue
+        if isinstance(node, _CONTAINERS):
+            depth += 1
+            if depth > _USE_MAX_DEPTH:
+                continue
+        stack.extend((child, depth) for child in reversed(list(ast.iter_child_nodes(node))))
+
+
+def _toml_strings(value: object, path: tuple[str, ...],
+                  depth: int = 0) -> Iterator[tuple[tuple[str, ...], str]]:
+    """Every string value of parsed TOML with its key path (a list's items: the list's
+    path), at most ``_USE_MAX_DEPTH`` tables and arrays deep."""
+    if isinstance(value, str):
+        yield path, value
+    elif depth < _USE_MAX_DEPTH and isinstance(value, dict):
+        for key, item in value.items():
+            yield from _toml_strings(item, (*path, str(key)), depth + 1)
+    elif depth < _USE_MAX_DEPTH and isinstance(value, list):
+        for item in value:
+            yield from _toml_strings(item, path, depth + 1)
+
+
+class _UseWalk:
+    """Collects the use rows of one program: who speaks, what is shown, what plays, which
+    story variables and defines code, conditions and ``{var=…}`` tags name and (F41 P1)
+    what the declarations, minigame arguments and config.toml show or play.
+
+    ``pictures`` are the image index's names (matched without case), ``sounds`` the files
+    under ``audio/`` (named relative to it), ``config_text`` config.toml's text (None: not
+    read)."""
+
+    def __init__(self, program: Program, pictures: Iterable[str] = (),
+                 sounds: Iterable[str] = (), config_text: str | None = None) -> None:
         self.rows: dict[str, dict[NameRow, None]] = {kind: {} for kind in USE_KINDS}
         self.variables = program.default_names
+        self.pictures = frozenset(pictures)
+        self.folded = {name.casefold(): name for name in sorted(self.pictures)}
+        self.sounds = frozenset(sounds)
         self.characters: set[str] = set()
+        self.image_tags: dict[str, str] = {}             # a character's image_tag= literal
+        self.transitions = {define.name for define in program.defines
+                            if _call_of(define.value, _TRANSITION_CALLS) is not None}
+        self.defines = {define.name for define in program.defines}
+        # What a minigame argument's names lead to (characters aren't data).
+        self.values: dict[str, PyCode] = {d.name: d.value for d in program.defaults}
+        self.values.update((d.name, d.value) for d in program.defines)
         for define in program.defines:
             call = _character_call(define)
             if call is None:
@@ -607,42 +670,98 @@ class _UseWalk:
             self.characters.add(define.name)
             ref, line = _where(define)
             for keyword in call.keywords:
-                value = keyword.value
-                if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+                text = _text_of(keyword.value)
+                if text is None:
                     continue
                 if keyword.arg == "blip":
-                    self.add("audio_use", value.value, ref, line)
-                elif keyword.arg == "name_from" and value.value in self.variables:
-                    self.add("variable_use", value.value, ref, line)
+                    self.add("audio_use", text, ref, line)
+                elif keyword.arg == "name_from" and text in self.variables:
+                    self.add("variable_use", text, ref, line)
+                elif keyword.arg == "image_tag":
+                    self.image_tags[define.name] = text
+        for name in self.characters:
+            self.values.pop(name, None)
         for stmt in _statements(program):
             self.node(stmt, stmt.file.ref, stmt.line, 0)
+        for define in program.defines:                   # values name other defines
+            self.python(define.value, define.file.ref, own=define.name)
+        for default in program.defaults:
+            self.python(default.value, default.file.ref, own=default.name)
+        self.declarations(program)
+        if config_text is not None:
+            self.config(config_text)
+        self.frames()
 
     def add(self, kind: str, name: str | None, ref: str | None, line: int | None) -> None:
         if name:
             self.rows[kind][(name, ref, line)] = None
 
-    def python(self, py: PyCode, ref: str) -> None:
+    def name(self, name: str | None, ref: str, line: int) -> None:
+        """A name in code or in a text tag: a story variable, a character, a transition or
+        another define."""
+        if name in self.variables:
+            self.add("variable_use", name, ref, line)
+        elif name in self.characters:
+            self.add("character_use", name, ref, line)
+        elif name in self.transitions:
+            self.add("transition_use", name, ref, line)
+        elif name in self.defines:
+            self.add("define_use", name, ref, line)
+
+    def media(self, text: str, ref: str | None, line: int | None) -> None:
+        """A string that names a picture (any case) or a sound (with or without
+        ``audio/``)."""
+        picture = self.folded.get(text.casefold())
+        if picture is not None:
+            self.add("image_use", picture, ref, line)
+        sound = text.removeprefix(AUDIO_PREFIX)
+        if sound in self.sounds:
+            self.add("audio_use", sound, ref, line)
+
+    def python(self, py: PyCode, ref: str, own: str | None = None) -> None:
         tree = _python_tree(py.source, py.mode)
-        if tree is None:
-            return
+        if tree is not None:
+            self.code(tree, ref, py.line, own)
+
+    def code(self, tree: ast.AST, ref: str, line: int, own: str | None = None) -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.Name):
-                if node.id in self.variables:
-                    self.add("variable_use", node.id, ref, py.line)
-                elif node.id in self.characters:
-                    self.add("character_use", node.id, ref, py.line)
+                if node.id != own:
+                    self.name(node.id, ref, line)
             elif isinstance(node, ast.Attribute) and _is_name(node.value, "points"):
-                self.add("meter_use", node.attr, ref, py.line)             # points.hana
+                if node.attr != "highest":                           # points.highest(…)
+                    self.add("meter_use", node.attr, ref, line)      # points.hana
             elif isinstance(node, ast.Subscript) and _is_name(node.value, "points"):
-                self.add("meter_use", _text_of(node.slice), ref, py.line)  # points["hana"]
+                self.add("meter_use", _text_of(node.slice), ref, line)  # points["hana"]
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
                     and _is_name(node.func.value, "points") and node.func.attr == "highest":
                 for arg in node.args:
-                    self.add("meter_use", _text_of(arg), ref, py.line)
+                    self.add("meter_use", _text_of(arg), ref, line)
             elif isinstance(node, ast.Compare) and len(node.comparators) == 1:
                 kind = _IN_VIEWS.get(_view_of(node.comparators[0]))
                 if kind is not None:                         # "lanterns" in codex.tips
-                    self.add(kind, _text_of(node.left), ref, py.line)
+                    self.add(kind, _text_of(node.left), ref, line)
+
+    def data(self, value: PyCode, ref: str, line: int) -> None:
+        """F41 §7.1 item 3: the pictures and sounds a minigame argument names: its strings,
+        and those of the defines and defaults it names (``room=shed``), followed at most
+        ``_USE_MAX_DEPTH`` names deep, all at the argument's line."""
+        todo: list[tuple[PyCode, int]] = [(value, 0)]
+        seen: set[str] = set()
+        while todo:
+            code, hops = todo.pop()
+            tree = _python_tree(code.source.strip(), "eval")
+            if tree is None:
+                continue
+            for text in _strings(tree):
+                self.media(text, ref, line)
+            if hops >= _USE_MAX_DEPTH:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Name) and node.id in self.values \
+                        and node.id not in seen:
+                    seen.add(node.id)
+                    todo.append((self.values[node.id], hops + 1))
 
     def node(self, obj: object, ref: str, line: int, depth: int) -> None:
         if depth > _USE_MAX_DEPTH or obj is None or isinstance(obj, (str, int, float, bool)):
@@ -652,10 +771,10 @@ class _UseWalk:
             return
         if isinstance(obj, TaggedText):
             for piece in obj.pieces:
-                name = getattr(piece, "name", None) if isinstance(piece, VarMark) \
-                    else getattr(piece, "var", None) if isinstance(piece, NameMark) else None
-                if name in self.variables:
-                    self.add("variable_use", name, ref, line)
+                if isinstance(piece, VarMark):
+                    self.name(piece.name, ref, line)
+                elif isinstance(piece, NameMark) and piece.var in self.variables:
+                    self.add("variable_use", piece.var, ref, line)
             return
         if isinstance(obj, tuple):
             if obj and isinstance(obj[0], Statement):
@@ -670,7 +789,8 @@ class _UseWalk:
         if isinstance(obj, Say):
             self.add("character_use", obj.speaker, ref, line)
             if obj.speaker and obj.attributes:
-                self.add("image_use", " ".join((obj.speaker, *obj.attributes)), ref, line)
+                tag = self.image_tags.get(obj.speaker, obj.speaker)
+                self.add("image_use", " ".join((tag, *obj.attributes)), ref, line)
         elif isinstance(obj, (Scene, Show)):
             self.add("image_use", obj.image, ref, line)
         elif isinstance(obj, (PlayAudio, QueueMusic, StopAudio, Voice)):
@@ -685,24 +805,111 @@ class _UseWalk:
             self.add("transition_use", obj.name, ref, line)
         elif isinstance(obj, At):
             self.add("position_use", obj.name, ref, line)
+        elif isinstance(obj, Minigame):
+            if obj.target in self.variables:              # into <variable>
+                self.add("variable_use", obj.target, ref, line)
+            for arg in obj.args:
+                self.data(arg.value, ref, arg.line)
         for item in fields(obj):
             if item.name not in ("file", "sid", "label", "path"):
                 self.node(getattr(obj, item.name, None), ref, line, depth + 1)
 
+    def declarations(self, program: Program) -> None:
+        """F41 §7.1 item 2: what the gallery, codex, replays and achievements show (decision
+        3: an achievement's icon), what the music room plays, the replays' starting values
+        and the achievements' ``when`` code, each at its declaration's line."""
+        for gallery in program.gallery:
+            for picture in gallery.pictures:
+                self.add("image_use", picture, gallery.file, gallery.line)
+        for entry in program.codex:
+            self.add("image_use", entry.image, entry.file, entry.line)
+        for replay in program.replays:
+            self.add("image_use", replay.image, replay.file, replay.line)
+            for name, _value in replay.values:
+                if name in self.variables:
+                    self.add("variable_use", name, replay.file, replay.line)
+        for track in program.tracks:
+            self.add("audio_use", track.file, track.script, track.line)
+        for achievement in program.achievements:
+            ref, line = _where(achievement)
+            self.add("image_use", achievement.image, ref, line)
+            tree = _python_tree(achievement.when.strip(), "eval") if achievement.when else None
+            if tree is not None and ref is not None and line is not None:
+                self.code(tree, ref, line)
 
-def _story_uses(program: Program) -> dict[str, list[NameRow]]:
-    if not _USES_CACHE or _USES_CACHE[0][0] is not program:
-        walk = _UseWalk(program)
-        _USES_CACHE[:] = [(program, {kind: list(rows) for kind, rows in walk.rows.items()})]
-    return _USES_CACHE[0][1]
+    def config(self, text: str) -> None:
+        """F41 §7.1 item 5: every config.toml string that names a picture or a sound, at
+        its key's line (None when it can't be found)."""
+        try:
+            doc = tomllib.loads(text)
+        except (tomllib.TOMLDecodeError, ValueError, RecursionError):
+            return
+        locator = KeyLocator(text)
+        for path, value in _toml_strings(doc, ()):
+            self.media(value, CONFIG_FILENAME, locator.line_of(*path))
+
+    def frames(self) -> None:
+        """F41 §7.1 item 4: an F38 blink or talking frame shares its look's places (a frame
+        of an unused look stays unused)."""
+        places: dict[str, list[tuple[str | None, int | None]]] = {}
+        for name, ref, line in self.rows["image_use"]:
+            places.setdefault(name.casefold(), []).append((ref, line))
+        for name in sorted(self.pictures):
+            frame = frame_of(name, self.pictures)
+            if frame is not None:
+                for ref, line in places.get(frame.look.casefold(), ()):
+                    self.add("image_use", name, ref, line)
+
+
+def _index_of(ctx: CheckContext) -> ImageIndex:
+    """The launch's image index, else one built from the story and ``images/``."""
+    index: ImageIndex | None = ctx.launch.images if ctx.launch is not None else None
+    if index is None:
+        assert ctx.program is not None
+        index = build_index(ctx.program, image_source(ctx.paths))
+    return index
+
+
+def _config_text(ctx: CheckContext) -> str | None:
+    """config.toml's text through ``ctx.paths`` (an overlay counts), None when unreadable."""
+    try:
+        return ctx.paths.read_file(CONFIG_FILENAME, max_bytes=CONFIG_MAX_BYTES).decode(
+            "utf-8-sig")
+    except (UserFacingError, AssetNotFile, AssetTooLarge, AssetUnreadable, AssetRefError,
+            OSError, ValueError):
+        return None
+
+
+def _story_uses(ctx: CheckContext) -> dict[str, list[NameRow]]:
+    program = ctx.program
+    assert program is not None
+    launched = ctx.launch.images if ctx.launch is not None else None
+    if not _USES_CACHE or _USES_CACHE[0][0] is not program \
+            or _USES_CACHE[0][1] is not launched:
+        try:
+            sounds = [name for name, _file, _line in _audio_names(ctx) or ()]
+        except Exception:                                # no audio/ walk: no sound matches
+            sounds = []
+        walk = _UseWalk(program, _index_of(ctx).names, sounds, _config_text(ctx))
+        _USES_CACHE[:] = [(program, launched,
+                           {kind: list(rows) for kind, rows in walk.rows.items()})]
+    return _USES_CACHE[0][2]
 
 
 def _uses(kind: str) -> Callable[[CheckContext], Iterable[NameRow] | None]:
     def rows(ctx: CheckContext) -> Iterable[NameRow] | None:
         if ctx.program is None:
             return None
-        return _story_uses(ctx.program)[kind]
+        return _story_uses(ctx)[kind]
     return rows
+
+
+def _replay_scenes(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F41 §7.1 item 7: each scene replay's label, at its declaration's line (the story
+    map's and lint's starting points besides ``start``)."""
+    if ctx.program is None:
+        return None
+    return [(replay.label, replay.file, replay.line) for replay in ctx.program.replays]
 
 
 def _bundled_sigs() -> list[tuple[PluginSig, str | None]]:
@@ -813,6 +1020,8 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "route_use": _uses("route_use"),        # F47 P2: lock/unlock route, "n" in persistent.routes
     "transition_use": _uses("transition_use"),  # F47 P2: each with clause's transition
     "position_use": _uses("position_use"),  # F47 P2: each show … at <position name>
+    "define_use": _uses("define_use"),      # F41 P1: code or a text tag naming another define
+    "replay_scene": _replay_scenes,         # F41 P1: each scene replay's label, at its line
     "meta_file": _meta_file_names,          # F31: names in file lines and files/ originals
     "meta_file_use": _meta_file_uses,       # F31: each file line's name, at its line
 }

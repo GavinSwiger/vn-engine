@@ -341,8 +341,9 @@ class MusicRoomCategory:
         return out
 
     def _played_places(self, file: str) -> list[tuple[str | None, int | None]]:
-        """The lines that play ``file`` (the check's ``audio_use`` rows)."""
-        return list(db.use_places(self.names, db.SOUND, file))
+        """The lines that play ``file`` (the check's ``audio_use`` rows, without F41's
+        track declaration and config.toml rows)."""
+        return list(db.story_places(self.names, self.texts, db.SOUND, file))
 
     def _ending_choices(self, until: Sequence[str]) -> list[tuple[str, str]]:
         """Every ending (name, label) for the "After these endings" ticks, plus any the

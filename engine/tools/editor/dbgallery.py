@@ -278,10 +278,10 @@ class GalleryCategory:
 
     def _shown_places(self, entry: db.Entry) -> list[tuple[str | None, int | None]]:
         """The distinct lines that put one of the entry's pictures on stage (the check's
-        ``image_use`` rows)."""
+        ``image_use`` rows, without F41's declaration and config.toml rows)."""
         seen: dict[tuple[str | None, int | None], None] = {}
         for picture in self._pictures_of(entry):
-            for place in db.use_places(self.names, db.BACKGROUND, picture):
+            for place in db.story_places(self.names, self.texts, db.BACKGROUND, picture):
                 seen[place] = None
         return list(seen)
 
