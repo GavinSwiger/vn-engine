@@ -28,7 +28,7 @@ child does all three, and the 0.5 s preview target holds once it is warm.
   here: Studio's ``ThumbCache`` keys them by size and modification time.
 - **Sound**: ``audio.backend.open_device`` on the first ``play``, the F08 ``AudioReader`` and
   the backend's decode. One sound at a time: ``play`` stops the last; music streams.
-- **Isolation**: the SDL video driver is always ``dummy`` (no window). Reports go to a
+- **Isolation**: the video system is never started (no window; surfaces only). Reports go to a
   duplicate of fd 1; fd 1 and ``sys.stdout`` point at the null device. No bytecode, no log
   handlers (stderr only for a bad request), no write roots: it writes nothing. It runs no
   author code: no story load, no plugins, no ``define``.
@@ -206,10 +206,11 @@ class Helper:
         import pygame
 
         self.paths = paths
-        pygame.display.init()
         pygame.font.init()
-        # A display mode, so images convert as in the game (convert_alpha needs one).
-        self.screen = pygame.display.set_mode((1, 1), pygame.HIDDEN)
+        # The video system is never started: no window, and no driver to choose (F01
+        # PR-F01-63 keeps the engine from naming one). Images convert to this 32-bit format,
+        # as AssetManager does when there is no display.
+        self.screen = pygame.Surface((1, 1), 0, 32)
         self._mixer = None
         self._sound = None                  # the playing Sound or music bytes, kept alive
         self.warm_up()
@@ -314,8 +315,8 @@ class Helper:
             raise Failed(NOT_A_PICTURE) from None
         k = min(1.0, size / max(w, h))
         out = (max(1, round(w * k)), max(1, round(h * k)))
-        image = image.convert_alpha() if image.get_flags() & pygame.SRCALPHA \
-            else image.convert(32, 0)
+        alpha = pygame.Surface((1, 1), pygame.SRCALPHA, 32)
+        image = image.convert(alpha if image.get_flags() & pygame.SRCALPHA else self.screen)
         return pygame.transform.smoothscale(image, out) if out != (w, h) else image
 
     # -- sound (§7.3) --
@@ -495,7 +496,6 @@ def helper_command(game_dir: Path) -> int:
     request breaks the protocol (2, nothing more is answered)."""
     sys.dont_write_bytecode = True
     _quiet_logs()
-    os.environ["SDL_VIDEODRIVER"] = "dummy"             # stills only: never a window
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     out = _isolate_stdout()
 
