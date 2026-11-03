@@ -32,7 +32,6 @@ LANGUAGE_DOC = Path(__file__).resolve().parents[2] / "docs" / "script-language.m
 
 # 07 I-4: keys whose docs/script-language.md heading is still to come.
 DOCS_PENDING = {
-    "minigame": "F23 s6",            # registered by minigame.register_words() (F19 07 I-5)
     "effect": "F28 s6",              # registered by glitch.register_words() until F28 s3
     "ui": "F32 s6",                  # ui.HEADING; registered by ui.register_words() from F32 s3
     "file": "F31 s5",                # "Meta files"; metafiles.register_words() from F31 s3
