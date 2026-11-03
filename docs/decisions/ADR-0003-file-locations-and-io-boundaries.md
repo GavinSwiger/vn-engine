@@ -184,3 +184,14 @@ buffered early log records; invariant 9 wording.
 - 2026-11-02: amended at F46 (F46 `07` §5, I-11): §2's dev-tool row adds
   `<game>/.studio/storymap.json` (ADR-0008 Amendment 2). `.studio/` is not a write root; packaged builds exclude it (F42). Status
   remains accepted.
+- 2026-11-03: amended at F43 approval (`specs/F43-localization/07` I-11): §7's allow-list
+  gains the **system UI language**. `engine/app/platform.py`'s `system_ui_language()` returns
+  a validated language tag or None, and the value is never logged (only the chosen game
+  language is). On Windows it may load `kernel32` (System32 only, as `user32`/`shcore`) for
+  exactly one function, `GetUserPreferredUILanguages`, with `argtypes`/`restype` declared;
+  any other `kernel32` name stays forbidden (SEC-F01-18). Elsewhere it reads `LC_ALL`, then
+  `LC_MESSAGES`, then `LANG`. §8's environment rule now names three modules: `core/paths.py`
+  and `core/logsetup.py` (folder and redaction-root variables, not OS queries) and
+  `app/platform.py` (the three locale variables only, an OS query under 9(c)). The privacy
+  AST and supply-chain tests enforce both. `translations/` is a read-only game folder (read
+  through `GamePaths`), not a write root. Status remains accepted.

@@ -83,3 +83,8 @@ Bench scenes include neither; F20's perf ACs measure them.
   bench (invariant 10's exception list). Status remains accepted.
 - 2026-11-02: amended at F20 approval: a flowchart jump is in the player-chosen load class, and a
   page open's layout remainder is one step at a player-chosen open. Status remains accepted.
+- 2026-11-03: amended at F43 approval (`specs/F43-localization/07` I-13): a player-chosen
+  language switch is in the player-chosen load class. Its `.po` read, parse and match run in
+  `SCRIPT_LOAD_SLICE_S` slices while the old language stays on screen; a cached language
+  switches on the next frame. Background work during play (the dev entry sweep, W252) slices
+  at ≤ 2 ms and stays inside the budget. Status remains accepted.

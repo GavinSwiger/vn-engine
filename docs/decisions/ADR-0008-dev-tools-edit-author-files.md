@@ -1,6 +1,6 @@
 # ADR-0008 — Dev tools that edit author files
 
-Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3)
+Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3); 2026-11-03 (F40, F41, F43, Amendment 4)
 Proposed by: vn-feature-architect (F44 `04-technical.md` §17). Gaps raised by: vn-qa-engineer
 (F44 `06-acceptance.md` §7, G1 and G11). Decided by: vn-system-architect (F44
 `07-architecture-review.md`).
@@ -211,6 +211,36 @@ engine-install reads; the `builder=` injection.
 *Save to* is written only on an explicit Build. AC-F42-37 and -39 test it. Any later tool that
 writes outside the game folder needs its own amendment.
 
+## Amendment 4 (M7 tools: F40, F41, F43)
+
+**Context.** F40 puts a dev tool inside the running game. F41 adds a second check-child
+command. F43's Translate tab writes `.po` files and exports a file wherever the author
+chooses.
+
+**Decision.**
+1. **In-game dev tools (F40).** A dev tool that runs inside the game process lives under
+   `engine/tools/` and reaches the game only through an **inert slot** on `App` (`console`,
+   None unless filled), typed by a Protocol in `app/`. Only `engine/__main__.py` fills it,
+   in dev runs and never in a Try-it or launcher run, through a function that imports
+   the tool inside itself (as `builder=`). Every call site checks `App.dev` and a filled
+   slot. `tools/console` may import `core`, `script`, `runtime`, `render`, `ui`, `app`, and
+   never `meta`, `persist`, `audio`, `minigames` or another `tools` package. It writes no
+   file. Author code typed into it is author code (invariant 9(d)), so its persistent
+   writes behave as `$` lines'. Packaged builds exclude it with `engine/tools/`, and the
+   leak scan holds its needle.
+2. **`lint` (F41).** `python -m engine lint` is a dev-only command run through
+   `tools/check.py` (lazy `linter=` import). It writes nothing and follows §4's rules.
+   `tools/lint.py` has check.py's row and only check.py imports it.
+3. **Translations (F43).** `ASSET_GROUPS` gains `translations`, so Amendment 1 §1's group
+   folders include `<game>/translations/`. **Export…** may create or replace one regular
+   file at the path the author picks in a Save-as dialog (`write_atomic`, exclusive temp
+   beside it), and only on that explicit act. **Import…** reads one author-picked file of up
+   to 16 MB and writes only through the Translate tab's normal `.po` save.
+
+**Consequences.** Any later in-game dev tool reuses this slot pattern. Export is the second
+tool that may write outside the game folder (after Amendment 3) and is limited to one
+author-chosen file.
+
 ## Status history
 
 - 2026-11-01: proposed (F44 04-technical §17).
@@ -224,3 +254,5 @@ writes outside the game folder needs its own amendment.
   here at the F42 review; `build.json` added as its second named file.
 - 2026-11-02: Amendment 3 (F42 build output, `build.json`, pip) proposed in F42 `04` §18 and
   accepted with modifications (F42 `07` §3).
+- 2026-11-03: Amendment 4 (in-game dev tool slot, `lint`, `translations` group and Export)
+  accepted in `specs/F43-localization/07` (joint M7 tools review).
