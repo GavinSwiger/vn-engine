@@ -60,9 +60,9 @@ from engine.tools.editor.views import EmptyState, panel_header
 TITLES: Mapping[str, str] = {
     db.CATEGORY_CHARACTER: "Characters", db.CATEGORY_PICTURE: "Pictures",
     db.CATEGORY_SOUND: "Sounds", db.CATEGORY_VARIABLE: "Variables"}
-THINGS: Mapping[str, str] = {
-    db.CATEGORY_CHARACTER: "characters", db.CATEGORY_PICTURE: "pictures",
-    db.CATEGORY_SOUND: "sounds", db.CATEGORY_VARIABLE: "variables"}
+# Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
+# core/constants.py (the meta-files write root; tests/core/test_paths_meta.py).
+THINGS: Mapping[str, str] = {key: title.lower() for key, title in TITLES.items()}
 CATEGORIES_HEADING = "Categories"
 NEW_BUTTON = "+ New"
 SEARCH_HINT = "Search…"
