@@ -83,7 +83,7 @@ def test_ac16_project_tree_lists_what_the_engine_reads(tmp_path, studio_game, ou
     tree = files.project_tree(paths_of(game))
     assert [(g.name, g.count) for g in tree.groups] == [
         ("Script", 2), ("Images", 3), ("Audio", 1), ("GUI", 1), ("Fonts", 0),
-        ("Minigames", 0)]                       # sky.gif isn't an IMAGE_SUFFIXES file
+        ("Minigames", 0), ("Meta files", 0)]    # sky.gif isn't an IMAGE_SUFFIXES file
     assert tree.config.ref == "config.toml"
     assert tree.file_refs("script") == ["script/main.vns", "script/ch2.vns"]
     assert tree.find("images/hana/happy.png").image_name == "hana happy"

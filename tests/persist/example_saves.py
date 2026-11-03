@@ -42,13 +42,15 @@ VERSION = "0.1.0"
 # release's wish line and its reaction, after the poem, which has no checkpoint here;
 # F25-4: +1 for Hana's map line in the prologue, and +5 on the bridge for the line before
 # the cross-examination and the four of its won branch; F27-4: +1 after the stall for the
-# line before the shed's puzzle room, which has no checkpoint here).
+# line before the shed's puzzle room, which has no checkpoint here; F31 s5: +6 after the
+# prologue for the six lines of the bonus scene, script/bonus.vns, and +2 from the stall on
+# for F23's two lantern_memory lines around the stall's minigame).
 CHECKPOINTS = {
     "prologue.vnsave": 10,      # main.vns: "He said you'd get lost at least twice."
-    "fortune.vnsave": 16,       # chapter1.vns, in the called draw_fortune: the slip is read
-    "stall_menu.vnsave": 20,    # chapter1.vns: the nested "Red or white?" menu (called)
-    "talk_menu.vnsave": 35,     # daichi.vns: the "Talk" menu, the second time (called)
-    "release.vnsave": 43,       # daichi.vns, in the called lantern_release: "Make a wish."
+    "fortune.vnsave": 22,       # chapter1.vns, in the called draw_fortune: the slip is read
+    "stall_menu.vnsave": 28,    # chapter1.vns: the nested "Red or white?" menu (called)
+    "talk_menu.vnsave": 43,     # daichi.vns: the "Talk" menu, the second time (called)
+    "release.vnsave": 51,       # daichi.vns, in the called lantern_release: "Make a wish."
 }
 IGNORE = shutil.ignore_patterns("logs", "saves", "persistent", "settings", "characters",
                                 "__pycache__")

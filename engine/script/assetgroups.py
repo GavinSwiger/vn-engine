@@ -16,7 +16,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 from engine.core.constants import (ASSET_MAX_BYTES, CONFIG_FILENAME, FONT_SUFFIXES,
-                                   IMAGE_SUFFIXES, MB)
+                                   IMAGE_SUFFIXES, MB, META_ORIGINAL_MAX_BYTES,
+                                   META_ORIGINALS_DIR)
 from engine.script.audio import PLAYABLE_EXTS
 from engine.script.limits import SCRIPT_FILE_MAX_BYTES
 from engine.script.loader import SCRIPT_DIR, SCRIPT_SUFFIX
@@ -49,6 +50,9 @@ ASSET_GROUPS: tuple[AssetGroup, ...] = (
     AssetGroup("gui", "gui", "GUI", IMAGE_SUFFIXES, ASSET_MAX_BYTES, "gui_image"),
     AssetGroup("fonts", "fonts", "Fonts", FONT_SUFFIXES, ASSET_MAX_BYTES, "font"),
     AssetGroup("minigames", "minigames", "Minigames", (".py",), MINIGAME_FILE_MAX_BYTES, "code"),
+    # F31 (C5): the originals ``file write`` copies; ``characters/`` is never a group.
+    AssetGroup("files", META_ORIGINALS_DIR, "Meta files", (".chr", ".txt"),
+               META_ORIGINAL_MAX_BYTES, "meta"),
 )
 
 __all__ = ["ASSET_GROUPS", "AssetGroup", "AssetKind", "CONFIG_REF", "MINIGAME_FILE_MAX_BYTES",

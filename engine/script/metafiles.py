@@ -194,31 +194,31 @@ def parse_file(raw: RawStatement, ctx: ParseContext) -> MetaFile | None:
 SPEC: Final = StatementSpec(word=WORD_FILE, placement="story", takes_block=False,
                             tail=TAIL_SCRIPT, parse=parse_file)
 
-# Four Insert entries in "Files". ``docs`` is None until F31 s5 writes the "Meta files"
-# section. ``_NAMES`` is empty until F31 s5 adds the ``meta_file`` name kind to tools/check.py's
-# NAME_SOURCES and sets it to ("meta_file",) (``file`` registers at import since F31 s3, and
-# every listed kind must have a source, AC-F45-07). The examples load in tests/fixtures/docgame/
-# (files/hana.chr and the two defaults, added at F31 s3; 06 §5).
-_NAMES: Final[tuple[str, ...]] = ()
+# Four Insert entries in "Files", each pointing at docs/script-language.md's "Meta files"
+# (F31 s5). ``meta_file`` is tools/check.py's name kind (the names under files/ and in file
+# lines); Studio offers it inside the quotes only (assist.QUOTED_KINDS). The examples load in
+# tests/fixtures/docgame/ (files/hana.chr and the two defaults; 06 §5).
+_NAMES: Final[tuple[str, ...]] = ("meta_file",)
+HEADING: Final = "Meta files"
 DOCS: Final = (
     StatementDoc(
         WORD_FILE, "Write a meta file", "Files", 'file write "<name>" ["<text>"]',
         "Puts a file in the game's characters folder, where the player can see it: the "
         "text given, or a copy of files/<name>.",
-        'file write "hana.chr"', None, "F31", fields=("hana.chr",), names=_NAMES),
+        'file write "hana.chr"', HEADING, "F31", fields=("hana.chr",), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Delete a meta file", "Files", 'file delete "<name>"',
         "Deletes a file the story wrote in the game's characters folder.",
-        'file delete "hana.chr"', None, "F31", fields=("hana.chr",), names=_NAMES),
+        'file delete "hana.chr"', HEADING, "F31", fields=("hana.chr",), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Check a meta file", "Files", 'file exists "<name>" into <variable>',
         "Sets a variable to True if the file is in the characters folder, else False.",
-        'file exists "hana.chr" into hana_here', None, "F31",
+        'file exists "hana.chr" into hana_here', HEADING, "F31",
         fields=("hana.chr", "hana_here"), names=_NAMES),
     StatementDoc(
         WORD_FILE, "Read a meta file", "Files", 'file read "<name>" into <variable>',
         "Reads a .txt file the player may have changed into a variable: its text, or None.",
-        'file read "answer.txt" into answer', None, "F31",
+        'file read "answer.txt" into answer', HEADING, "F31",
         fields=("answer.txt", "answer"), names=_NAMES),
 )
 
@@ -237,5 +237,6 @@ def register_words() -> None:
 register_words()                            # F31 s3 (F19 07 I-5)
 
 
-__all__ = ["DELETE", "DOCS", "EXISTS", "MetaFile", "NAME_BASE_MAX", "READ", "SPEC", "VERBS",
-           "WORD_FILE", "WORD_INTO", "WRITE", "name_problem", "parse_file", "register_words"]
+__all__ = ["DELETE", "DOCS", "EXISTS", "HEADING", "MetaFile", "NAME_BASE_MAX", "READ", "SPEC",
+           "VERBS", "WORD_FILE", "WORD_INTO", "WRITE", "name_problem", "parse_file",
+           "register_words"]

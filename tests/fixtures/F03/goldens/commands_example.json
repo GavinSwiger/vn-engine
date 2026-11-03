@@ -412,10 +412,10 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana sad",
       "hana pout",
       "daichi smile",
-      "hana surprised",
       "daichi"
      ],
      "type": "PrefetchImages"
@@ -508,20 +508,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night"
-     ],
-     "sprites": [
-      "hana sad",
-      "hana happy",
-      "hana pout",
-      "daichi smile",
-      "hana surprised",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -579,6 +565,220 @@
      "type": "Say"
     },
     {
+     "name": "hana.chr",
+     "type": "MetaWrite"
+    },
+    {
+     "name": "read_me.txt",
+     "type": "MetaWrite"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/f09822ffb3ca",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy",
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [
+      "happy"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/da751fec11f2",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised",
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "name": "hana.chr",
+     "type": "MetaDelete"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana surprised",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Huh. Did I just disappear from your folder?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/9eedb6ccaa82",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Huh. Did I just disappear from your folder?",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/c7f9e3fdbe3a",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "color": "#1e4a9c",
+         "italic": true,
+         "type": "Style"
+        },
+        "text": "I wasn't sure what she meant. I let her go on anyway.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "",
+     "name_color": null,
+     "sid": "hana_file/63faa041a166",
+     "speaker": "thought",
+     "speaker_tag": "thought",
+     "text": "I wasn't sure what she meant. I let her go on anyway.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Never mind. A new game always brings me back.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/085b0b9dbf4d",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Never mind. A new game always brings me back.",
+     "type": "Say"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -596,7 +796,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -640,7 +840,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -689,6 +889,20 @@
      "speaker": null,
      "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night"
+     ],
+     "sprites": [
+      "hana sad",
+      "hana happy",
+      "hana pout",
+      "daichi smile",
+      "hana surprised",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "kind": "tip",
@@ -3630,6 +3844,42 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/f09822ffb3ca",
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/da751fec11f2",
+        "text": "That's me in there. hana.chr. Don't open it, it's private."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/9eedb6ccaa82",
+        "text": "...Huh. Did I just disappear from your folder?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/c7f9e3fdbe3a",
+        "text": "There's a copy of me in the files folder. You could put me back, if you like."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "hana_file/63faa041a166",
+        "text": "I wasn't sure what she meant. I let her go on anyway."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/085b0b9dbf4d",
+        "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -3981,6 +4231,7 @@
       "bought_lantern": true,
       "fortune": "small luck",
       "hana_at": "train",
+      "hana_here": false,
       "hana_name": "Hana",
       "hana_replies": {
        "frame": "keep",
@@ -4011,6 +4262,7 @@
      "bought_lantern": true,
      "fortune": "small luck",
      "hana_at": "train",
+     "hana_here": false,
      "hana_name": "Hana",
      "hana_replies": {
       "frame": "keep",
@@ -4446,10 +4698,10 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana sad",
       "hana pout",
       "daichi smile",
-      "hana surprised",
       "daichi"
      ],
      "type": "PrefetchImages"
@@ -4542,20 +4794,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night"
-     ],
-     "sprites": [
-      "hana sad",
-      "hana happy",
-      "hana pout",
-      "daichi smile",
-      "hana surprised",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -4613,6 +4851,220 @@
      "type": "Say"
     },
     {
+     "name": "hana.chr",
+     "type": "MetaWrite"
+    },
+    {
+     "name": "read_me.txt",
+     "type": "MetaWrite"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/f09822ffb3ca",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy",
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [
+      "happy"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/da751fec11f2",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised",
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "name": "hana.chr",
+     "type": "MetaDelete"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana surprised",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Huh. Did I just disappear from your folder?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/9eedb6ccaa82",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Huh. Did I just disappear from your folder?",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/c7f9e3fdbe3a",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "color": "#1e4a9c",
+         "italic": true,
+         "type": "Style"
+        },
+        "text": "I wasn't sure what she meant. I let her go on anyway.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "",
+     "name_color": null,
+     "sid": "hana_file/63faa041a166",
+     "speaker": "thought",
+     "speaker_tag": "thought",
+     "text": "I wasn't sure what she meant. I let her go on anyway.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Never mind. A new game always brings me back.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/085b0b9dbf4d",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Never mind. A new game always brings me back.",
+     "type": "Say"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -4630,7 +5082,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -4674,7 +5126,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -4723,6 +5175,20 @@
      "speaker": null,
      "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night"
+     ],
+     "sprites": [
+      "hana sad",
+      "hana happy",
+      "hana pout",
+      "daichi smile",
+      "hana surprised",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "kind": "tip",
@@ -7446,6 +7912,42 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/f09822ffb3ca",
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/da751fec11f2",
+        "text": "That's me in there. hana.chr. Don't open it, it's private."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/9eedb6ccaa82",
+        "text": "...Huh. Did I just disappear from your folder?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/c7f9e3fdbe3a",
+        "text": "There's a copy of me in the files folder. You could put me back, if you like."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "hana_file/63faa041a166",
+        "text": "I wasn't sure what she meant. I let her go on anyway."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/085b0b9dbf4d",
+        "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -7787,6 +8289,7 @@
       "bought_lantern": true,
       "fortune": "bad luck",
       "hana_at": "train",
+      "hana_here": false,
       "hana_name": "Hana",
       "hana_replies": {},
       "hana_shown": {
@@ -7814,6 +8317,7 @@
      "bought_lantern": true,
      "fortune": "bad luck",
      "hana_at": "train",
+     "hana_here": false,
      "hana_name": "Hana",
      "hana_replies": {},
      "hana_shown": {
@@ -8246,10 +8750,10 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana sad",
       "hana pout",
       "daichi smile",
-      "hana surprised",
       "daichi"
      ],
      "type": "PrefetchImages"
@@ -8342,20 +8846,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night"
-     ],
-     "sprites": [
-      "hana sad",
-      "hana happy",
-      "hana pout",
-      "daichi smile",
-      "hana surprised",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -8413,6 +8903,220 @@
      "type": "Say"
     },
     {
+     "name": "hana.chr",
+     "type": "MetaWrite"
+    },
+    {
+     "name": "read_me.txt",
+     "type": "MetaWrite"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/f09822ffb3ca",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy",
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [
+      "happy"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/da751fec11f2",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised",
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "name": "hana.chr",
+     "type": "MetaDelete"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana surprised",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Huh. Did I just disappear from your folder?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/9eedb6ccaa82",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Huh. Did I just disappear from your folder?",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/c7f9e3fdbe3a",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "color": "#1e4a9c",
+         "italic": true,
+         "type": "Style"
+        },
+        "text": "I wasn't sure what she meant. I let her go on anyway.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "",
+     "name_color": null,
+     "sid": "hana_file/63faa041a166",
+     "speaker": "thought",
+     "speaker_tag": "thought",
+     "text": "I wasn't sure what she meant. I let her go on anyway.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Never mind. A new game always brings me back.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/085b0b9dbf4d",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Never mind. A new game always brings me back.",
+     "type": "Say"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -8430,7 +9134,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -8474,7 +9178,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -8523,6 +9227,20 @@
      "speaker": null,
      "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night"
+     ],
+     "sprites": [
+      "hana sad",
+      "hana happy",
+      "hana pout",
+      "daichi smile",
+      "hana surprised",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "kind": "tip",
@@ -11532,6 +12250,42 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/f09822ffb3ca",
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/da751fec11f2",
+        "text": "That's me in there. hana.chr. Don't open it, it's private."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/9eedb6ccaa82",
+        "text": "...Huh. Did I just disappear from your folder?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/c7f9e3fdbe3a",
+        "text": "There's a copy of me in the files folder. You could put me back, if you like."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "hana_file/63faa041a166",
+        "text": "I wasn't sure what she meant. I let her go on anyway."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/085b0b9dbf4d",
+        "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -11888,6 +12642,7 @@
       "bought_lantern": true,
       "fortune": "bad luck",
       "hana_at": "train",
+      "hana_here": false,
       "hana_name": "Hana",
       "hana_replies": {
        "frame": "keep",
@@ -11918,6 +12673,7 @@
      "bought_lantern": true,
      "fortune": "bad luck",
      "hana_at": "train",
+     "hana_here": false,
      "hana_name": "Hana",
      "hana_replies": {
       "frame": "keep",
@@ -12353,10 +13109,10 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana sad",
       "hana pout",
       "daichi smile",
-      "hana surprised",
       "daichi"
      ],
      "type": "PrefetchImages"
@@ -12449,20 +13205,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night"
-     ],
-     "sprites": [
-      "hana sad",
-      "hana happy",
-      "hana pout",
-      "daichi smile",
-      "hana surprised",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -12520,6 +13262,220 @@
      "type": "Say"
     },
     {
+     "name": "hana.chr",
+     "type": "MetaWrite"
+    },
+    {
+     "name": "read_me.txt",
+     "type": "MetaWrite"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/f09822ffb3ca",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy",
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [
+      "happy"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/da751fec11f2",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised",
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "name": "hana.chr",
+     "type": "MetaDelete"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana surprised",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Huh. Did I just disappear from your folder?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/9eedb6ccaa82",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Huh. Did I just disappear from your folder?",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/c7f9e3fdbe3a",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "color": "#1e4a9c",
+         "italic": true,
+         "type": "Style"
+        },
+        "text": "I wasn't sure what she meant. I let her go on anyway.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "",
+     "name_color": null,
+     "sid": "hana_file/63faa041a166",
+     "speaker": "thought",
+     "speaker_tag": "thought",
+     "text": "I wasn't sure what she meant. I let her go on anyway.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Never mind. A new game always brings me back.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/085b0b9dbf4d",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Never mind. A new game always brings me back.",
+     "type": "Say"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -12537,7 +13493,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -12581,7 +13537,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -12630,6 +13586,20 @@
      "speaker": null,
      "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night"
+     ],
+     "sprites": [
+      "hana sad",
+      "hana happy",
+      "hana pout",
+      "daichi smile",
+      "hana surprised",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "kind": "tip",
@@ -12735,6 +13705,22 @@
      "speaker": null,
      "text": "I unrolled the paper and read it twice: {b}{color=#9a1c14}{var=fortune}{/color}{/b}.",
      "type": "Say"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana happy",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
     },
     {
      "attributes": [
@@ -14836,6 +15822,42 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/f09822ffb3ca",
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/da751fec11f2",
+        "text": "That's me in there. hana.chr. Don't open it, it's private."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/9eedb6ccaa82",
+        "text": "...Huh. Did I just disappear from your folder?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/c7f9e3fdbe3a",
+        "text": "There's a copy of me in the files folder. You could put me back, if you like."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "hana_file/63faa041a166",
+        "text": "I wasn't sure what she meant. I let her go on anyway."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/085b0b9dbf4d",
+        "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -15097,6 +16119,7 @@
       "bought_lantern": false,
       "fortune": "great luck",
       "hana_at": "train",
+      "hana_here": false,
       "hana_name": "Hana",
       "hana_replies": {
        "frame": "keep",
@@ -15127,6 +16150,7 @@
      "bought_lantern": false,
      "fortune": "great luck",
      "hana_at": "train",
+     "hana_here": false,
      "hana_name": "Hana",
      "hana_replies": {
       "frame": "keep",
@@ -15562,10 +16586,10 @@
      ],
      "sprites": [
       "hana happy",
+      "hana surprised",
       "hana sad",
       "hana pout",
       "daichi smile",
-      "hana surprised",
       "daichi"
      ],
      "type": "PrefetchImages"
@@ -15658,20 +16682,6 @@
      "type": "Say"
     },
     {
-     "backgrounds": [
-      "bg bridge_night"
-     ],
-     "sprites": [
-      "hana sad",
-      "hana happy",
-      "hana pout",
-      "daichi smile",
-      "hana surprised",
-      "daichi"
-     ],
-     "type": "PrefetchImages"
-    },
-    {
      "attributes": [],
      "blip": {
       "file": "blips/hana.wav",
@@ -15729,6 +16739,220 @@
      "type": "Say"
     },
     {
+     "name": "hana.chr",
+     "type": "MetaWrite"
+    },
+    {
+     "name": "read_me.txt",
+     "type": "MetaWrite"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/f09822ffb3ca",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Oh, and I left something for you, in your game folder. Look in the characters folder.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy",
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [
+      "happy"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "That's me in there. hana.chr. Don't open it, it's private.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/da751fec11f2",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "That's me in there. hana.chr. Don't open it, it's private.",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised",
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "name": "hana.chr",
+     "type": "MetaDelete"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana surprised",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Huh. Did I just disappear from your folder?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/9eedb6ccaa82",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Huh. Did I just disappear from your folder?",
+     "type": "Say"
+    },
+    {
+     "backgrounds": [],
+     "sprites": [
+      "hana happy"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/c7f9e3fdbe3a",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "There's a copy of me in the files folder. You could put me back, if you like.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "color": "#1e4a9c",
+         "italic": true,
+         "type": "Style"
+        },
+        "text": "I wasn't sure what she meant. I let her go on anyway.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "",
+     "name_color": null,
+     "sid": "hana_file/63faa041a166",
+     "speaker": "thought",
+     "speaker_tag": "thought",
+     "text": "I wasn't sure what she meant. I let her go on anyway.",
+     "type": "Say"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "Never mind. A new game always brings me back.",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/085b0b9dbf4d",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "Never mind. A new game always brings me back.",
+     "type": "Say"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -15746,7 +16970,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -15790,7 +17014,7 @@
        {
         "at": "center",
         "flip": false,
-        "image": "hana happy",
+        "image": "hana surprised",
         "layer": 0,
         "tag": "hana",
         "zoom": 1.0
@@ -15839,6 +17063,20 @@
      "speaker": null,
      "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night"
+     ],
+     "sprites": [
+      "hana sad",
+      "hana happy",
+      "hana pout",
+      "daichi smile",
+      "hana surprised",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "kind": "tip",
@@ -15965,6 +17203,22 @@
      "speaker": null,
      "text": "I unrolled the paper and read it twice: {b}{color=#9a1c14}{var=fortune}{/color}{/b}.",
      "type": "Say"
+    },
+    {
+     "stage": {
+      "background": "bg river_dusk",
+      "sprites": [
+       {
+        "at": "center",
+        "flip": false,
+        "image": "hana happy",
+        "layer": 0,
+        "tag": "hana",
+        "zoom": 1.0
+       }
+      ]
+     },
+     "type": "ShowStage"
     },
     {
      "attributes": [
@@ -18601,6 +19855,42 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/f09822ffb3ca",
+        "text": "Oh, and I left something for you, in your game folder. Look in the characters folder."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/da751fec11f2",
+        "text": "That's me in there. hana.chr. Don't open it, it's private."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/9eedb6ccaa82",
+        "text": "...Huh. Did I just disappear from your folder?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/c7f9e3fdbe3a",
+        "text": "There's a copy of me in the files folder. You could put me back, if you like."
+       },
+       {
+        "kind": "line",
+        "name": "",
+        "sid": "hana_file/63faa041a166",
+        "text": "I wasn't sure what she meant. I let her go on anyway."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/085b0b9dbf4d",
+        "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -18934,6 +20224,7 @@
       "bought_lantern": true,
       "fortune": "great luck",
       "hana_at": "train",
+      "hana_here": false,
       "hana_name": "Hana",
       "hana_replies": {
        "frame": "keep",
@@ -18964,6 +20255,7 @@
      "bought_lantern": true,
      "fortune": "great luck",
      "hana_at": "train",
+     "hana_here": false,
      "hana_name": "Hana",
      "hana_replies": {
       "frame": "keep",

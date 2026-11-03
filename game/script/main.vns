@@ -18,6 +18,7 @@
 include "chapter1.vns"
 include "routes/daichi.vns"
 include "endings.vns"
+include "bonus.vns"
 
 # "define" names a character. Only a defined name can speak. The color is the color of
 # the name above the character's lines. name_from="hana_name" takes the name to show
@@ -60,6 +61,8 @@ default hana_at = None
 default hana_shown = {}
 # The replies picked in Hana's texts after the walk home (the phone chat in endings.vns).
 default hana_replies = {}
+# Whether hana.chr is in the characters folder (the bonus scene in bonus.vns).
+default hana_here = False
 # "default persistent." names a value the game remembers across playthroughs: quitting,
 # a new game, loading a save, and rolling back never change it.
 default persistent.festivals = 0
@@ -175,5 +178,7 @@ label start:
     unlock item festival_map
     # thought, defined above, speaks without a name plate.
     thought "Only once. Well, twice."
+    # The bonus scene in bonus.vns: files the player can find beside the game.
+    call hana_file
     # "jump" goes to another scene and doesn't come back.
     jump riverbank

@@ -1702,3 +1702,88 @@ def test_ac_f23_61_minigame_docs(tmp_path):
                   "minigame.hint.text_size"):
         assert re.search(rf"^\| `{re.escape(token)}` \| ", ui, re.M), token
     assert "`plugin`" in ui and "`skip_minigame`" in ui and "`confirm_skip_minigame`" in ui
+
+
+# --- AC-F31-28: the "Meta files" section ----------------------------------------------------
+
+# Each F31 code -> the format_message arguments of the forms the section quotes in full.
+F31_MESSAGES: dict[str, list[tuple]] = {
+    "E309": [(), ("unknown", "delte", "delete"), ("left", "delete", "now"), ("block",)],
+    "E310": [(), ("capitals", "Hana.chr"), ("variable", "name")],
+    "E311": [()],
+    "E312": [(), ("no_default", "hana_her", "hana_here"), ("define", "hana"),
+             ("one_name", "exists", "persistent.hana")],
+    "E313": [(), ("large", "hana.chr")],
+    "E314": [()],
+    "E315": [()],
+    "W196": [()],
+    "W197": [()],
+    "W198": [(), ("full", "write", "read_me.txt"), ("other", "write", "read_me.txt")],
+    "W199": [()],
+    "W200": [(), ("utf8", "answer.txt")],
+}
+F31_POINTS = (
+    "is replaced or deleted", "content warning", "run programs, change system settings, or "
+    "move files outside the game folder", "can reach any file", "`files/` goes with it and "
+    "your own `characters/` folder never does", "blocks rollback by itself",
+    "A new game puts the files back", "read-only folder", "another program may be using it",
+    "reach the disk only after you start the game again")
+
+
+def test_ac_f31_28_meta_files_docs(tmp_path):
+    """``script-language.md``'s "Meta files" (not proposed): the four forms, the folder and
+    name rules, once-only and the rollback block, read-only installs, the new-game pattern,
+    SEC-F31-09's five points, hot reload and W198's lock form; E309-E315 and W196-W200 rows
+    as ``messages.py`` words them; each code block loads in a copy of the doc game (its
+    ``files/`` holds the originals) and launches with no error or warning. Rollback's table
+    has the meta files row; ``file`` is available in Reserved words; the four help rows
+    point at the heading."""
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.messages import format_message
+    from engine.script.statement_docs import all_docs
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    assert "proposed, F31" not in text
+    section = _section(text, "Meta files")
+    assert "proposed" not in section
+    flat = " ".join(section.split())
+    for verb in ("write", "delete", "exists", "read"):
+        assert f"`file {verb} " in flat, verb
+    for words in ("file write", "content warning", "characters/", "lowercase letters",
+                  "`.chr` or `.txt`", "at most 32 names", *F31_POINTS):
+        assert words in flat, words
+    assert re.findall(r"^\| ([EW]\d+) \|", section, re.M) == list(F31_MESSAGES)
+    for code, forms in F31_MESSAGES.items():
+        row = re.search(rf"^\| {code} \|.*$", section, re.M).group(0)
+        for args in forms:
+            assert f"`{format_message(code, args)}`" in row, (code, args)
+
+    blocks = re.findall(r"^```[a-z]*\n(.*?)^```", section, re.M | re.S)
+    assert blocks and "file read" in blocks[0]
+    docgame = REPO / "tests" / "fixtures" / "docgame"
+    for number, body in enumerate(blocks):
+        game = tmp_path / f"game{number}"
+        shutil.copytree(docgame, game)
+        assert (game / "files" / "hana.chr").is_file()
+        story = 'define hana = Character("Hana")\n' + body
+        if "label start:" not in body:
+            story += "\nlabel start:\n    return\n"
+        (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+        (game / "script" / "chapter2.vns").unlink()              # included only by main.vns
+        result = load_story(GamePaths.for_game(game))
+        assert result.errors == () and result.warnings == (), (body, result.errors,
+                                                               result.warnings)
+        launch = run_launch(result.program)
+        assert launch.namespace is not None and launch.warnings == (), body
+
+    rollback = " ".join(_subsection(text, "What is and isn't rolled back").split())
+    assert ("| | Meta files: `file write` and `file delete` never run twice; each one blocks "
+            "rollback |") in rollback
+    assert "| `file` | available |" in _section(text, "Reserved words")
+    assert {d.docs for d in all_docs() if d.key == "file"} == {"Meta files"}
+    guide = (REPO / "docs" / "meta-files.md").read_text(encoding="utf-8")
+    assert "script-language.md#23-meta-files" in guide and "W198" in guide

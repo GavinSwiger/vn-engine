@@ -1,5 +1,6 @@
 """The Outline tab's rows: the story's chapters, endings, routes, codex entries, meters,
-minigames, and flowchart scenes (2026-11-02, user: keep Studio updated; AC-F45-54, 60).
+minigames, flowchart scenes, and meta files (2026-11-02, user: keep Studio updated;
+AC-F45-54, 60, 72).
 
 Pure Python, no Tk. ``outline(names)`` reads only the check child's name index (the last good
 check's ``names`` events), so nothing runs before the first Preview, Save, or Check (F45 O-1).
@@ -12,6 +13,8 @@ place, such as a meter or a bundled minigame).
 - **Flowchart** lists the chart's nodes in chart order (``flowchart_node``, F20 s9: kind,
   title, ``hidden`` and ``no jump``), each at its point's line; with no graph (an older check
   child, or ``[flowchart] enabled = false``), the scene titles (``flowchart_scene``).
+- **Meta files** (F31) lists each name the story's ``file`` lines use (``meta_file_use``),
+  with one row per line; an original in ``files/`` that no line uses shows ``(not used)``.
 """
 
 from collections.abc import Iterable, Mapping
@@ -20,7 +23,8 @@ from typing import Final
 
 NO_OUTLINE: Final = "No outline yet. It is read from the last check that loaded the script."
 SECTIONS: Final = ("Chapters", "Endings", "Routes", "Codex", "Meters", "Minigames",
-                   "Flowchart")
+                   "Flowchart", "Meta files")
+NOT_USED: Final = "(not used)"
 UNCATEGORIZED: Final = "(no category)"
 
 
@@ -86,12 +90,21 @@ def outline(names: Mapping[str, Iterable[object]]) -> tuple[Row, ...]:
             seen.add(row)
             games.append(Row(row[0], row[1], row[2]))
 
+    lines: dict[str, list[Row]] = {}
+    for name, file, line in get("meta_file_use"):
+        lines.setdefault(name, []).append(Row(name, file, line))
+    for name, _file, _line in get("meta_file"):
+        lines.setdefault(name, [])
+    meta = [Row(f"{name} ({len(rows)})", children=tuple(rows)) if rows
+            else Row(f"{name} {NOT_USED}") for name, rows in lines.items()]
+
     return (_section("Chapters", chapters), _section("Endings", ending_rows),
             _section("Routes", routes), Row(f"Codex ({sum(len(g) for g in groups.values())})",
                                             children=tuple(codex)),
             _section("Meters", meters), _section("Minigames", games),
             _section("Flowchart", [Row(name, file, line) for name, file, line in
-                                   get("flowchart_node") or get("flowchart_scene")]))
+                                   get("flowchart_node") or get("flowchart_scene")]),
+            _section("Meta files", meta))
 
 
-__all__ = ["NO_OUTLINE", "Row", "SECTIONS", "UNCATEGORIZED", "outline"]
+__all__ = ["NOT_USED", "NO_OUTLINE", "Row", "SECTIONS", "UNCATEGORIZED", "outline"]

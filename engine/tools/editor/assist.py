@@ -20,6 +20,10 @@ child's name index, so nothing about a statement is hand-listed here (PR-F45-17)
   picture names; in a Python line (``$``, ``if``, ``elif``, a choice's ``if``) a string
   offers tip and item names (only one kind before ``in codex.tips``/``codex.items``), and
   ``codex.`` offers ``tips`` and ``items``.
+- **Verbs and quoted names** (F31 s5, AC-F45-72). After a ``VERB_STATEMENTS`` word (``file``)
+  completion offers the second words its docs' syntaxes start with (``write``, ``delete``,
+  ``exists``, ``read``); a ``QUOTED_KINDS`` kind (``audio``, ``meta_file``) is offered only
+  inside quotes, every other kind only outside them.
 - **Text tags** (2026-11-02, AC-F45-56..59). Inside a dialogue or narration string, after
   ``{`` completion offers the tag names and after ``{/`` the innermost open style tag;
   ``tag_help(line, column)`` is the row of the tag the cursor is inside. All of it reads
@@ -40,6 +44,11 @@ STATEMENT_KIND: Final = "statement"      # a statement word, from the registry
 CHARACTER_KIND: Final = "character"      # a character name (a dialogue line's speaker)
 IMAGE_KIND: Final = "image"              # several words: the prefix spans them all
 AUDIO_KIND: Final = "audio"              # a file name, offered only inside quotes
+META_FILE_KIND: Final = "meta_file"      # F31: a meta file name, offered only inside quotes
+QUOTED_KINDS: Final = (AUDIO_KIND, META_FILE_KIND)   # kinds written in quotes
+VERB_KIND: Final = "verb"                # the word after a VERB_STATEMENTS word
+# Statements whose second word is one of a fixed list, read from their docs' syntaxes.
+VERB_STATEMENTS: Final = frozenset(("file",))
 COMPLETION_MAX: Final = 200              # rows a list holds (04 §7.6)
 COMPLETION_VISIBLE: Final = 10           # rows shown at once (design §6.1)
 PREFIX_MAX: Final = 1_024                # a longer typed run completes nothing (huge lines)
@@ -149,6 +158,20 @@ def slot_words(docs: Iterable[StatementDoc]) -> dict[str, tuple[str, ...]]:
     return {word: tuple(kinds) for word, kinds in slots.items()}
 
 
+def verb_words(word: str) -> tuple[str, ...]:
+    """The second words of ``word``'s doc syntaxes, in registration order (``file`` →
+    ``write``, ``delete``, ``exists``, ``read``); empty unless ``word`` is a
+    ``VERB_STATEMENTS`` word."""
+    if word not in VERB_STATEMENTS:
+        return ()
+    verbs: list[str] = []
+    for doc in docs_for(word):
+        tokens = doc.syntax.split()
+        if len(tokens) > 1 and tokens[1].isidentifier() and tokens[1] not in verbs:
+            verbs.append(tokens[1])
+    return tuple(verbs)
+
+
 def statement_words() -> tuple[str, ...]:
     """The registry's statement words (no forms, no modifiers), in registration order."""
     words: list[str] = []
@@ -165,7 +188,8 @@ def completion_context(line: str, column: int) -> Context | None:
     - Otherwise the first word's docs give the kinds; the last ``DOC_MODIFIERS`` word
       (``with``, ``at``) between it and the prefix takes over with its own kinds.
     - Inside quotes only ``audio`` stays, and the prefix is the ``[\\w/.-]`` run before the
-      cursor; outside quotes ``audio`` is dropped.
+      cursor; outside quotes ``audio`` is dropped (the same for every ``QUOTED_KINDS`` kind).
+    - Right after a ``VERB_STATEMENTS`` word, its verbs (``file w`` offers ``write``).
     - After a word whose doc lists ``image`` (no modifier since), the prefix is every word
       typed after it, since image names have several words.
     """
@@ -205,15 +229,17 @@ def completion_context(line: str, column: int) -> Context | None:
             kinds = slots[word]
             # image names have several words (lock item … image <words>)
             span_start = found.end() if IMAGE_KIND in kinds else -1
+    if not later and not quoted and verb_words(first.group(1)):
+        return Context((VERB_KIND,), before[start:], start, column, scope=first.group(1))
     if first.group(1) == MINIGAME_WORD and later and not quoted:
         # minigame <name> <arg>=…: argument names, never after "=" or into (F23).
         if later[-1] == "into" or head[-1:] not in (" ", "\t"):
             return None
         return Context((MINIGAME_ARG_KIND,), before[start:], start, column, scope=later[0])
     if quoted:
-        kinds = tuple(k for k in kinds if k == AUDIO_KIND)
+        kinds = tuple(k for k in kinds if k in QUOTED_KINDS)
     else:
-        kinds = tuple(k for k in kinds if k != AUDIO_KIND)
+        kinds = tuple(k for k in kinds if k not in QUOTED_KINDS)
     if not kinds:
         return None
     if IMAGE_KIND in kinds and span_start >= 0 and not quoted:
@@ -356,6 +382,8 @@ def candidates(ctx: Context, names: Mapping[str, Iterable[object]],
             pool = (ctx.scope,)
         elif kind == CODEX_FIELD_KIND:
             pool = CODEX_FIELDS
+        elif kind == VERB_KIND:
+            pool = verb_words(ctx.scope)
         else:
             pool = names.get(kind, ())
         for entry in pool:
@@ -511,4 +539,5 @@ __all__ = ["AUDIO_KIND", "CHARACTER_KIND", "CLOSE_TAG_KIND", "CODEX_FIELD_KIND",
            "COMPLETION_VISIBLE", "Candidate", "Context", "TAG_KIND", "tag_help", "IMAGE_KIND", "MINIGAME_ARG_KIND", "NO_HELP",
            "SLOT_KINDS", "STATEMENT_KIND", "accept", "slot_words",
            "auto_open", "candidates", "completion_context", "help_for", "help_sections",
-           "insert_menu", "insert_text", "statement_words"]
+           "insert_menu", "insert_text", "statement_words", "META_FILE_KIND", "QUOTED_KINDS",
+           "VERB_KIND", "VERB_STATEMENTS", "verb_words"]

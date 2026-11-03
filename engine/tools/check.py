@@ -47,7 +47,7 @@ from typing import BinaryIO
 
 from engine.core.config import load_config
 from engine.core.config_schema import Config
-from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES
+from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES, META_ORIGINALS_DIR
 from engine.core.editorreport import (
     CHECK_EVENT_MAX_ITEMS,
     CHECK_KIND_RE,
@@ -72,7 +72,7 @@ from engine.core.errors import (
     UserFacingError,
 )
 from engine.core.logsetup import ROOT_LOGGER
-from engine.core.paths import GamePaths, check_ref
+from engine.core.paths import GamePaths, check_ref, is_meta_name
 from engine.core.redact import echo
 from engine.runtime.character import Character
 from engine.runtime.gamesources import audio_files, game_has, image_source
@@ -92,6 +92,7 @@ from engine.script.limits import SCRIPT_FILE_MAX_BYTES
 from engine.script.flowchart import Flowchart
 from engine.script.flowgraph import FlowNode, FlowOptions
 from engine.script.glitch import EFFECT_STATEMENT_KINDS, WORD_OFF
+from engine.script.metafiles import MetaFile
 from engine.script.minigame import Minigame
 from engine.script.nodes import Chapter, Define, PyCode, Say, Statement
 from engine.script.pluginsigs import PluginSig, dict_keys, plugin_sigs
@@ -713,6 +714,27 @@ def _minigame_arg_names(ctx: CheckContext) -> Iterable[NameRow] | None:
     return list(rows.values())
 
 
+def _meta_file_uses(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F31: each ``file`` line's name, at its line (reading order)."""
+    if ctx.program is None:
+        return None
+    return [(s.name, *_where(s)) for s in _statements(ctx.program) if isinstance(s, MetaFile)]
+
+
+def _meta_file_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F31: every meta file name, once: a ``file`` line's at its first line, then each file
+    in ``files/`` that ``is_meta_name`` takes (no place; ``Hana.chr`` and ``x.png`` aren't
+    names). The folder is listed only (never read), through ``GamePaths``."""
+    rows: dict[str, NameRow] = {}
+    for row in _meta_file_uses(ctx) or ():
+        rows.setdefault(row[0], row)
+    listing = ctx.paths.list_real(META_ORIGINALS_DIR)
+    for name in sorted(listing.files if listing is not None else ()):
+        if is_meta_name(name):
+            rows.setdefault(name, (name, None, None))
+    return list(rows.values())
+
+
 NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "label": _label_names,
     "image": _image_names,
@@ -747,6 +769,8 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "route_use": _uses("route_use"),        # F47 P2: lock/unlock route, "n" in persistent.routes
     "transition_use": _uses("transition_use"),  # F47 P2: each with clause's transition
     "position_use": _uses("position_use"),  # F47 P2: each show … at <position name>
+    "meta_file": _meta_file_names,          # F31: names in file lines and files/ originals
+    "meta_file_use": _meta_file_uses,       # F31: each file line's name, at its line
 }
 
 

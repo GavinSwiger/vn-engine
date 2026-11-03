@@ -88,7 +88,7 @@ def test_example_story_uses_every_f02_statement_with_a_comment_above():
 def test_example_files_are_plain_utf8_with_lf():
     files = sorted((GAME / "script").rglob("*"))
     assert [p.relative_to(GAME).as_posix() for p in files if p.is_file()] == [
-        "script/chapter1.vns", "script/endings.vns", "script/main.vns",
+        "script/bonus.vns", "script/chapter1.vns", "script/endings.vns", "script/main.vns",
         "script/routes/daichi.vns"]
     for path in files:
         if path.is_file():

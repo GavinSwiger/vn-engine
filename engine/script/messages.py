@@ -2523,7 +2523,7 @@ def _e313(form: str = "missing", name: str = "hana.chr", size: int = 5_452_595,
                 f"at most {cap / MB:g} MB.")
     return (f'file write "{shown}" copies {META_ORIGINALS_DIR}/{shown}, but there is no such '
             f"file. Add it to the {META_ORIGINALS_DIR} folder, or give the text: file write "
-            f'"{shown}" "…".')
+            f'"{shown}" "your text".')
 
 
 def _e314(count: int = 33, name: str = "extra.txt", ref: str = "script/act3.vns",

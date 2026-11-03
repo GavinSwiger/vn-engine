@@ -3812,10 +3812,10 @@ script/main.vns, line 6: "hana" is set by define, so the story can't change it. 
 script/main.vns, line 6: "dice" is a name the engine uses. Use a variable that has a default.
 
 [F31-09-E313-missing]
-script/main.vns, line 6: file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "…".
+script/main.vns, line 6: file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "your text".
 
 [F31-09-E313-other]
-script/main.vns, line 6: file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "…".
+script/main.vns, line 6: file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "your text".
 
 [F31-09-E313-large]
 script/main.vns, line 6: files/hana.chr is 5.2 MB, but an original can be at most 4 MB.

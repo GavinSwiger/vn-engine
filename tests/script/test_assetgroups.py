@@ -5,7 +5,8 @@ helpers are the same objects under their old import paths (F45 ``04`` §4.1, Q5,
 from engine.audio import limits as audio_limits
 from engine.audio import sniff as audio_sniff
 from engine.core import audiosniff
-from engine.core.constants import ASSET_MAX_BYTES, FONT_SUFFIXES, IMAGE_SUFFIXES
+from engine.core.constants import (ASSET_MAX_BYTES, FONT_SUFFIXES, IMAGE_SUFFIXES,
+                                   META_ORIGINAL_MAX_BYTES, META_ORIGINALS_DIR)
 from engine.minigames import loader as minigame_loader
 from engine.runtime import images
 from engine.runtime.audio_check import AUDIO_DIR
@@ -26,6 +27,8 @@ def test_ac_f45_05_groups_are_the_engine_constants():
         "gui": ("gui", IMAGE_SUFFIXES, ASSET_MAX_BYTES),
         "fonts": ("fonts", FONT_SUFFIXES, ASSET_MAX_BYTES),
         "minigames": (minigame_loader.FOLDER, (".py",), minigame_loader.MAX_FILE_BYTES),
+        # F31 s5 (06 G4, AC-F45-05 amended): the meta files originals, last.
+        "files": (META_ORIGINALS_DIR, (".chr", ".txt"), META_ORIGINAL_MAX_BYTES),
     }
     assert [g.key for g in ASSET_GROUPS] == list(expected)
     for group in ASSET_GROUPS:

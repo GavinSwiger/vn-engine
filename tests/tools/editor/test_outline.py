@@ -69,7 +69,7 @@ def test_ac_f45_53_minigame_snippets_cover_required_arguments():
 def test_ac_f45_54_outline_rows():
     rows = {r.text: r for r in outline(NAMES)}
     assert list(rows) == ["Chapters (1)", "Endings (1)", "Routes (1)", "Codex (2)",
-                          "Meters (1)", "Minigames (1)", "Flowchart (1)"]
+                          "Meters (1)", "Minigames (1)", "Flowchart (1)", "Meta files (0)"]
     route = rows["Routes (1)"].children[0]
     assert (route.text, route.file, route.line) == ("promise", "script/main.vns", 1)
     assert [(c.text, c.file, c.line) for c in route.children] == [

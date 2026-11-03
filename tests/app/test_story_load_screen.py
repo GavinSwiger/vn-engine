@@ -171,7 +171,8 @@ def test_ac62_clean_story_launches_to_the_placeholder(tmp_path, user_roots, sess
     script_reads = [(frame, ref) for frame, ref in reads if ref.startswith("script/")]
     assert {ref for _, ref in script_reads} == {"script/main.vns", "script/chapter1.vns",
                                                 "script/routes/daichi.vns",
-                                                "script/endings.vns"}
+                                                "script/endings.vns",
+                                                "script/bonus.vns"}      # F31 s5
     # Nothing reads the story again while the 60 or more frames after loading run.
     assert max(frame for frame, _ in script_reads) <= built[0] <= 10
     assert not [r for r in records(game / "logs" / "latest.log")

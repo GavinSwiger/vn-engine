@@ -41,7 +41,8 @@ from engine.core.audiosniff import FORMAT_NAMES, matches, refused_signature
 from engine.core.constants import IMAGE_MAX_PIXELS, IMAGE_MAX_SIDE
 from engine.core.errors import AssetRefError
 from engine.core.imageheader import image_dimensions
-from engine.core.paths import GamePaths, NotReal, RealDir, check_ref, engine_data_dir, slugify
+from engine.core.paths import (GamePaths, NotReal, RealDir, check_ref, engine_data_dir,
+                               is_meta_name, slugify)
 from engine.script.assetgroups import ASSET_GROUPS, CONFIG_REF, AssetGroup
 from engine.script.imagenames import (
     CHARACTERS,
@@ -57,6 +58,7 @@ from engine.script.imagenames import (
     name_of,
 )
 from engine.script.messages import format_message, show
+from engine.script.metafiles import name_problem
 from engine.script.source import decode_script
 from engine.script.words import ROLE_LABEL, check_name, is_word_char
 
@@ -103,6 +105,8 @@ IMAGE_NAME = "`{name}` can't be an image name ({why})."
 IMAGE_OFFER = "`{name}` can't be an image name ({why}). Use `{offer}`?"
 IMAGE_FOLDER = "`{folder}/` can't be part of an image name ({why})."
 IMAGE_WORDS = "`{name}` would give an image name of more than {max} words."
+META_NAME = "`{name}` can't be a meta file name ({why})."
+META_OFFER = "`{name}` can't be a meta file name ({why}). Use `{offer}`?"
 SHOW_LINE = "In the script: show {name}"
 NEW_GAME_PARENT = "`{name}` can't be created there: its parent folder is missing or a link."
 NEW_GAME_NOT_FOLDER = "`{name}` is a link or not a folder. Pick an empty or new folder."
@@ -126,7 +130,15 @@ _WHY = {
 # Format names for "Images takes PNG, JPEG, or WebP files." Unknown suffixes show upper-cased.
 _KIND_NAMES = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG", ".webp": "WebP",
                ".ogg": "Ogg", ".opus": "Opus", ".flac": "FLAC", ".mp3": "MP3", ".wav": "WAV",
-               ".ttf": "TTF", ".otf": "OTF", ".vns": ".vns", ".py": ".py"}
+               ".ttf": "TTF", ".otf": "OTF", ".vns": ".vns", ".py": ".py", ".chr": ".chr",
+               ".txt": ".txt"}
+# F31: why a name in files/ isn't a meta file name (``metafiles.name_problem``'s forms).
+_META_WHY = {"slash": "it must be a name in the files folder",
+             "capitals": "use lowercase letters",
+             "ending": "it must end in .chr or .txt",
+             "reserved": "Windows keeps that name for itself",
+             "long": "the part before .chr or .txt can be at most 32 characters",
+             "chars": "use lowercase letters, digits, - or _"}
 
 _LOCK_ERRNOS = (errno.EACCES, errno.EPERM, errno.EROFS)
 _LINK_FALLBACK_ERRNOS = frozenset(
@@ -586,6 +598,14 @@ def _plan_name(plan: AddPlan, name: str, names: Sequence[str], *, offer: bool) -
             if not offer:
                 question = IMAGE_NAME.format(name=show(name), why=text)
             return replace(plan, problem=question, offer=fix)
+    if group.kind == "meta":
+        problem = meta_problem(name)
+        if problem is not None:
+            why, fix = problem
+            if fix is None or not offer:
+                return replace(plan, refusal=META_NAME.format(name=show(name), why=why))
+            return replace(plan, problem=META_OFFER.format(name=show(name), why=why,
+                                                            offer=show(fix)), offer=fix)
     clash = _clash(names, name)
     if clash is not None:
         plan = replace(plan, clash=clash, clash_stamp=_stamp_of(plan, clash))
@@ -600,6 +620,17 @@ def _stamp_of(plan: AddPlan, listed: str) -> safefile.Stamp | None:
         return safefile.current_stamp(plan.folder_path / listed)
     except OSError:
         return None
+
+
+def meta_problem(name: str) -> tuple[str, str | None] | None:
+    """F31 (the ``meta`` validator): (why, a fix or None) for a ``files/`` name that the game
+    can't copy, or None when ``is_meta_name`` takes it. The fix is the name lower-cased, when
+    that passes."""
+    if is_meta_name(name):
+        return None
+    form = name_problem(name) or "chars"
+    fix = name.lower()
+    return _META_WHY.get(form, _META_WHY["chars"]), fix if is_meta_name(fix) else None
 
 
 def _image_problem(ref: str, name: str) -> tuple[str, str | None] | None:
@@ -928,6 +959,8 @@ def rename_file(paths: GamePaths, ref: str, new_name: str) -> str | Refusal:
             text, fix = problem
             return Refusal(text if fix is None else IMAGE_NAME.format(name=show(new_name),
                                                                        why=text))
+    if group.kind == "meta" and (meta := meta_problem(new_name)) is not None:
+        return Refusal(META_NAME.format(name=show(new_name), why=meta[0]))
     if new_name == old_name:
         return new_ref
     folder = _folder(paths, folder_ref, create=False)

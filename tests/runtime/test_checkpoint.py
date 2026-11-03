@@ -17,7 +17,7 @@ from engine.app.dispatch import CommandRouter
 from engine.runtime import interpreter as interp_mod
 from engine.runtime.audio import EMPTY_AUDIO
 from engine.runtime.commands import (Advance, AudioRestore, ChapterStarted, CodexAdded,
-                                     Command, Event, Flash, NvlPage, PlayVoice, PrefetchImages, Say, Shake, ShowMenu,
+                                     Command, Event, Flash, MetaDelete, MetaWrite, NvlPage, PlayVoice, PrefetchImages, Say, Shake, ShowMenu,
                                      ShowStage, StartMinigame, StoryEnded, StoryFailed,
                                      StoryWait)
 from engine.runtime.interpreter import (CHECKPOINT_TYPES, RestoreResult, Status, Step,
@@ -104,6 +104,8 @@ def test_i_9_a_retained_snapshot_is_unchanged_after_a_full_run():
     router.register(NvlPage, shown.append)                  # F17 (the prologue's nvl lines)
     router.register(CodexAdded, shown.append)               # F21 (the example's codex)
     router.register(StartMinigame, shown.append)            # F24-4 (the example's poem)
+    for kind in (MetaWrite, MetaDelete):                    # F31 s5 (the bonus scene)
+        router.register(kind, shown.append)
     end_waits(interp)                                       # F18: the prologue's card
     retained = []
     while interp.status is Status.WAITING:
@@ -257,7 +259,7 @@ def test_ac_f03_84_bursts_with_f04s_stage(tmp_path):
             continue
         burst = [c for c in take_all(interp)
                  if type(c) not in (PrefetchImages, StoryWait, Shake, Flash, ChapterStarted,
-                                    CodexAdded)]
+                                    CodexAdded, MetaWrite, MetaDelete)]     # F31 s5
         if first:
             assert burst[0] == AudioRestore(EMPTY_AUDIO, "new_game")
             first = False

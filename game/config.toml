@@ -100,7 +100,8 @@ show_locked = true
 # text = """
 # This story is not suitable for children or those who are easily disturbed.
 #
-# It contains scenes of loss and grief."""
+# It contains scenes of loss and grief. It also writes and deletes small files in
+# its characters folder."""
 
 # The look of the menus. Every setting is listed in docs/script-language.md, "Menus and
 # theme". Pictures go in the gui folder; without them the engine draws its own.

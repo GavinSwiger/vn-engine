@@ -1,0 +1,33 @@
+# A bonus scene: meta files, small files the story puts beside the game, where the player
+# can find them. main.vns includes this file and calls hana_file near the start of the
+# story, so every new game writes the files again.
+#
+# The files go in the characters folder of the game folder, and nowhere else. Players
+# can open, move, or delete them, and the story can check what they did. Every rule is in
+# docs/script-language.md, "Meta files".
+
+label hana_file:
+    # "file write" puts a file in the characters folder. With only a name, it copies the
+    # file of that name from the files folder: files/hana.chr, here a picture of Hana saved
+    # under another name. The original in files/ never changes. A write can't be undone, so
+    # the player can't roll back past it.
+    file write "hana.chr"
+    # With text after the name, file write writes that text into the file instead. \n
+    # starts a new line in the file.
+    file write "read_me.txt" "If you're reading this, don't tell Hana.\nShe can hear you."
+    hana "Oh, and I left something for you, in your game folder. Look in the characters folder."
+    hana happy "That's me in there. hana.chr. Don't open it, it's private."
+    # "file delete" deletes a file the story wrote. Like a write, it can't be undone. The
+    # original in files/ stays, so a new game writes the file again.
+    file delete "hana.chr"
+    hana surprised "...Huh. Did I just disappear from your folder?"
+    hana "There's a copy of me in the files folder. You could put me back, if you like."
+    thought "I wasn't sure what she meant. I let her go on anyway."
+    # "file exists" sets a story variable to True when the file is in the characters
+    # folder, and to False when it isn't. hana_here has a default in main.vns.
+    file exists "hana.chr" into hana_here
+    if hana_here:
+        hana happy "You put me back! I knew you would."
+    else:
+        hana "Never mind. A new game always brings me back."
+    return

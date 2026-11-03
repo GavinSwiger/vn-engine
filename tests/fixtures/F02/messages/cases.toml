@@ -8035,7 +8035,7 @@ needs = "load"
 setup = "no original"
 edit = { S = '''file write "hana.chr"''' }
 where = "6"
-expect = { exact = '''file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "…".''' }
+expect = { exact = '''file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "your text".''' }
 
 [[case]]
 id = "F31-09-E313-other"
@@ -8045,7 +8045,7 @@ code = "E313"
 needs = "load"
 edit = { S = '''file write "other.chr"''' }
 where = "6"
-expect = { exact = '''file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "…".''' }
+expect = { exact = '''file write "other.chr" copies files/other.chr, but there is no such file. Add it to the files folder, or give the text: file write "other.chr" "your text".''' }
 
 [[case]]
 id = "F31-09-E313-large"

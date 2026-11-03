@@ -409,6 +409,10 @@ See [Transitions and effects](#16-transitions-and-effects).
 See [Rollback](#18-rollback): `rollback block`, `rollback off`, `rollback on`, and
 `rollback fixed`.
 
+### Meta files
+See [section 23](#23-meta-files): `file write`, `file delete`, `file exists`, and
+`file read`.
+
 ### chapter
 ```
     scene bg festival
@@ -2498,6 +2502,7 @@ line.
 | The `dice` results still to come | The player's settings |
 | The choices picked, the History log, and the `call` stack | `define` values (a defined list changed by a `$` line stays changed) |
 | Whether rollback is on or off | Anything outside the story: files, the clock, other Python modules |
+| | Meta files: `file write` and `file delete` never run twice; each one blocks rollback |
 
 **Going forward runs the story again.** The lines between two steps run again as the player
 moves forward, by wheel or by click. Story variables and `dice` come back as they were at
@@ -2530,8 +2535,9 @@ label festival_end:
     "Next year, then."
 ```
 
-The same goes for anything else that stays done, such as a file the game writes: block
-rollback right after it.
+The same goes for anything else that stays done, such as a file a `$` line writes: block
+rollback right after it. `file write` and `file delete` (see [Meta files](#23-meta-files))
+block rollback by themselves.
 
 ### Stopping rollback
 
@@ -2682,7 +2688,8 @@ reserved so your script keeps working when they arrive.
 | `cg` | coming: gallery |
 | `ending` `lock` `unlock` | available |
 | `minigame` | available |
-| `effect` · `file` | coming: glitch effects, meta files |
+| `effect` | coming: glitch effects |
+| `file` | available |
 | `rollback` | available |
 | `flowchart` | available |
 | `python` | not supported; use `$` lines |
@@ -2951,6 +2958,114 @@ used it and adds `(in define bonus, script/main.vns, line 7)`.
 
 ---
 
+## 23. Meta files
+
+A story can put small files beside the game, where the player can find them: a character's
+file that vanishes when she leaves, or a note that only a curious player reads. The story
+can then check what the player did with them ([a short walkthrough](meta-files.md)). Four
+lines do it:
+
+```
+default hana_here = False
+default answer = None
+
+label start:
+    file write "hana.chr"
+    file write "read_me.txt" "If you're reading this, don't tell Hana.\nShe can hear you."
+    hana "I left something in your game folder."
+    file delete "hana.chr"
+    file exists "hana.chr" into hana_here
+    if hana_here:
+        hana "You put me back!"
+    file read "answer.txt" into answer
+    if answer:
+        hana "You wrote back. You said: {var=answer}"
+```
+
+| Line | What it does |
+|---|---|
+| `file write "hana.chr"` | Copies `files/hana.chr` from the game folder into `characters/`. |
+| `file write "read_me.txt" "text"` | Writes the text into `characters/read_me.txt`. `\n` starts a new line; `{` is just a `{` (text tags aren't read). |
+| `file delete "hana.chr"` | Deletes `characters/hana.chr`. Nothing happens if it isn't there. |
+| `file exists "hana.chr" into hana_here` | Sets the story variable to `True` if the file is in `characters/`, else `False`. |
+| `file read "answer.txt" into answer` | Sets the story variable to the text the player left in the file (its first 2,000 characters), or `None` if there is no such file or it isn't text. `.txt` files only. |
+
+The example game's bonus scene (`script/bonus.vns`) uses all of them but `file read`.
+
+**The folder.** Every file goes in the `characters/` folder inside the game folder, and
+nowhere else. The game makes the folder when it writes the first file. While you test, it
+is your project's `characters/` folder; Studio's Play uses it too.
+
+**The names.** A name is written in quotes, never taken from a variable: lowercase letters,
+digits, `-` or `_`, up to 32 of them, then `.chr` or `.txt`, such as `"hana.chr"` or
+`"read_me.txt"`. Names Windows keeps for itself (`con`, `nul`, `com1`, …) aren't allowed. A
+game can use at most 32 names.
+
+**Originals.** A `file write` with no text copies the file of the same name from the
+`files/` folder of your game (`files/hana.chr`), at most 4 MB. The game checks it is there
+when it loads. The original never changes, so a player can always copy it back. Add an
+original in Studio's project panel under **Meta files**; any `.chr` or `.txt` file with a
+good name can go there.
+
+**Each change happens once.** A `file write` or `file delete` runs once and is never
+undone. The player can't roll back past it: it blocks rollback by itself, as a
+`rollback block` line does. Skipping runs it like any line. `file exists` and `file read`
+look at the folder each time they run, also when the player goes forward again after
+rolling back.
+
+**A new game puts the files back.** The game never writes, deletes, or tidies files by
+itself: not on launch, a new game, or Delete progress. So write each file near the start of
+the story, as the example game does. Every new game then writes it again, and a player who
+deleted Hana gets her back by starting over.
+
+**When the folder can't be written.** A game installed in a read-only folder (such as
+`C:\Program Files`) can't write there. The game goes on: `file write` and `file delete` do
+nothing, `file exists` gives `False`, and the log has one warning (W197). If your story
+depends on a file, check with `file exists` right after the write or delete, as the example
+does, and give both answers a line. A file another program has open (an editor, a virus
+scanner) can't be changed either: the log has W198 "another program may be using it", and
+the story goes on.
+
+**Hot reload.** If you add the first `file` line of your game while it runs from Studio
+and the game updates (see [Update the running game](hot-reload.md)), the files reach the
+disk only after you start the game again. Until then the story uses a folder in memory, and
+the log says so.
+
+**Tell your players.** These files are the player's computer, so:
+
+- A file the player keeps at a name your story uses is replaced or deleted: a player's own
+  `characters/hana.chr` is gone after `file delete "hana.chr"`.
+- List file deletion in your game's content warning (`[content_warning]` in `config.toml`),
+  for example "This game writes and deletes small files in its characters folder."
+- A note must never tell players to run programs, change system settings, or move files
+  outside the game folder.
+- `file` lines can only reach `characters/`, but `$` lines and `define` code are ordinary
+  Python and can reach any file. Keep file work in `file` lines.
+- When you share your game, `files/` goes with it and your own `characters/` folder never
+  does (Studio's build leaves it out), so players start with an empty folder.
+
+### When something is wrong
+
+The game checks `file` lines when it loads and lists every mistake with its file and line.
+W196–W200 are warnings in the log while the game runs; the story goes on.
+
+| Code | Message | Fix |
+|---|---|---|
+| E309 | `file needs what to do and a file name, e.g. file delete "hana.chr". It takes write, delete, exists, or read.` / `"delte" isn't a file word. Did you mean "delete"? file takes write, delete, exists, or read.` / `file delete takes one file name, but this line has "now" left over.` / `file doesn't take a block. Remove the ":" and un-indent the lines under it.` | Write `file`, one of the four words, and a name in quotes. |
+| E310 | `a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "../hana.chr" has a /.` / `a meta file name is in quotes: lowercase letters, digits, - or _, up to 32 of them, then .chr or .txt, such as "hana.chr". "Hana.chr" has capital letters.` / `the file name must be written in quotes, such as "hana.chr", not a variable like name.` | Use a lowercase name in quotes ending in `.chr` or `.txt`. |
+| E311 | `the text for "read_me.txt" can be at most 16,000 characters, but this one has 18,200.` | Shorten the text, or copy an original from `files/`. |
+| E312 | `file exists needs into and a story variable, e.g. file exists "hana.chr" into hana_here.` / `there is no default named "hana_her". Did you mean "hana_here"?` / `"hana" is set by define, so the story can't change it. Use a variable that has a default.` / `into takes one story variable's name, such as into hana_here, but this has "persistent.hana". To keep it across playthroughs, write $ persistent.hana = hana_here on the next line.` | Name one story variable with a `default`. |
+| E313 | `file write "hana.chr" copies files/hana.chr, but there is no such file. Add it to the files folder, or give the text: file write "hana.chr" "your text".` / `files/hana.chr is 5.2 MB, but an original can be at most 4 MB.` | Add the original to `files/`, or make it smaller. |
+| E314 | `This game uses 33 meta file names, but at most 32 are allowed. The first one over is "extra.txt" (script/act3.vns, line 40).` | Use fewer names. |
+| E315 | `file read reads text, so it works only on .txt files, not "hana.chr". To see whether hana.chr is there, use file exists.` | Use `file exists` for `.chr` files. |
+| W196 | `<game>/characters isn't a real folder (it is a link or a file), so file lines do nothing this session and file exists gives False.` | Delete the link or file named `characters` in the game folder. |
+| W197 | `<game>/characters can't be written (the game may be installed in a read-only folder), so file write and file delete do nothing this session.` | Install the game in a folder the player can write to, or let the story go on without the files. |
+| W198 | `couldn't delete <game>/characters/hana.chr: no permission.` / `couldn't write <game>/characters/read_me.txt: the disk is full.` / `couldn't write <game>/characters/read_me.txt: another program may be using it.` | Close the program using the file; at most 20 of these are logged a session. |
+| W199 | `the story made 256 file changes this session, the most allowed, so later file write and file delete lines do nothing until the game restarts.` | A `jump` loop probably writes over and over; write once. |
+| W200 | `file read "answer.txt" found no text: the file is over 16 KB.` / `file read "answer.txt" found no text: it isn't UTF-8 text.` | The player's file is too big or not text; the variable is `None`. |
+
+---
+
 ## Changelog
 - 2026-11-01: Created with the F02 proposal.
 - 2026-11-01: Shortened to one short section and example per statement (rules stay in
@@ -3099,3 +3214,8 @@ used it and adds `(in define bonus, script/main.vns, line 7)`.
   deleting saves doesn't; menu conditions run again at a jump), the four `[flowchart]`
   settings, and E260–E265 and W150–W155. Reserved words list `flowchart` (40 words). The
   example game marks a scene, titles the bridge's last menu, and hides the promise route.
+- 2026-11-02: F31 built (step 5): section 23, "Meta files": `file write`, `file delete`,
+  `file exists`, and `file read`, the `characters/` folder and the name rules, originals in
+  `files/`, each change once and blocking rollback, the new-game pattern, read-only installs
+  and locked files, hot reload, what to tell players, and E309–E315 and W196–W200.
+  Rollback's table has a meta files row; `file` is available in Reserved words.
