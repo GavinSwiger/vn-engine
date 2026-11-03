@@ -6,6 +6,7 @@ row for its name) fails here, as does a description row that no key uses. F32's 
 import re
 
 from engine.core import config_schema as cs
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 
 def _keys(sections):

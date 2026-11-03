@@ -3,6 +3,7 @@
 from engine.script.tag_docs import TAG_DOCS, tag_names
 from engine.script.texttags import STYLE_TAGS
 from engine.tools.editor import texttools as t
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 TEXT = "I saw the lantern move."          # "lantern" is [10, 17)
 
