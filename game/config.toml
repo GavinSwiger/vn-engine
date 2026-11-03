@@ -100,8 +100,17 @@ show_locked = true
 # text = """
 # This story is not suitable for children or those who are easily disturbed.
 #
-# It contains scenes of loss and grief. It also writes and deletes small files in
-# its characters folder."""
+# It contains loss and grief, a fake error screen, and files written in its folder.
+# It can show your computer's user name if you allow it."""
+
+# Fourth-wall tricks. With username = true, {username} in the story can show the
+# player's computer user name: at the first launch (after the content warning) the game
+# asks each player, and only "Allow" shows it. It is never saved: history, saves, and
+# the log hold the fallback word instead. Players can change their answer in Settings.
+# Every key is in docs/script-language.md, "Fourth-wall tricks".
+[meta]
+username = true
+# username_fallback = "friend"   # what {username} shows when the name isn't shown
 
 # The look of the menus. Every setting is listed in docs/script-language.md, "Menus and
 # theme". Pictures go in the gui folder; without them the engine draws its own.

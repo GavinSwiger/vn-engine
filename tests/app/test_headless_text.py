@@ -18,6 +18,7 @@ from engine.core.paths import GamePaths
 from engine.runtime.commands import Say, StoryEnded
 from engine.runtime.headless import run_headless
 from engine.script import LoadOptions, load_story
+from tests.fakes.first_launch import answer_name_question
 from tests.fakes.text_app import Session
 
 REPO = Path(__file__).resolve().parents[2]
@@ -41,6 +42,7 @@ def test_ac43_headless_and_windowed_runs_agree(tmp_path):
                                                                 "settings", "characters"))
     with (root / "config.toml").open("a", encoding="utf-8") as f:
         f.write("\n[title]\nenabled = false\n\n[textbox]\ncps = 0\n")
+    answer_name_question(root)               # F30 s6: no first-launch name question
     paths = GamePaths.for_game(root)
     positions = frozenset(load_config(paths).config.stage.positions)
     from tests.runtime.stage_story import example_minigames
@@ -73,7 +75,9 @@ def test_ac43_headless_and_windowed_runs_agree(tmp_path):
                 # F24-4: the poem ends by Shift+F8 (dev), with the test outcome headless uses.
                 if s.frame % 3 == 0:
                     Session.key(pygame.K_F8, pygame.KMOD_SHIFT)
-            elif s.frame % 3 == 0 and s.textbox is not None and s.textbox.line is not None:
+            elif s.frame % 3 == 0 and (type(s.app.screens.top).__name__ == "FakeCrashScreen"
+                                       or s.textbox is not None
+                                       and s.textbox.line is not None):     # F30 s6's crash
                 Session.key(pygame.K_SPACE)
             yield
 

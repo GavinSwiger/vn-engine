@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
+
 REPO = Path(__file__).resolve().parents[1]
 LANGUAGE = REPO / "docs" / "script-language.md"
 UI = REPO / "docs" / "ui-system.md"
@@ -2004,3 +2006,81 @@ def test_ac_f29_20_the_example_game_uses_each_text_effect(tmp_path, caplog):
                      for p in c.body.pieces if type(p) is Span and p.style.effect is not None}
             assert shown == set(uses), (seed, shown)
     assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+# --- AC-F30-38: "Fourth-wall tricks", the Saves rule, and the UI system's crash note --------
+
+# Each F30 code → the forms the reference quotes (``format_message`` arguments), in order.
+F30_MESSAGES: dict[str, list[tuple]] = {
+    "E300": [(), ("long", 140), ("tags",), ("left", "slowly")],
+    "E301": [(), ("long", 2400), ("tag", "b")],
+    "E302": [(), ("title_card",)],
+    "W188": [()],
+    "W189": [(), ("W189s",)],
+    "W190": [(), ("W190s",)],
+}
+
+
+def test_ac_f30_38_fourth_wall_tricks_docs(tmp_path):
+    """``script-language.md``'s "Fourth-wall tricks" (not proposed) covers SR-F30-01..05
+    (the title, the crash and its message rules, ``{username}`` and where it may go, the
+    fallback variable form); the title is saved and the name never is; the content-warning
+    advice; the hint must say how to continue; no OS stop screens or phone numbers. It and
+    "Saves" give SEC-F30-12's rule for ``$`` code. E300-E302, W188, W189 (and W190) rows
+    quote ``messages.py``; each story block loads and launches in a copy of the doc game
+    with no error or warning. ``ui-system.md`` has the fake crash under "Screens above"."""
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.fourthwall import HEADING
+    from engine.script.messages import format_message
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _section(text, HEADING)
+    assert "proposed" not in section
+    flat = " ".join(section.split())
+    for words in ("{username}", "content warning", "getpass", "effect crash",
+                  "`effect window_title off`", "at most 100 characters", "`\\n` for a new line",
+                  "only `{username}`, `{var=…}`, and `{{`", "**The title is part of the story.**",
+                  "**The name is never saved.**", "History, saves", "Save pictures leave out",
+                  "**The hint must tell players how to continue.**",
+                  "**Don't imitate the computer's own stop screens**", "phone number",
+                  "`{username=player_name}`", "Not in** a choice (E175)",
+                  "content warning, then the name question, then the title",
+                  "for its first half second (0.5 s)", "**Reset settings** turns it off, and "
+                  "the question comes back at the next launch", "Label fake error screens",
+                  "goes into saves, history, and persistent data",
+                  "username = true", 'username_fallback = "friend"'):
+        assert words in flat, words
+    for code, forms in F30_MESSAGES.items():
+        row = re.search(rf"^\| {code} \|.*$", section, re.M).group(0)
+        for args in forms:
+            shown = (format_message(args[0]) if args and args[0].startswith(("W189s", "W190s"))
+                     else format_message(code, args))
+            assert f"`{shown}`" in row, (code, args)
+
+    blocks = re.findall(r"^```\n(.*?)^```", section, re.M | re.S)
+    assert len(blocks) == 1 and "{username}" in blocks[0] and "effect crash" in blocks[0]
+    game = tmp_path / "game"
+    shutil.copytree(REPO / "tests" / "fixtures" / "docgame", game)
+    story = 'define hana = Character("Hana")\n' + blocks[0]
+    (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+    (game / "script" / "chapter2.vns").unlink()                  # included only by main.vns
+    result = load_story(GamePaths.for_game(game))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    launch = run_launch(result.program)
+    assert launch.namespace is not None and launch.warnings == ()
+
+    saves = " ".join(_section(text, "Saves").split())
+    for words in ("`$` code can read the player's identity", "getpass",
+                  "puts it into saves, history, and persistent data", "Use `{username}` instead"):
+        assert words in saves, words
+    assert "#25-fourth-wall-tricks" in _section(text, "Statements")
+    assert "`{username}`" in _subsection(_section(text, "Dialogue text"), "Text tags")
+    warning = " ".join(_subsection(text, "Content warning").split())
+    assert "fourth-wall tricks" in warning and "the name question comes right after" in warning
+
+    ui = " ".join(_section(UI.read_text(encoding="utf-8"), "Layers (z-order)").split())
+    assert "The **fake crash screen** (F30, `effect crash`)" in ui

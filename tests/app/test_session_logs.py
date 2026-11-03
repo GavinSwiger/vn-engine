@@ -21,6 +21,7 @@ from engine.core.logsetup import get_logger
 from engine.core.paths import user_log_dir
 from engine.ui.screen import Screen
 from tests.fakes.draw_spy import spy_draw_text
+from tests.fakes.first_launch import answer_name_question
 from tests.fakes.loop import post_key
 
 pytestmark = pytest.mark.display
@@ -50,6 +51,7 @@ def launch(game: Path, *, bench: float | None = None, log_level: str | None = No
 
 def copy_example(dest: Path) -> Path:
     shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters"))
+    answer_name_question(dest)               # F30 s6: no first-launch name question
     return dest
 
 

@@ -154,6 +154,25 @@ stay in hidden mode. They are never part of a scene picture or save thumbnail. O
 everything: the dev overlay (F3, dev runs only, F01). The error screen (F01) replaces all
 screens and drops every notice.
 
+The **fake crash screen** (F30, `effect crash`) sits directly above the in-game screen
+and paints every pixel in the error screen's fixed look (section 4): heading, message,
+the game's title and version, the hint at y 640, and, when the player turns on "Label
+fake error screens", the label at y 680. It has no widgets and no images; the stage
+under it is frozen and not drawn while it is opaque. It appears and leaves with one cut
+(a 300 ms fade under reduced motion), ignores input for its first 0.5 s of drawn time,
+then continues on Enter, Space, Esc, pad A or B, or a click in the canvas; every other
+input is swallowed. Notices wait until it leaves. It is never in a save thumbnail (no
+save is made while it shows; the quit auto-save has no picture), and closing the window
+quits at once. A real error replaces it like any screen.
+
+The **first-launch name question** (F30, `[meta] username = true`) comes after F33's
+content warning and before the title: an opaque title-gradient ground under a confirm
+dialog ("Allow" / "Don't allow", the latter focused). "Allow" ignores presses, with
+no click sound, until 0.5 s of drawn time has passed and the press began after the
+dialog's first frame. While the player's name is on screen (text box, NVL page, or a
+menu question), scene pictures for save thumbnails and the kept backdrop leave out
+layers 3 and above.
+
 **Thumbnail during a minigame.** A save made while a minigame is running or
 paused uses the minigame's **opening picture**: the frame drawn when its fade-in ended. It
 does not use the current frame or the menu backdrop.
@@ -607,6 +626,7 @@ bundled Noto Sans (ADR-0004).
 | Missing background | `#202020` canvas fill, 256×256 placeholder centered | F04 UI-F04-09 |
 | Placeholder screen | Fill `#202020`; title 48 units `#E0E0E0`; engine version 20 units `#A0A0A0` at bottom-right (1264, 704) | F01 SPEC §6.8.15 |
 | Error screen | Fill `#141414`; heading 40 units `#FFFFFF`; message 28 units `#F0F0F0`; details 28 units `#C8C8C8`; key hint 28 units `#FFFFFF` | F01 SPEC §6.8.14 |
+| Fake crash screen | The error screen's look (shared constants); details line `"<title>" version <version>`; hint at y 640; optional label 28 units `#C8C8C8` at (80, 680); no log line | F30 UI-F30-01 |
 | Fade black | `#000000` for the launch canvas, title fades, story end, and the load fade (F11) | F10 03-ui, Motion |
 | Dev sampler backdrop | `#FFFFFF`, or `#000000` when toggled | F10 03-ui |
 
@@ -1015,3 +1035,6 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - 2026-11-02: F28 built (step 6): layer 2's glitch contents replace "F28 (reserved)"; the
   glitch looks, bursts, and `with glitch` under "Standard timings"; the glitch flash rules and
   reduced looks under "Reduced motion and flashing".
+- 2026-11-02: F30 built (step 6): the fake crash screen and the first-launch name question
+  under "Screens above" (with the name's clean thumbnails), and the fake crash row in
+  "Fixed engine colors".

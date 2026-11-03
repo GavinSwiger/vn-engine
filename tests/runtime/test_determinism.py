@@ -64,7 +64,7 @@ def answer(driver: RuntimeStoryDriver, cmd) -> bool:
     unlocked choice, as Space does in the window; True when ``cmd`` was a line. A story wait
     (F09, F18) ends at once, as headless ends it, and a minigame (F24-4: the example's poem)
     with its test outcome, as headless with no ``finish``."""
-    if type(cmd) is StoryWait:
+    if isinstance(cmd, StoryWait):                     # F30's FakeCrash is one too
         driver.post(WaitDone(cmd.wait_id))
         return False
     if type(cmd) is StartMinigame:

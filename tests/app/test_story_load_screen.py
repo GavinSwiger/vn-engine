@@ -37,6 +37,7 @@ from engine.ui.builtin.error import ErrorScreen
 from engine.ui.builtin.placeholder import PlaceholderScreen
 from engine.ui.builtin.title_screen import TitleScreen
 from tests.fakes.fake_window import FakeWindow
+from tests.fakes.first_launch import answer_name_question
 from tests.fakes.loop import post_key, post_quit
 from tests.fakes.privacy import capture_channels, check_p
 from tests.fakes.spy_window import SpyWindow
@@ -115,9 +116,11 @@ def make_game(parent: Path, script: dict[str, str] | Path | None, *,
 
 
 def copy_example(dest: Path) -> Path:
-    return Path(shutil.copytree(REPO / "game", dest,
+    game = Path(shutil.copytree(REPO / "game", dest,
                                 ignore=shutil.ignore_patterns("logs", "persistent",
                                                               "settings", "characters")))
+    answer_name_question(game)               # F30 s6: no first-launch name question
+    return game
 
 
 def records(log_file: Path) -> list[tuple[str, str, str]]:

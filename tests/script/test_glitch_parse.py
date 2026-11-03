@@ -105,7 +105,7 @@ def _complete(line: str, names: dict) -> list[str]:
 
 def test_studio_effect_docs_and_completion(effect_word, tmp_path):
     docs = docs_for("effect")
-    assert [d.names for d in docs] == [("glitch",), (), (), ()]       # F30: two rows
+    assert [d.names for d in docs] == [("glitch",), (), ("glitch",), ("glitch",)]   # F30 s6
     assert slot_words(docs) == {"jitter": ("sprite",)}
     for n, doc in enumerate(docs):
         assert problems_of(tmp_path / str(n), doc) == [], doc.syntax

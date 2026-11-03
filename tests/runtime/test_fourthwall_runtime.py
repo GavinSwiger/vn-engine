@@ -59,10 +59,11 @@ def test_ac_f30_14_commands_and_burst_order(tmp_path):
     interp.post(Advance(interp.current.sid))
     interp.run(10_000)
     assert interp.checkpoint().history.entries[-1].text == "I know who you are, friend."
-    # The older corpora release neither command.
+    # The older corpora release neither command; the example's bonus scene (F30 s6) both.
     example = corpus.example_program()
-    assert not of_type(run_headless(example, seed=42, image_files=corpus.example_images()),
-                       *TRICKS)
+    assert {type(c) for c in of_type(run_headless(example, seed=42,
+                                                  image_files=corpus.example_images()),
+                                     *TRICKS)} == set(TRICKS)
     assert not of_type(glitch_story.run_h(glitch_story.walk()), *TRICKS)
     assert not of_type(run_h(template_w(tmp_path / "plain")), *TRICKS)
     # Scans and imports.

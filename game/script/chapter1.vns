@@ -111,8 +111,9 @@ label lantern_stall:
             # meter never goes past its range, so Hana's stops at 10.
             points hana += 1
             # A menu can go inside a choice: this question comes only after "Buy a lantern".
+            # A menu's question can use {username} too (see bonus.vns); a choice can't.
             menu:
-                "\"Red or white?\" the stall keeper asked."
+                "\"Red or white, {username}?\" the stall keeper asked."
                 "Red, like the shrine gate":
                     "I took the red one. It glowed like a coal in my hands."
                 "White, like the moon":

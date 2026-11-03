@@ -26,7 +26,7 @@ from engine.ui.builtin.content_warning import ContentWarningScreen
 from engine.ui.builtin.title_screen import TitleScreen
 from engine.ui.builtin.username_question import GroundScreen, UsernameQuestion
 from engine.ui.input import UiEvent
-from engine.ui.menu_screen import CursorKeeper
+from engine.ui.menu_screen import CursorKeeper, MenuScreen
 from engine.ui.shell import Mode
 from tests.fakes.ui_shell import UiHarness
 from tests.fakes.username import Z, no_real_username, reader  # noqa: F401  (name guard)
@@ -184,7 +184,7 @@ def test_ac_f30_30_first_launch_question(tmp_path):
 
 # --- AC-F30-31 — "Allow" can't be clicked through ----------------------------------------------
 
-def test_ac_f30_31_allow_cannot_be_clicked_through(tmp_path):
+def test_ac_f30_31_allow_cannot_be_clicked_through(tmp_path, monkeypatch):
     # Enter held from the warning's last frame into the question: no answer.
     run = Launch(tmp_path, OFFER + warning_config())
     run.run(2.4)
@@ -220,8 +220,12 @@ def test_ac_f30_31_allow_cannot_be_clicked_through(tmp_path):
     run.run(1.0)
     assert q.answered is None and run.use == 0
 
-    # Focus on "Allow": Enter at 0.4 s of drawn time is ignored; at 0.5 s stores 2.
+    # Focus on "Allow": Enter at 0.4 s of drawn time is ignored (and plays no click sound,
+    # F30 s6); at 0.5 s stores 2 with the click.
+    monkeypatch.setattr(MenuScreen, "activation_sound", lambda self: "click.ogg")
     run = Launch(tmp_path)
+    sounds: list = []
+    monkeypatch.setattr(run.shell, "play_ui", sounds.append)
     run.frame()
     run.to_allow()
     q = run.question
@@ -229,10 +233,11 @@ def test_ac_f30_31_allow_cannot_be_clicked_through(tmp_path):
     assert q.drawn_s == pytest.approx(0.4)
     run.frame(H.key(pygame.K_RETURN), dt=0.0)
     assert q.answered is None and run.use == 0 and run.app.screens.top is q
+    assert "click.ogg" not in sounds
     run.frame(dt=0.1)
     assert q.drawn_s == pytest.approx(0.5)
     run.frame(H.key(pygame.K_RETURN), dt=0.0)
-    assert run.use == 2
+    assert run.use == 2 and sounds.count("click.ogg") == 1
 
     # "Don't allow", Esc, or QUIT in the first frame (before any draw): 1 at once.
     for answer in ("no", "esc", "quit"):

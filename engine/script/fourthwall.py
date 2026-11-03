@@ -20,10 +20,9 @@ text.
 
 **Registration.** The ``effect`` word and its docs are registered by ``glitch.register_words()``,
 which also calls ``register_docs()`` here, so the two entries come and go with the word (F19
-07 I-5). ``docs`` is None until F30 s6 writes the "Fourth-wall tricks" section. The executors
-come with F30 s3 (``runtime/fourthwall.py``); until then both load (``effect`` registers at
-import since F28 s3) and stop the story with E32 when reached (``interpreter.py``'s
-placeholders; 07 I-15).
+07 I-5). Their ``docs`` is ``HEADING``, docs/script-language.md's "Fourth-wall tricks" (F30
+s6), and ``names=("glitch",)`` makes Studio offer every ``effect`` kind after the word.
+The executors are in ``runtime/fourthwall.py`` (F30 s3).
 """
 
 from dataclasses import dataclass
@@ -134,21 +133,21 @@ def parse_crash(raw: RawStatement, ctx: ParseContext, kind: str,
 
 # --- Docs (F45; 07 I-14) ---------------------------------------------------------------------
 
-# Two Insert entries in "Effects". ``docs`` is None until F30 s6 writes the section (and sets
-# ``names``, ``07`` I-14 (1)).
+# Two Insert entries in "Effects", documented under HEADING (F30 s6, ``07`` I-14 (1)).
+HEADING: Final = "Fourth-wall tricks"        # docs/script-language.md
 DOCS: Final = (
     StatementDoc(
         WORD_EFFECT, "Window title", "Effects", 'effect window_title "<title>"|off',
         "Changes the text in the game window's title bar until effect window_title off "
         "brings back the game's own title.",
-        'effect window_title "She is still here"', None, "F30",
-        fields=("She is still here",)),
+        'effect window_title "She is still here"', HEADING, "F30",
+        fields=("She is still here",), names=("glitch",)),
     StatementDoc(
         WORD_EFFECT, "Fake crash", "Effects", 'effect crash ["<message>"]',
         "Shows a fake error screen, as if the game had crashed; the story goes on when the "
         "player clicks or presses a key. The message may use {username} and {var=...}.",
-        'effect crash "LanternError: Hana is not responding"', None, "F30",
-        fields=("LanternError: Hana is not responding",)),
+        'effect crash "LanternError: Hana is not responding"', HEADING, "F30",
+        fields=("LanternError: Hana is not responding",), names=("glitch",)),
 )
 
 
@@ -161,5 +160,5 @@ def register_docs() -> None:
         register_doc(doc)
 
 
-__all__ = ["CRASH", "CrashEffect", "DOCS", "TitleEffect", "WINDOW_TITLE", "parse_crash",
-           "parse_title", "register_docs"]
+__all__ = ["CRASH", "CrashEffect", "DOCS", "HEADING", "TitleEffect", "WINDOW_TITLE",
+           "parse_crash", "parse_title", "register_docs"]

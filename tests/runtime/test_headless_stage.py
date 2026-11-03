@@ -12,9 +12,10 @@ from engine.app.text_check import contrast_ratio
 from engine.core.config import load_config
 from engine.core.paths import GamePaths
 from engine.runtime.character import Character
-from engine.runtime.commands import (AudioRestore, Glitch, NvlPage, PlayVoice, PrefetchImages, Say,
+from engine.runtime.commands import (AudioRestore, FakeCrash, Glitch, NvlPage, PlayVoice, PrefetchImages, Say,
                                      ShowMenu,
-                                     ShowStage, StartMinigame, StoryEnded, StoryWait)
+                                     ShowStage, StartMinigame, StoryEnded, StoryWait,
+                                     WindowTitle)
 from engine.runtime.headless import run_headless
 from engine.runtime.images import ImageSource
 from engine.runtime.interpreter import Interpreter, RestoreResult, Status
@@ -174,7 +175,7 @@ def test_ac_f04_50_ac_f03_55_every_checkpoint_round_trips_with_its_stage():
             assert json.dumps(back.to_json(), ensure_ascii=True) == text
 
 
-SKIPPED = (PrefetchImages, StoryWait, StartMinigame)
+SKIPPED = (PrefetchImages, StoryWait, FakeCrash, StartMinigame)    # F30 s6: a crash is a wait
 
 
 def _lines_on(commands: list, k: int) -> list:
@@ -216,6 +217,7 @@ def test_ac_f04_50_ac_f03_56_continuing_from_every_round_tripped_line():
         assert [c for c in got[:first] if type(c) is not PrefetchImages] == [
             AudioRestore(state.audio, "restore"), NvlPage(state.nvl.on, state.nvl.page),
             ShowStage(state.stage, restored=True),
+            *([WindowTitle(state.window_title)] if state.window_title is not None else []),
             *([Glitch(state.glitch, restored=True)] if state.glitch.on else []), *voice]
         assert got[first].restored
         got[first] = dataclasses.replace(got[first], restored=False)

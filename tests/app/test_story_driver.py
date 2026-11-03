@@ -464,8 +464,8 @@ def _press_until_the_end(app) -> None:
 # the F09 transitions and pauses and the F18 cards it lands on, and the end fades to the
 # title; the minigames end with Shift+F8 (F25-4; ``_press_until_the_end``). F26-4's walk
 # home (a dissolve, two lines, and the phone chat's fades) needs more frames; so do F31 s5's
-# six bonus lines.
-EXAMPLE_FRAMES = 760
+# six bonus lines, and F30 s6's two more and its fake crash (0.5 s before a press counts).
+EXAMPLE_FRAMES = 840
 
 
 def _play_example(session, game: Path, *, start: StartOptions | None = None,
@@ -531,8 +531,9 @@ def test_ac_f03_70_the_example_game_plays_to_the_end(tmp_path, user_roots, scrip
     # the four of its won branch; F26-4 the walk home's line before Hana's phone chat and
     # the thought after it; F27-4 the stall keeper's line before the shed's puzzle room;
     # F23 s6 the stall keeper's line before the lantern game and her reaction after it;
-    # F31 s5 the bonus scene's six lines.
-    assert shown == expected and len(shown) == 64
+    # F31 s5 the bonus scene's six lines; F30 s6 its name line and the one after its
+    # fake crash.
+    assert shown == expected and len(shown) == 66
     assert [type(s) for s in app.screens] == [TitleScreen]
     assert app.shell.mode is Mode.TITLE
     assert app.story.status is Status.ENDED

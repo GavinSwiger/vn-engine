@@ -418,6 +418,10 @@ See [section 23](#23-meta-files): `file write`, `file delete`, `file exists`, an
 See [section 24](#24-glitch-effects): `effect tear`, `effect colorshift`, `effect static`,
 `effect jitter`, `effect off`, and `with glitch`.
 
+### Fourth-wall tricks
+See [section 25](#25-fourth-wall-tricks): `effect window_title`, `effect crash`, and the
+`{username}` tag.
+
 ### chapter
 ```
     scene bg festival
@@ -1555,6 +1559,7 @@ bold and `{/b}` ends it.
 | `{pause=0.6}` | stop typing for 0.6 seconds (0.1 to 30) |
 | `{pause}` | stop until the player clicks; the text so far stays |
 | `{var=player_name}` | show a story variable's value |
+| `{username}` | the player's computer user name, if the game offers it and they allow it; otherwise "friend" (see [Fourth-wall tricks](#25-fourth-wall-tricks)) |
 | `{next}` | at the very end: go on to the next line without a click |
 | `{{` | show a `{` |
 
@@ -2062,7 +2067,7 @@ applies at once, with no Apply button, and the game opens the same way next time
 | Display | Fullscreen · Reduce motion and flashing |
 | Text | Text speed (10 to 200 letters a second, or Instant) · Text size (100% to 150%) · Auto-advance wait (25% to 400%) · Auto-advance waits for voices · Skip unread text |
 | Sound | Master, Music, Sound, and Voice volume (0 to 100) · Text blips · Let voices finish · Play audio when unfocused · Play audio when minimized · Mono audio |
-| Data | Reset settings · Delete progress (on the title only) |
+| Data | Use my computer's user name (only with `[meta] username = true`) · Label fake error screens (only when the story has an `effect crash`) · Reset settings · Delete progress (on the title only) |
 
 - **Your `config.toml` gives the starting values**: `[textbox] cps`, `[auto]
   wait_for_voice`, `[skip] all`, the four `[audio]` volumes, `[audio] play_unfocused` and
@@ -2156,6 +2161,9 @@ It contains scenes of self-harm and psychological horror."""
 - **"once" is remembered in the player's settings**, so **Reset settings** shows it again
   at the next launch (Delete progress doesn't). To test it as a new player, delete
   `game/settings/`.
+- **Say what's coming.** If your story uses [fourth-wall tricks](#25-fourth-wall-tricks),
+  list them: a fake error screen, and the player's user name if you offer it. With
+  `[meta] username = true`, the name question comes right after the warning.
 - **It isn't shown** when you start from a label (`--start`, `--set`, or Studio's "play
   from here"), and only once per launch: returning to the title doesn't show it again.
 - **Keep it short.** About 220 characters fit without scrolling at the largest text size
@@ -2466,6 +2474,10 @@ anything a player types:
 - **Never put values from the player's computer in a story variable**: their user name, a
   folder path, the computer's name. A save carries them to everyone it is shared with, and
   the Load page shows its line and picture.
+- **`$` code can read the player's identity** (`getpass.getuser()`, `os.environ`), and
+  doing so puts it into saves, history, and persistent data, which players share. Use
+  `{username}` instead: it shows the name on screen only, with the player's permission,
+  and saves hold "friend" (see [Fourth-wall tricks](#25-fourth-wall-tricks)).
 
 ### Settings in config.toml
 
@@ -2793,6 +2805,7 @@ reserved so your script keeps working when they arrive.
 
 `tear`, `colorshift`, `static`, and `jitter`, the glitches, aren't reserved: like `on` and
 `off`, they mean something only right after `effect`, so `default static = 0` still works.
+The same goes for `window_title` and `crash` ([Fourth-wall tricks](#25-fourth-wall-tricks)).
 `tip` and `item` aren't reserved: they mean something only right after `lock` or `unlock`,
 so `default item = None` still works. `codex`, like `dice` and `points`, is an engine name,
 so it can't be a variable, a label, or a character.
@@ -2916,7 +2929,9 @@ Warnings let the game start; the rest stop the launch.
 Every message for `with`, `shake`, `flash`, `pause`, and transition `define`s is in
 [When something is wrong](#when-something-is-wrong-1), at the end of Transitions and
 effects. Every message for `effect` and `with glitch` is in
-[When something is wrong](#when-something-is-wrong-5), at the end of Glitch effects.
+[When something is wrong](#when-something-is-wrong-5), at the end of Glitch effects, except
+`effect window_title` and `effect crash`, whose messages are in
+[When something is wrong](#when-something-is-wrong-6), at the end of Fourth-wall tricks.
 
 ### Rollback
 Every message for `rollback` lines is in
@@ -3298,6 +3313,147 @@ game runs; the story goes on.
 | W183 | `the glitch effect "static" couldn't be drawn (MemoryError), so it is off for the rest of this run.` (warning, while playing) | Nothing to fix in the script: the story goes on. If it keeps happening, close other programs; report it with the log. |
 | W184 | `effect jitter daichi: no sprite tagged daichi is on the stage, so nothing jitters. On the stage: hana, monika.` / `effect jitter daichi: no sprite tagged daichi is on the stage, so nothing jitters. On the stage: no sprites.` (warning, `--dev` runs) | Show the sprite before its `effect jitter`, or fix the tag. |
 
+## 25. Fourth-wall tricks
+
+For a moment the game seems to reach outside its window: the title bar changes, a
+character says the player's computer user name, or the game seems to crash. Three tricks
+do it. The example game's bonus scene, `game/script/bonus.vns`, uses each one with a
+comment above its first use.
+
+```
+label start:
+    scene bg river
+    effect window_title "She is still here"
+    hana "I know who you are, {username}."
+    menu:
+        hana "Will you stay a little longer, {username}?"
+        "Stay":
+            hana happy "Thank you."
+        "Go home":
+            hana "Then go."
+    effect crash "Traceback (most recent call last):\n  File \"hana.chr\", line 7\nHanaError: Hana is not responding"
+    hana "...That wasn't me. Was it?"
+    effect window_title off
+    "Morning came."
+```
+
+**`effect window_title "…"`** changes the text in the game window's title bar (and the
+taskbar or dock). `effect window_title off` brings back the game's own title, `[game]
+title`.
+- The title is one text in quotes, at most 100 characters, shown as written: it is plain
+  text, so it can't hold tags or `{username}`. Write `{{` for a `{`. `""` empties the
+  title bar.
+- **The title is part of the story.** A save keeps it, and loading the save or rolling
+  back shows it again. New Game, a return to the title, the story's end, and an ending card
+  bring back the game's own title, and so does quitting: the next launch starts with
+  `[game] title`.
+- Only a title your script writes ever reaches the window: a save edited to hold another
+  title shows the game's own title instead.
+
+**`effect crash`** shows a fake error screen, as if the game had broken: the engine's
+error look, with the heading "The game ran into a problem", your message, the game's title
+and version, and the hint "Press Esc or Enter to continue".
+- `effect crash` alone shows `[words] fake_crash_message` ("Something went wrong.").
+  `effect crash "…"` shows your message: at most 2,000 characters, `\n` for a new line,
+  and only `{username}`, `{var=…}`, and `{{` inside. A message too long for the screen
+  ends with "…".
+- **Nothing moves**: the screen appears with one cut and leaves with one cut (with Reduce
+  motion and flashing on, a 300 ms fade). The stage stands still behind it.
+- **It can't be clicked away by accident.** For its first half second (0.5 s) every press
+  is ignored; then Enter, Space, Esc, a click in the game, or the gamepad's A or B
+  continues the story. The game's own keys (save, load, history, skip, auto, the game menu)
+  do nothing while it shows.
+- **Closing the window quits at once**, with no question. Before the screen shows, the
+  game writes everything it remembers, and the quit's auto-save keeps the player's place
+  (with no picture; `[saves] autosave_quit`), so nothing is lost.
+- **It is a moment, not a place.** Skipping passes it without showing it; Auto waits for
+  the player. Rolling back past it and going forward again doesn't show it again, a save
+  is never made while it shows, and loading a save never shows it.
+- **The hint must tell players how to continue.** `[words] fake_crash_hint` changes it,
+  but keep it an honest instruction ("Press any key to go on"), at most 120 characters on
+  one line. Players who don't want to be fooled can turn on **Label fake error screens**
+  in Settings (the row shows only when your story has an `effect crash`): the screen then
+  adds "This is part of the story." (`[words] fake_crash_label`).
+- **Don't imitate the computer's own stop screens**: no blue or black "your PC" screens,
+  sad faces, QR codes, or percentages, and never a phone number or web address to call or
+  visit. The fixed heading, the game's title line, and the hint keep the screen
+  recognizably the game's; don't work against them.
+
+**`{username}`** shows the player's computer user name, the name they log in with, in
+dialogue, narration, a menu's question, and `effect crash` messages.
+- **The game asks each player first.** Turn it on with `[meta] username = true` in
+  `config.toml`. At the first launch, after your [content warning](#content-warning) and
+  before the title, the game asks: "This game can show your computer's user name in the
+  story. It is never saved or sent anywhere. Allow it?" "Don't allow" is focused. "Allow"
+  ignores every press for its first half second (0.5 s), so a click meant for the content
+  warning can't answer it. Closing the window counts as "Don't allow". The order is
+  always: content warning, then the name question, then the title.
+- **Only "Allow" shows the name.** Otherwise `{username}` shows `[meta] username_fallback`
+  ("friend"), and so it does when the game doesn't offer the name, when you start from a
+  label (`--start`, or Studio's "play from here"), and when the name can't be read (the log
+  says so once, W188).
+- **Players can change their mind.** **Use my computer's user name**, in the Data group
+  of Settings, shows only when the game offers the name; turning it off shows "friend" from
+  the next frame. **Reset settings** turns it off, and the question comes back at the next
+  launch.
+- **The name is shown as written**, never as tags: `{b}` in a name shows `{b}`. The
+  `DOMAIN\` part is left out (`CORP\aiko` shows `aiko`), and a name is cut to 32 letters.
+  A long name can need a second text box; the game continues the line in a new box, as
+  for any long line.
+- **`{username=player_name}`** shows the name when it is allowed, and otherwise the value of
+  the story variable `player_name`, the same as `{var=player_name}`.
+- **Not in** a choice (E175), a window title (E300), a chapter or ending title (E302), a
+  character's name (E302), or a codex entry (E252): those are kept or shown where the name
+  must never go.
+
+**The name is never saved.** Your story only ever sees the fallback word: History, saves
+and the line the Load page shows, `persistent` data, and the log all hold "friend", never
+the name. Save pictures leave out the text box (and NVL page, and choices)
+whenever the name shows on screen, so a picture shows the stage only. The name is read
+once, after the player allows it, and kept in memory for that session. It still shows in
+the player's own screenshots and streams, which the question's "in the story" covers.
+
+**Tell players first.** List both tricks in your [content warning](#content-warning), e.g.
+"It contains a fake error screen, and can show your computer's user name if you allow it."
+
+**Never read the name or the computer's details in `$` code.** Python can read them
+(`getpass.getuser()`, `os.getlogin()`, `os.environ["USERNAME"]`), but anything your code
+stores goes into saves, history, and persistent data, which players share. Never store it
+in a variable, persistent data, a window title, a plugin's result, or the log. Use
+`{username}` in text instead: the name then never leaves the screen. A `--dev` run warns
+about such code (W190).
+
+**Words.** `window_title` and `crash` mean something only right after `effect`, so
+`default crash = 1` still works. `username` isn't reserved either.
+
+**Settings in `config.toml`.**
+```toml
+[meta]
+username = true                # offer {username}; each player is asked first
+username_fallback = "friend"   # shown instead: one line, at most 32 characters
+```
+
+| Key under `[words]` | Default |
+|---|---|
+| `fake_crash_message` | "Something went wrong." (`effect crash` with no message) |
+| `fake_crash_hint` | "Press Esc or Enter to continue" (one line, up to 120 characters) |
+| `fake_crash_label` | "This is part of the story." (one line, up to 120 characters) |
+| `settings_username`, `settings_crash_label` | "Use my computer's user name", "Label fake error screens" (the Settings rows) |
+| `ask_username`, `ask_username_yes`, `ask_username_no` | "This game can show your computer's user name in the story. It is never saved or sent anywhere. Allow it?", "Allow", "Don't allow" (the first-launch question) |
+
+### When something is wrong
+E300 to E302 stop the launch with the file and line. W188 is a warning in the log while the
+game runs; W189 and W190 are warnings in `--dev` runs. The story goes on after a warning.
+
+| Code | Message | Fix |
+|---|---|---|
+| E300 | `effect window_title needs the title in quotes, e.g. effect window_title "Hello?", or off to bring back the game's own title.` / `the window title can be at most 100 characters, but this one has 140.` / `the window title is plain text, so it can't hold {username} or other tags. To show a {, write {{.` / `effect window_title takes a title or off, but this line has "slowly" left over.` | Write `effect window_title "…"` with plain text, or `effect window_title off`. |
+| E301 | `effect crash takes one message in quotes, but this line has "again" left over.` / `the fake crash message can be at most 2,000 characters, but this one has 2,400.` / `a fake crash message can hold only {username} and {var=…}, but this one has {b}.` | Write `effect crash` alone or with one message in quotes, using only `{username}`, `{var=…}`, and `{{`. |
+| E302 | `{username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a character name.` / `{username} shows the player's computer user name, so it can be used only in dialogue, narration, and effect crash messages, not in a title card.` | Move `{username}` into a line of dialogue or narration. A choice (E175) and a codex entry (E252) give the same message. |
+| W188 | `the computer's user name couldn't be read, so {username} shows "friend" this session.` (warning, while playing) | Nothing to fix: the computer didn't give a name. The fallback word shows. |
+| W189 | `this line uses {username}, but [meta] username is off in config.toml, so every player sees "friend". Set username = true under [meta] to let players choose.` / `…and 4 more lines use {username}.` (warning, `--dev` runs) | Set `username = true` under `[meta]`, or leave it off if "friend" is what you want. |
+| W190 | `this Python code reads the computer's user name or environment. Anything it stores goes into saves, history, and persistent data that players share. To show the player's name, use {username} in text instead.` / `…and 2 more lines read identity.` (warning, `--dev` runs) | Remove the code and write `{username}` in the line instead. |
+
 ---
 
 ## Changelog
@@ -3463,3 +3619,9 @@ game runs; the story goes on.
   lists the three; the E160 list and missing-tag rows match the engine again (the old
   "shake in this engine version" row is gone); new rows for the E160 effect hints, E164's
   effect forms, E297, W185, and E175's effect form.
+- 2026-11-02: F30 step 6: new section 25, Fourth-wall tricks (`effect window_title`,
+  `effect crash`, the `{username}` tag and its first-launch question, what is never saved,
+  the content-warning advice, the rule for `$` code that reads identity, `[meta]` and the
+  eight `[words]` keys, E300 to E302, W188 to W190), a section 7 pointer, the `{username}`
+  row in the tag table, the Data group's two rows, and notes in Saves, Content warning,
+  Reserved words, and Common errors.

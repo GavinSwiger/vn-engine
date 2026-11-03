@@ -24,6 +24,8 @@ TAG_DOCS_HEADING: Final = "Text tags"
 # F29 step 5: the effect tags' own part of the Dialogue text chapter, which their Help
 # rows link to.
 TEXT_EFFECTS_HEADING: Final = "Text effects"
+# F30 step 6: the {username} row links to the "Fourth-wall tricks" section.
+FOURTH_WALL_HEADING: Final = "Fourth-wall tricks"
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +88,7 @@ TAG_DOCS: Final[tuple[TagDoc, ...]] = (
            "The player's computer user name if the game offers it and the player allows it; "
            "otherwise the fallback word ([meta] username_fallback) or the variable's value. "
            "Dialogue, narration, and effect crash only.",
-           'hana "I know who you are, {username}."'),
+           'hana "I know who you are, {username}."', FOURTH_WALL_HEADING),
 )
 
 
@@ -114,5 +116,5 @@ def tag_names() -> tuple[str, ...]:
     return tuple(row.name for row in TAG_DOCS)
 
 
-__all__ = ["TAG_DOCS", "TAG_DOCS_HEADING", "TEXT_EFFECTS_HEADING", "TagDoc", "tag_doc",
-           "tag_names"]
+__all__ = ["FOURTH_WALL_HEADING", "TAG_DOCS", "TAG_DOCS_HEADING", "TEXT_EFFECTS_HEADING", "TagDoc",
+           "tag_doc", "tag_names"]

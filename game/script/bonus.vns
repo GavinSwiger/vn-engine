@@ -60,4 +60,22 @@ label hana_file:
         hana happy "You put me back! I knew you would."
     else:
         hana "Never mind. A new game always brings me back."
+    # Fourth-wall tricks: for a moment the game seems to reach outside its window. Name
+    # them in your content warning (config.toml's [content_warning] shows how). Every rule
+    # is in docs/script-language.md, "Fourth-wall tricks".
+    # "effect window_title" changes the words in the window's title bar. A save keeps it,
+    # so loading one brings it back.
+    effect window_title "Hana is still here"
+    # {username} shows the player's computer user name, but only because config.toml has
+    # [meta] username = true and only if the player chose "Allow" when the game asked.
+    # Otherwise it shows "friend". History, saves, and save pictures never hold the name.
+    hana "I can see more from in here than you think, {username}."
+    # "effect crash" shows a fake error screen, as if the game had broken. Nothing on it
+    # moves; Esc, Enter, or a click continues the story, and closing the window quits at
+    # once. The message may use {username}. Never copy a real system error screen or add
+    # a phone number to call.
+    effect crash "HanaError: Hana is not responding.\nShe is still here, {username}."
+    hana surprised "...Sorry. That wasn't me. Was it?"
+    # "effect window_title off" brings back the game's own title, from config.toml.
+    effect window_title off
     return

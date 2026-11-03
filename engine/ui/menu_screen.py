@@ -391,7 +391,7 @@ class MenuScreen(Screen):
             self._key_press = target
             self._key_press_left = PRESS_LOOK_S
             self._key_press_fresh = True
-            self.shell.play_ui(cfg.button.activate_sound)
+            self.shell.play_ui(self.activation_sound())
         elif used and visible and nav in DIRECTIONS and target is not None \
                 and target.repeatable and scope.focused is target:
             self.repeat.start(nav)
@@ -444,7 +444,12 @@ class MenuScreen(Screen):
         w.on_mouse("up", at)
         if w.accepts_click(at) and pos is not None:
             w.activate()
-            self.shell.play_ui(self.shell.theme.cfg.button.activate_sound)
+            self.shell.play_ui(self.activation_sound())
+
+    def activation_sound(self) -> str | None:
+        """The sound played after a widget's activation: ``button.activate_sound``. A
+        screen that ignored the press returns None (F30's ``UsernameQuestion``)."""
+        return self.shell.theme.cfg.button.activate_sound
 
     def _on_wheel(self, event: UiEvent) -> None:
         pos = event.canvas_pos if event.in_canvas else None

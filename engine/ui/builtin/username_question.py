@@ -14,8 +14,8 @@ after the warning, before the title) shows two screens:
   (``on_answer(False)``); "Allow" stores ``on_answer(True)`` only when the press that
   activates it began after the question's first drawn frame (KEYDOWN, MOUSEBUTTONDOWN, or
   CONTROLLERBUTTONDOWN; a mouse click's press is its button-down) and ``CRASH_GUARD_S`` of
-  drawn, focused time has passed; otherwise the press is ignored. After an answer the dialog
-  closes and ``then`` runs (the shell's next pre-title step, else the title). Closing the
+  drawn, focused time has passed; otherwise the press is ignored, with no click sound.
+  After an answer the dialog closes and ``then`` runs (the shell's next pre-title step, else the title). Closing the
   window is "Don't allow" (``answer_on_quit``, called by ``install_fourthwall``'s quit
   guard before F16's settings are written).
 
@@ -75,6 +75,7 @@ class UsernameQuestion(ConfirmScreen):
         self._focused = True
         self._press_fresh = False               # the activating press began after a draw
         self._mouse_fresh = False               # the button-1 press this click began with
+        self._ignored = False                   # the last activation was an ignored Allow
         super().__init__(shell, shell.words.get("ask_username"), self._allow, self._deny,
                          yes="ask_username_yes", no="ask_username_no", by=InputKind.KEYS)
 
@@ -102,9 +103,14 @@ class UsernameQuestion(ConfirmScreen):
 
     def _choose_yes(self) -> None:
         if self.answered is not None or not self.allow_ready:
-            return                              # ignored: no sound of an answer, no close
+            self._ignored = True                # ignored: no click sound, no close
+            return
         self._answer(True)
         super()._choose_yes()
+
+    def activation_sound(self) -> str | None:
+        ignored, self._ignored = self._ignored, False
+        return None if ignored else super().activation_sound()
 
     def _choose_no(self) -> None:
         if self.answered is None:

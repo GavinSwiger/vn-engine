@@ -772,7 +772,8 @@
     {
      "backgrounds": [],
      "sprites": [
-      "hana happy"
+      "hana happy",
+      "hana surprised"
      ],
      "type": "PrefetchImages"
     },
@@ -943,6 +944,127 @@
      "type": "Say"
     },
     {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "title": "Hana is still here",
+     "type": "WindowTitle"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "I can see more from in here than you think, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/e3c28af04990",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "I can see more from in here than you think, {username}.",
+     "type": "Say"
+    },
+    {
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "HanaError: Hana is not responding.\nShe is still here, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "for_stage": false,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/efc27832eefe~8",
+     "type": "FakeCrash",
+     "wait_id": 6
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Sorry. That wasn't me. Was it?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/5dc4bb7e7867",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Sorry. That wasn't me. Was it?",
+     "type": "Say"
+    },
+    {
+     "title": null,
+     "type": "WindowTitle"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -987,7 +1109,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "for_stage": false,
@@ -995,7 +1117,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "stage": {
@@ -1031,7 +1153,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -1134,7 +1256,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "attributes": [],
@@ -1240,7 +1362,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "fadein": null,
@@ -1478,7 +1600,22 @@
         "style": {
          "type": "Style"
         },
-        "text": "\"Red or white?\" the stall keeper asked.",
+        "text": "\"Red or white, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "?\" the stall keeper asked.",
         "type": "Span"
        }
       ],
@@ -1486,9 +1623,9 @@
      },
      "name": null,
      "name_color": null,
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "speaker": null,
-     "text": "\"Red or white?\" the stall keeper asked.",
+     "text": "\"Red or white, {username}?\" the stall keeper asked.",
      "type": "Say"
     },
     {
@@ -1529,7 +1666,7 @@
       }
      ],
      "line": "question",
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "type": "ShowMenu"
     },
     {
@@ -1755,7 +1892,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "attributes": [],
@@ -1845,7 +1982,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "for_stage": false,
@@ -1853,7 +1990,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "stage": {
@@ -1880,7 +2017,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -1949,7 +2086,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -2022,7 +2159,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -2957,7 +3094,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [],
@@ -3332,7 +3469,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [
@@ -3646,7 +3783,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "attributes": [],
@@ -3837,7 +3974,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "for_stage": false,
@@ -3845,7 +3982,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 21
+     "wait_id": 22
     },
     {
      "type": "StoryEnded"
@@ -3887,8 +4024,8 @@
        },
        {
         "choice": "3c01206c5afc",
-        "menu": "lantern_stall/66e0bb08ed25",
-        "question": "\"Red or white?\" the stall keeper asked.",
+        "menu": "lantern_stall/ffead28fe153",
+        "question": "\"Red or white, friend?\" the stall keeper asked.",
         "text": "Red, like the shrine gate"
        },
        {
@@ -4044,6 +4181,18 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/e3c28af04990",
+        "text": "I can see more from in here than you think, friend."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/5dc4bb7e7867",
+        "text": "...Sorry. That wasn't me. Was it?"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -4105,13 +4254,13 @@
        {
         "kind": "line",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
-        "text": "\"Red or white?\" the stall keeper asked."
+        "sid": "lantern_stall/ffead28fe153",
+        "text": "\"Red or white, friend?\" the stall keeper asked."
        },
        {
         "kind": "choice",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
+        "sid": "lantern_stall/ffead28fe153",
         "text": "Red, like the shrine gate"
        },
        {
@@ -5222,7 +5371,8 @@
     {
      "backgrounds": [],
      "sprites": [
-      "hana happy"
+      "hana happy",
+      "hana surprised"
      ],
      "type": "PrefetchImages"
     },
@@ -5393,6 +5543,127 @@
      "type": "Say"
     },
     {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "title": "Hana is still here",
+     "type": "WindowTitle"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "I can see more from in here than you think, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/e3c28af04990",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "I can see more from in here than you think, {username}.",
+     "type": "Say"
+    },
+    {
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "HanaError: Hana is not responding.\nShe is still here, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "for_stage": false,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/efc27832eefe~8",
+     "type": "FakeCrash",
+     "wait_id": 6
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Sorry. That wasn't me. Was it?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/5dc4bb7e7867",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Sorry. That wasn't me. Was it?",
+     "type": "Say"
+    },
+    {
+     "title": null,
+     "type": "WindowTitle"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -5437,7 +5708,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "for_stage": false,
@@ -5445,7 +5716,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "stage": {
@@ -5481,7 +5752,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -5605,7 +5876,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "attributes": [],
@@ -5728,7 +5999,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "fadein": null,
@@ -6196,7 +6467,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "stage": {
@@ -6304,7 +6575,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "for_stage": false,
@@ -6312,7 +6583,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "stage": {
@@ -6339,7 +6610,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -6408,7 +6679,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -6481,7 +6752,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -7415,7 +7686,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [],
@@ -7789,7 +8060,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [
@@ -8075,7 +8346,7 @@
      "seconds": null,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "for_stage": false,
@@ -8083,7 +8354,7 @@
      "seconds": 3.0,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "type": "StoryEnded"
@@ -8273,6 +8544,18 @@
         "name": "Hana",
         "sid": "hana_file/085b0b9dbf4d",
         "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/e3c28af04990",
+        "text": "I can see more from in here than you think, friend."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/5dc4bb7e7867",
+        "text": "...Sorry. That wasn't me. Was it?"
        },
        {
         "kind": "line",
@@ -9438,7 +9721,8 @@
     {
      "backgrounds": [],
      "sprites": [
-      "hana happy"
+      "hana happy",
+      "hana surprised"
      ],
      "type": "PrefetchImages"
     },
@@ -9609,6 +9893,127 @@
      "type": "Say"
     },
     {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "title": "Hana is still here",
+     "type": "WindowTitle"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "I can see more from in here than you think, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/e3c28af04990",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "I can see more from in here than you think, {username}.",
+     "type": "Say"
+    },
+    {
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "HanaError: Hana is not responding.\nShe is still here, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "for_stage": false,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/efc27832eefe~8",
+     "type": "FakeCrash",
+     "wait_id": 6
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Sorry. That wasn't me. Was it?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/5dc4bb7e7867",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Sorry. That wasn't me. Was it?",
+     "type": "Say"
+    },
+    {
+     "title": null,
+     "type": "WindowTitle"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -9653,7 +10058,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "for_stage": false,
@@ -9661,7 +10066,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "stage": {
@@ -9697,7 +10102,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -9821,7 +10226,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "attributes": [],
@@ -9944,7 +10349,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "fadein": null,
@@ -10198,7 +10603,22 @@
         "style": {
          "type": "Style"
         },
-        "text": "\"Red or white?\" the stall keeper asked.",
+        "text": "\"Red or white, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "?\" the stall keeper asked.",
         "type": "Span"
        }
       ],
@@ -10206,9 +10626,9 @@
      },
      "name": null,
      "name_color": null,
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "speaker": null,
-     "text": "\"Red or white?\" the stall keeper asked.",
+     "text": "\"Red or white, {username}?\" the stall keeper asked.",
      "type": "Say"
     },
     {
@@ -10249,7 +10669,7 @@
       }
      ],
      "line": "question",
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "type": "ShowMenu"
     },
     {
@@ -10474,7 +10894,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "stage": {
@@ -10582,7 +11002,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "for_stage": false,
@@ -10590,7 +11010,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "stage": {
@@ -10617,7 +11037,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -10686,7 +11106,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -10759,7 +11179,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -11693,7 +12113,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [],
@@ -12067,7 +12487,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [
@@ -12381,7 +12801,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "attributes": [],
@@ -12571,7 +12991,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "for_stage": false,
@@ -12579,7 +12999,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 21
+     "wait_id": 22
     },
     {
      "type": "StoryEnded"
@@ -12621,8 +13041,8 @@
        },
        {
         "choice": "72e82daaa65d",
-        "menu": "lantern_stall/66e0bb08ed25",
-        "question": "\"Red or white?\" the stall keeper asked.",
+        "menu": "lantern_stall/ffead28fe153",
+        "question": "\"Red or white, friend?\" the stall keeper asked.",
         "text": "White, like the moon"
        },
        {
@@ -12778,6 +13198,18 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/e3c28af04990",
+        "text": "I can see more from in here than you think, friend."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/5dc4bb7e7867",
+        "text": "...Sorry. That wasn't me. Was it?"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -12845,13 +13277,13 @@
        {
         "kind": "line",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
-        "text": "\"Red or white?\" the stall keeper asked."
+        "sid": "lantern_stall/ffead28fe153",
+        "text": "\"Red or white, friend?\" the stall keeper asked."
        },
        {
         "kind": "choice",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
+        "sid": "lantern_stall/ffead28fe153",
         "text": "White, like the moon"
        },
        {
@@ -13961,7 +14393,8 @@
     {
      "backgrounds": [],
      "sprites": [
-      "hana happy"
+      "hana happy",
+      "hana surprised"
      ],
      "type": "PrefetchImages"
     },
@@ -14132,6 +14565,127 @@
      "type": "Say"
     },
     {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "title": "Hana is still here",
+     "type": "WindowTitle"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "I can see more from in here than you think, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/e3c28af04990",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "I can see more from in here than you think, {username}.",
+     "type": "Say"
+    },
+    {
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "HanaError: Hana is not responding.\nShe is still here, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "for_stage": false,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/efc27832eefe~8",
+     "type": "FakeCrash",
+     "wait_id": 6
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Sorry. That wasn't me. Was it?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/5dc4bb7e7867",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Sorry. That wasn't me. Was it?",
+     "type": "Say"
+    },
+    {
+     "title": null,
+     "type": "WindowTitle"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -14176,7 +14730,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "for_stage": false,
@@ -14184,7 +14738,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "stage": {
@@ -14220,7 +14774,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -14323,7 +14877,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "attributes": [],
@@ -14446,7 +15000,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "fadein": null,
@@ -14892,7 +15446,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "stage": {
@@ -15028,7 +15582,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "for_stage": false,
@@ -15036,7 +15590,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "stage": {
@@ -15063,7 +15617,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -15132,7 +15686,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -15205,7 +15759,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -15821,7 +16375,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [
@@ -16135,7 +16689,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [],
@@ -16325,7 +16879,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "for_stage": false,
@@ -16333,7 +16887,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "type": "StoryEnded"
@@ -16511,6 +17065,18 @@
         "name": "Hana",
         "sid": "hana_file/085b0b9dbf4d",
         "text": "Never mind. A new game always brings me back."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/e3c28af04990",
+        "text": "I can see more from in here than you think, friend."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/5dc4bb7e7867",
+        "text": "...Sorry. That wasn't me. Was it?"
        },
        {
         "kind": "line",
@@ -17602,7 +18168,8 @@
     {
      "backgrounds": [],
      "sprites": [
-      "hana happy"
+      "hana happy",
+      "hana surprised"
      ],
      "type": "PrefetchImages"
     },
@@ -17773,6 +18340,127 @@
      "type": "Say"
     },
     {
+     "backgrounds": [],
+     "sprites": [
+      "hana surprised"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
+     "title": "Hana is still here",
+     "type": "WindowTitle"
+    },
+    {
+     "attributes": [],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "I can see more from in here than you think, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/e3c28af04990",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "I can see more from in here than you think, {username}.",
+     "type": "Say"
+    },
+    {
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "HanaError: Hana is not responding.\nShe is still here, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": ".",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "for_stage": false,
+     "hide_box": false,
+     "seconds": null,
+     "sid": "hana_file/efc27832eefe~8",
+     "type": "FakeCrash",
+     "wait_id": 6
+    },
+    {
+     "attributes": [
+      "surprised"
+     ],
+     "blip": {
+      "file": "blips/hana.wav",
+      "spread": 0.1,
+      "type": "BlipSpec"
+     },
+     "body": {
+      "pieces": [
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "...Sorry. That wasn't me. Was it?",
+        "type": "Span"
+       }
+      ],
+      "type": "TaggedText"
+     },
+     "name": "Hana",
+     "name_color": "#b03070",
+     "sid": "hana_file/5dc4bb7e7867",
+     "speaker": "hana",
+     "speaker_tag": "hana",
+     "text": "...Sorry. That wasn't me. Was it?",
+     "type": "Say"
+    },
+    {
+     "title": null,
+     "type": "WindowTitle"
+    },
+    {
      "name": "riverbank",
      "sid": "riverbank/382be2296a04",
      "type": "ChapterStarted"
@@ -17817,7 +18505,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 6
+     "wait_id": 7
     },
     {
      "for_stage": false,
@@ -17825,7 +18513,7 @@
      "seconds": 3.0,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 7
+     "wait_id": 8
     },
     {
      "stage": {
@@ -17861,7 +18549,7 @@
      "seconds": null,
      "sid": "riverbank/382be2296a04",
      "type": "StoryWait",
-     "wait_id": 8
+     "wait_id": 9
     },
     {
      "attributes": [],
@@ -17985,7 +18673,7 @@
      "seconds": 1.0,
      "sid": "draw_fortune/833a4a1fccfb",
      "type": "StoryWait",
-     "wait_id": 9
+     "wait_id": 10
     },
     {
      "attributes": [],
@@ -18108,7 +18796,7 @@
      "seconds": null,
      "sid": "lantern_stall/bd2e59790c84",
      "type": "StoryWait",
-     "wait_id": 10
+     "wait_id": 11
     },
     {
      "fadein": null,
@@ -18346,7 +19034,22 @@
         "style": {
          "type": "Style"
         },
-        "text": "\"Red or white?\" the stall keeper asked.",
+        "text": "\"Red or white, ",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style",
+         "username": true
+        },
+        "text": "friend",
+        "type": "Span"
+       },
+       {
+        "style": {
+         "type": "Style"
+        },
+        "text": "?\" the stall keeper asked.",
         "type": "Span"
        }
       ],
@@ -18354,9 +19057,9 @@
      },
      "name": null,
      "name_color": null,
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "speaker": null,
-     "text": "\"Red or white?\" the stall keeper asked.",
+     "text": "\"Red or white, {username}?\" the stall keeper asked.",
      "type": "Say"
     },
     {
@@ -18397,7 +19100,7 @@
       }
      ],
      "line": "question",
-     "sid": "lantern_stall/66e0bb08ed25",
+     "sid": "lantern_stall/ffead28fe153",
      "type": "ShowMenu"
     },
     {
@@ -18623,7 +19326,7 @@
      "seconds": null,
      "sid": "riverbank/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 11
+     "wait_id": 12
     },
     {
      "attributes": [],
@@ -18713,7 +19416,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 12
+     "wait_id": 13
     },
     {
      "for_stage": false,
@@ -18721,7 +19424,7 @@
      "seconds": 4.0,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 13
+     "wait_id": 14
     },
     {
      "stage": {
@@ -18748,7 +19451,7 @@
      "seconds": null,
      "sid": "bridge/24107b7563fd",
      "type": "StoryWait",
-     "wait_id": 14
+     "wait_id": 15
     },
     {
      "attributes": [],
@@ -18817,7 +19520,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38",
      "type": "StoryWait",
-     "wait_id": 15
+     "wait_id": 16
     },
     {
      "attributes": [],
@@ -18890,7 +19593,7 @@
      "seconds": null,
      "sid": "bridge/d48e5e1cc436",
      "type": "StoryWait",
-     "wait_id": 16
+     "wait_id": 17
     },
     {
      "attributes": [],
@@ -19632,7 +20335,7 @@
      "seconds": null,
      "sid": "lantern_release/8938513cb2ef",
      "type": "StoryWait",
-     "wait_id": 17
+     "wait_id": 18
     },
     {
      "attributes": [],
@@ -20006,7 +20709,7 @@
      "seconds": null,
      "sid": "bridge/6d0f1811db38~2",
      "type": "StoryWait",
-     "wait_id": 18
+     "wait_id": 19
     },
     {
      "attributes": [
@@ -20320,7 +21023,7 @@
      "seconds": null,
      "sid": "river_end/1858d5deacf6",
      "type": "StoryWait",
-     "wait_id": 19
+     "wait_id": 20
     },
     {
      "attributes": [],
@@ -20510,7 +21213,7 @@
      "seconds": null,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "for_stage": false,
@@ -20518,7 +21221,7 @@
      "seconds": 3.0,
      "sid": "river_end/82928b1b09b4",
      "type": "StoryWait",
-     "wait_id": 21
+     "wait_id": 22
     },
     {
      "type": "StoryEnded"
@@ -20560,8 +21263,8 @@
        },
        {
         "choice": "3c01206c5afc",
-        "menu": "lantern_stall/66e0bb08ed25",
-        "question": "\"Red or white?\" the stall keeper asked.",
+        "menu": "lantern_stall/ffead28fe153",
+        "question": "\"Red or white, friend?\" the stall keeper asked.",
         "text": "Red, like the shrine gate"
        },
        {
@@ -20711,6 +21414,18 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/e3c28af04990",
+        "text": "I can see more from in here than you think, friend."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "hana_file/5dc4bb7e7867",
+        "text": "...Sorry. That wasn't me. Was it?"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "riverbank/2444a8da9af1",
         "text": "Paper lanterns drifted past us one by one, each carrying somebody's wish downstream."
@@ -20778,13 +21493,13 @@
        {
         "kind": "line",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
-        "text": "\"Red or white?\" the stall keeper asked."
+        "sid": "lantern_stall/ffead28fe153",
+        "text": "\"Red or white, friend?\" the stall keeper asked."
        },
        {
         "kind": "choice",
         "name": "",
-        "sid": "lantern_stall/66e0bb08ed25",
+        "sid": "lantern_stall/ffead28fe153",
         "text": "Red, like the shrine gate"
        },
        {

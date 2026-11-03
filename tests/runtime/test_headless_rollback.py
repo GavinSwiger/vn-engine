@@ -122,8 +122,9 @@ def test_ac27_headless_back_and_forward(monkeypatch):
             ("K", fixture("steps"), 42, ["advance"] * 3 + ["choose 1"] + rolls, IMG14),
             # F17 step 5: 7 more advances for the prologue's full-screen lines; F25-4: 1
             # more for Hana's map line; F23 s6: 2 more for the lantern game's lines; F31 s5:
-            # 6 more for the bonus scene's lines.
-            ("example", example, 1, ["advance"] * 27 + ["choose 1", "choose 1"] + rolls,
+            # 6 more for the bonus scene's lines; F30 s6: 2 more (its name line and the
+            # line after its fake crash).
+            ("example", example, 1, ["advance"] * 29 + ["choose 1", "choose 1"] + rolls,
              images)):
         made.clear()
         expected = run_headless(program, seed=seed, inputs=inputs, image_files=files,
