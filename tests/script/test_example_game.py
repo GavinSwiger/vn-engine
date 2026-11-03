@@ -95,3 +95,40 @@ def test_example_files_are_plain_utf8_with_lf():
             data = path.read_bytes()
             assert b"\r" not in data and not data.startswith(b"\xef\xbb\xbf")
             data.decode("utf-8")
+
+
+def test_ac_f34_15_w226_once_per_picture_and_the_example_is_clean(tmp_path):
+    """AC-F34-15: the example's dev load gives no warning (its three gallery pictures all
+    show in the story) and its dev launch finds every picture; with the true ending's
+    ``scene cg last_lantern`` taken out, W226 names that picture once, at its declaration,
+    and nothing else (its version still shows at the sad ending)."""
+    import shutil
+
+    from engine.runtime.images import ImageSource
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+
+    positions = tuple(load_config(GamePaths.for_game(GAME)).config.stage.positions.keys())
+    options = LoadOptions(dev=True, position_names=positions)
+    result = load_story(GamePaths.for_game(GAME), options)
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    images = tuple(sorted(p.relative_to(GAME).as_posix()
+                          for p in (GAME / "images").rglob("*.png")))
+    launch = run_launch(result.program, dev=True, images=ImageSource.from_files(images))
+    assert launch.namespace is not None and launch.warnings == (), launch.warnings
+
+    copy = tmp_path / "game"
+    shutil.copytree(GAME / "script", copy / "script")
+    shutil.copytree(GAME / "files", copy / "files")
+    shutil.copy(GAME / "config.toml", copy / "config.toml")
+    endings = copy / "script" / "endings.vns"
+    text = endings.read_bytes().decode("utf-8")
+    assert text.count("    scene cg last_lantern with dissolve\n") == 1
+    endings.write_bytes(text.replace("    scene cg last_lantern with dissolve\n", "").encode())
+    result = load_story(GamePaths.for_game(copy), options)
+    assert result.errors == ()
+    main = (GAME / "script" / "main.vns").read_text(encoding="utf-8").splitlines()
+    line = main.index('lock gallery cg last_lantern "The Last Lantern":') + 1
+    assert [(w.code, w.file, w.line, w.message) for w in result.warnings] == [
+        ("W226", "script/main.vns", line, 'the gallery picture "cg last_lantern" never shows '
+         "in the story and no unlock gallery line names it, so players can't get it.")]

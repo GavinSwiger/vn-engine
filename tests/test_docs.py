@@ -2178,3 +2178,77 @@ def test_ac_f32_26_dynamic_ui_docs(tmp_path):
     for words in ("`GameShell.theme` is a property that follows the current look",
                   "Player settings win over every layer"):
         assert words in ui, words
+
+
+# --- AC-F34-35: the gallery in docs/script-language.md and the example game --------------------
+
+F34_HEADING = "lock gallery, unlock gallery"
+F34_MESSAGES = {"E342": (), "E343": (), "E344": (), "E345": ("cg festivl", "cg festival"),
+                "W226": ()}
+F34_CG = ("images/cg/big_lantern.png", "images/cg/last_lantern.png",
+          "images/cg/last_lantern_ashes.png")
+
+
+def test_ac_f34_35_gallery_docs_and_example(tmp_path):
+    """``script-language.md`` section 7's gallery section: the rules (declare, versions, unlock
+    on show, kept across playthroughs, the label lines, Extras, ``--extras``, the setting,
+    tokens, and words) and every message code's first form; its code blocks together load in
+    dev and launch with no error or warning. Reserved words say ``gallery`` isn't reserved and
+    ``cg`` no longer is; F34's docs-table rows point at the heading; ``ui-system.md`` has the
+    two ``gallery`` tokens. The example game declares two gallery pictures, one with a
+    version, and its sad and good endings unlock theirs."""
+    from engine.runtime import gallery
+    from engine.runtime.headless import run_headless
+    from engine.runtime.images import ImageSource
+    from engine.runtime.launch import run_launch
+    from engine.runtime.persistent import PersistentStore
+    from engine.script import load_story
+    from engine.script.loader import LoadOptions
+    from engine.script.messages import format_message
+    from engine.script.statement_docs import all_docs
+    from tests.runtime import corpus
+    from tests.runtime.menu_story import write_game
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _subsection(text, F34_HEADING)
+    flat = " ".join(section.split())
+    for words in ("**`lock gallery picture \"Title\"`**", "**Versions**", "up to 8",
+                  "**Gallery pictures unlock when they show.**",
+                  "**Unlocks are kept across playthroughs**", "**`unlock gallery picture`**",
+                  "**`lock gallery picture`** (no title)", "The **Extras** button",
+                  "`python -m engine run game --extras`", "`[gallery] show_locked`",
+                  "`gallery.caption.text_size`", "`gallery.viewer.fill_color`",
+                  "`gallery_locked` \"???\"", "Up to 500."):
+        assert words in flat, words
+    for code, args in F34_MESSAGES.items():
+        assert format_message(code, args) in section, code
+    blocks = re.findall(r"^```([a-z]*)\n(.*?)^```", section, re.M | re.S)
+    assert len(blocks) == 2 and all(lang == "" for lang, _ in blocks)
+    code = "\n".join(body for _, body in blocks)
+    story = ('define hana = Character("Hana", image_tag="hana")\n' + code
+             + "\nlabel start:\n    call letter\n    jump festival_end\n")
+    result = load_story(write_game(tmp_path / "gallery", story), LoadOptions(dev=True))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    launch = run_launch(result.program, dev=True,
+                        images=ImageSource.from_files((*F34_CG, "images/hana/happy.png")))
+    assert launch.namespace is not None and launch.warnings == (), launch.warnings
+    reserved = " ".join(_section(text, "Reserved words").split())
+    assert "`gallery` isn't reserved either" in reserved
+    assert "`cg` is no longer reserved" in reserved
+    assert not re.search(r"^\|.*`cg`.*\|", _section(text, "Reserved words"), re.M)
+    assert {d.docs for d in all_docs() if d.feature == "F34"} == {F34_HEADING}
+    tokens = UI.read_text(encoding="utf-8")
+    for token in ("gallery.caption.text_size", "gallery.viewer.fill_color"):
+        assert re.search(rf"^\| `{re.escape(token)}` \| ", tokens, re.M), token
+
+    program, images = corpus.example_program(), corpus.example_images()
+    assert [(e.picture, e.title, e.versions) for e in program.gallery] == [
+        ("cg big_lantern", "The Big Lantern", ()),
+        ("cg last_lantern", "The Last Lantern", ("cg last_lantern_ashes",))]
+    assert set(F34_CG) <= set(images)
+    for seed, unlocked in ((1, ("cg last_lantern_ashes",)), (2, ("cg big_lantern",))):
+        store = PersistentStore(identity_scheme=program.identity_scheme)  # sad, then good end
+        inputs = corpus.play(program, seed, images, corpus.EXAMPLE_PICKS[seed]).inputs
+        run_headless(program, seed=seed, image_files=images, persistent=store, inputs=inputs,
+                     minigames=corpus.example_minigames())
+        assert gallery.unlocked(program, store) == unlocked, seed

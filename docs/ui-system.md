@@ -627,6 +627,22 @@ unset color follows the token named as its default, the author's value of it inc
 | `codex.locked.text_color` | color | `button.disabled.text_color` (`"#6E5E68"`) | A locked tip's `???` row under `[codex] show_locked` (5.64:1 on `#FFF4F8`). |
 | `codex.image_height` | length | 200 (0–320) | The picture box's height in the detail panel; 0 hides pictures. The box shrinks to fit the panel and is left out under 80. |
 
+**Extras and the gallery (F34).** Extras is the title's game-menu screen with the `extras`
+menu in its sidebar (Gallery first; F35–F37 add pages); its button shows on the title once
+one of its pages has something unlocked. The Gallery page is 4 × 3 tiles of 188×138 (a
+16:9 picture box, the title under it), F11's page row past 12; a locked tile is
+`panel.fill_color` with `gallery_locked` in `button.disabled.text_color` (5.64:1 on
+`#FFF4F8`). Tiles reuse `button.border_*`, `button.focused.border_*`, and `panel.*`. The
+viewer fills the canvas and fits the picture; pictures crossfade over 200 ms (cuts under
+reduced motion). Layout, input, and words are in
+[F34 01-design](../specs/F34-cg-gallery/01-design.md) §6. Set in `[theme.gallery]`
+(sub-tables `[theme.gallery.caption]`, `[theme.gallery.viewer]`):
+
+| Token | Type | Default | Purpose |
+|---|---|---|---|
+| `gallery.caption.text_size` | size | 20 (14–32) | A tile's title under its picture, cut with "…" to the tile's width. |
+| `gallery.viewer.fill_color` | color | `"#000000"` | The viewer's fill around a picture that doesn't cover the canvas. |
+
 ## 4. Fixed engine colors
 
 These are not themeable. They must render when a theme or the game's fonts are broken,

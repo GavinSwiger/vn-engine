@@ -256,10 +256,9 @@ def build_gallery(decls: Iterable[GalleryDecl]
 
 GALLERY_TARGET = LockTarget(WORD_GALLERY, parse_gallery_decl, parse_gallery_lock, gallery_body)
 
-# The docs heading. F34's docs step adds a "lock gallery, unlock gallery" section to
-# docs/script-language.md and points these entries at it; until then they point at the
-# section about pictures.
-DOCS_HEADING: Final = "12. Backgrounds and sprites"
+# The docs heading: section 7's "lock gallery, unlock gallery" in docs/script-language.md
+# (F34 W5).
+DOCS_HEADING: Final = "lock gallery, unlock gallery"
 
 DOCS: Final = (
     StatementDoc(

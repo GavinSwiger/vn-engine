@@ -9,9 +9,10 @@ change: two 1280×720 backgrounds, the sprites of Hana and Daichi (400×680, dra
 default ``art_height = 720``), one PNG per expression the script uses, and (F21 step 5) the
 codex picture of the paper lantern item (640×360, ``images/items/lantern.png``: the codex
 page scales it down to its 448×200 box), and (F38) Hana's blink and talking frames
-(``FRAMES``). Shapes are drawn at
-twice the size and smooth-scaled down, which gives soft edges. Nothing is random but the
-stars, which use a fixed seed. Only ``<folder>/images/`` is written.
+(``FRAMES``), and (F34) three gallery pictures in ``images/cg/`` (1280×720). Shapes are
+drawn at twice the size and smooth-scaled down, which gives soft edges. Nothing is random
+but the stars, the crowd, and the reeds, which use fixed seeds. Only ``<folder>/images/`` is
+written.
 
 ``ART`` lists every file; ``tests/runtime/test_example_game_stage.py`` checks that
 ``game/images/`` holds exactly these files.
@@ -492,6 +493,83 @@ def shed_candles() -> pygame.Surface:
     return s
 
 
+# --- Gallery pictures (F34) ---------------------------------------------------------------
+
+def cg_big_lantern() -> pygame.Surface:
+    """F34's gallery picture ``cg big_lantern`` (the good ending): the big lantern rising
+    over the festival at ten, small lanterns around it, the crowd dark below."""
+    w, h = BG_SIZE[0] * SS, BG_SIZE[1] * SS
+    s = pygame.Surface((w, h))
+    _gradient(s, (0, 0, w, h), [(0.0, (22, 20, 56)), (0.6, (76, 52, 108)),
+                                (1.0, (168, 104, 128))])
+    stars = random.Random(34)
+    for _ in range(90):
+        x, y = stars.uniform(0, w), stars.uniform(0, h * 0.45)
+        pygame.draw.circle(s, (255, 244, 230), (x, y), stars.choice((2, 2, 3)))
+    rising = random.Random(35)
+    for _ in range(26):                                      # small lanterns going up
+        x, y = rising.uniform(0.05, 0.95) * w, rising.uniform(0.12, 0.7) * h
+        paper = (255, 150, 170) if rising.random() < 0.4 else (255, 210, 150)
+        _lantern(s, x, y, rising.uniform(8, 18), paper)
+    _glow(s, (w * 0.5, h * 0.34), 760, (255, 214, 160), 190)
+    _lantern(s, w * 0.5, h * 0.34, 150, (255, 196, 140), hanging=True)
+    crowd = random.Random(36)                                # heads and shoulders
+    for row, (base, color) in enumerate(((0.86, (58, 40, 66)), (0.95, (36, 26, 46)))):
+        x = -60.0
+        while x < w + 60:
+            r = crowd.uniform(34, 46) + row * 8
+            top = h * base - crowd.uniform(0, 30)
+            pygame.draw.ellipse(s, color, (x - r * 1.8, top + r * 0.9, r * 3.6, r * 4))
+            pygame.draw.circle(s, color, (x, top), r)
+            x += crowd.uniform(90, 140)
+    return s
+
+
+def _cg_last_lantern(burnt: bool) -> pygame.Surface:
+    """F34's gallery picture ``cg last_lantern`` (the true ending): one lantern still lit
+    on the dark river, among the reeds below the bridge. ``burnt`` draws its version
+    ``cg last_lantern_ashes`` (the sad ending): the same place, only the burnt frame."""
+    w, h = BG_SIZE[0] * SS, BG_SIZE[1] * SS
+    s = pygame.Surface((w, h))
+    horizon = int(h * 0.30)
+    _gradient(s, (0, 0, w, horizon), [(0.0, (26, 22, 58)), (1.0, (70, 54, 106))])
+    pygame.draw.polygon(s, (44, 36, 78),
+                        _hills(w, horizon - 20, [(20, 260, 0.6), (10, 90, 1.4)], horizon + 10))
+    _gradient(s, (0, horizon, w, h - horizon), [(0.0, (58, 48, 98)), (1.0, (18, 16, 40))])
+    for k in range(14):                                      # ripples
+        y = horizon + 30 + k * k * 6
+        x0 = (k * 331) % (w - 500) + 100
+        pygame.draw.line(s, (88, 74, 132), (x0, y), (x0 + 220 + k * 10, y), 4)
+    cx, cy = w * 0.56, h * 0.62
+    if burnt:
+        frame = (66, 48, 54)
+        rect = pygame.Rect(0, 0, 150, 190)
+        rect.center = (round(cx), round(cy))
+        pygame.draw.ellipse(s, frame, rect, 8)
+        for k in (-0.3, 0.0, 0.3):
+            pygame.draw.line(s, frame, (cx + k * 150, cy - 80), (cx + k * 150, cy + 80), 6)
+        pygame.draw.rect(s, frame, (cx - 34, cy - 110, 68, 20))
+        ash = random.Random(37)
+        for _ in range(30):
+            pygame.draw.circle(s, (120, 110, 120), (cx + ash.uniform(-120, 120),
+                                                    cy + 100 + ash.uniform(0, 30)), 3)
+    else:
+        for k in range(6):                                   # its light on the water
+            pygame.draw.line(s, (255, 206, 150), (cx - 70 + k * 6, cy + 120 + k * 22),
+                             (cx + 70 - k * 6, cy + 120 + k * 22), 6)
+        _lantern(s, cx, cy, 95, (255, 186, 150), hanging=True)
+    reeds = random.Random(38)                                # reeds in front
+    for _ in range(70):
+        x = reeds.uniform(0, w)
+        if abs(x - cx) < 140 and reeds.random() < 0.7:
+            continue
+        top, lean = h * reeds.uniform(0.5, 0.78), reeds.uniform(-60, 60)
+        color = (34, 44, 54) if reeds.random() < 0.5 else (48, 56, 70)
+        pygame.draw.lines(s, color, False, [(x, h), (x + lean * 0.4, (h + top) / 2),
+                                            (x + lean, top)], reeds.choice((6, 8, 10)))
+    return s
+
+
 def _sprite(name: str) -> Callable[[], pygame.Surface]:
     tag = name.split()[0]
     face = FACES[name] if name in FACES else FRAMES[name]
@@ -510,6 +588,9 @@ ART: dict[str, tuple[Callable[[], pygame.Surface], tuple[int, int]]] = {
     "images/bg/festival_shed.png": (festival_shed, BG_SIZE),                # F27
     "images/shed/key.png": (shed_key, (64, 96)),                            # F27
     "images/shed/candles.png": (shed_candles, (80, 60)),                    # F27
+    "images/cg/big_lantern.png": (cg_big_lantern, BG_SIZE),                 # F34
+    "images/cg/last_lantern.png": (lambda: _cg_last_lantern(False), BG_SIZE),  # F34
+    "images/cg/last_lantern_ashes.png": (lambda: _cg_last_lantern(True), BG_SIZE),  # F34
 }
 
 

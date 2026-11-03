@@ -259,6 +259,20 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -278,6 +292,21 @@
      "speaker": null,
      "text": "The river was louder than I remembered.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "on": false,
@@ -409,7 +438,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -1186,7 +1216,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana sad",
@@ -1333,7 +1364,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana pout",
@@ -1931,7 +1963,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -2050,7 +2083,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -2126,7 +2162,9 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
      ],
      "sprites": [
       "hana pout",
@@ -3048,7 +3086,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -3425,7 +3466,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -3509,7 +3553,11 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
+     ],
      "sprites": [
       "hana happy",
       "hana sad"
@@ -3686,7 +3734,9 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
      "sprites": [
       "hana sad"
      ],
@@ -3746,6 +3796,40 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [],
+     "type": "PrefetchImages"
+    },
+    {
+     "stage": {
+      "background": "cg last_lantern_ashes",
+      "sprites": []
+     },
+     "transition": {
+      "color": null,
+      "direction": null,
+      "kind": "dissolve",
+      "mask": null,
+      "name": "dissolve",
+      "reverse": false,
+      "seconds": null,
+      "sid": "river_end/159104b58458",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
+     "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": true,
+     "seconds": null,
+     "sid": "river_end/159104b58458",
+     "type": "StoryWait",
+     "wait_id": 20
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -3765,33 +3849,6 @@
      "speaker": null,
      "text": "By her gate, a lantern had caught in the reeds. Only its frame was left.",
      "type": "Say"
-    },
-    {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": []
-     },
-     "transition": {
-      "color": null,
-      "direction": null,
-      "kind": "dissolve",
-      "mask": null,
-      "name": "dissolve",
-      "reverse": false,
-      "seconds": null,
-      "sid": "river_end/1858d5deacf6",
-      "soft": 0.1,
-      "type": "TransitionSpec"
-     },
-     "type": "ShowStage"
-    },
-    {
-     "for_stage": true,
-     "hide_box": false,
-     "seconds": null,
-     "sid": "river_end/1858d5deacf6",
-     "type": "StoryWait",
-     "wait_id": 20
     },
     {
      "attributes": [],
@@ -3959,7 +4016,7 @@
       "type": "TitleCard"
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "transition": {
@@ -4532,7 +4589,7 @@
       "at": [
        "river_end",
        [
-        7,
+        6,
         1,
         0
        ]
@@ -4543,7 +4600,7 @@
       "enabled": true
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "variables": {
@@ -4866,6 +4923,20 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -4885,6 +4956,21 @@
      "speaker": null,
      "text": "The river was louder than I remembered.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "on": false,
@@ -5016,7 +5102,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -5793,7 +5880,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana sad",
@@ -5978,7 +6066,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana pout",
@@ -6532,7 +6621,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -6651,7 +6741,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -6727,7 +6820,9 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
      ],
      "sprites": [
       "hana pout",
@@ -7648,7 +7743,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -8024,7 +8122,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -8108,7 +8209,11 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
+     ],
      "sprites": [
       "hana happy",
       "hana sad"
@@ -8293,6 +8398,40 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "cg big_lantern"
+     ],
+     "sprites": [],
+     "type": "PrefetchImages"
+    },
+    {
+     "stage": {
+      "background": "cg big_lantern",
+      "sprites": []
+     },
+     "transition": {
+      "color": null,
+      "direction": null,
+      "kind": "dissolve",
+      "mask": null,
+      "name": "dissolve",
+      "reverse": false,
+      "seconds": null,
+      "sid": "festival_end/fa8811ca4aae",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
+     "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": true,
+     "seconds": null,
+     "sid": "festival_end/fa8811ca4aae",
+     "type": "StoryWait",
+     "wait_id": 20
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -8322,25 +8461,8 @@
       "type": "TitleCard"
      },
      "stage": {
-      "background": "bg bridge_night",
-      "sprites": [
-       {
-        "at": "left",
-        "flip": false,
-        "image": "hana happy",
-        "layer": 0,
-        "tag": "hana",
-        "zoom": 1.0
-       },
-       {
-        "at": "right",
-        "flip": false,
-        "image": "daichi smile",
-        "layer": 0,
-        "tag": "daichi",
-        "zoom": 1.0
-       }
-      ]
+      "background": "cg big_lantern",
+      "sprites": []
      },
      "transition": {
       "color": null,
@@ -8362,7 +8484,7 @@
      "seconds": null,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 20
+     "wait_id": 21
     },
     {
      "for_stage": false,
@@ -8370,7 +8492,7 @@
      "seconds": 3.0,
      "sid": "festival_end/7607fe13d598",
      "type": "StoryWait",
-     "wait_id": 21
+     "wait_id": 22
     },
     {
      "type": "StoryEnded"
@@ -8881,7 +9003,7 @@
       "at": [
        "festival_end",
        [
-        1
+        2
        ]
       ],
       "sid": "festival_end/a6855b1a227c"
@@ -8890,25 +9012,8 @@
       "enabled": true
      },
      "stage": {
-      "background": "bg bridge_night",
-      "sprites": [
-       {
-        "at": "left",
-        "flip": false,
-        "image": "hana happy",
-        "layer": 0,
-        "tag": "hana",
-        "zoom": 1.0
-       },
-       {
-        "at": "right",
-        "flip": false,
-        "image": "daichi smile",
-        "layer": 0,
-        "tag": "daichi",
-        "zoom": 1.0
-       }
-      ]
+      "background": "cg big_lantern",
+      "sprites": []
      },
      "variables": {
       "asked_bridge": true,
@@ -9224,6 +9329,20 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -9243,6 +9362,21 @@
      "speaker": null,
      "text": "The river was louder than I remembered.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "on": false,
@@ -9374,7 +9508,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -10151,7 +10286,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana sad",
@@ -10336,7 +10472,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana pout",
@@ -10967,7 +11104,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -11086,7 +11224,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -11162,7 +11303,9 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
      ],
      "sprites": [
       "hana pout",
@@ -12083,7 +12226,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -12459,7 +12605,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -12543,7 +12692,11 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
+     ],
      "sprites": [
       "hana happy",
       "hana sad"
@@ -12720,7 +12873,9 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
      "sprites": [
       "hana sad"
      ],
@@ -12780,6 +12935,40 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [],
+     "type": "PrefetchImages"
+    },
+    {
+     "stage": {
+      "background": "cg last_lantern_ashes",
+      "sprites": []
+     },
+     "transition": {
+      "color": null,
+      "direction": null,
+      "kind": "dissolve",
+      "mask": null,
+      "name": "dissolve",
+      "reverse": false,
+      "seconds": null,
+      "sid": "river_end/159104b58458",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
+     "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": true,
+     "seconds": null,
+     "sid": "river_end/159104b58458",
+     "type": "StoryWait",
+     "wait_id": 20
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -12799,33 +12988,6 @@
      "speaker": null,
      "text": "By her gate, a lantern had caught in the reeds. Only its frame was left.",
      "type": "Say"
-    },
-    {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": []
-     },
-     "transition": {
-      "color": null,
-      "direction": null,
-      "kind": "dissolve",
-      "mask": null,
-      "name": "dissolve",
-      "reverse": false,
-      "seconds": null,
-      "sid": "river_end/1858d5deacf6",
-      "soft": 0.1,
-      "type": "TransitionSpec"
-     },
-     "type": "ShowStage"
-    },
-    {
-     "for_stage": true,
-     "hide_box": false,
-     "seconds": null,
-     "sid": "river_end/1858d5deacf6",
-     "type": "StoryWait",
-     "wait_id": 20
     },
     {
      "attributes": [],
@@ -12992,7 +13154,7 @@
       "type": "TitleCard"
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "transition": {
@@ -13570,7 +13732,7 @@
       "at": [
        "river_end",
        [
-        7,
+        6,
         1,
         0
        ]
@@ -13581,7 +13743,7 @@
       "enabled": true
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "variables": {
@@ -13904,6 +14066,20 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -13923,6 +14099,21 @@
      "speaker": null,
      "text": "The river was louder than I remembered.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "on": false,
@@ -14054,7 +14245,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -14831,7 +15023,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana sad",
@@ -14995,7 +15188,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana pout",
@@ -15527,7 +15721,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -15674,7 +15869,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -15750,7 +15948,9 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
      ],
      "sprites": [
       "hana pout",
@@ -16334,7 +16534,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -16439,7 +16642,11 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
+     ],
      "sprites": [
       "hana happy",
       "hana sad"
@@ -16616,7 +16823,9 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
      "sprites": [
       "hana sad"
      ],
@@ -16676,6 +16885,40 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [],
+     "type": "PrefetchImages"
+    },
+    {
+     "stage": {
+      "background": "cg last_lantern_ashes",
+      "sprites": []
+     },
+     "transition": {
+      "color": null,
+      "direction": null,
+      "kind": "dissolve",
+      "mask": null,
+      "name": "dissolve",
+      "reverse": false,
+      "seconds": null,
+      "sid": "river_end/159104b58458",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
+     "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": true,
+     "seconds": null,
+     "sid": "river_end/159104b58458",
+     "type": "StoryWait",
+     "wait_id": 19
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -16695,33 +16938,6 @@
      "speaker": null,
      "text": "By her gate, a lantern had caught in the reeds. Only its frame was left.",
      "type": "Say"
-    },
-    {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": []
-     },
-     "transition": {
-      "color": null,
-      "direction": null,
-      "kind": "dissolve",
-      "mask": null,
-      "name": "dissolve",
-      "reverse": false,
-      "seconds": null,
-      "sid": "river_end/1858d5deacf6",
-      "soft": 0.1,
-      "type": "TransitionSpec"
-     },
-     "type": "ShowStage"
-    },
-    {
-     "for_stage": true,
-     "hide_box": false,
-     "seconds": null,
-     "sid": "river_end/1858d5deacf6",
-     "type": "StoryWait",
-     "wait_id": 19
     },
     {
      "attributes": [],
@@ -16888,7 +17104,7 @@
       "type": "TitleCard"
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "transition": {
@@ -17353,7 +17569,7 @@
       "at": [
        "river_end",
        [
-        7,
+        6,
         1,
         0
        ]
@@ -17364,7 +17580,7 @@
       "enabled": true
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "variables": {
@@ -17687,6 +17903,20 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -17706,6 +17936,21 @@
      "speaker": null,
      "text": "The river was louder than I remembered.",
      "type": "Say"
+    },
+    {
+     "backgrounds": [
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [
+      "hana happy",
+      "hana surprised",
+      "hana pout",
+      "daichi smile",
+      "daichi"
+     ],
+     "type": "PrefetchImages"
     },
     {
      "on": false,
@@ -17837,7 +18082,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -18614,7 +18860,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana sad",
@@ -18799,7 +19046,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "hana pout",
@@ -19397,7 +19645,8 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -19516,7 +19765,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "daichi smile",
@@ -19592,7 +19844,9 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes"
      ],
      "sprites": [
       "hana pout",
@@ -20321,7 +20575,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -20697,7 +20954,10 @@
     },
     {
      "backgrounds": [
-      "bg bridge_night"
+      "bg bridge_night",
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
      ],
      "sprites": [
       "hana happy",
@@ -20781,7 +21041,11 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg big_lantern",
+      "cg last_lantern_ashes",
+      "cg last_lantern"
+     ],
      "sprites": [
       "hana happy",
       "hana sad"
@@ -20958,7 +21222,9 @@
      "type": "Say"
     },
     {
-     "backgrounds": [],
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
      "sprites": [
       "hana sad"
      ],
@@ -21018,6 +21284,40 @@
      "type": "Say"
     },
     {
+     "backgrounds": [
+      "cg last_lantern_ashes"
+     ],
+     "sprites": [],
+     "type": "PrefetchImages"
+    },
+    {
+     "stage": {
+      "background": "cg last_lantern_ashes",
+      "sprites": []
+     },
+     "transition": {
+      "color": null,
+      "direction": null,
+      "kind": "dissolve",
+      "mask": null,
+      "name": "dissolve",
+      "reverse": false,
+      "seconds": null,
+      "sid": "river_end/159104b58458",
+      "soft": 0.1,
+      "type": "TransitionSpec"
+     },
+     "type": "ShowStage"
+    },
+    {
+     "for_stage": true,
+     "hide_box": true,
+     "seconds": null,
+     "sid": "river_end/159104b58458",
+     "type": "StoryWait",
+     "wait_id": 20
+    },
+    {
      "attributes": [],
      "body": {
       "pieces": [
@@ -21037,33 +21337,6 @@
      "speaker": null,
      "text": "By her gate, a lantern had caught in the reeds. Only its frame was left.",
      "type": "Say"
-    },
-    {
-     "stage": {
-      "background": "bg bridge_night",
-      "sprites": []
-     },
-     "transition": {
-      "color": null,
-      "direction": null,
-      "kind": "dissolve",
-      "mask": null,
-      "name": "dissolve",
-      "reverse": false,
-      "seconds": null,
-      "sid": "river_end/1858d5deacf6",
-      "soft": 0.1,
-      "type": "TransitionSpec"
-     },
-     "type": "ShowStage"
-    },
-    {
-     "for_stage": true,
-     "hide_box": false,
-     "seconds": null,
-     "sid": "river_end/1858d5deacf6",
-     "type": "StoryWait",
-     "wait_id": 20
     },
     {
      "attributes": [],
@@ -21230,7 +21503,7 @@
       "type": "TitleCard"
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "transition": {
@@ -21779,7 +22052,7 @@
       "at": [
        "river_end",
        [
-        7,
+        6,
         1,
         0
        ]
@@ -21790,7 +22063,7 @@
       "enabled": true
      },
      "stage": {
-      "background": "bg bridge_night",
+      "background": "cg last_lantern_ashes",
       "sprites": []
      },
      "variables": {

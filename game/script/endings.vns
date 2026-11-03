@@ -24,9 +24,10 @@ define hana_texts = [
 label river_end:
     "We walked Hana home along the river. Nobody said much."
     hana sad "I leave on the morning train. Maybe next year."
+    # cg last_lantern_ashes is a gallery picture (the "lock gallery" lines in main.vns):
+    # showing it here adds it to the gallery for good. "scene" also clears Hana and Daichi.
+    scene cg last_lantern_ashes with dissolve
     "By her gate, a lantern had caught in the reeds. Only its frame was left."
-    hide hana
-    hide daichi with dissolve
     "Halfway back to Daichi's house, my phone buzzed."
     # phone_chat is a minigame that comes with the engine: a phone over the dimmed stage,
     # with Hana's messages arriving one at a time. Enter or a click hurries the next one.
@@ -55,6 +56,7 @@ label river_end:
 
 label festival_end:
     hana happy "Then come on! They light the big lantern at ten."
+    scene cg big_lantern with dissolve
     "We ran down into the crowd. For one night, it felt like I had never left."
     $ persistent.playthrough = 2
     ending good "Good End" "The Lantern Festival"
@@ -70,6 +72,7 @@ label promise:
     "Daichi went to find his friends. Hana and I stayed at the rail until the crowd was gone."
     hana "You came back. Every year, I asked the river to bring you."
     hana happy "Promise me something. Next year, don't wait six years."
+    scene cg last_lantern with dissolve
     "I promised. Below us, one last lantern turned once and went on downstream."
     # "lock ending" makes the game forget an ending, as if the river had carried it away.
     # With the sad and the good ending forgotten, the promise route is locked again, so

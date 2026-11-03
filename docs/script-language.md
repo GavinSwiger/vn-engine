@@ -691,6 +691,94 @@ each changed under `[words]`.
 | `tip river_god is declared, but no unlock tip river_god line names it, so players get it only if code unlocks it.` (warning, dev runs) | Add an `unlock tip` line, or remove the tip. |
 | `lock item brass_key does nothing here, because the player doesn't have it.` (warning, dev runs) | Check for the item first: `if "brass_key" in codex.items:`. |
 
+### lock gallery, unlock gallery
+```
+lock gallery cg big_lantern "The Big Lantern"
+lock gallery cg last_lantern "The Last Lantern":
+    cg last_lantern_ashes
+
+label festival_end:
+    hana happy "Then come on! They light the big lantern at ten."
+    scene cg big_lantern with dissolve
+    "We ran down into the crowd. For one night, it felt like I had never left."
+```
+```
+label letter:
+    "Hana's letter said one lantern made it all the way to the sea."
+    unlock gallery cg last_lantern
+    "The burnt frame of the other one was still on her windowsill."
+    unlock gallery cg last_lantern_ashes
+
+label start_over:
+    lock gallery cg big_lantern
+```
+
+The **gallery** is a page of **Extras**, on the title screen, where players look again at
+the special pictures (CGs) they have seen: small squares, 12 to a page, and a click shows
+the picture on the whole screen.
+
+**Declare** each gallery picture once at the top level of any file: **`lock gallery
+picture "Title"`**.
+- **Picture**: named as for `show`; `cg big_lantern` is `images/cg/big_lantern.png`. Any
+  picture works, a background or a sprite too. A name with no picture gets the usual
+  missing-picture warning when the game starts.
+- **Title**: plain text, 1–60 characters, shown under the square. No `{b}` or `{var}`
+  (write `{{` for a `{`).
+- **Versions**: picture names indented under the declaration, one per line, up to 8. They
+  are more versions of the same picture (another face, another light) and share its
+  square; the square shows how many of them the player has seen, and the whole-screen view
+  steps through those.
+- The gallery lists the pictures in the order of their lines (files in `include` order).
+  A picture is in the gallery once. Up to 500.
+
+**Gallery pictures unlock when they show.** Each one starts locked and unlocks the first
+time it shows in the story: a `scene` or `show` line, or a dialogue line that changes a
+sprite to it. There is nothing else to write. **Unlocks are kept across playthroughs**:
+loading a save, rolling back, and New Game never take one away. Loading a save, rolling
+back onto a picture, or jumping to it from the Flowchart page doesn't unlock it; playing to
+it does. Players reset the gallery with "delete persistent data" in Settings.
+
+**Inside a label**, **`unlock gallery picture`** unlocks a picture without showing it,
+for one the story only tells of, and **`lock gallery picture`** (no title) makes the game
+forget it, so its square is locked again. The name can be a version. Neither line waits or
+shows anything.
+
+The **Extras** button shows on the title screen once the player has unlocked a gallery
+picture, and opens on the Gallery page. A picture not unlocked yet is a `???` square.
+To see the gallery while you work, run `python -m engine run game --extras` (dev runs
+only): every picture counts as unlocked, nothing is saved, and Extras opens at once.
+
+`gallery` is still free as a name: it means something only right after `lock` or
+`unlock`. `cg` is an ordinary name too, so `images/cg/` is a folder like any other.
+
+The example game has two gallery pictures: "The Big Lantern" at the good ending, and "The
+Last Lantern" at the true ending, with a version, the burnt frame, at the sad ending.
+
+**Settings in `config.toml`**
+
+| Setting | Default | What it changes |
+|---|---|---|
+| `[gallery] show_locked` | true | false: pictures not unlocked yet are left out instead of shown as `???` |
+
+**Looks** (`[theme.gallery.caption]`, `[theme.gallery.viewer]`) and **words**
+
+| Setting | Default | Range | What it changes |
+|---|---|---|---|
+| `gallery.caption.text_size` | 20 | 14–32 | The titles under the squares |
+| `gallery.viewer.fill_color` | `"#000000"` | | Around a picture shown on the whole screen |
+
+The squares use the `button.*` and `panel.*` settings. The words are `extras` "Extras",
+`gallery` "Gallery", and `gallery_locked` "???", each changed under `[words]`.
+
+| Message | Fix |
+|---|---|
+| `lock gallery needs a picture name and a title in quotes, e.g. lock gallery cg festival "Festival Night".` / `this line has "slowly" left over after the title. lock gallery takes a picture name, then a title in quotes.` / `only picture names can go under a gallery picture, one per line, e.g. cg festival_smile.` | Write `lock gallery picture "Title"`, with only picture names indented under it. |
+| `lock gallery cg festival "Festival Night" adds a picture to the gallery, so it goes at the top level. To make the game forget it during the story, write lock gallery cg festival with no title.` / `unlock gallery goes inside a label, because it runs when the story reaches it.` | Declare at the top level; put `unlock gallery` and `lock gallery` lines in a label. |
+| `the picture "cg festival" is in the gallery twice: here and at script/gallery.vns, line 4. Give each picture one place in the gallery.` / `this story has 520 gallery pictures; the engine allows 500.` | Remove one of the lines; up to 500 gallery pictures. |
+| `the gallery title is empty.` / `the gallery title has 75 characters; keep it to 60.` / `gallery titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".` / `this gallery picture has 11 versions; keep it to 8.` | Plain titles of 1–60 characters; up to 8 versions. |
+| `there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".` | Fix the name, or add the picture to the gallery. |
+| `the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.` (warning, dev runs) | Show the picture somewhere, add an `unlock gallery` line, or take it out of the gallery. |
+
 ### flowchart (the story map)
 ```
 lock route promise "Hana's Promise" until sad, good
@@ -2812,6 +2900,10 @@ The same goes for `window_title` and `crash` ([Fourth-wall tricks](#25-fourth-wa
 `tip` and `item` aren't reserved: they mean something only right after `lock` or `unlock`,
 so `default item = None` still works. `codex`, like `dice` and `points`, is an engine name,
 so it can't be a variable, a label, or a character.
+`gallery` isn't reserved either: it means something only right after `lock` or `unlock`
+([lock gallery, unlock gallery](#lock-gallery-unlock-gallery)), so `default gallery = []`
+still works. `cg` is no longer reserved: a picture in `images/cg/` is `cg name`, and `cg`
+can be a variable.
 
 ---
 
@@ -3787,3 +3879,7 @@ story goes on after a warning.
   `[playthrough.N]` title looks, `[style.<name>]` and `ui style`, the layer order, player
   settings winning, `ui saving`/`ui loading` off and on with a reason, `ui delete saves`
   after `ui saving off`, `run --playthrough N`, E319 to E321 and W204 to W207).
+- 2026-11-03: F34 W5: section 7's "lock gallery, unlock gallery" (declarations and versions,
+  unlock on show, `unlock gallery` and `lock gallery` in a label, the Extras button,
+  `run --extras`, `[gallery] show_locked`, the `[theme.gallery]` tokens and words, E342 to
+  E345 and W226), and a Reserved words note on `gallery` and `cg`.

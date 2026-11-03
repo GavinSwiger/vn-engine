@@ -111,6 +111,18 @@ lock item shed_key "Shed Key" in "Things":
 lock item candles "Candles" in "Things":
     "Four white candles tied with red string. Lantern candles burn longer than the cheap ones."
 
+# "lock gallery" adds a picture to the gallery: a page of Extras, on the title screen,
+# where players look again at the special pictures they have seen. The picture is named
+# as for "show" ("cg big_lantern" is images/cg/big_lantern.png), and the title in quotes
+# shows under its square. Each one starts locked and unlocks for good the first time it
+# shows in the story (the endings in endings.vns); like an ending, the game remembers it
+# across playthroughs. Pictures indented under one are more versions of it: they share
+# its square, and the full-screen view steps through the ones the player has seen. The
+# gallery lists the pictures in the order of these lines.
+lock gallery cg big_lantern "The Big Lantern"
+lock gallery cg last_lantern "The Last Lantern":
+    cg last_lantern_ashes
+
 # "label" names a scene. The story begins at the label called start. Once players
 # have saves, keep your label names: a save finds its line again inside its label, even
 # after you add lines around it.
