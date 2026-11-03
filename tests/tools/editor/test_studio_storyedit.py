@@ -368,15 +368,16 @@ def test_ac_f46_16_insert(studio, lanterns, monkeypatch):
     assert (line(ed, MAIN, 16), line(ed, MAIN, 17)) == ("    return", '    hana "Hi there."')
 
     # A text-only doc: its example above the row, then Script with fields[0] selected.
-    shake = next(d for _g, docs in assist.insert_menu() for d in docs if d.key == "shake")
+    # (``at`` stays text only for good: F47 gave ``shake`` a form.)
+    position = next(d for _g, docs in assist.insert_menu() for d in docs if d.key == "at")
     click_row(ed, 0)
-    picks.append(("Effects", "Shake the screen"))
+    picks.append(("Stage", "Position"))
     events.buttons["insert"].invoke()                    # the button does what the key does
     ed.root.update()
-    text, _sel = assist.insert_text(shake, "    ", "    ")
-    assert line(ed, MAIN, 13) == text == "    shake small"
+    text, _sel = assist.insert_text(position, "    ", "    ")
+    assert line(ed, MAIN, 13) == text == "    show hana sad at right"
     assert side_page(ed) == "Script" and ed.focus() is ed.side_text
-    assert ed.side_text.get("sel.first", "sel.last") == shake.fields[0]
+    assert ed.side_text.get("sel.first", "sel.last") == position.fields[0]
 
     # A name not in the index: the hint, and OK writes it.
     ed.press(ed.side_text, "<Control-e>")

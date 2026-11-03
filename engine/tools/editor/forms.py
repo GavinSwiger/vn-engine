@@ -6,9 +6,10 @@ rewrite a row's line. The ``.vns`` text stays the only truth, so a form must giv
 what it read, or the row stays a plain Script row. Pure: no Tk.
 
 - ``FORMS`` sits beside F45's statement docs: each ``CommandForm`` names the docs it covers
-  (``form_for_doc``), and ``TEXT_ONLY`` marks the docs that insert their example as text
-  (PR-F46-24; ``missing_forms`` is the completeness check). ``all_forms()`` adds F47's
-  forms (``forms_more.FORMS``: Ending, …) and the Choice form; lookups and rows use it.
+  (``form_for_doc``), and ``TEXT_ONLY`` maps each doc that inserts its example as text to
+  the reason shown to authors (PR-F46-24, PR-F47-06; ``missing_forms`` is the completeness
+  check). ``all_forms()`` adds F47's forms (``forms_more.FORMS``: Ending, Transition, Shake
+  screen, …) and the Choice form; lookups and rows use it.
 - ``read(node, code)`` gives a form's values (strings as written, so ``pause 1`` stays ``1``)
   or None when the line holds anything the form can't (``behind``, ``zoom``, a colour,
   ``volume``, …). ``write(values)`` gives one code line, ``summary(values)`` the row text.
@@ -27,6 +28,7 @@ Lines here are chunk-relative, as ``scenes`` gives them: ``lines[k - 1]`` is chu
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, fields, is_dataclass
+from types import MappingProxyType
 from typing import Final, Literal
 
 from engine.core.constants import BUILTIN_POSITIONS
@@ -58,13 +60,30 @@ CHOICE_EMPTY_TEXT: Final = "A choice needs at least one option."
 IN_TEXT: Final = "(lines in the text)"     # a choice block the form can't hold
 CONTINUES: Final = "continues here"
 
-# Doc keys that insert their example as text, with no form (PR-F46-24). ``points`` is the
-# declaration; ``points <name> +=`` has the Change meter form.
-TEXT_ONLY: Final = frozenset((
-    "at", "chapter", "default", "define", "effect", "flowchart", "image", "include",
-    "label", "lock", "minigame", "nvl", "points", "queue", "rollback", "shake", "flash",
-    "unlock", "voice", "with", "file",                       # file: F31 (four entries)
-    "ui"))                                                   # ui: F32 (F47 adds its form)
+# Why a doc inserts its example as text, with no form (PR-F46-24, PR-F47-06), shown to
+# authors in the Insert picker. ``TEXT_ONLY_REASONS``: F47 §4.8's, word for word.
+PYTHON_CODE_REASON: Final = "Python code: for things the forms can't do."
+PYTHON_VALUES_REASON: Final = (
+    "Python values: use the Database for characters, transitions and minigame data.")
+INCLUDE_REASON: Final = "Studio adds these when you make script files."
+STORY_MAP_REASON: Final = "Made on the Story map / part of Show character."
+PLUGIN_REASON: Final = "Plugin code is written in Python (docs/minigames.md)."
+TEXT_ONLY_REASONS: Final = (PYTHON_CODE_REASON, PYTHON_VALUES_REASON, INCLUDE_REASON,
+                            STORY_MAP_REASON, PLUGIN_REASON)
+# Not in §4.8 (F47 P2-A): declarations the Database writes, and statements whose form is a
+# later F47 step (P2-B chapter, nvl, lock, unlock; minigame; W9 file (F31), ui (F32); P3
+# flowchart, rollback). Each later step drops its keys.
+DATABASE_REASON: Final = "Made in the Database: variables, pictures and meters."
+NO_FORM_YET_REASON: Final = "No form for this yet: it goes in as a script line."
+
+# Doc key → its reason. ``points`` is the declaration; ``points <name> +=`` has the Change
+# meter form. ``missing_forms`` fails on a key with an empty reason.
+TEXT_ONLY: Final[Mapping[str, str]] = MappingProxyType({
+    "at": STORY_MAP_REASON, "label": STORY_MAP_REASON,
+    "define": PYTHON_VALUES_REASON, "include": INCLUDE_REASON,
+    "default": DATABASE_REASON, "image": DATABASE_REASON, "points": DATABASE_REASON,
+    **dict.fromkeys(("chapter", "nvl", "lock", "unlock", "minigame", "file", "ui",
+                     "flowchart", "rollback"), NO_FORM_YET_REASON)})
 
 _SHAPE_SKIP: Final = frozenset(("file", "line", "end_line", "column", "sid", "label", "path",
                                 "code", "comment_free", "block"))
@@ -630,9 +649,10 @@ def form_for_doc(doc: StatementDoc) -> CommandForm | None:
 
 
 def missing_forms() -> list[str]:
-    """Keys of ``insert=True`` docs with neither a form nor a ``TEXT_ONLY`` mark."""
+    """Keys of ``insert=True`` docs with neither a form nor a ``TEXT_ONLY`` reason (an empty
+    reason counts as none)."""
     return [doc.key for doc in all_docs()
-            if doc.insert and doc.key not in TEXT_ONLY and form_for_doc(doc) is None]
+            if doc.insert and not TEXT_ONLY.get(doc.key) and form_for_doc(doc) is None]
 
 
 def insert_lines(form: CommandForm, values: Values | ChoiceValues, indent: str,
@@ -1060,7 +1080,8 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
 
 __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "CONTINUES",
            "ChoiceItem", "ChoiceValues", "CommandForm", "END_WORD", "FORMS", "Field", "IN_TEXT",
-           "MORE_TEXT", "NOTHING", "NO_QUESTION", "Patch", "Row", "TEXT_ONLY", "all_forms",
+           "MORE_TEXT", "NOTHING", "NO_QUESTION", "Patch", "Row", "TEXT_ONLY",
+           "TEXT_ONLY_REASONS", "DATABASE_REASON", "NO_FORM_YET_REASON", "all_forms",
            "choice_lines",
            "choice_patches", "choice_summary", "code_of", "form_by_key", "form_for_doc",
            "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape"]
