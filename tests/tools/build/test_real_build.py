@@ -190,7 +190,9 @@ def test_ac_f42_06_dev_options_and_commands_are_not_accepted_by_the_built_exe(
                 # F39 (07 I-9): defined only on main()'s `run` in dev runs, never frozen.
                 ["--resume-from-editor"], ["--window-at", "1,1"],
                 # F47 P2-F: Studio's Try it, likewise dev runs only.
-                ["--try-stdin"]]
+                ["--try-stdin"],
+                # F34: the Extras preview, likewise dev runs only.
+                ["--extras"]]
     codes = {" ".join(args): _run(example_build.exe, args, tmp_path).returncode
              for args in rejected}
     assert codes == {key: 2 for key in codes}

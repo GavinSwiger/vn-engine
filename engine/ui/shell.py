@@ -22,6 +22,8 @@ Flows (§7.7):
 - **Game menu** (``open_game_menu``, from ``GameMenuKeys`` and the quick menu's Menu): pushed
   over the in-game screens only in mode GAME with no menu open. Its Main Menu and Quit ask
   first (``ask_main_menu``, ``ask_quit``: No is focused when opened by keys).
+- **Extras** (F34, ``open_extras``, the title's ``extras`` button): the title-page screen
+  filled from the ``extras`` menu, pushed over the title only in mode TITLE.
 - **Return to title** (``return_to_title``, Main Menu → Yes): the question goes at once,
   story audio stops, everything fades to black over ``ui.fade_ms`` (no input), then the
   title.
@@ -86,7 +88,7 @@ top, or mode not GAME), drawn after the scene captures and before the notices wh
 covered.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Final, Protocol
@@ -192,7 +194,9 @@ class ShellPorts:
     ``flush_persist``: F12's ``persist.flush_soon()`` (I-1), before the title or a quit.
     ``content_warning``: F33's ``WarningGate`` (a pre-title step, ``initial_screens``).
     ``username_question``: F30's ``UsernameGate`` (the next pre-title step;
-    ``install_fourthwall`` sets it after ``install_ui``)."""
+    ``install_fourthwall`` sets it after ``install_ui``). ``extras_page``: F34's dev ``run
+    --extras PAGE`` (``install_extras`` sets it): the launch skips the pre-title steps and
+    shows the title with Extras open on that page over it."""
 
     stack: ScreenStack
     assets: "AssetManager"
@@ -208,6 +212,7 @@ class ShellPorts:
     flush_persist: Callable[[], None] | None = None
     content_warning: WarningPort | None = None
     username_question: "QuestionPort | None" = None
+    extras_page: str | None = None
 
 
 def reduce_motion_of(config: Config) -> bool:
@@ -512,7 +517,9 @@ class GameShell:
 
     def _first_screens(self) -> list[Screen]:
         """The game at once with start options or no title, else the title fading in from
-        black."""
+        black. F34's dev ``--extras``: the title at once with Extras open over it."""
+        if self.ports.extras_page is not None:
+            return self._extras_preview(self.ports.extras_page)
         if self.ports.skip_title or not self.config.title.enabled:
             self._choose()                          # F32: before new_game()
             self.ports.new_game()
@@ -521,6 +528,24 @@ class GameShell:
         self.mode = Mode.TITLE
         return [self._title_screen()]
 
+    def _extras_preview(self, page: str) -> list[Screen]:
+        """F34 ``04`` §7.3 (``run --extras PAGE``): the title with no fade-in (even with
+        ``[title] enabled = false``), and Extras over it on ``page``, so Back reaches the
+        title with Extras focused. Nothing in Extras: the title alone, and a log line."""
+        from engine.ui.builtin.title_screen import TitleScreen
+
+        self.mode = Mode.TITLE
+        self._choose()
+        title = TitleScreen(self, fade_in=False)
+        extras = self._extras_screen(page, InputKind.MOUSE)
+        if extras is None:
+            _log.warning("run --extras: nothing is in Extras yet, so only the title shows.")
+            return [title]
+        self._watch_backdrop(extras)
+        extras._parent = title                      # as push_child: Back returns focus
+        title._opener = title._buttons.get("extras")
+        return [title, extras]
+
     # -- pre-title steps (F33 07 I-2) --
 
     def _next_pre_title(self) -> list[Screen] | None:
@@ -528,8 +553,9 @@ class GameShell:
         F33's content warning, then F30's name question (``GroundScreen`` under
         ``UsernameQuestion``, 04 §6.7). Each runs in mode TITLE (quit with no question, no
         game menu, no saves), holds notices, is skipped with start options, and never calls
-        ``new_game()``. No registry: a new step is a new line here."""
-        if self.ports.skip_title:
+        ``new_game()``. No registry: a new step is a new line here. F34's dev ``--extras``
+        skips them too."""
+        if self.ports.skip_title or self.ports.extras_page is not None:
             return None
         warning = self.ports.content_warning
         if warning is not None and warning.due():
@@ -667,6 +693,33 @@ class GameShell:
         assert entry is not None and entry.page is not None, \
             f"{entry_id!r} is not a page entry of the title"
         self._push_over_top(GameMenuScreen(self, by=by, title_page=entry_id))
+
+    def open_extras(self, page: str | None = None, *, by: InputKind = InputKind.KEYS,
+                    focus: Hashable | None = None) -> GameMenuScreen | None:
+        """F34 ``04`` §7.3: the title's Extras, the title-page screen filled from the
+        ``extras`` menu, over the title (Back returns to it, Extras focused). It opens on
+        ``page`` when that page shows, else on the first page that shows; with ``focus``, the
+        open page's ``widget_for(focus)`` is focused when it can be (F36: the ending row a
+        replay started from). Only on the title; None when nothing is in Extras."""
+        if self.mode is not Mode.TITLE:
+            return None
+        screen = self._extras_screen(page, by)
+        if screen is None:
+            return None
+        self._push_over_top(screen)
+        if focus is not None and screen.page is not None:
+            target = screen.page.widget_for(focus)
+            if screen.scope.can_focus(target):
+                assert target is not None
+                screen.scope.focus(target, by, sound=False, visible=by is InputKind.KEYS)
+        return screen
+
+    def _extras_screen(self, page: str | None, by: InputKind) -> GameMenuScreen | None:
+        shown = [e.id for e in self.menus.shown("extras") if e.page is not None]
+        if not shown:
+            return None
+        first = page if page in shown else shown[0]
+        return GameMenuScreen(self, by=by, title_page=first, menu="extras")
 
     def confirm_key(self, action: str) -> str:
         """The ``[words]`` key of the Main Menu (``"main_menu"``) or Quit (``"quit"``)
@@ -899,7 +952,7 @@ class GameShell:
                                  extra={"code": "W66"})
         known = set(self.words.keys())                # a later id brings its word (I-10)
         shown = {menu: [e.id for e in self.menus.shown(menu) if e.id in known]
-                 or list(F10_ENTRY_WORDS[menu]) for menu in DEFAULT_ORDER}
+                 or list(F10_ENTRY_WORDS.get(menu, ())) for menu in DEFAULT_ORDER}
         warn_label_cuts(self.theme, self.words, self.assets, dev=self.dev, menus=shown)
 
 

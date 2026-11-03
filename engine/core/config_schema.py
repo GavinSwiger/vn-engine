@@ -1137,6 +1137,27 @@ class CodexTheme:
     image_height: int = _length(200, 0, 320)
 
 
+# --- [theme.gallery] (F34 01 §6.3 "Theme tokens") ----------------------------------------------
+
+@dataclass(frozen=True)
+class GalleryCaptionTheme:
+    """``[theme.gallery.caption]``: the title under each unlocked tile."""
+    text_size: int = _length(20, 14, 32)
+
+
+@dataclass(frozen=True)
+class GalleryViewerTheme:
+    """``[theme.gallery.viewer]``: the full-screen viewer's fill around the picture."""
+    fill_color: RGB = _color((0x00, 0x00, 0x00))
+
+
+@dataclass(frozen=True)
+class GalleryTheme:
+    """``[theme.gallery]``: the Extras screen's Gallery page and viewer (F34)."""
+    caption: GalleryCaptionTheme = _table(GalleryCaptionTheme)
+    viewer: GalleryViewerTheme = _table(GalleryViewerTheme)
+
+
 # --- [theme.flowchart] (F20 03-ui "Theme tokens", 04 §13) ------------------------------------
 # A ``None`` color follows another token (03 "Default"): ``node.text_color`` ``panel.text_color``,
 # ``gate.fill_color`` ``flowchart.fill_color``, ``unknown.text_color``
@@ -1317,6 +1338,7 @@ class ThemeConfig:
     rollback: RollbackTheme = _table(RollbackTheme)                     # F14
     codex: CodexTheme = _table(CodexTheme)                              # F21
     flowchart: FlowchartTheme = _table(FlowchartTheme)                  # F20
+    gallery: GalleryTheme = _table(GalleryTheme)                        # F34
     minigame: MinigameTheme = field(default_factory=MinigameTheme, metadata=spec(  # F23
         Table(MinigameTheme), "the frame around every minigame"))
     plugin: Mapping[str, RawPluginTable] = field(                       # F23 (raw, §7.9)
@@ -1525,6 +1547,10 @@ class WordsConfig:
     # ``ui loading off`` gives no reason of its own.
     saving_off: str = _word("Saving is turned off here.")
     loading_off: str = _word("Loading is turned off here.")
+    # F34 (01 §6.3 "Words"): the Extras screen's Gallery button and page heading, and a
+    # picture tile not seen yet. ``extras`` (the title button) is F10's.
+    gallery: str = _word("Gallery")
+    gallery_locked: str = _word("???")
     # F23 (04 §7.9): a minigame's own words, raw until the minigames load; not a word key
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
@@ -1722,6 +1748,15 @@ class CodexConfig:
 
 
 @dataclass(frozen=True)
+class GalleryConfig:
+    """``[gallery]`` (F34 01 §5.3): ``show_locked`` shows gallery pictures not unlocked yet
+    as ``???`` tiles (false: left out, order kept). Presentation only."""
+    show_locked: bool = field(default=True, metadata=spec(Bool(),
+        "show pictures the player hasn't seen yet as ??? squares instead of leaving them "
+        "out"))
+
+
+@dataclass(frozen=True)
 class FlowchartConfig:
     """``[flowchart]`` (F20 ``02`` §3.6, ``04`` §13; SR-F20-13): ``enabled`` (the Flowchart
     page; marks are still checked when off), ``menus`` (which menus are choice nodes:
@@ -1898,6 +1933,7 @@ class Config:
     rollback: RollbackConfig = field(default_factory=RollbackConfig)    # F14
     codex: CodexConfig = field(default_factory=CodexConfig)             # F21
     flowchart: FlowchartConfig = field(default_factory=FlowchartConfig) # F20
+    gallery: GalleryConfig = field(default_factory=GalleryConfig)       # F34
     content_warning: ContentWarningConfig = field(                      # F33
         default_factory=ContentWarningConfig)
     meta: MetaConfig = field(default_factory=MetaConfig)                # F30
@@ -1936,6 +1972,7 @@ SECTIONS: dict[str, type] = {
     "rollback": RollbackConfig,
     "codex": CodexConfig,
     "flowchart": FlowchartConfig,
+    "gallery": GalleryConfig,
     "content_warning": ContentWarningConfig,
     "meta": MetaConfig,
     "animation": AnimationConfig,
@@ -1968,6 +2005,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "rollback": "going back through the story",
     "codex": "the codex of tips and items",
     "flowchart": "the Flowchart page",
+    "gallery": "the gallery of special pictures players have seen, on the Extras screen",
     "content_warning": "a content warning shown before the title",
     "meta": "showing the player's computer user name in the story",
     "animation": "characters blinking and moving their mouths while they talk",
@@ -1999,6 +2037,9 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "theme.flowchart.edge": "the lines between boxes",
     "theme.flowchart.path": "this playthrough's lines and boxes",
     "theme.flowchart.here": 'the "You are here" tab',
+    "gallery": "the gallery page on the Extras screen",
+    "theme.gallery.caption": "the picture titles under the squares",
+    "theme.gallery.viewer": "a gallery picture shown on the whole screen",
     "line_color": "the line color", "line_width": "the line width",
     "name_tab": "the speaker's name tab", "indicator": "the click-to-continue mark",
     "heading": "headings",
@@ -2163,6 +2204,8 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
     "saving_off": "the Save page's message when the story turns saving off without a reason",
     "loading_off": "the Load page's message when the story turns loading off without a "
                    "reason",
+    "gallery": "the Extras screen's button and heading of the Gallery page",
+    "gallery_locked": "a gallery picture the player hasn't seen yet",
 })
 
 

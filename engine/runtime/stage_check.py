@@ -19,8 +19,10 @@ as it needs (``SuggestPool.iter_suggest``: a few ms each; F04 step 9):
    (W16), and (F09) each ``with`` through ``TransitionCheck`` (E190, E191, E194's launch
    form); then (F21, SR-F21-04) the ``image`` of each codex entry (``Program.codex``),
    checked as a ``show`` name but with no tag form, since the page shows that one picture
-   (W12 at the declaration's line); when the pass ends, W60 for each ``Mask`` file
-   ``locate`` can't find.
+   (W12 at the declaration's line); then (F34, PR-F34-06) each picture of each gallery entry
+   (``Program.gallery``: the entry picture, then its versions), likewise, once per picture
+   at the entry's line; when the pass ends, W60 for each ``Mask`` file ``locate`` can't
+   find.
 
 Record order (§7.2, AC-F04-41): the scan stop line W10b (F04 07 I-10: its own record,
 first), the one W10 record, each W11, each W12b, then the statement warnings in reading
@@ -48,6 +50,7 @@ from engine.runtime.stage import first_word, speaker_tag
 from engine.runtime.transitions import Locate, TransitionCheck
 from engine.script.codex import CodexEntry
 from engine.script.diagnostics import ScriptError, ScriptWarning
+from engine.script.gallery import GalleryEntry
 from engine.script.messages import format_message, w10_text
 from engine.script.nodes import Say
 from engine.script.stage import Scene, Show
@@ -92,9 +95,10 @@ class StageCheck:
         if self._pass == _COLLECT:
             if self._each_statement(self._collect):
                 self._pass = _CHECK
-                self._statements = chain(  # F21: the codex entries' pictures, last
+                self._statements = chain(  # F21, F34: codex and gallery pictures, last
                     self.program.iter_statements(),  # type: ignore[attr-defined]
-                    getattr(self.program, "codex", ()))
+                    getattr(self.program, "codex", ()),
+                    getattr(self.program, "gallery", ()))
             return False
         if self._pass == _CHECK:
             if self._each_statement(self._check):
@@ -178,6 +182,11 @@ class StageCheck:
         elif isinstance(stmt, CodexEntry):
             if stmt.image is not None and stmt.image not in self.index.names:
                 self._add("W12", stmt, stmt.image)       # F21: the page shows this name
+            return
+        elif isinstance(stmt, GalleryEntry):             # F34: the tiles and the viewer
+            for name in stmt.pictures:
+                if name not in self.index.names:
+                    self._add("W12", stmt, name)
             return
         self._transitions.visit(stmt)                    # F09: E190, E191, E194
 

@@ -20,7 +20,7 @@ title art from a script. None of them may edit F10's screens. So:
 Pure Python: no display, no pygame.
 """
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final, Literal, Protocol
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from engine.ui.shell import GameShell
     from engine.ui.widgets import Widget
 
-MenuName = Literal["title", "game", "quick"]
+MenuName = Literal["title", "game", "quick", "extras"]
 
 DEFAULT_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "title": ("new_game", "load", "flowchart", "settings", "extras", "codex", "help", "quit"),
@@ -43,6 +43,11 @@ DEFAULT_ORDER: Final[dict[str, tuple[str, ...]]] = {
              "settings", "help", "main_menu", "quit"),
     "quick": ("back", "history", "skip", "auto", "save", "q_save", "q_load", "settings",
               "hide", "menu"),
+    # F34 (07 I-4): the Extras screen's pages, opened from the title's one ``extras``
+    # button. Fixed order and no config key; each page joins with one ``app/extras.py:
+    # add_extras_page`` call (F36 ``endings`` and ``replays``, F35 ``music_room``, F37
+    # ``achievements``).
+    "extras": ("gallery", "endings", "replays", "music_room", "achievements"),
 }
 # Ids a menu shows only when the author lists them (F21 07 I-2): where ``order()`` falls back
 # to ``DEFAULT_ORDER`` (no list, an empty one, or one naming no registered button), these are
@@ -53,7 +58,8 @@ OPT_IN: Final[dict[str, frozenset[str]]] = {"title": frozenset({"codex"})}
 # What W66 calls a button of each menu ("isn't a title-screen button").
 MENU_NOUNS: Final[dict[str, str]] = {"title": "title-screen button",
                                      "game": "game-menu button",
-                                     "quick": "quick-menu button"}
+                                     "quick": "quick-menu button",
+                                     "extras": "Extras page"}
 
 
 def _always() -> bool:
@@ -102,6 +108,8 @@ class MenuPage(Protocol):
 
     def default_widget(self) -> "Widget | None": ...
 
+    def widget_for(self, key: Hashable) -> "Widget | None": ...
+
 
 class MenuPageBase:
     """The base of every page (F16 ``07`` I-12, with F11 C1's ``default_widget``): each
@@ -122,6 +130,9 @@ class MenuPageBase:
       first page widget in Tab order (a title page: Return).
     - ``nav_extras``: the ``NavReader`` extras the page wants while open (F11's pages:
       ``"shoulders"`` and ``"delete"``).
+    - ``widget_for(key)`` (F34): the page's widget for ``key`` (a gallery tile, F36's
+      ending row), its page turned so it shows; ``GameShell.open_extras(focus=)`` and a
+      return from a viewer or replay focus it. None here (nothing to focus).
     - ``on_event(event)`` (F20): a raw event the open page may take first; False here."""
 
     heading: str = ""                                         # a [words] key
@@ -149,6 +160,9 @@ class MenuPageBase:
         return False
 
     def default_widget(self) -> "Widget | None":
+        return None
+
+    def widget_for(self, key: Hashable) -> "Widget | None":
         return None
 
     def on_event(self, event: "UiEvent") -> bool:

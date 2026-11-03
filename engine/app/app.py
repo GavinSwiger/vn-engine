@@ -140,6 +140,11 @@ class App:
         # stays in memory (``open_for_launch(memory_only=True)``), and ``install_looks`` sets
         # ``persistent.playthrough`` to N before the launch look is chosen.
         self.playthrough_preview: int | None = None
+        # F34 (04 §7.3): ``run --extras PAGE`` (dev runs only): persistent data in MEMORY
+        # (``no_persistent``), every Extras name unlocked there, and the title shown with
+        # Extras open on PAGE. ``extras`` is ``app/extras.py``'s host (``install_extras``).
+        self.extras_page: str | None = None
+        self.extras = None
         # F12 step 6: the process's one file writer (ADR-0007; ``persist/writer.py``), shared
         # by F12's persistent data, F16's settings, and F11's saves. Its thread starts on the
         # first write. ``persist`` is F12's ``PersistentSync`` (``app/persistence.py``:

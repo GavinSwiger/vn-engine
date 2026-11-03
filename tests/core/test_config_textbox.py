@@ -115,6 +115,7 @@ def test_theme_areas():
         "rollback",                                              # F14 step 4
         "codex",                                                 # F21 step 3
         "flowchart",                                             # F20 s8
+        "gallery",                                               # F34 W3
         "minigame", "plugin"}                                    # F23 s5b
 
 

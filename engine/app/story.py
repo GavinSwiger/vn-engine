@@ -59,6 +59,12 @@ launch (``app/loading.py`` calls it after the launch phase). Seams, one line eac
   reset among the shell's in-game resets, right after ``install_nvl``.
 - F32 s4 (``04`` §6.2): ``install_looks`` right after ``install_ui``: the shell's ``Looks``,
   W207/W67/W206, and the ``UiStyle``, ``UiBlocks``, ``DeleteSaves`` handlers.
+- F34 W3 (``04`` §3, §7.3): ``install_extras`` (the title's Extras button, the launch's
+  ``ThumbCache``) then ``install_gallery`` (the Gallery page's Extras row) right after
+  ``install_flowchart_page``, before ``install_settings_ui``; F35–F37 add their Extras rows
+  after them. Dev ``run --extras``: ``preview_all`` unlocks every Extras name in the memory
+  store after every install, just before ``check_entries``. ``install_stage`` keeps the
+  launch's ``ImagePrefetcher`` on ``app.prefetcher`` (the thumbnails use it on the title).
 
 The watchdog (§7.7; the thread rule of ``docs/architecture.md``, ``07`` §3.3): author code
 runs only on the main thread, between ``guard.enter()`` and ``guard.exit()``. The watchdog's
@@ -91,9 +97,11 @@ from engine import __version__
 from engine.app.chapters import install_chapters
 from engine.app.choices import install_choices
 from engine.app.codex import install_codex
+from engine.app.extras import install_extras, preview_all
 from engine.app.flowchart import install_flowchart
 from engine.app.flowchart_ui import install_flowchart_page
 from engine.app.fourthwall import install_fourthwall
+from engine.app.gallery import install_gallery
 from engine.app.history import install_history
 from engine.app.looks import install_looks
 from engine.app.menus import install_ui
@@ -461,7 +469,10 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_minigames(app, interp, images)                   # F23 s4: after F21, before F16
     install_flowchart(app, interp)                           # F20 (07 I-12): App.flow
     install_flowchart_page(app, interp)                      # F20 s8: page, entries
+    install_extras(app)                                      # F34: Extras button, thumbnails
+    install_gallery(app, interp, images)                     # F34: the Gallery page
     install_settings_ui(app)                                 # F16 (I-11): last entry install
+    preview_all(app, interp.persistent)                      # F34: run --extras only
     shell.check_entries()                                    # W66, W68: always the last line
     return driver
 
@@ -512,6 +523,7 @@ def install_stage(app: "App", index: ImageIndex) -> StageScreen:
     shutdown hooks (``add_shutdown``)."""
     config = app.config
     prefetcher = ImagePrefetcher(app.assets)
+    app.prefetcher = prefetcher                     # type: ignore[attr-defined]  # F34 thumbs
     add_shutdown = getattr(app, "add_shutdown", None)
     if add_shutdown is not None:
         add_shutdown(prefetcher.stop)

@@ -28,6 +28,9 @@ not ``in_game``) and takes mouse, keys, and gamepad the same way as every F10 sc
   screen shows over the title: the sidebar is Return and the title's page entries, the
   page is open, and Back closes the whole screen. It has no scene picture. Opened by keys or
   a click it focuses the page's default widget, not Return (C1); Start does nothing there.
+- **Extras** (F34, ``GameShell.open_extras``): the same title-page screen with ``menu =
+  "extras"``: the sidebar is Return and the shown pages of the ``extras`` menu (Gallery,
+  Endings, Scenes, Music room, Achievements, in that fixed order).
 
 ``GameMenuKeys`` is the ``InGameOverlay`` that opens the menu (Esc without Ctrl/Alt/Meta,
 right click in the canvas, gamepad east or Start). It is hosted by the in-game line screen
@@ -60,8 +63,9 @@ class GameMenuScreen(MenuScreen):
     ``PageHost`` of its pages."""
 
     def __init__(self, shell: "GameShell", *, by: InputKind,
-                 title_page: str | None = None) -> None:
+                 title_page: str | None = None, menu: str = "title") -> None:
         self.from_title = title_page is not None
+        self.menu = menu                     # from the title: whose pages fill the sidebar
         cfg = shell.theme.cfg
         backdrop = CapturedBackdrop(shell.assets, cfg.menu.dim_color, cfg.menu.dim_opacity,
                                     keep_scene=not self.from_title)
@@ -121,7 +125,7 @@ class GameMenuScreen(MenuScreen):
         if not self.from_title:
             return shell.menus.shown("game")
         back = MenuEntry("return", action=lambda ctx: self.close())
-        return [back, *(e for e in shell.menus.shown("title") if e.page is not None)]
+        return [back, *(e for e in shell.menus.shown(self.menu) if e.page is not None)]
 
     def build(self) -> None:
         cfg = self.shell.theme.cfg
