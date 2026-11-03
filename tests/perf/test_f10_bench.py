@@ -69,6 +69,7 @@ from engine.ui.menu_screen import MenuScreen, Phase
 from engine.ui.nav import InputKind
 from tests.perf.stage_bench_harness import (StageBenchHarness, bench_launch, machine_lines,
                                             parse_bench, scripted_play)
+from tests.fakes.first_launch import answer_name_question
 from tests.script.load_process import cpu_name
 
 REPO = Path(__file__).resolve().parents[2]
@@ -331,6 +332,7 @@ def copy_example(dest: Path, *, extra: str = "") -> Path:
     if extra:
         with (root / "config.toml").open("a", encoding="utf-8", newline="\n") as f:
             f.write("\n" + extra + "\n")
+    answer_name_question(root)               # F30 s6: no first-launch name question
     return root
 
 

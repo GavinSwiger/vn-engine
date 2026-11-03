@@ -304,7 +304,8 @@ def test_words_reexports_the_same_objects():
     assert words.STATEMENT_WORDS is constants.STATEMENT_WORDS
     assert words.STAGE_WORDS is constants.STAGE_WORDS
     assert constants.STAGE_WORDS == {"layer", "zoom", "flip"}
-    assert len(constants.STATEMENT_WORDS) == 41       # F14: rollback; F20: flowchart; F32: ui
+    assert len(constants.STATEMENT_WORDS) == 40       # F14: rollback; F20: flowchart; F32: ui;
+    #                                                   F34: cg no longer reserved
     assert constants.STATEMENT_WORDS - constants.STATEMENT_WORDS_F02 == {"rollback", "flowchart",
                                                                          "ui"}
     assert not constants.STAGE_WORDS & constants.STATEMENT_WORDS

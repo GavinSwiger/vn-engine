@@ -44,6 +44,7 @@ from tests.perf.stage_bench_harness import (StageBenchHarness, bench_launch,
                                             machine_lines, parse_bench, report_lines,
                                             scripted_play)
 from tests.runtime.stage_story import load_game
+from tests.fakes.first_launch import answer_name_question
 from tests.script.load_process import cpu_name
 
 REPO = Path(__file__).resolve().parents[2]
@@ -64,6 +65,7 @@ def copy_example(dest: Path) -> Path:
     shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters"))
     with (dest / "config.toml").open("a", encoding="utf-8") as f:
         f.write("\n[title]\nenabled = false\n")
+    answer_name_question(dest)               # F30 s6: no first-launch name question
     return dest
 
 
