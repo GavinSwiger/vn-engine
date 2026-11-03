@@ -9,7 +9,9 @@ launch check) with the last good check's name index (``CheckResult.names``: ``ch
 the Meters, Codex, Endings & routes, Chapters, Transitions and Positions lists
 (``P2_CATEGORIES``) and remembered variables; W7 adds them to the tab. F34-W4 adds
 **Gallery** (``CATEGORY_GALLERY``, after Pictures): ``gallery_entries`` in gallery order
-(``include_order``, then line), "used" by the ``lock|unlock gallery`` lines of the texts. Pure: no Tk;
+(``include_order``, then line), "used" by the ``lock|unlock gallery`` lines of the texts.
+F35-S3 adds **Music room** (``CATEGORY_MUSIC_ROOM``, after Sounds): ``track_entries`` in
+declaration order (the same order; nothing names a track, so a track is never "used"). Pure: no Tk;
 ``names`` is any mapping of kind → rows with ``name``, ``file`` and ``line`` (``NameEntry``).
 """
 
@@ -54,6 +56,7 @@ CATEGORY_CHAPTER: Final = "chapter"
 CATEGORY_TRANSITION: Final = "transition"
 CATEGORY_POSITION: Final = "position"
 CATEGORY_GALLERY: Final = "gallery"        # F34-W4: after Pictures (database.ALL_CATEGORIES)
+CATEGORY_MUSIC_ROOM: Final = "music_room"  # F35-S3: after Sounds (database.ALL_CATEGORIES)
 P2_CATEGORIES: Final = (CATEGORY_METER, CATEGORY_CODEX, CATEGORY_ENDING, CATEGORY_CHAPTER,
                         CATEGORY_TRANSITION, CATEGORY_POSITION)
 CATEGORY_TITLES: Final[Mapping[str, str]] = {
@@ -61,12 +64,13 @@ CATEGORY_TITLES: Final[Mapping[str, str]] = {
     CATEGORY_VARIABLE: "Variables", CATEGORY_METER: "Meters", CATEGORY_CODEX: "Codex",
     CATEGORY_ENDING: "Endings & routes", CATEGORY_CHAPTER: "Chapters",
     CATEGORY_TRANSITION: "Transitions", CATEGORY_POSITION: "Positions",
-    CATEGORY_GALLERY: "Gallery"}
+    CATEGORY_GALLERY: "Gallery", CATEGORY_MUSIC_ROOM: "Music room"}
 # The "{things}" of each P2 category's empty state (§6.4 "No {things} yet").
 EMPTY_THINGS: Final[Mapping[str, str]] = {
     CATEGORY_METER: "meters", CATEGORY_CODEX: "tips or items", CATEGORY_ENDING: "routes",
     CATEGORY_CHAPTER: "chapters", CATEGORY_TRANSITION: "transitions",
-    CATEGORY_POSITION: "positions", CATEGORY_GALLERY: "gallery pictures"}
+    CATEGORY_POSITION: "positions", CATEGORY_GALLERY: "gallery pictures",
+    CATEGORY_MUSIC_ROOM: "tracks"}
 REMEMBERED: Final = "Remembered across playthroughs"
 TIPS: Final = "Tips"
 ITEMS: Final = "Items"
@@ -418,6 +422,23 @@ def gallery_entries(decls: Iterable[dec.Decl], texts: Mapping[str, str]) -> list
     return out
 
 
+def track_entries(decls: Iterable[dec.Decl], texts: Mapping[str, str]) -> list[Entry]:
+    """Music room: every ``lock track`` declaration in the room's order (include order, then
+    line; a name declared twice is listed once). Nothing names a track in a label, so
+    ``uses`` is 0 and Delete is never refused."""
+    rank = {ref: i for i, ref in enumerate(include_order(texts))}
+    out: list[Entry] = []
+    seen: set[str] = set()
+    for decl in sorted((d for d in decls if d.kind == dec.TRACK),
+                       key=lambda d: (rank.get(d.ref, len(rank)), d.ref, d.first)):
+        if decl.name in seen:
+            continue
+        seen.add(decl.name)
+        out.append(Entry(dec.TRACK, decl.name, _shown(decl), decl.place,
+                         decl.values is not None, 0, decl))
+    return out
+
+
 def gallery_pictures(decls: Iterable[dec.Decl]) -> dict[str, str]:
     """Every gallery picture (entry or version) → its entry's picture."""
     out: dict[str, str] = {}
@@ -437,7 +458,7 @@ def search(entries: Iterable[Entry], text: str) -> list[Entry]:
 
 
 __all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
-           "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_METER", "CATEGORY_PICTURE",
+           "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_METER", "CATEGORY_MUSIC_ROOM", "CATEGORY_PICTURE",
            "CATEGORY_POSITION", "CATEGORY_SOUND", "CATEGORY_TITLES", "CATEGORY_TRANSITION",
            "CATEGORY_VARIABLE", "CHAPTERS_HINT", "DELETE_REFUSED", "EDIT_AS_SCRIPT",
            "EMPTY_HINT", "EMPTY_THINGS", "EMPTY_TITLE", "ENDINGS_HINT", "Entry", "ITEMS",
@@ -449,5 +470,5 @@ __all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
            "gallery_pictures", "include_order", "looks_in", "looks_of", "meter_entries",
            "position_entries",
            "remembered_entries", "route_entries", "search", "sound_entries", "sound_folder",
-           "transition_entries", "use_places", "used_text", "uses_of", "variable_entries",
+           "track_entries", "transition_entries", "use_places", "used_text", "uses_of", "variable_entries",
            "variable_names"]

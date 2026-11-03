@@ -26,6 +26,8 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   ``stagecanvas.StageCanvas``.
 - F34-W4: **Gallery** (after Pictures) and the Pictures form's **In the gallery** switch
   live in ``dbgallery.GalleryCategory``, another mixin.
+- F35-S3: **Music room** (after Sounds) and the Sounds ▸ Music form's **In the music room**
+  switch live in ``dbextras.MusicRoomCategory``.
 
 Every entry shows "Used in N lines" (the last check's ``*_use`` rows) with **Show uses**
 (the Problems panel lists the lines), and Delete is refused while it is used. The lists are
@@ -45,6 +47,7 @@ from engine.tools.editor import declarations as dec
 from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.animpanel import FRAME_PX, LookPanel
+from engine.tools.editor.dbextras import ABOUT_MUSIC, MusicRoomCategory
 from engine.tools.editor.dbgallery import ABOUT_GALLERY, GalleryCategory
 from engine.tools.editor.dbmore import (
     ABOUT_MORE,
@@ -80,10 +83,13 @@ from engine.tools.editor.views import EmptyState, panel_header
 
 # --- Texts (design §6.4; the rest are this step's, in the same voice) --------------------------
 
-# Every category, P1 then P2, in the design's order (§4.3); F34's Gallery after Pictures.
+# Every category, P1 then P2, in the design's order (§4.3); F34's Gallery after Pictures,
+# F35's Music room after Sounds.
 ALL_CATEGORIES = (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE, db.CATEGORY_GALLERY,
+                  db.CATEGORY_SOUND, db.CATEGORY_MUSIC_ROOM,
                   *(key for key in db.CATEGORIES
-                    if key not in (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE)),
+                    if key not in (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE,
+                                   db.CATEGORY_SOUND)),
                   *db.P2_CATEGORIES)
 TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
@@ -101,6 +107,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     db.CATEGORY_VARIABLE: "Variables remember things while the game plays, such as a choice "
                           "the player made or how many coins they have.",
     db.CATEGORY_GALLERY: ABOUT_GALLERY,
+    db.CATEGORY_MUSIC_ROOM: ABOUT_MUSIC,
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
@@ -218,7 +225,7 @@ class _Form:
     fields: dict[str, Any] = field(default_factory=dict)
 
 
-class DatabasePane(MoreCategories, GalleryCategory):
+class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -393,6 +400,7 @@ class DatabasePane(MoreCategories, GalleryCategory):
                      db.CATEGORY_VARIABLE: self._variable_rows(),
                      db.CATEGORY_GALLERY: self._gallery_rows(),
                      **self._p2_rows()}
+        self.rows[db.CATEGORY_MUSIC_ROOM] = self._track_rows()
         for key in ALL_CATEGORIES:
             count = sum(1 for row in self.rows[key] if row.entry is not None)
             self.cat_tree.item(key, values=(str(count),))
@@ -620,6 +628,7 @@ class DatabasePane(MoreCategories, GalleryCategory):
                 else:
                     self._message_form(PICK_ENTRY)
         self._gallery_after_fill(has_entries)
+        self._music_after_fill(has_entries)
 
     def _row(self, iid: str) -> Row | None:
         return next((r for r in self.rows[self.category] if r.iid == iid), None)
@@ -707,6 +716,10 @@ class DatabasePane(MoreCategories, GalleryCategory):
             shape += self._picture_gallery_shape(entry.name)
         if entry.kind == dec.GALLERY:
             return (self.category, row.iid, entry.kind, self._gallery_key(entry, shape))
+        if entry.kind == db.SOUND:                              # F35: In the music room
+            shape += self._sound_music_shape(entry)
+        if entry.kind == dec.TRACK:
+            return (self.category, row.iid, entry.kind, self._track_key(entry, shape))
         more = self._p2_key(entry, shape)
         if more == ("stage",):
             return (self.category, "stage")
@@ -735,6 +748,8 @@ class DatabasePane(MoreCategories, GalleryCategory):
             self._sound_form(row, key)
         elif entry.kind == dec.GALLERY:
             self._gallery_form(row, key)
+        elif entry.kind == dec.TRACK:
+            self._track_form(row, key)
         else:
             self._p2_form(row, key)
         self._wrap_hints()
@@ -1146,6 +1161,7 @@ class DatabasePane(MoreCategories, GalleryCategory):
         self.sound_label = ttk.Label(play, text="", style="Detail.TLabel")
         self.sound_label.pack(side="left", padx=(self._px(12), 0))
         grid.widget(play, pady=(10, 4))
+        self._sound_music_rows(grid, form, entry)                # F35: In the music room
         if entry.folder == "music":
             line = f'play music "{entry.name}"'
         elif entry.folder == "blips":
@@ -1207,10 +1223,11 @@ class DatabasePane(MoreCategories, GalleryCategory):
         button = getattr(self, "play_button", None)
         if button is not None and button.winfo_exists() and row is not None:
             button.configure(text=STOP_BUTTON if playing == row.ref else PLAY_BUTTON)
-        if self.form is not None and "blip" in self.form.fields:
-            picker = self.form.fields["blip"]
-            value = picker.value
-            picker.set_playing(isinstance(value, str) and playing == AUDIO_PREFIX + value)
+        for key in ("blip", "file"):                # a character's blip, a track's file
+            picker = self.form.fields.get(key) if self.form is not None else None
+            if picker is not None and hasattr(picker, "set_playing"):
+                value = picker.value
+                picker.set_playing(isinstance(value, str) and playing == AUDIO_PREFIX + value)
         label = getattr(self, "sound_label", None)
         if label is not None and label.winfo_exists():
             label.configure(text=self.sound_status if playing is not None or
@@ -1296,6 +1313,8 @@ class DatabasePane(MoreCategories, GalleryCategory):
             self._new_menu()
         elif self.category == db.CATEGORY_GALLERY:
             self.add_gallery_pictures()
+        elif self.category == db.CATEGORY_MUSIC_ROOM:
+            self.add_tracks()
         else:
             self._p2_new()
 
@@ -1402,6 +1421,8 @@ class DatabasePane(MoreCategories, GalleryCategory):
                     new = answer[0].strip()
                     self.rename_everywhere(dec.POSITION, entry.name, new, select=f"o:{new}")
             return
+        if entry.kind == dec.TRACK:          # a track's name keys players' records
+            return
         if entry.kind not in dec.EDITABLE_KINDS or not (
                 entry.name_editable or (entry.editable and entry.kind in declrename.RENAMABLE)):
             return
@@ -1469,6 +1490,8 @@ class DatabasePane(MoreCategories, GalleryCategory):
                 self.delete_entry(entry, lambda: self.delete_position(entry))
         elif entry.kind == dec.GALLERY:
             self.remove_from_gallery(entry)
+        elif entry.kind == dec.TRACK:
+            self.delete_track(entry)
         elif entry.editable:
             self.delete_entry(entry, lambda: self._delete_decl(entry))
 

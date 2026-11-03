@@ -100,3 +100,41 @@ Show or a line that changes a look), so there is nothing else to set up.
 In Events, **Unlock** with **What: gallery** adds a picture to the player's gallery without
 showing it (`unlock gallery cg festival`), and **Lock** makes the game forget one. Game
 settings ▸ **Extras** has "Show locked pictures as ???" and the gallery's look.
+
+## Music room
+
+The music room is the Extras page where players listen again to the songs of your game.
+Each song is a **track**: a music file from Sounds ▸ Music with a title. Studio writes one
+line per track into `database.vns`, in the room's order:
+
+```
+lock track main_theme "Main Theme" file "music/main_theme.ogg" open
+lock track festival_night "Festival Night" file "music/festival_night.ogg"
+lock track paper_lanterns "Paper Lanterns" file "music/paper_lanterns.ogg" until lantern
+```
+
+- **+ Add track…** lists your music files that aren't in the room yet; pick one (Ctrl+click
+  for several), press **▶ Play** to listen first, then **Add**. Each goes at the end, its
+  title made from the file's name (`festival_night.ogg` → "Festival Night").
+- Click a track to see its form: the **Title** players see, the **File** (with ▶ Play), and
+  **When players get it**:
+  - **When the story first plays it** (the usual): the track opens the first time a Play
+    music line plays its file, and stays open in every later playthrough.
+  - **From the start**: always open.
+  - **After these endings**: tick endings; the track opens once players have reached all
+    of them.
+- A track whose file no Play music line plays is marked, since players would never get it.
+  "Played by N lines" lists where it plays.
+- **▲ Move up** and **▼ Move down** (or Alt+Up / Alt+Down in the list) change the order.
+  Both tracks must be in the same script file; when they aren't, the list says so and you
+  move their lines in the Editor.
+- **Delete** asks first; the music file stays (Ctrl+Z in `database.vns` brings the track
+  back). Nothing else in the story names a track, so Delete is never refused.
+- **▶ Preview the music room** plays the game straight into Extras ▸ Music Room with every
+  track open. Nothing is saved.
+
+In Sounds, a music file's form has **In the music room**: switch it on to add the file as a
+track (off removes it), change its **Music room title**, or **Open in Music room**. The
+room's words (Play, Pause, Next…) are on Game settings ▸ **Extras** and **Button words**.
+A track's script name keeps players' records, so Studio doesn't rename it; to rename one,
+edit its line (players who had it lose it).

@@ -22,7 +22,10 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
   (``define n = Dissolve(...)``, ``Fade(...)``, ``Mask(...)``).
 - F34-W4: ``GALLERY`` (``lock gallery <picture> "Title"[:]`` with one picture name per
   indented line, its versions): named by its picture, values ``{"title", "versions"}``.
-  ``gallery_uses(texts)`` finds the ``lock|unlock gallery <picture>`` lines in labels. ``marks(texts)`` reads the
+  ``gallery_uses(texts)`` finds the ``lock|unlock gallery <picture>`` lines in labels.
+- F35-S3: ``TRACK`` (``lock track n "Title" file "music/x.ogg" [open | until a, b]``):
+  values ``{"title", "file", "open", "until"}`` (``TRACK_KEYS``); ``track_title(file)``
+  makes a new track's title from its file's name. ``marks(texts)`` reads the
   ``ending``/``chapter`` lines in labels (read-only ``ENDING``/``CHAPTER``), and
   ``position_rows(config_text)`` the ``[stage.positions]`` table with the built-ins.
 - Titles and categories are values as shown (``{{`` read as ``{``, written back doubled);
@@ -50,6 +53,7 @@ from engine.core.constants import (
     TRANSITION_SECONDS_RANGE)
 from engine.core.errors import AssetRefError
 from engine.core.paths import check_ref
+from engine.script.audio import file_problem as audio_file_problem
 from engine.script.codex import CATEGORY_MAX as CODEX_CATEGORY_MAX
 from engine.script.codex import NAME_MAX as CODEX_NAME_MAX
 from engine.script.codex import PARAGRAPH_MAX as CODEX_PARAGRAPH_MAX
@@ -58,6 +62,9 @@ from engine.script.codex import TITLE_MAX as CODEX_TITLE_MAX
 from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.gallery import TITLE_MAX as GALLERY_TITLE_MAX
 from engine.script.gallery import VERSIONS_MAX as GALLERY_VERSIONS_MAX
+from engine.script.musicroom import TITLE_MAX as TRACK_TITLE_MAX
+from engine.script.musicroom import TRACKS_MAX
+from engine.script.musicroom import UNTIL_MAX as TRACK_UNTIL_MAX
 from engine.script.points import METER_NAME_MAX, POINTS_LIMIT, STATEMENT_PARTS
 from engine.script.routes import PERSISTENT_VIEWS, ROUTE_TITLE_MAX
 from engine.script.routes import UNTIL_MAX as ROUTE_UNTIL_MAX
@@ -82,8 +89,9 @@ ENDING: Final = "ending"          # an ending line in a label (read-only: marks(
 CHAPTER: Final = "chapter"        # a chapter line in a label (read-only: marks())
 POSITION: Final = "position"      # a [stage.positions] key of config.toml (F04)
 GALLERY: Final = "gallery"        # lock gallery <picture> "Title" … : (F34)
+TRACK: Final = "track"            # lock track n "Title" file "…" [open | until a, b] (F35)
 EDITABLE_KINDS: Final = frozenset((CHARACTER, COLOR, VARIABLE, PERSISTENT, METER, TIP, ITEM,
-                                   ROUTE, TRANSITION, GALLERY))
+                                   ROUTE, TRANSITION, GALLERY, TRACK))
 # Kinds one form switches between (``declplan.plan_edit``'s ``kind``): the Variables form's
 # "Remembered across playthroughs" and the Codex form's Tips / Items.
 SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
@@ -92,7 +100,7 @@ SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
 _NAMESPACES: Final[Mapping[str, str]] = MappingProxyType({   # kinds sharing one set of names
     CHARACTER: "python", DEFINE: "python", VARIABLE: "python", TRANSITION: "python",
     PERSISTENT: "persistent", METER: "points", TIP: "codex", ITEM: "codex", ROUTE: "route",
-    COLOR: "image", IMAGE: "image", GALLERY: "gallery"})
+    COLOR: "image", IMAGE: "image", GALLERY: "gallery", TRACK: "track"})
 
 # Meters (design §4.3): the values of a points declaration. None: not written (no range: the
 # engine's ±1,000,000,000; no start: 0, or low when 0 is outside the range).
@@ -106,6 +114,10 @@ CODEX_INDENT: Final = "    "
 # Gallery (F34): the title as shown and the versions (picture names) in written order.
 GALLERY_KEYS: Final = ("title", "versions")
 _GALLERY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+gallery[ \t]+([^\n#\"]+?)[ \t]*(?:#.*)?$")
+
+# Music room (F35 SPEC §3): the title as shown, the file inside audio/ as written, ``open``
+# and the ``until`` ending names (``open`` and ``until`` never both).
+TRACK_KEYS: Final = ("title", "file", "open", "until")
 
 # Transitions (design §4.3, docs/script-language.md "Your own transitions"): kind word →
 # constructor, and every values key with its default (the constructor's own).
@@ -668,6 +680,70 @@ def gallery_uses(texts: Mapping[str, str]) -> tuple[tuple[str, str, int, bool], 
     return tuple(found)
 
 
+# --- Music room (F35 lock track) ---
+
+def track_ok(values: Mapping[str, object]) -> bool:
+    """True when ``values`` make a valid ``lock track``: a 1–60 character title, a file
+    ``play music`` could play, and ``open`` or 1–32 distinct ``until`` endings (or neither)."""
+    title, file, is_open, until = (values.get(k) for k in TRACK_KEYS)
+    if type(title) is not str or not title.strip() or len(title) > TRACK_TITLE_MAX:
+        return False
+    if type(file) is not str or not file or audio_file_problem(file) is not None:
+        return False
+    if type(is_open) is not bool or type(until) not in (tuple, list) \
+            or len(until) > TRACK_UNTIL_MAX or len(set(until)) != len(until) \
+            or (is_open and until):                                   # type: ignore[arg-type]
+        return False
+    return all(type(n) is str and _name_token(n) == n for n in until)  # type: ignore[union-attr]
+
+
+def _track_read(tokens: list[str]) -> dict[str, object] | None:
+    """``"Title" file "…" [open | until a, b]`` (after ``lock track <name>``)."""
+    if len(tokens) < 3 or tokens[1] != "file":
+        return None
+    title, file = _title_token(tokens[0]), unquote(tokens[2])
+    rest = tokens[3:]
+    is_open = rest == ["open"]
+    until: list[str] = []
+    if rest and not is_open:
+        if rest[0] != "until" or len(rest) % 2 != 0:
+            return None
+        for index, token in enumerate(rest[1:]):
+            if index % 2 == 1:
+                if token != ",":
+                    return None
+                continue
+            name = _name_token(token)
+            if name is None:
+                return None
+            until.append(name)
+    values = {"title": title, "file": file, "open": is_open, "until": tuple(until)}
+    return values if title is not None and track_ok(values) else None
+
+
+def track_line(name: str, values: Mapping[str, object]) -> str:
+    """``lock track <name> "Title" file "…" [open | until a, b]``. Raises ValueError for bad
+    values."""
+    if not track_ok(values):
+        raise ValueError("bad track")
+    line = (f"lock track {name} {quote(written_text(str(values['title'])))} "
+            f"file {quote(str(values['file']))}")
+    until = tuple(values.get("until") or ())                         # type: ignore[arg-type]
+    if values.get("open"):
+        return f"{line} open"
+    return f"{line} until {', '.join(until)}" if until else line
+
+
+def track_title(file: str) -> str:
+    """A new track's title from its file's name: ``music/festival_night.ogg`` → "Festival
+    Night"."""
+    stem = file.rsplit("/", 1)[-1]
+    stem = stem.rsplit(".", 1)[0] if "." in stem[1:] else stem
+    words = stem.replace("_", " ").replace("-", " ").split()
+    shown = " ".join(w[:1].upper() + w[1:] for w in words)
+    return shown[:TRACK_TITLE_MAX].strip() or "Track"
+
+
 def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None:
     count = _head_lines(lines)
     code, _comment = code_of(lines[:count])
@@ -680,11 +756,14 @@ def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None
             return None if name is None else Decl(GALLERY, name, ref, first, last, None)
         return Decl(GALLERY, found[0], ref, first, last, found[1])
     if tokens is None or len(tokens) < 3 or tokens[0] != "lock" \
-            or tokens[1] not in (TIP, ITEM, ROUTE):
+            or tokens[1] not in (TIP, ITEM, ROUTE, TRACK):
         return None
     name = _name_token(tokens[2])
     if name is None:
         return None
+    if tokens[1] == TRACK:
+        values = _track_read(tokens[3:]) if count == 1 and last == first else None
+        return Decl(TRACK, name, ref, first, last, values)
     if tokens[1] == ROUTE:
         values = _route_read(tokens[3:]) if count == 1 else None
         return Decl(ROUTE, name, ref, first, last, values)
@@ -1022,6 +1101,8 @@ def line_for(kind: str, name: str, values: Mapping[str, object]) -> str:
         return meter_line((name,), values)
     if kind == ROUTE:
         return route_line(name, values)
+    if kind == TRACK:
+        return track_line(name, values)
     if kind == TRANSITION:
         return f"define {name} = {transition_call(values)}"
     if kind in (TIP, ITEM):
@@ -1080,7 +1161,7 @@ def script_name(shown: str, taken: Collection[str], kind: str = CHARACTER) -> st
     reserved word or a name in ``taken`` (compared case-insensitively) gets ``_2``, ``_3``…
     A ``COLOR`` name is one image word after ``bg ``."""
     fallback = {COLOR: "color", VARIABLE: "variable", PERSISTENT: "variable",
-                ROUTE: "route", TIP: "tip", ITEM: "item", METER: "meter",
+                ROUTE: "route", TIP: "tip", ITEM: "item", METER: "meter", TRACK: "track",
                 TRANSITION: "transition", POSITION: "position"}.get(kind, "character")
     base = _slug(shown) or fallback
     if base[0].isdigit():
@@ -1119,11 +1200,12 @@ __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX
            "TRANSITION", "TRANSITION_DEFAULTS", "TRANSITION_KINDS", "TRANSITION_PARAMS",
            "VARIABLE", "VARIABLE_KINDS", "VARIABLE_STARTS", "YES_NO", "Decl", "PositionRow",
            "character_call", "character_values", "codex_lines", "codex_ok", "color_ok",
+           "TRACK", "TRACKS_MAX", "TRACK_KEYS", "TRACK_TITLE_MAX", "TRACK_UNTIL_MAX",
            "find", "gallery_lines", "gallery_ok", "gallery_title", "gallery_uses",
            "is_character_call", "is_transition_call", "line_for", "lines_for",
            "marks", "meter_line", "meter_ok", "meter_read", "meter_start", "name_problem",
            "position_point", "position_rows", "position_value", "read", "read_all",
-           "route_line", "route_ok", "scan", "script_name", "shown_text", "statements",
+           "route_line", "route_ok", "track_line", "track_ok", "track_title", "scan", "script_name", "shown_text", "statements",
            "taken_names", "transition_call", "transition_ok", "transition_try_lines",
            "transition_values", "transition_with", "unquote", "variable_values",
            "written_text"]

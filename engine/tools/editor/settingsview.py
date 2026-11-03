@@ -92,7 +92,7 @@ INTRO: Mapping[str, str] = {
     "fourth_wall": "Moments where the game reaches outside itself.",
     "words": "Every word the game shows. Change one to rename or translate it.",
     "extras": "The Extras screen players open from the title: the gallery of pictures "
-              "they've seen, and more.",
+              "they've seen, the music room's songs, and more.",
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
     sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
                "the story says so (a Game UI line). A playthrough look changes the title "

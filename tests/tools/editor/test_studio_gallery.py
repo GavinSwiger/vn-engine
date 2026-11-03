@@ -271,6 +271,8 @@ def test_ac_f34_33_game_settings_extras_page():
         cls = section_class(path)
         if cls is not None:
             want |= {f"{path}.{k}" for k in config_fields(cls)}
+    words = config_fields(section_class("words"))                 # F35-S3: the music room's
+    want |= {f"words.{k}" for k in sm.MUSIC_ROOM_WORDS if k in words}
     assert {f.path for f in page.fields} == want
     if "gallery.show_locked" in want:
         assert sm.fields_by_path()["gallery.show_locked"].label == "Show locked pictures as ???"

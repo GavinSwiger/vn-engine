@@ -253,12 +253,15 @@ class Row:
     """A hand-picked section of a page: the keys of ``path`` (all of its own keys, without
     nested tables, when ``keys`` is empty), under ``title``. ``rest``: instead, the keys of
     ``path`` that no earlier row of the page shows (so a key a later feature adds to a split
-    section, such as ``[words]``, still lands on the page); no section when there are none."""
+    section, such as ``[words]``, still lands on the page); no section when there are none.
+    ``later``: a feature's step running beside this one adds some of ``keys``; until it does,
+    the row shows the keys the schema has (none: no section)."""
 
     path: str
     title: str
     keys: tuple[str, ...] = ()
     rest: bool = False
+    later: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,6 +272,10 @@ class PageDef:
     preview: Literal["", "textbox", "title"] = ""
 
 
+# F35's Music Room page words (SPEC §5.1; F35-S2 adds them to WordsConfig).
+MUSIC_ROOM_WORDS: Final = ("music_room", "music_play", "music_pause", "music_previous",
+                           "music_next", "music_play_all", "music_repeat_one", "music_locked",
+                           "music_pick")
 PAGES: Final[tuple[PageDef, ...]] = (
     PageDef("game", "Game", (
         Row("game", "Game", ("title", "version")),
@@ -351,7 +358,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
     PageDef("extras", "Extras", (
         Row("gallery", "Gallery"),
         Row("theme.gallery.caption", "Gallery picture titles"),
-        Row("theme.gallery.viewer", "Gallery picture viewer"))),
+        Row("theme.gallery.viewer", "Gallery picture viewer"),
+        Row("words", "Music room words", MUSIC_ROOM_WORDS, later=True))),
     PageDef("words", "Button words", (
         Row("words", "Title screen and game menu", (
             "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
@@ -389,6 +397,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
             "flowchart_var", "flowchart_here", "flowchart_changed", "flowchart_no_state",
             "flowchart_no_jump", "flowchart_endings", "flowchart_nodes")),
         Row("words", "Content warning", ("warning_heading", "warning_continue")),
+        Row("words", "Music room", MUSIC_ROOM_WORDS, later=True),
         Row("words", "Fake crash and user name", (
             "fake_crash_message", "fake_crash_hint", "fake_crash_label", "ask_username",
             "ask_username_yes", "ask_username_no")),
@@ -436,6 +445,11 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "meta.username_fallback": "Name shown otherwise",
     "words.plugin": "Minigames' own words", "theme.plugin": "Minigames' own look",
     "gallery.show_locked": "Show locked pictures as ???",           # F34 §7
+    "words.music_room": "Music Room heading", "words.music_play": "Play button",  # F35 §4
+    "words.music_pause": "Pause button", "words.music_previous": "Previous button",
+    "words.music_next": "Next button", "words.music_play_all": "Play all button",
+    "words.music_repeat_one": "Repeat track button", "words.music_locked": "Locked track",
+    "words.music_pick": "Nothing picked yet",
 })
 _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "id": "ID",
                  "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",
@@ -543,7 +557,13 @@ def page(key: str) -> Page:
                 if section_class(row.path) is None:       # a later step adds it
                     continue
                 if not row.rest:
-                    sections.append(_section(row.path, row.title, row.keys))
+                    keys = row.keys
+                    if row.later:
+                        have = config_fields(section_class(row.path))
+                        keys = tuple(k for k in keys if k in have)
+                        if not keys:
+                            continue
+                    sections.append(_section(row.path, row.title, keys))
                     continue
                 shown = {f.key for s in sections if s.path == row.path for f in s.fields}
                 rest = tuple(k for k, f in config_fields(section_class(row.path)).items()

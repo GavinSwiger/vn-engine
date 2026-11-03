@@ -65,7 +65,7 @@ KIND_WORDS: Final[Mapping[str, str]] = {
     dec.CHARACTER: "character", dec.COLOR: "colour background", dec.VARIABLE: "variable",
     dec.PERSISTENT: "remembered variable", dec.METER: "meter", dec.TIP: "tip",
     dec.ITEM: "item", dec.ROUTE: "route", dec.TRANSITION: "transition",
-    dec.POSITION: "position", dec.GALLERY: "gallery picture"}
+    dec.POSITION: "position", dec.GALLERY: "gallery picture", dec.TRACK: "music-room track"}
 SWAP_REFUSED: Final = "Studio can't turn that into another kind of entry."
 MOVE_ACROSS_FILES: Final = ("These pictures are in different script files. Move their lines in "
                             "the text to reorder them.")
