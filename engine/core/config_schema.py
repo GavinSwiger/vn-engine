@@ -1571,6 +1571,13 @@ class WordsConfig:
     replays: str = _word("Scenes")
     replay_end: str = _word("End Replay")
     replay_no_saving: str = _word("Saving and loading are off during a replay.")
+    # F37 (SPEC §5.1): the Extras screen's Achievements page, the unlock notice, the page's
+    # count, and a hidden achievement's row.
+    achievements: str = _word("Achievements")
+    achievement_unlocked: str = _word("Achievement unlocked")
+    achievements_progress: str = _word("Unlocked")
+    achievement_hidden: str = _word("Hidden achievement")
+    achievement_hidden_text: str = _word("Keep playing to unlock it.")
     # F23 (04 §7.9): a minigame's own words, raw until the minigames load; not a word key
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
@@ -2257,6 +2264,15 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
     "replay_end": "the game menu's button that stops watching a scene again and goes back to "
                   "Extras",
     "replay_no_saving": "why saving and loading are off while players watch a scene again",
+    "achievements": "the Extras screen's button and heading of the Achievements page",
+    "achievement_unlocked": "the start of the notice when the player earns an achievement, "
+                            "before its name",
+    "achievements_progress": "the Achievements page's count of achievements earned, before "
+                             "the numbers",
+    "achievement_hidden": "the name shown for a hidden achievement the player hasn't earned "
+                          "yet",
+    "achievement_hidden_text": "the line under a hidden achievement the player hasn't earned "
+                               "yet",
 })
 
 

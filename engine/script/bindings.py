@@ -79,6 +79,7 @@ from dataclasses import dataclass, field
 from types import CodeType
 
 from engine.core.constants import VALUE_ECHO_MAX_CHARS
+from engine.script.achievements import AchievementDecl
 from engine.script.diagnostics import Diagnostic, ScriptWarning
 from engine.script.identity import walk_block
 from engine.script.limits import IDENTITY_YIELD_ITEMS
@@ -399,13 +400,18 @@ def w05_args(call: ast.Call) -> tuple[str | None]:
 def iter_pieces(nodes: Iterable[Node], *, values: bool = False) -> Iterator[Piece]:
     """Every compiled ``$`` line and ``if``/``elif`` (F07: menu choice) condition (F22: a
     ``points`` line's amount, as a condition with its meter; F23: each ``minigame``
-    argument's value, as a condition) inside the labels, in reading order (pre-order within a label). Pieces with an error of their own
+    argument's value, as a condition; F37: an achievement's ``when``, at the top level) inside
+    the labels, in reading order (pre-order within a label). Pieces with an error of their own
     (no ``code``) are left out. With ``values`` (F12), the value of every define, default,
     and persistent default joins in reading order too, as ``KIND_VALUE`` (root uses only)."""
     for node in nodes:
         if values and isinstance(node, (Define, Default, PersistentDefault)):
             if node.value.code is not None:
                 yield Piece(node.file, node.line, node.value, KIND_VALUE)
+            continue
+        if isinstance(node, AchievementDecl):               # F37: a when condition
+            if node.when_py is not None and node.when_py.code is not None:
+                yield Piece(node.file, node.line, node.when_py, KIND_CONDITION)
             continue
         if not isinstance(node, Label):
             continue

@@ -192,6 +192,7 @@ from engine.core.minigame_types import MinigameSig, StoryNames
 from engine.core.startvalues import StartOptions
 from engine.runtime import limits
 from engine.runtime.character import Character
+from engine.runtime import achievements as achievements_mod
 from engine.runtime import audio as audio_mod
 from engine.runtime import chapters as chapters_mod
 from engine.runtime import codex as codex_mod
@@ -488,6 +489,11 @@ class Interpreter:
         self.replay: replay_mod.ReplayRun | None = None
         self.replay_warned: set[str | None] = set()
         replay_mod.register(self)
+        # F37 (SPEC §5.1, 07 I-13): the achievements (index, pending ``when`` conditions,
+        # W223's failed set; runtime-only) and the store's "achievement" kind (not revocable,
+        # kept through a replay). ``unlock achievement`` is F19's ``Lock`` (07 I-12).
+        self.achievements: achievements_mod.Achievements
+        achievements_mod.register(self)
         # F23 (04 §3, 07 I-12): the launch's plugin signatures (loaded before the runtime
         # starts; no plugin object), the story's declared names (F24 A2, built once), and,
         # runtime-only, the minigame waited at, its start count (only counts up), whether
@@ -973,8 +979,8 @@ class Interpreter:
         Order (F36 07 I-9): F37's ``check_pending`` slot (skipped while ``timeline.replaying``),
         F12's in-place check, F14's dropped holds, F36's ``leave`` (a replay's store put back),
         then ``StoryEnded``."""
-        # 1. F37 (07 I-9, I-14): ``if not self.timeline.replaying: check_pending(self)`` goes
-        #    here, before the in-place check sees what its ``when`` code changed.
+        if not self.timeline.replaying:                     # 1. F37 (07 I-9, I-14)
+            achievements_mod.check_pending(self)            #    before F12's check
         at = self.current
         if at is not None:                                  # 2. F12 I-3
             error = self._check_persistent(at)
@@ -1030,7 +1036,11 @@ class Interpreter:
         F20 (04 §7.2, 07 A3): step 2c turns the nodes reached since the last checkpoint into
         the path (so the snapshot holds them) and their edge records; step 4d, after 4c,
         records them in the store and keeps the snapshot as their state. A failure before
-        4b records nothing."""
+        4b records nothing.
+
+        F37 (07 I-14): step 2d checks the pending achievement ``when`` conditions (not in
+        F14's quiet re-run), before the snapshot, so whatever author code changed is in it
+        and F12's in-place check (3b) sees it."""
         stage_mod.flush_stage(self)                        # 1. F04: ShowStage if changed
         say = cmd if type(cmd) is Say else next(            # 2a. F13: the one line shown
             (c for c in attached if type(c) is Say), None)
@@ -1041,6 +1051,8 @@ class Interpreter:
             self.scene_since_line = False                   # F09: a line is shown
         arrived = (self.flowchart.flush(self)               # 2c. F20
                    if self.flow_pending else None)
+        if not self.timeline.replaying:                     # 2d. F37 (07 I-14)
+            achievements_mod.check_pending(self)
         state = self._snapshot(stmt, self.call_stack)       # 3.-4. (may raise E85e)
         error = self._check_persistent(stmt)                # 3b. F12
         if error is not None:

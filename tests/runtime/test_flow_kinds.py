@@ -29,7 +29,7 @@ from tests.runtime.flow_story import (RUN_1, key, launched, load_l, node, play, 
                                       store_r, visited_ids)
 
 BUILT_KINDS = {"chapter", "ending", "route", "tip", "codex_read", FLOW_KIND, EDGE_KIND,
-               "gallery", "replay"}                         # F34 W2, F36 W2
+               "gallery", "replay", "achievement"}          # F34 W2, F36 W2, F37 S2
 
 
 def gate_script(width: int, *, scenes: bool = False) -> str:

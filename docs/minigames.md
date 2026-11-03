@@ -1313,6 +1313,52 @@ Two more habits keep the game smooth: do slow work (loading pictures, building b
 `start`, not in `draw`; and keep `update` and `draw` short. In dev runs the engine warns
 when one frame takes over 8 ms.
 
+### Achievement hook
+
+Achievements (docs/script-language.md, section 7, "lock achievement") are kept on the
+player's computer and need no code. A game sold on a store such as Steam may also want each
+achievement told to the store. That is the **achievement hook**: a small plugin, written by
+the game's programmer, that the engine calls when achievements change. The engine itself
+never uses the network; your hook talks to the store's own library, if you add one.
+
+Put the hook in a file in `game/minigames/`, like a minigame plugin (a file that only
+registers a hook is fine):
+
+```python
+from engine.minigames import api
+
+
+class StoreHook:
+    def started(self, unlocked):
+        # Once per launch, after the player's progress is read: the names already earned,
+        # in the order of their lock achievement lines. Optional.
+        for name in unlocked:
+            store_library.set_achievement(name)
+
+    def unlocked(self, name):
+        # Each new achievement, right after its notice shows.
+        store_library.set_achievement(name)
+
+
+api.register_achievement_hook(StoreHook())
+```
+
+- **`api.register_achievement_hook(hook)`** (minigame API 1.2) takes an object, not a
+  class, with an **`unlocked(name)`** method and, if you like, **`started(unlocked)`**. A game
+  has one hook.
+- `name` is the achievement's script name (`first_steps`), never its title.
+- The engine calls the hook only in a game window, never in headless runs, on the game's
+  main thread, between frames.
+- **Keep each call short** (well under 0.1 s): the game waits while it runs. A slower call
+  is logged once (W225). If a call raises an error, or runs so long that the engine stops
+  it, the hook is turned off until the game restarts (W225); achievements still work and are
+  still kept on the player's computer.
+- Achievements earned while players watch a scene again (scene replays) are kept, and the
+  hook is told about them like any other.
+- Settings' "delete persistent data" locks every achievement again; the hook isn't told
+  (stores keep what they recorded).
+- The hook is trusted code, like any plugin: the rules in "Rules every plugin follows" apply.
+
 ### Saves
 
 A save made during a minigame holds the minigame's name, its arguments, and its random seed,
@@ -1330,7 +1376,7 @@ save holds, that save goes back to the nearest point it can.
 |---|---|
 | `name` | The minigame's name in scripts: lower-case letters, digits, `_`. Required. |
 | `title` | The heading and save description; `[words.plugin.<name>] title` wins. Default: the name. |
-| `api` | The minigame API version the plugin was written for: `"1.0"` (default) or `"1.1"`. |
+| `api` | The minigame API version the plugin was written for: `"1.0"` (default), `"1.1"`, or `"1.2"`. |
 | `args` | `{"name": Arg(), "other": Arg(default=value)}`. Names start with a letter. |
 | `test_outcome` | `Outcome(result, changes)` for headless runs and Shift+F8, or `None`. |
 | `skipped_outcome` | `Outcome(…)` for Skip Game, or `None` (then the game can't be `skippable`). |
@@ -1387,7 +1433,7 @@ n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
 | E270 | A `minigame` line names no minigame, or one that isn't loaded, or a bad `into`. | Fix the name, or the `into` variable (it needs a `default`). |
 | E271 | An argument the minigame doesn't have, one missing, or written without `=`. | Use the plugin's argument names, `name=value`. |
 | E272 | `check_args` refused the arguments, or a value can't be saved. | Fix the line, or the plugin's check. |
-| E273 | A plugin has a Python mistake, stopped while loading, or declares something wrong. | Fix the file and line the message names. |
+| E273 | A plugin has a Python mistake, stopped while loading, or declares something wrong; for the achievement hook: `register_achievement_hook needs an object with an unlocked(name) method.` / `register_achievement_hook was called twice; a game has one achievement hook.` | Fix the file and line the message names; register one hook object. |
 | E274 | Two plugins use the same name. | Rename one. |
 | E275 | The plugin stopped with an error while running. | Fix the file and line; the log has the details. |
 | E276 | `ctx.finish` gave a result that can't be saved. | Finish with text, a number, a list, or a dictionary. |
@@ -1400,3 +1446,4 @@ n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
 | W163 | A plugin file is a link, not a real file (dev). | Put the file itself in `game/minigames/`. |
 | W164 | The folder is named `Minigames`, not `minigames` (dev). | Rename it in lower case. |
 | W165 | A plugin line has hidden text-direction characters (dev). | Delete them. |
+| W225 | The achievement hook failed (`the achievement platform hook failed in unlocked (RuntimeError), so it is off until the game restarts. Achievements are still kept on this computer.`), or a call took over 0.1 s (`the achievement platform hook took 0.4 s in unlocked; keep hook calls under 0.1 s so the game doesn't stall.`, once). | Fix the hook, or make its calls shorter. |

@@ -945,6 +945,79 @@ replay` or `unlock replay`.
 | `coins isn't a story variable. Starting values are for names made with default, e.g. default coins = 0.` / `a starting value is a number, text in quotes, True, False, or None, but this has "coins + 1".` / `coins has two starting values here; keep one.` | Give each `default` variable at most one plain value. |
 | `file delete "hana.chr" doesn't run during a replay, so the player's files stay as they are.` (`file write` likewise) / `ui delete saves doesn't run during a replay, so the player's saves stay as they are.` (warning, dev runs, once per line) | Nothing to fix: the line runs as usual outside replays. |
 
+### lock achievement (achievements)
+```
+lock achievement first_steps "First Steps" "Finish the prologue." image achievements first_steps
+lock achievement garden "Secret Garden" "Find the hidden garden." hidden
+lock achievement completionist "Completionist" "See every ending." when "good" in persistent.endings and "true" in persistent.endings
+```
+```
+label prologue_end:
+    "The lanterns go out one by one."
+    unlock achievement first_steps
+```
+
+**Achievements** reward players across playthroughs. When the player earns one, a notice
+shows at the top right, "Achievement unlocked: First Steps", with its picture; the
+**Achievements** page of **Extras**, on the title screen, lists them all with a count
+("Unlocked: 3 / 12").
+
+**Declare** each achievement once at the top level of any file (Studio writes them into
+`database.vns`): **`lock achievement name "Title"`**, then optionally a description,
+`image`, `hidden` and `when`, in that order.
+- **Name**: a name as in section 6. The game remembers an earned achievement by its name.
+  Up to 200 achievements.
+- **Title** and **description**: plain text in quotes, shown in the notice and the list: a
+  title of 1–60 characters, a description of up to 200. No `{b}` or `{var}` (write `{{` for
+  a `{`).
+- **`image picture`**: the achievement's picture, named as for `show` (a square picture, 64 ×
+  64 or larger, looks best). Without it, the list shows a plain square.
+- **`hidden`**: until it is earned, the list shows "Hidden achievement" instead of its title
+  and description. Once earned, it shows them as usual.
+- **`when condition`**: the achievement unlocks by itself as soon as the condition is true.
+  The condition is Python, written as for `if`, and runs to the end of the line. It is
+  checked at every line and choice and once when the story ends, so it can test what the
+  story did: `persistent` values (section 9), the endings reached (`"good" in
+  persistent.endings`), variables. Up to 64 achievements can have `when`, each condition up
+  to 500 characters. A condition that fails (a typo in a name, for example) gives a warning
+  and isn't checked again until the game restarts; the story goes on.
+
+**Inside a label**, **`unlock achievement name`** gives the achievement to the player. It
+doesn't wait; the notice shows over the story. Giving one the player already has does
+nothing. **Achievements are kept for good**: there is no `lock achievement` inside a label,
+New Game keeps them, and only "delete persistent data" in Settings takes them away.
+
+Two achievements earned at the same moment show two notices, in the order of their lines.
+Achievements earned while players watch a scene again (scene replays, above) are kept, and
+their notices show.
+
+The **Extras** button (and the Achievements page in it) shows once at least one achievement
+is earned. To try the page while you work, run `python -m engine run game --extras
+achievements` (dev runs only): every achievement counts as earned, and nothing is saved.
+
+A game sold on a store such as Steam can also tell the store about each achievement with a
+**platform hook**, a small Python plugin: see docs/minigames.md, "Achievement hook".
+Achievements always work without one, and the engine itself never uses the network.
+
+**Words**: `achievements` "Achievements", `achievement_unlocked` "Achievement unlocked",
+`achievements_progress` "Unlocked", `achievement_hidden` "Hidden achievement", and
+`achievement_hidden_text` "Keep playing to unlock it.", each changed under `[words]`. The
+page uses the `list.*` and `button.*` settings; the notice uses the notice's.
+
+`achievement`, `hidden` and `when` are still free as names: they mean something only right
+after `lock achievement` or `unlock achievement`.
+
+| Message | Fix |
+|---|---|
+| `lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."` / `this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.` / `when needs a condition, e.g. when "good" in persistent.endings.` | Write the line in that order. |
+| `lock achievement first_steps "First Steps" declares an achievement, so it goes at the top level. To give it to the player, write unlock achievement first_steps.` / `achievements can't be taken back, so lock achievement first_steps can't go in a label.` / `unlock achievement goes inside a label, because it runs when the story reaches it.` | Declare at the top level; put `unlock achievement` lines in a label. |
+| `the achievement title is empty.` / `the achievement title has 75 characters; keep it to 60.` / `the achievement description has 230 characters; keep it to 200.` / `achievement titles and descriptions are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".` | Plain titles of 1–60 characters, descriptions up to 200. |
+| `the condition after when isn't valid Python: "(" was never closed.` / `the condition has 620 characters; keep it to 500.` | Fix the condition as for `if`; keep it under 500 characters. |
+| `there are two achievements named "first_steps": here and at database.vns, line 9. Give each achievement its own name.` / `this story has 230 achievements; the engine allows 200.` / `this story has 70 achievements with when; the engine allows 64.` | One line per name; up to 200 achievements, 64 with `when`. |
+| `there is no achievement "first_step". Did you mean "first_steps"? Declare achievements at the top level, e.g. lock achievement first_step "Title".` | Use the name of a declared achievement. |
+| `achievement first_steps has no when condition and no unlock achievement line names it, so players never get it.` (warning, dev runs) | Add an `unlock achievement` line, or `when`. |
+| `achievement completionist's when condition failed (NameError), so it isn't checked again until the game restarts.` (warning, once per achievement) | Fix the condition; the story goes on meanwhile. |
+
 ### flowchart (the story map)
 ```
 lock route promise "Hana's Promise" until sad, good
@@ -4055,3 +4128,7 @@ story goes on after a warning.
 - 2026-11-03: F36 W5: "lock replay (scene replays)" gains the Endings page, `[endings] list`
   and `replay`, the rules during a replay (no saves, End Replay, progress put back with
   tracks and achievements kept, W229's skipped lines), `run --replay`, and the seven words.
+- 2026-11-03: F37 S2: section 7 "lock achievement (achievements)" (declarations with a
+  description, `image`, `hidden` and `when`, `unlock achievement` in a label, the notice,
+  the Achievements page, achievements earned in a replay kept, the platform hook, the five
+  words, E339, E340, W223, W224).

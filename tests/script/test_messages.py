@@ -112,8 +112,9 @@ def test_every_template_formats_cleanly(code):
     assert text and len(text) <= 1000
     assert not _BANNED_CASED.search(text) and not _BANNED_ANY.search(text)
     # W62 and W183 name the drawing failure's type on purpose (F09 07 I-9, F28 04 D7:
-    # "(MemoryError)").
-    assert not set(re.findall(r"\w+", text)) & _EXCEPTIONS or code in ("W62", "W183")
+    # "(MemoryError)"); so does F37's W223 (the failing condition's, "(NameError)").
+    assert (not set(re.findall(r"\w+", text)) & _EXCEPTIONS
+            or code in ("W62", "W183", "W223"))
     for char in ("‮", "ㅤ", "\x07", " "):
         assert char not in text
 
@@ -388,7 +389,8 @@ def test_cases_are_well_formed():
         assert case.needs in ("parse", "load"), case.id
         assert case.feature in ("F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F12",
                                 "F14", "F17", "F18", "F19", "F20", "F21", "F22", "F23",
-                                "F28", "F29", "F30", "F31", "F32", "F34", "F35", "F36"), case.id
+                                "F28", "F29", "F30", "F31", "F32", "F34", "F35", "F36",
+                                "F37"), case.id
         assert case.ac.startswith(f"AC-{case.feature}-"), case.id
         assert case.time in ("load", "launch", "run"), case.id
         assert case.feature != "F02" or case.time == "load", case.id
@@ -426,6 +428,7 @@ def test_cases_are_well_formed():
     assert {f"AC-F34-0{n}" for n in range(2, 6)} <= acs          # F34 W1
     assert {"AC-F35-01", "AC-F35-02"} <= acs                     # F35 S2
     assert {f"AC-F36-0{n}" for n in range(2, 7)} <= acs          # F36 W1
+    assert {"AC-F37-01", "AC-F37-02", "AC-F37-08"} <= acs        # F37 S2
 
 
 def test_every_template_code_with_a_row_is_covered():

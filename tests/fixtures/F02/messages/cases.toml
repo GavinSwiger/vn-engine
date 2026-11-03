@@ -6246,8 +6246,8 @@ ac = "AC-F19-04"
 feature = "F19"
 code = "E244"
 needs = "load"
-each = [['unlock promise', '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.'''],
-        ['lock route promise now', '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.'''],
+each = [['unlock promise', '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.'''],
+        ['lock route promise now', '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.'''],
         ['unlock route promis', '''there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".'''],
         ['lock ending god', '''there is no ending "god". Did you mean "good"?'''],
         ['unlock ending sad', '''unlock ending can't be used: an ending is recorded when the story reaches its ending line.'''],
@@ -6265,7 +6265,7 @@ needs = "load"
 each = ['unlock route promise', 'lock ending sad']
 edit = { T = '<x>' }
 where = "16"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F19-05-E241-ending"
@@ -6498,7 +6498,7 @@ needs = "load"
 each = ['unlock lanterns', 'unlock tip lanterns now']
 edit = { S = '<x>' }
 where = "10"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F21-02-E244-top"
@@ -6508,7 +6508,7 @@ code = "E244"
 needs = "load"
 edit = { T = 'lock ending sad' }
 where = "12"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F21-03-E252"
@@ -8291,7 +8291,7 @@ needs = "load"
 each = ['unlock gallery', 'unlock gallery cg festival "Festival Night"']
 edit = { S = '<x>', T = 'lock gallery cg festival "Festival Night"' }
 where = "5"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F34-03-E343"
@@ -8533,7 +8533,7 @@ needs = "load"
 each = ['unlock replay', 'unlock replay bridge "The Bridge"', 'lock replay bridge start']
 edit = { S = '<x>', T = 'lock replay bridge "The Bridge"' }
 where = "5"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F36-03-E349"
@@ -8627,3 +8627,145 @@ code = "W229"
 needs = "load"
 where = "game"
 expect = { exact = '''ui delete saves doesn't run during a replay, so the player's saves stay as they are.''' }
+
+# --- F37 rows (SPEC §3; AC-F37-01, 02): template T (S line 5, T line 9). The achievement row
+# --- registers at import; the load is a release load except for warning rows (W224: dev).
+# --- E340's limit forms and the parsed values are tests/script/test_achievements_script.py's.
+
+[[case]]
+id = "F37-01-E339-need"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = ['lock achievement', 'lock achievement first_steps', 'lock achievement "First Steps"', 'lock achievement first_steps now "First Steps"']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."''' }
+
+[[case]]
+id = "F37-01-E339-left"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = ['lock achievement a "A" now', 'lock achievement a "A" "Done." now', 'lock achievement a "A" image cg a hidden now', 'lock achievement a "A" hidden now when True']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.''' }
+
+[[case]]
+id = "F37-01-E339-declare"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+edit = { S = 'lock achievement first_steps "First Steps" "Finish the prologue."', T = 'lock achievement first_steps "First Steps"' }
+where = "5"
+expect = { exact = '''lock achievement first_steps "First Steps" declares an achievement, so it goes at the top level. To give it to the player, write unlock achievement first_steps.''' }
+
+[[case]]
+id = "F37-01-E339-relock"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+edit = { S = 'lock achievement first_steps', T = 'lock achievement first_steps "First Steps"' }
+where = "5"
+expect = { exact = '''achievements can't be taken back, so lock achievement first_steps can't go in a label.''' }
+
+[[case]]
+id = "F37-01-E339-top"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = ['unlock achievement first_steps', 'unlock achievement first_steps "First Steps"']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''unlock achievement goes inside a label, because it runs when the story reaches it.''' }
+
+[[case]]
+id = "F37-01-E339-when"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = ['lock achievement a "A" when', 'lock achievement a "A" hidden when', 'lock achievement a "A" when # later']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''when needs a condition, e.g. when "good" in persistent.endings.''' }
+
+[[case]]
+id = "F37-01-E339-python"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = [['lock achievement a "A" when "good" in', '''the condition after when isn't valid Python: this isn't valid Python.'''],
+        ['lock achievement a "A" when (seen', '''the condition after when isn't valid Python: "(" was never closed.''']]
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F37-01-E339-texts"
+ac = "AC-F37-01"
+feature = "F37"
+code = "E339"
+needs = "load"
+each = [['lock achievement a ""', '''the achievement title is empty.'''],
+        ['lock achievement a "   "', '''the achievement title is empty.'''],
+        ['lock achievement a "<<紙*75>>"', '''the achievement title has 75 characters; keep it to 60.'''],
+        ['lock achievement a "A" "<<紙*230>>"', '''the achievement description has 230 characters; keep it to 200.'''],
+        ['lock achievement a "A" when x == "<<a*616>>"', '''the condition has 623 characters; keep it to 500.'''],
+        ['lock achievement a "{b}First{/b}"', '''achievement titles and descriptions are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".'''],
+        ['lock achievement a "A" "Find {i}it{/i}."', '''achievement titles and descriptions are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".''']]
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F37-02-E340-twice"
+ac = "AC-F37-02"
+feature = "F37"
+code = "E340"
+needs = "load"
+edit = { T = 'lock achievement first_steps "First Steps"⏎lock achievement first_steps "Again"' }
+where = "10"
+expect = { exact = '''there are two achievements named "first_steps": here and at script/main.vns, line 9. Give each achievement its own name.''' }
+
+[[case]]
+id = "F37-02-E340-unknown"
+ac = "AC-F37-02"
+feature = "F37"
+code = "E340"
+needs = "load"
+each = [['unlock achievement first_step', '''there is no achievement "first_step". Did you mean "first_steps"? Declare achievements at the top level, e.g. lock achievement first_step "Title".'''],
+        ['unlock achievement qqqq', '''there is no achievement "qqqq". Declare achievements at the top level, e.g. lock achievement qqqq "Title".''']]
+edit = { S = '<x>', T = 'lock achievement first_steps "First Steps"' }
+where = "5"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F37-08-W224"
+ac = "AC-F37-08"
+feature = "F37"
+code = "W224"
+needs = "load"
+edit = { T = 'lock achievement first_steps "First Steps"⏎lock achievement garden "Garden" when False' }
+where = "9"
+expect = { exact = '''achievement first_steps has no when condition and no unlock achievement line names it, so players never get it.''' }
+
+# --- W223 (run, runtime/achievements.py; area story, once per achievement per session): data.
+# --- tests/runtime/test_achievements_story.py plays a raising condition and compares.
+
+[[case]]
+id = "F37-04-W223"
+ac = "AC-F37-04"
+feature = "F37"
+time = "run"
+code = "W223"
+needs = "load"
+where = "game"
+expect = { exact = '''achievement completionist's when condition failed (NameError), so it isn't checked again until the game restarts.''' }

@@ -3415,6 +3415,89 @@ def _w229(form: str = "delete", name: str = "hana.chr") -> str:
             "files stay as they are.")
 
 
+# --- F37 Achievements (SPEC §3) -------------------------------------------------------------------
+# Load E339 (engine/script/achievements.py), E340 (checks.py); run W223 (runtime/achievements.py,
+# area story, once per achievement per session); dev load W224 (checks.py). W225 (the platform
+# hook) is minigames/messages.py's, as F23's plugin texts are (``minigames`` never imports
+# ``script``); its docs row is docs/minigames.md's. E341 is claimed and spare. Names go
+# through ``show_name``, titles, leftovers and Python's text through ``show``.
+
+_ACHIEVEMENT_EXAMPLE = 'lock achievement first_steps "First Steps" "Finish the prologue."'
+
+
+def _e339(form: str = "need", *args: object) -> str:
+    """``need``; ``left`` (written); ``declare`` (name, title as written); ``relock``
+    (name or None); ``top``; ``when``; ``python`` (Python's text); ``empty``; ``long``,
+    ``description``, ``condition`` (count, limit); ``tags``."""
+    if form == "left":
+        written = str(args[0]) if args else "now"
+        return (f'this line has "{show(written)}" left over. lock achievement takes a name, a '
+                "title, a description, image …, hidden, then when and a condition, in that "
+                "order.")
+    if form == "declare":
+        name, title = (args + ("first_steps", '"First Steps"')[len(args):])[:2]
+        name = show_name(str(name))
+        return (f"lock achievement {name} {show(str(title))} declares an achievement, so it "
+                "goes at the top level. To give it to the player, write unlock achievement "
+                f"{name}.")
+    if form == "relock":
+        name = args[0] if args else "first_steps"
+        what = f"lock achievement {show_name(str(name))}" if name is not None \
+            else "lock achievement"
+        return f"achievements can't be taken back, so {what} can't go in a label."
+    if form == "top":
+        return ("unlock achievement goes inside a label, because it runs when the story "
+                "reaches it.")
+    if form == "when":
+        return 'when needs a condition, e.g. when "good" in persistent.endings.'
+    if form == "python":
+        text = str(args[0]) if args else "this isn't valid Python"
+        return f"the condition after when isn't valid Python: {_finish(text)}"
+    if form == "empty":
+        return "the achievement title is empty."
+    if form == "tags":
+        return ("achievement titles and descriptions are shown as written, so they can't use "
+                'text tags such as {b}. Write {{ for a "{".')
+    if form in ("long", "description", "condition"):
+        default = {"long": (75, 60), "description": (230, 200), "condition": (620, 500)}[form]
+        count, limit = (args + default[len(args):])[:2]
+        what = {"long": "the achievement title", "description": "the achievement description",
+                "condition": "the condition"}[form]
+        return f"{what} has {int(count):,} characters; keep it to {int(limit):,}."
+    return f"lock achievement needs a name and a title in quotes, e.g. {_ACHIEVEMENT_EXAMPLE}"
+
+
+def _e340(form: str = "twice", *args: object) -> str:
+    """``twice`` (name, first place); ``many``, ``when`` (count, limit); ``unknown`` (name,
+    suggestion)."""
+    if form in ("many", "when"):
+        count, limit = (args + ((230, 200) if form == "many" else (70, 64))[len(args):])[:2]
+        what = "achievements" if form == "many" else "achievements with when"
+        return f"this story has {int(count):,} {what}; the engine allows {int(limit):,}."
+    if form == "unknown":
+        name, suggestion = (args + ("first_step", "first_steps")[len(args):])[:2]
+        shown = show_name(str(name))
+        text = f'there is no achievement "{shown}".'
+        if suggestion is not None:
+            text += " " + _did_you_mean(str(suggestion), str(name))
+        return (text + " Declare achievements at the top level, e.g. lock achievement "
+                f'{shown} "Title".')
+    name, first = (args + ("first_steps", ("database.vns", 9))[len(args):])[:2]
+    return (f'there are two achievements named "{show_name(str(name))}": here and at '
+            f"{_place(first)}. Give each achievement its own name.")  # type: ignore[arg-type]
+
+
+def _w223(name: str = "completionist", reason: str = "NameError") -> str:
+    """``reason``: the exception's type name, or ``it ran too long`` (the watchdog)."""
+    return (f"achievement {show_name(str(name))}'s when condition failed ({show(str(reason))}), "
+            "so it isn't checked again until the game restarts.")
+
+
+def _w224(name: str = "first_steps") -> str:
+    return (f"achievement {show_name(str(name))} has no when condition and no unlock "
+            "achievement line names it, so players never get it.")
+
+
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
 # Drafts for the narrative designer (06 G2). Names a plugin declares (minigame and argument
 # names) and every piece of line text go through ``show_name``/``show``.
@@ -4423,6 +4506,12 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E351": _e351,
     "E352": _e352,
     "W229": _w229,
+    # F37 achievements (SPEC §3): load E339 (achievements.py), E340 (checks.py); run W223
+    # (runtime/achievements.py); dev load W224 (checks.py). W225: minigames/messages.py.
+    "E339": _e339,
+    "E340": _e340,
+    "W223": _w223,
+    "W224": _w224,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

@@ -26,9 +26,8 @@ no executor), or a ``when`` condition, checked here.
 - ``check_pending(interp)``: the interpreter's call (07 I-14: in ``take_checkpoint`` before
   the snapshot and in ``_end``, both skipped while ``timeline.replaying``; F37-S2 wires it).
 
-W223's text is ``w223_text`` here until F37-S2 moves it into ``script/messages.py`` (a
-serial-lane file; 07 I-15). It prints only the achievement's script name and the
-exception's type name (SPEC §6 item 2).
+W223's text is ``script/messages.py``'s (F37-S2 moved it there). It prints only the
+achievement's script name and the exception's type name (SPEC §6 item 2).
 
 Layering (as ``endings.py``): below the interpreter, importing it only under
 ``TYPE_CHECKING``. Pure (TR-F03-05): no file, clock, randomness, thread, or network.
@@ -42,6 +41,7 @@ from engine.core.logsetup import get_logger
 from engine.runtime.guard import AuthorCodeGuard
 from engine.runtime.persistent import PersistentStore
 from engine.script.diagnostics import ScriptWarning
+from engine.script.messages import format_message
 
 if TYPE_CHECKING:
     from engine.runtime.interpreter import Interpreter
@@ -137,12 +137,6 @@ class AchievementIndex:
         return tuple(info for info in self._items if info.name in held)
 
 
-def w223_text(name: str, reason: str) -> str:
-    """W223 L run (SPEC §3). ``reason`` is the exception's type name or ``TOO_LONG``."""
-    return (f"achievement {name}'s when condition failed ({reason}), so it isn't checked "
-            "again until the game restarts.")
-
-
 class Achievements:
     """The launch's achievements against one store (module docstring). Main thread only."""
 
@@ -212,8 +206,8 @@ class Achievements:
 
     def _fail(self, info: AchievementInfo, reason: str) -> None:
         self.failed.add(info.name)
-        warning = ScriptWarning(w223_text(info.name, reason), code="W223", file=info.file,
-                                line=info.line)
+        warning = ScriptWarning(format_message("W223", (info.name, reason)), code="W223",
+                                file=info.file, line=info.line)
         _story_log.warning("%s", warning.format(), extra={"code": "W223"})
 
 
@@ -238,4 +232,4 @@ def check_pending(interp: "Interpreter") -> tuple[str, ...]:
 
 __all__ = ["ACHIEVEMENT_KIND", "AchievementDeclLike", "AchievementIndex", "AchievementInfo",
            "Achievements", "IDENTITY_PREFIX", "TOO_LONG", "check_pending", "info_of",
-           "register", "w223_text"]
+           "register"]

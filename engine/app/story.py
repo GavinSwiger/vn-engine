@@ -72,6 +72,10 @@ launch (``app/loading.py`` calls it after the launch phase). Seams, one line eac
   Endings and Scenes Extras rows, the shell's replay port, and dev ``run --replay``. The
   driver starts a replay (``start_replay(run)``: a seed as ``new_game``'s, the inbox
   cleared) and stops one (``stop_replay()``, only while it runs).
+- F37 S2 (``SPEC.md`` §5.1, §5.3; F36 ``07`` I-13): ``install_achievements`` right after
+  ``install_replays``: F12's unlock listener (the ``Achievement unlocked`` notice with its
+  icon, then the platform hook), ``HookRunner.started`` once, and the Achievements Extras
+  row. The ``"achievement"`` kind is the interpreter's.
 
 The watchdog (§7.7; the thread rule of ``docs/architecture.md``, ``07`` §3.3): author code
 runs only on the main thread, between ``guard.enter()`` and ``guard.exit()``. The watchdog's
@@ -101,6 +105,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from engine import __version__
+from engine.app.achievements import install_achievements
 from engine.app.chapters import install_chapters
 from engine.app.choices import install_choices
 from engine.app.codex import install_codex
@@ -500,6 +505,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_gallery(app, interp, images)                     # F34: the Gallery page
     install_music_room(app, interp)                          # F35: the Music Room page
     install_replays(app, interp, images)                     # F36: Endings, Scenes, replays
+    install_achievements(app, interp, images)                # F37: notice, hook, the page
     install_settings_ui(app)                                 # F16 (I-11): last entry install
     preview_all(app, interp.persistent)                      # F34: run --extras only
     shell.check_entries()                                    # W66, W68: always the last line

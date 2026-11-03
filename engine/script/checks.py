@@ -111,6 +111,12 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    (did-you-mean over the labels) and for a ``lock``/``unlock replay`` line naming no declared
    replay (did-you-mean over them), and E352 for a starting value whose name no ``default``
    makes (a ``define`` too). ``Program.replays`` is built by ``program.py``.
+16. F37 (``SPEC.md`` §3, ``_iter_achievements``): E340 at an achievement's second
+   declaration (include order, then line), naming the first, and (whole game) past
+   ``ACHIEVEMENTS_MAX`` achievements or ``WHEN_MAX`` with ``when``; then, skipped when a file
+   couldn't be read, E340 for an ``unlock achievement`` line naming no declared achievement
+   (did-you-mean over them); in dev loads W224 for an achievement with no ``when`` that no
+   ``unlock achievement`` line names. ``Program.achievements`` is built by ``program.py``.
 
 Steps 3–5 are skipped when a file couldn't be read (``checks_skipped``, SR-F02-69); after a
 story limit (``limit_hit``) only step 1 runs. Errors go to the sink; did-you-mean
@@ -131,6 +137,8 @@ from engine.core.errors import AssetRefError, EngineError
 from engine.core.minigame_types import REQUIRED, MinigameSig
 from engine.core.paths import DirListing, GamePaths
 from engine.script import bindings, limits
+from engine.script.achievements import (ACHIEVEMENTS_MAX, WHEN_MAX, WORD_ACHIEVEMENT,
+                                        AchievementDecl)
 from engine.script.audio import AUDIO_FOLDER, PlayAudio, QueueMusic, audio_ref
 from engine.script.audio_checks import iter_attach_voices
 from engine.script.codex import CATEGORIES_MAX as CODEX_CATEGORIES_MAX
@@ -1338,6 +1346,55 @@ def _iter_replays(inp: CheckInput, labels: "_Labels | None") -> Generator[None, 
                 build=lambda lock=lock: ("replay", lock.name, names.suggest(lock.name))))
 
 
+# --- Step 16: achievements (F37) ---------------------------------------------------------------
+
+def _iter_achievements(inp: CheckInput, labels: "_Labels | None"
+                       ) -> Generator[None, None, list[ScriptWarning]]:
+    """Step 16 (module docstring). ``labels`` is None when a file couldn't be read: the
+    unknown-name E340 and W224 are skipped then, like F19's E243."""
+    sink = inp.sink
+    decls = [node for node in inp.nodes if isinstance(node, AchievementDecl)]
+    locks: list[Lock] = []
+    count = 0
+    for node in inp.nodes:
+        if not isinstance(node, Label):
+            continue
+        for stmt, _ in walk_block(node.block):
+            if isinstance(stmt, Lock) and stmt.kind == WORD_ACHIEVEMENT:
+                locks.append(stmt)
+            count += 1
+            if count % IDENTITY_YIELD_ITEMS == 0:
+                yield
+    if not decls and not locks:
+        return []
+    first: dict[str, AchievementDecl] = {}
+    for decl in sorted(decls, key=lambda d: (d.file.order, d.line)):
+        other = first.setdefault(decl.name, decl)
+        if other is not decl:
+            sink.add(Diagnostic("E340", decl.file, decl.line, None,
+                                ("twice", decl.name, (other.file.ref, other.line))))
+    if len(decls) > ACHIEVEMENTS_MAX:
+        sink.add(Diagnostic("E340", args=("many", len(decls), ACHIEVEMENTS_MAX)))
+    automatic = sum(1 for decl in decls if decl.when is not None)
+    if automatic > WHEN_MAX:
+        sink.add(Diagnostic("E340", args=("when", automatic, WHEN_MAX)))
+    yield
+    if labels is None:
+        return []
+    names = _Names(first)
+    for lock in locks:
+        if lock.name not in first:
+            sink.add(LazyDiagnostic(
+                "E340", lock.file, lock.line, None,
+                build=lambda lock=lock: ("unknown", lock.name, names.suggest(lock.name))))
+    if not inp.dev:
+        return []
+    given = {lock.name for lock in locks}
+    return [ScriptWarning(format_message("W224", (decl.name,)), code="W224",
+                          file=decl.file.ref, line=decl.line)
+            for decl in first.values() if decl.when is None and decl.name not in given]
+
+
 # --- The checks ---------------------------------------------------------------------------
 
 def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
@@ -1405,6 +1462,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += yield from _iter_tracks(inp, labels)              # F35
     yield
     yield from _iter_replays(inp, labels)                             # F36
+    yield
+    out.warnings += yield from _iter_achievements(inp, labels)        # F37
     return out
 
 

@@ -32,6 +32,7 @@ F34 added ``gallery`` (every ``lock gallery`` declaration as a ``GalleryEntry``,
 then line) and ``gallery_pictures`` (every entry picture and version → its entry's picture).
 F35 added ``tracks`` (every ``lock track`` declaration as a ``Track``, reading order).
 F36 added ``replays`` (every ``lock replay`` declaration as a ``ReplayEntry``, reading order).
+F37 added ``achievements`` (every ``lock achievement`` declaration, reading order).
 """
 
 import time
@@ -40,6 +41,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from engine.script.achievements import AchievementDecl
 from engine.script.codex import CodexCategory, CodexEntry, CodexEntryDecl, build_entries
 from engine.script.fourthwall import TitleEffect
 from engine.script.gallery import GalleryDecl, GalleryEntry, build_gallery
@@ -130,7 +132,10 @@ class Program:
     E337; at most 200, E337).
 
     F36: ``replays`` holds every scene replay in reading order (one per scene, at most 500,
-    E349), each with its tile picture (PR-F36-07)."""
+    E349), each with its tile picture (PR-F36-07).
+
+    F37: ``achievements`` holds every ``lock achievement`` declaration in reading order (names
+    unique, at most 200, E340), each with its ``when`` compiled once (``when_code``)."""
 
     files: tuple[ScriptFile, ...]                 # reading order
     labels: Mapping[str, Label]                   # read-only, reading order
@@ -162,6 +167,7 @@ class Program:
         default_factory=lambda: MappingProxyType({}))
     tracks: tuple[Track, ...] = ()                             # F35, see above
     replays: tuple[ReplayEntry, ...] = ()                      # F36, see above
+    achievements: tuple[AchievementDecl, ...] = ()             # F37, see above
     define_names: frozenset[str] = field(default=frozenset(), init=False)
     default_names: frozenset[str] = field(default=frozenset(), init=False)
     persistent_default_names: frozenset[str] = field(default=frozenset(), init=False)
@@ -194,6 +200,7 @@ class Program:
         object.__setattr__(self, "gallery", tuple(self.gallery))
         object.__setattr__(self, "tracks", tuple(self.tracks))
         object.__setattr__(self, "replays", tuple(self.replays))
+        object.__setattr__(self, "achievements", tuple(self.achievements))
         if not isinstance(self.gallery_pictures, MappingProxyType):
             object.__setattr__(self, "gallery_pictures",
                                MappingProxyType(dict(self.gallery_pictures)))
@@ -312,6 +319,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     gallery_decls: list[GalleryDecl] = []
     track_decls: list[TrackDecl] = []
     replay_decls: list[ReplayDecl] = []
+    achievement_decls: list[AchievementDecl] = []
     for node in nodes:
         if isinstance(node, Label):
             labels.setdefault(node.name, node)
@@ -331,6 +339,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
             track_decls.append(node)
         elif isinstance(node, ReplayDecl):                  # F36: reading order
             replay_decls.append(node)
+        elif isinstance(node, AchievementDecl):             # F37: reading order
+            achievement_decls.append(node)
     if defines is None:
         defines = [node for node in nodes if isinstance(node, Define)]
     if defaults is None:
@@ -376,7 +386,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                    username_fallback=username_fallback, window_titles=frozenset(titles),
                    style_names=style_names, meta_files=frozenset(meta_files),
                    gallery=gallery, gallery_pictures=gallery_pictures, tracks=tracks,
-                   replays=replays, _index=index)
+                   replays=replays, achievements=tuple(achievement_decls),
+                   _index=index)
 
 
 def _mark_sid(target: Node) -> str:

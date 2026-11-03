@@ -2457,10 +2457,10 @@ script/main.vns, line 16: until lists 33 endings; the most is 32.
 script/main.vns, line 16: until needs at least one ending name, e.g. until sad, good.
 
 [F19-04-E244-1]
-script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F19-04-E244-2]
-script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 7: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F19-04-E244-3]
 script/main.vns, line 7: there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".
@@ -2475,10 +2475,10 @@ script/main.vns, line 7: unlock ending can't be used: an ending is recorded when
 script/main.vns, line 7: lock route promise declares a route, so it goes at the top level. To lock it again during the story, write lock route promise with no title.
 
 [F19-04-E244-top-1]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-04-E244-top-2]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-05-E241-ending]
 script/main.vns, line 9: there are two endings named "sad": here and at script/main.vns, line 7. Give each ending its own name.
@@ -2644,13 +2644,13 @@ script/main.vns, line 12: unlock goes inside a label, because it runs when the s
 script/main.vns, line 12: unlock goes inside a label, because it runs when the story reaches it.
 
 [F21-02-E244-1]
-script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F21-02-E244-2]
-script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 10: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F21-02-E244-top]
-script/main.vns, line 12: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, or scene replay, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 12: at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F21-03-E252-1]
 script/main.vns, line 12: the tip name has 65 characters; keep it to 64.
@@ -3857,10 +3857,10 @@ script/main.vns, line 5: lock gallery cg festival "Festival Night" adds a pictur
 script/main.vns, line 9: unlock gallery goes inside a label, because it runs when the story reaches it.
 
 [F34-02-E244-1]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F34-02-E244-2]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F34-03-E343-1]
 script/main.vns, line 11: the picture "cg river_smile" is in the gallery twice: here and at script/main.vns, line 10. Give each picture one place in the gallery.
@@ -4038,13 +4038,13 @@ script/main.vns, line 9: unlock replay goes inside a label, because it runs when
 script/main.vns, line 9: unlock replay goes inside a label, because it runs when the story reaches it.
 
 [F36-02-E244-1]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F36-02-E244-2]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F36-02-E244-3]
-script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, or replay, then a name, e.g. unlock route promise.
+script/main.vns, line 5: lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.
 
 [F36-03-E349]
 script/main.vns, line 10: the scene "bridge" has two replays: here and at script/main.vns, line 9. Give each scene one replay.
@@ -4105,3 +4105,87 @@ script/main.vns, line 11: a starting value is a number, text in quotes, True, Fa
 
 [F36-06-E352-7]
 script/main.vns, line 12: coins has two starting values here; keep one.
+
+[F37-01-E339-need-1]
+script/main.vns, line 9: lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."
+
+[F37-01-E339-need-2]
+script/main.vns, line 9: lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."
+
+[F37-01-E339-need-3]
+script/main.vns, line 9: lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."
+
+[F37-01-E339-need-4]
+script/main.vns, line 9: lock achievement needs a name and a title in quotes, e.g. lock achievement first_steps "First Steps" "Finish the prologue."
+
+[F37-01-E339-left-1]
+script/main.vns, line 9: this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.
+
+[F37-01-E339-left-2]
+script/main.vns, line 9: this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.
+
+[F37-01-E339-left-3]
+script/main.vns, line 9: this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.
+
+[F37-01-E339-left-4]
+script/main.vns, line 9: this line has "now" left over. lock achievement takes a name, a title, a description, image …, hidden, then when and a condition, in that order.
+
+[F37-01-E339-declare]
+script/main.vns, line 5: lock achievement first_steps "First Steps" declares an achievement, so it goes at the top level. To give it to the player, write unlock achievement first_steps.
+
+[F37-01-E339-relock]
+script/main.vns, line 5: achievements can't be taken back, so lock achievement first_steps can't go in a label.
+
+[F37-01-E339-top-1]
+script/main.vns, line 9: unlock achievement goes inside a label, because it runs when the story reaches it.
+
+[F37-01-E339-top-2]
+script/main.vns, line 9: unlock achievement goes inside a label, because it runs when the story reaches it.
+
+[F37-01-E339-when-1]
+script/main.vns, line 9: when needs a condition, e.g. when "good" in persistent.endings.
+
+[F37-01-E339-when-2]
+script/main.vns, line 9: when needs a condition, e.g. when "good" in persistent.endings.
+
+[F37-01-E339-when-3]
+script/main.vns, line 9: when needs a condition, e.g. when "good" in persistent.endings.
+
+[F37-01-E339-python-1]
+script/main.vns, line 9: the condition after when isn't valid Python: this isn't valid Python.
+
+[F37-01-E339-python-2]
+script/main.vns, line 9: the condition after when isn't valid Python: "(" was never closed.
+
+[F37-01-E339-texts-1]
+script/main.vns, line 9: the achievement title is empty.
+
+[F37-01-E339-texts-2]
+script/main.vns, line 9: the achievement title is empty.
+
+[F37-01-E339-texts-3]
+script/main.vns, line 9: the achievement title has 75 characters; keep it to 60.
+
+[F37-01-E339-texts-4]
+script/main.vns, line 9: the achievement description has 230 characters; keep it to 200.
+
+[F37-01-E339-texts-5]
+script/main.vns, line 9: the condition has 623 characters; keep it to 500.
+
+[F37-01-E339-texts-6]
+script/main.vns, line 9: achievement titles and descriptions are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F37-01-E339-texts-7]
+script/main.vns, line 9: achievement titles and descriptions are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F37-02-E340-twice]
+script/main.vns, line 10: there are two achievements named "first_steps": here and at script/main.vns, line 9. Give each achievement its own name.
+
+[F37-02-E340-unknown-1]
+script/main.vns, line 5: there is no achievement "first_step". Did you mean "first_steps"? Declare achievements at the top level, e.g. lock achievement first_step "Title".
+
+[F37-02-E340-unknown-2]
+script/main.vns, line 5: there is no achievement "qqqq". Declare achievements at the top level, e.g. lock achievement qqqq "Title".
+
+[F37-08-W224]
+script/main.vns, line 9: achievement first_steps has no when condition and no unlock achievement line names it, so players never get it.
