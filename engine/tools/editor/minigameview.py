@@ -1200,6 +1200,44 @@ def spot_does(spot: mg.Hotspot) -> str:
     return "look"
 
 
+Box = tuple[float, float, float, float]       # x0, y0, x1, y1 (canvas px)
+
+
+def place_labels(spots: Sequence[tuple[Box, tuple[float, float]]], width: float,
+                 height: float, *, pad: float = 2, gap: float = 2) -> list[Box]:
+    """Where each hotspot's name label goes on the room canvas, so labels don't cover one
+    another: ``spots`` are (the hotspot's box, the label's (w, h)) in drawing order; each label
+    takes the first free place of: inside its box's top-left corner, stacked down inside the
+    box, just under the box, just over it, then stacked down from its corner anywhere. Every
+    label stays inside the canvas; one with no free place keeps its corner."""
+    placed: list[Box] = []
+
+    def fits(x: float, y: float, w: float, h: float) -> Box:
+        x = min(max(x, gap), max(gap, width - w - gap))
+        y = min(max(y, gap), max(gap, height - h - gap))
+        return x, y, x + w, y + h
+
+    def free(box: Box) -> bool:
+        return all(box[2] + gap <= o[0] or o[2] + gap <= box[0] or box[3] + gap <= o[1]
+                   or o[3] + gap <= box[1] for o in placed)
+
+    for (x0, y0, x1, y1), (w, h) in spots:
+        step = h + gap
+        corner = fits(x0 + pad, y0 + pad, w, h)
+        tries = [corner]
+        down = y0 + pad + step
+        while down + h <= y1:                               # stacked inside the box
+            tries.append(fits(x0 + pad, down, w, h))
+            down += step
+        tries += [fits(x0 + pad, y1 + gap, w, h), fits(x0 + pad, y0 - h - gap, w, h)]
+        down = y1 + gap + step
+        while down + h <= height:                           # further down, anywhere
+            tries.append(fits(x0 + pad, down, w, h))
+            down += step
+        placed.append(next((box for box in tries if free(box)), corner))
+    return placed
+
+
 class RoomEditor(Editor):
     """The room canvas (the background, scaled; hotspot rectangles drawn, dragged and
     resized), the selected hotspot's form, and the combine recipes."""
@@ -1290,13 +1328,16 @@ class RoomEditor(Editor):
         else:
             c.create_text(self.width // 2, self.height // 2, fill=THEME["muted"],
                           text=NO_PICTURE.format(name=name))
-        for spot in self.room.hotspots:
-            if spot.name != self.chosen:
-                self._draw_spot(spot, spot.rect, False)
+        drawn = [(spot, spot.rect, False) for spot in self.room.hotspots
+                 if spot.name != self.chosen]
         chosen = self.spot(self.chosen)
         if chosen is not None:
-            self._draw_spot(chosen, self.live or chosen.rect, True)
-        elif self.live is not None:                         # a new one being drawn
+            drawn.append((chosen, self.live or chosen.rect, True))
+        for spot, rect, picked in drawn:
+            self._draw_spot(spot, rect, picked)
+        self._draw_labels(drawn)
+        c.tag_raise("handle")
+        if chosen is None and self.live is not None:        # a new one being drawn
             x, y, w, h = self._box(self.live)
             c.create_rectangle(x, y, x + w, y + h, outline=ROLES["accent"], width=2,
                                dash=(4, 2), tags=("live",))
@@ -1318,21 +1359,35 @@ class RoomEditor(Editor):
         c.create_rectangle(x, y, x + w, y + h, outline=color, width=3 if chosen else 2,
                            dash=dash, fill=color if chosen else "", stipple="gray25"
                            if chosen else "", tags=("spot", f"spot:{spot.name}"))
-        label = spot.label + ("  ⇥" if spot.exit else "")
-        text = c.create_text(x + 4, y + 3, anchor="nw", text=label,
-                             fill=ROLES["textStrong"],
-                             font=self.host.fonts.get("small"), tags=(f"spot:{spot.name}",))
-        box = c.bbox(text)
-        if box:
-            back = c.create_rectangle(box[0] - 2, box[1] - 1, box[2] + 2, box[3] + 1,
-                                      fill=ROLES["surface"], outline="")
-            c.tag_lower(back, text)
         if chosen:
             half = self.px(HANDLE_PX) / 2
             for hx, hy in self._corners(x, y, w, h):
                 c.create_rectangle(hx - half, hy - half, hx + half, hy + half,
                                    fill=ROLES["accent"], outline=ROLES["text"],
                                    tags=("handle",))
+
+    def _draw_labels(self, drawn: Sequence[tuple[mg.Hotspot, Sequence[float], bool]]) -> None:
+        """Each hotspot's name on a small plate, nudged so no two plates overlap
+        (``place_labels``); ``label_boxes``: name → its plate (tests)."""
+        c = self.canvas
+        texts, wanted = [], []
+        for spot, rect, _picked in drawn:
+            label = spot.label + ("  ⇥" if spot.exit else "")
+            text = c.create_text(0, 0, anchor="nw", text=label, fill=ROLES["textStrong"],
+                                 font=self.host.fonts.get("small"),
+                                 tags=("label", f"spot:{spot.name}"))
+            bx0, by0, bx1, by1 = c.bbox(text) or (0, 0, 0, 0)
+            x, y, w, h = self._box(rect)
+            texts.append((spot.name, text, bx0, by0))
+            wanted.append(((x, y, x + w, y + h), (bx1 - bx0 + 4, by1 - by0 + 2)))
+        self.label_boxes: dict[str, Box] = {}
+        for (name, text, bx0, by0), box in zip(texts, place_labels(
+                wanted, self.width, self.height), strict=True):
+            c.coords(text, box[0] + 2 - bx0, box[1] + 1 - by0)
+            back = c.create_rectangle(*box, fill=ROLES["surface"], outline="",
+                                      tags=("label",))
+            c.tag_lower(back, text)
+            self.label_boxes[name] = box
 
     @staticmethod
     def _corners(x: float, y: float, w: float, h: float) -> list[tuple[float, float]]:
