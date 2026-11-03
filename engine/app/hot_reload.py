@@ -415,12 +415,19 @@ def _game_mode(app: object) -> bool:
     return mode is not None and getattr(mode, "value", None) == "game"
 
 
+def _in_replay(app: object) -> bool:
+    """F36 (04 decision 11): a scene replay runs (or just failed). A reload then carries
+    nothing, so the updated preview starts at the title instead of resuming the replay."""
+    return getattr(getattr(app, "shell", None), "replay", None) is not None
+
+
 def story_states(app: object) -> list[bytes] | None:
     """What the App carries now (§5.2): none on the title, while loading, between title and
-    game, or before the first line; else ``collect_states`` of the driver's checkpoint and
-    timeline. (In error mode the caller sends the list the fatal hook kept.)"""
+    game, before the first line, or during a scene replay (F36); else ``collect_states`` of
+    the driver's checkpoint and timeline. (In error mode the caller sends the list the fatal
+    hook kept.)"""
     story = getattr(app, "story", None)
-    if story is None or not _game_mode(app):
+    if story is None or not _game_mode(app) or _in_replay(app):
         return []
     interp = story.interp
     return collect_states(interp.checkpoint(), interp.timeline)
@@ -430,9 +437,9 @@ def fatal_states(app: object) -> list[bytes] | None:
     """The fatal hook's list (§5.2, PR-F39-05): taken while ``app.story`` is still set, from
     the FAILED story's last checkpoint (``checkpoint()`` is None once FAILED) and its
     timeline: the next update resumes at the last line before the error. Empty when the
-    story isn't in game (an error on the title or while loading)."""
+    story isn't in game (an error on the title or while loading) or was a scene replay (F36)."""
     story = getattr(app, "story", None)
-    if story is None or getattr(app, "loading", False):
+    if story is None or getattr(app, "loading", False) or _in_replay(app):
         return []
     shell = getattr(app, "shell", None)
     mode = getattr(shell, "mode", None)

@@ -1562,6 +1562,15 @@ class WordsConfig:
     music_repeat_one: str = _word("Repeat track")
     music_locked: str = _word("???")
     music_pick: str = _word("Pick a track to play.")
+    # F36 (01 §6.2 "Words"): the Extras screen's Endings and Scenes pages, the game menu's
+    # Main Menu during a replay, and why saving and loading are off then.
+    endings: str = _word("Endings")
+    endings_count: str = _word("Endings reached")
+    ending_locked: str = _word("???")
+    ending_replay: str = _word("Replay")
+    replays: str = _word("Scenes")
+    replay_end: str = _word("End Replay")
+    replay_no_saving: str = _word("Saving and loading are off during a replay.")
     # F23 (04 §7.9): a minigame's own words, raw until the minigames load; not a word key
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
@@ -1768,6 +1777,16 @@ class GalleryConfig:
 
 
 @dataclass(frozen=True)
+class EndingsConfig:
+    """``[endings]`` (F36 01 §5): ``list`` shows the Endings page in Extras (once an ending
+    is reached); ``replay`` lets a reached ending be replayed from it. Presentation only."""
+    list: bool = field(default=True, metadata=spec(Bool(),
+        "show an Endings page in Extras, listing the endings players have reached"))
+    replay: bool = field(default=True, metadata=spec(Bool(),
+        "let players watch an ending they have reached again from the Endings page"))
+
+
+@dataclass(frozen=True)
 class FlowchartConfig:
     """``[flowchart]`` (F20 ``02`` §3.6, ``04`` §13; SR-F20-13): ``enabled`` (the Flowchart
     page; marks are still checked when off), ``menus`` (which menus are choice nodes:
@@ -1945,6 +1964,7 @@ class Config:
     codex: CodexConfig = field(default_factory=CodexConfig)             # F21
     flowchart: FlowchartConfig = field(default_factory=FlowchartConfig) # F20
     gallery: GalleryConfig = field(default_factory=GalleryConfig)       # F34
+    endings: EndingsConfig = field(default_factory=EndingsConfig)       # F36
     content_warning: ContentWarningConfig = field(                      # F33
         default_factory=ContentWarningConfig)
     meta: MetaConfig = field(default_factory=MetaConfig)                # F30
@@ -1984,6 +2004,7 @@ SECTIONS: dict[str, type] = {
     "codex": CodexConfig,
     "flowchart": FlowchartConfig,
     "gallery": GalleryConfig,
+    "endings": EndingsConfig,
     "content_warning": ContentWarningConfig,
     "meta": MetaConfig,
     "animation": AnimationConfig,
@@ -2017,6 +2038,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "codex": "the codex of tips and items",
     "flowchart": "the Flowchart page",
     "gallery": "the gallery of special pictures players have seen, on the Extras screen",
+    "endings": "the page of endings players have reached, on the Extras screen",
     "content_warning": "a content warning shown before the title",
     "meta": "showing the player's computer user name in the story",
     "animation": "characters blinking and moving their mouths while they talk",
@@ -2227,6 +2249,14 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
                         "again",
     "music_locked": "a song in the Music Room the player can't play yet",
     "music_pick": "the Music Room's line before a song is chosen",
+    "endings": "the Extras screen's button and heading of the Endings page",
+    "endings_count": "the Endings page's count of endings reached, before the numbers",
+    "ending_locked": "an ending or scene the player hasn't reached yet",
+    "ending_replay": "the mark on an ending players can watch again",
+    "replays": "the Extras screen's button and heading of the Scenes page",
+    "replay_end": "the game menu's button that stops watching a scene again and goes back to "
+                  "Extras",
+    "replay_no_saving": "why saving and loading are off while players watch a scene again",
 })
 
 

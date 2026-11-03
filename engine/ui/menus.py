@@ -16,6 +16,11 @@ title art from a script. None of them may edit F10's screens. So:
   music, and words: ``Words``' override hook asks ``UiOverrides`` first, then the look, and
   ``MenuRegistry.title_entries`` gives the playthrough look's title buttons (F32 ``04`` §6.4;
   its unused title-look setters were removed, main decision 2).
+- ``MenuRegistry.session_hidden`` (F36 ``04`` §7.4, ``07`` I-11): the (menu, id) pairs the
+  shell hides for one session of play (a scene replay: Save, Load, Flowchart, and the quick
+  menu's Save, Q.Save, Q.Load). Kept apart from ``UiOverrides`` so no ``ui`` line can show
+  them again; owned by the shell (set when a replay starts, cleared by its in-game reset),
+  never saved. Cosmetic only: F11's replay reason is what blocks saving.
 
 Pure Python: no display, no pygame.
 """
@@ -253,6 +258,8 @@ class MenuRegistry:
         self._author = dict(entries or {})
         self.overrides = overrides if overrides is not None else UiOverrides()
         self.title_entries: Callable[[], tuple[str, ...] | None] | None = None
+        # F36 (07 I-11): (menu, id) pairs hidden while a replay runs (module docstring).
+        self.session_hidden: frozenset[tuple[str, str]] = frozenset()
 
     def add(self, menu: MenuName, entry: MenuEntry) -> None:
         """Register ``entry`` for ``menu`` (at install time). An id that isn't in
@@ -301,12 +308,15 @@ class MenuRegistry:
 
     def shown(self, menu: str) -> list[MenuEntry]:
         """The entries a screen shows now: in ``order(menu)``, registered, not hidden by
-        ``overrides``, and ``visible()``."""
+        ``overrides`` or ``session_hidden`` (F36), and ``visible()``."""
         found = self._entries[menu]
+        session = self.session_hidden
         shown = []
         for entry_id in self.order(menu):
             entry = found.get(entry_id)
             if entry is None or self.overrides.hidden(menu, entry_id) is True:
+                continue
+            if session and (menu, entry_id) in session:
                 continue
             if entry.visible():
                 shown.append(entry)

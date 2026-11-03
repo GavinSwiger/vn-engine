@@ -370,9 +370,12 @@ class SettingsService:
     def progress(self) -> str:
         """The Delete progress row (§7.7; shown on the title page only): ``"disabled"``
         without persistent data or when it is READ_ONLY (F12 W51: the file wouldn't
-        change), else ``"enabled"``."""
+        change), else ``"enabled"``. F36: ``"disabled"`` during a scene replay (the store's
+        sandbox is open, and whatever it changes is put back)."""
         persist = self.persist
         if persist is None or getattr(persist, "mode", None) is READ_ONLY:
+            return "disabled"
+        if getattr(getattr(persist, "store", None), "in_sandbox", False):
             return "disabled"
         return "enabled"
 

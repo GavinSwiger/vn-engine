@@ -145,6 +145,9 @@ class App:
         # Extras open on PAGE. ``extras`` is ``app/extras.py``'s host (``install_extras``).
         self.extras_page: str | None = None
         self.extras = None
+        # F36 (04 §7.4): ``run --replay LABEL`` (dev runs only): that scene replay in place
+        # of the first game; the game closes at its end (``app/replays.py``).
+        self.replay_label: str | None = None
         # F12 step 6: the process's one file writer (ADR-0007; ``persist/writer.py``), shared
         # by F12's persistent data, F16's settings, and F11's saves. Its thread starts on the
         # first write. ``persist`` is F12's ``PersistentSync`` (``app/persistence.py``:

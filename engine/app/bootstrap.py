@@ -41,7 +41,7 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
            seed: int | None = None, no_persistent: bool = False, resume: bool = False,
            window_at: tuple[int, int] | None = None,
            try_lines: Sequence[str] | None = None, playthrough: int | None = None,
-           extras: str | None = None) -> int:
+           extras: str | None = None, replay: str | None = None) -> int:
     """Run one session of the game in ``game_dir``; return the process exit code.
 
     F44: ``start`` holds ``run --start``/``--set`` (``App.start``); ``editor_report``
@@ -58,7 +58,9 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
     data is read but kept in memory, with ``persistent.playthrough`` set to N.
     F34: ``extras`` (``--extras PAGE``) is ``App.extras_page``: persistent data in memory
     from the start (as ``no_persistent``, 07 I-4), every Extras name unlocked there, and the
-    title shown with Extras open on PAGE."""
+    title shown with Extras open on PAGE.
+    F36: ``replay`` (``--replay LABEL``) is ``App.replay_label``: that scene replay starts in
+    place of the first game, and the game closes at its end."""
     log = logsetup.begin(level=log_level_override or "info", engine_root=engine_root())
     app_log = get_logger("app")
     state = _Startup(game_dir, release=release)
@@ -103,7 +105,7 @@ def launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                                 start=start, editor_report=editor_report, seed=seed,
                                 no_persistent=no_persistent, resume=resume,
                                 window_at=window_at, playthrough=playthrough,
-                                extras=extras)
+                                extras=extras, replay=replay)
         except KeyboardInterrupt:
             interrupted = True
             code = 0
@@ -230,7 +232,8 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
                  editor_report: bool = False, seed: int | None = None,
                  no_persistent: bool = False, resume: bool = False,
                  window_at: tuple[int, int] | None = None,
-                 playthrough: int | None = None, extras: str | None = None) -> int:
+                 playthrough: int | None = None, extras: str | None = None,
+                 replay: str | None = None) -> int:
     import pygame
 
     from engine.app import platform as osinfo
@@ -306,6 +309,7 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
     app.try_run = trying
     app.playthrough_preview = playthrough          # F32: run --playthrough N
     app.extras_page = extras                       # F34: run --extras PAGE
+    app.replay_label = replay                      # F36: run --replay LABEL
     if link is not None:                      # F39: Studio's messages; the failed place
         if not trying:                        # a try run's stdin held its lines
             link.listen(_editor_input(), resume=resume)

@@ -26,6 +26,19 @@ Flows (§7.7):
   filled from the ``extras`` menu, pushed over the title only in mode TITLE. F35's Music Room
   borrows the title's music stream (``room_music``) and gives it back when it closes
   (``resume_title_music``, which does nothing once the title is going, F36 07 I-5).
+- **Scene replay** (F36 ``04`` §7.4, ``start_replay``, from an Extras page): only on the
+  title. Title music out, everything fades to black over ``ui.fade_ms`` (no input), then the
+  cut: music released, in-game screens reset, ``replay`` set to the request (opaque to
+  ``ui`` but for its page, key and input), ``menus.session_hidden`` = ``REPLAY_HIDDEN``,
+  ``replays.start(request)`` (the app's ``ReplayPort``: F11's replay block, then the
+  interpreter's ``new_game(seed, replay=run)``), mode GAME, the in-game screens. The game
+  menu's Main Menu reads ``replay_end`` (``entry_word``) and ends it with no question. The
+  replay's end (``StoryEnded``: 1 s fade) and End Replay (``ui.fade_ms`` fade) both reach
+  ``_after_replay``: the in-game reset (which, with ``replay`` set, calls ``replays.stop()``
+  and clears ``replay`` and ``session_hidden``), then the title with no fade-in and Extras
+  over it on the request's page, its row or tile focused (Extras opens with F10's fade).
+  Dev ``run --replay`` (``ShellPorts.replay``, page None): the replay starts in place of
+  the first game (no title, no pre-title step), and its end quits.
 - **Return to title** (``return_to_title``, Main Menu → Yes): the question goes at once,
   story audio stops, everything fades to black over ``ui.fade_ms`` (no input), then the
   title.
@@ -133,6 +146,10 @@ TITLE_MUSIC_OWNER: Final = "title"
 CONFIRM_KEYS: Final = {"main_menu": "confirm_main_menu", "quit": "confirm_quit"}
 # The config section of each menu's author list (W66).
 ENTRY_SECTIONS: Final = {"title": "title", "quick": "quick_menu"}
+# F36 (04 §7.4): the entries hidden while a replay runs (``MenuRegistry.session_hidden``).
+REPLAY_HIDDEN: Final = frozenset({("game", "save"), ("game", "load"), ("game", "flowchart"),
+                                  ("quick", "save"), ("quick", "q_save"), ("quick", "q_load")})
+REPLAY_END_WORD: Final = "replay_end"   # the game menu's Main Menu during a replay
 
 
 class Mode(Enum):
@@ -188,6 +205,29 @@ class CueLayer(Protocol):
 
 
 @dataclass(frozen=True)
+class ReplayRequest:
+    """F36 (04 §7.4): one replay as the shell carries it. ``page`` is the Extras page it came
+    from (``"endings"``, ``"replays"``; None: dev ``run --replay``, whose end quits), ``key``
+    the row or tile focused when Extras comes back, ``by`` the input that picked it, and
+    ``run`` the app's replay (a ``runtime/replay.ReplayRun``), opaque to ``ui``."""
+
+    page: str | None
+    key: Hashable
+    by: InputKind
+    run: object
+
+
+class ReplayPort(Protocol):
+    """F36: ``app/replays.py``'s ``AppReplayPort`` (``shell.replays``). ``start`` blocks
+    saving and loading with the replay reason and starts the replay's game; ``stop`` ends
+    it if it still runs and lifts the block."""
+
+    def start(self, request: ReplayRequest) -> None: ...
+
+    def stop(self) -> None: ...
+
+
+@dataclass(frozen=True)
 class ShellPorts:
     """Injected by ``app/menus.py``. ``in_game_screens`` is ``bootstrap.in_game_screens``
     (I-2: the one list, ``[StageScreen, TextboxScreen]``). ``reset_in_game`` clears the
@@ -198,7 +238,9 @@ class ShellPorts:
     ``username_question``: F30's ``UsernameGate`` (the next pre-title step;
     ``install_fourthwall`` sets it after ``install_ui``). ``extras_page``: F34's dev ``run
     --extras PAGE`` (``install_extras`` sets it): the launch skips the pre-title steps and
-    shows the title with Extras open on that page over it."""
+    shows the title with Extras open on that page over it. ``replay``: F36's dev ``run
+    --replay LABEL`` (``install_replays`` sets it): that replay starts in place of the first
+    game, and its end quits."""
 
     stack: ScreenStack
     assets: "AssetManager"
@@ -215,6 +257,7 @@ class ShellPorts:
     content_warning: WarningPort | None = None
     username_question: "QuestionPort | None" = None
     extras_page: str | None = None
+    replay: "ReplayRequest | None" = None
 
 
 def reduce_motion_of(config: Config) -> bool:
@@ -249,6 +292,9 @@ class GameShell:
         # floor and tests read it).
         self.quick_menu: "QuickMenu | None" = None
         self._resets: list[Callable[[], None]] = []
+        # F36: the app's replay port (``install_replays``) and the replay running now.
+        self.replays: ReplayPort | None = None
+        self.replay: ReplayRequest | None = None
         self._before_title: list[Callable[[], None]] = []          # F11 C5
         self._confirm_fns: dict[str, Callable[[], str]] = {}       # F11 C6
         self._quit_confirm: ConfirmScreen | None = None
@@ -519,9 +565,14 @@ class GameShell:
 
     def _first_screens(self) -> list[Screen]:
         """The game at once with start options or no title, else the title fading in from
-        black. F34's dev ``--extras``: the title at once with Extras open over it."""
+        black. F34's dev ``--extras``: the title at once with Extras open over it. F36's dev
+        ``--replay``: that replay in place of the first game."""
         if self.ports.extras_page is not None:
             return self._extras_preview(self.ports.extras_page)
+        if self.ports.replay is not None and self.replays is not None:
+            self._choose()
+            self._begin_replay(self.ports.replay)
+            return list(self.ports.in_game_screens())
         if self.ports.skip_title or not self.config.title.enabled:
             self._choose()                          # F32: before new_game()
             self.ports.new_game()
@@ -556,8 +607,9 @@ class GameShell:
         ``UsernameQuestion``, 04 §6.7). Each runs in mode TITLE (quit with no question, no
         game menu, no saves), holds notices, is skipped with start options, and never calls
         ``new_game()``. No registry: a new step is a new line here. F34's dev ``--extras``
-        skips them too."""
-        if self.ports.skip_title or self.ports.extras_page is not None:
+        and F36's dev ``--replay`` skip them too."""
+        ports = self.ports
+        if ports.skip_title or ports.extras_page is not None or ports.replay is not None:
             return None
         warning = self.ports.content_warning
         if warning is not None and warning.due():
@@ -618,6 +670,76 @@ class GameShell:
         self.mode = Mode.GAME
         self.stack.replace_all(self.ports.in_game_screens())
 
+    # -- a scene replay (F36 04 §7.4) --
+
+    def start_replay(self, request: ReplayRequest) -> None:
+        """An Extras page's replay (module docstring): title music out, everything fades to
+        black over ``ui.fade_ms`` taking no input (reduced motion: a cut), then the replay
+        cuts in. Ignored unless the title is showing and the app gave a ``ReplayPort``."""
+        if self.mode is not Mode.TITLE or self.replays is None:
+            return
+        self.leave_title()
+        self.mode = Mode.ENDING
+        self._fade_then(self.theme.cfg.ui.fade_ms / 1000.0,
+                        lambda: self._replay_cut(request))
+
+    def _replay_cut(self, request: ReplayRequest) -> None:
+        self._release_title_music()
+        self._reset_in_game()
+        self._choose()                              # F32: before the game starts
+        self._begin_replay(request)
+        self.stack.replace_all(self.ports.in_game_screens())
+
+    def _begin_replay(self, request: ReplayRequest) -> None:
+        assert self.replays is not None
+        self.replay = request
+        self.menus.session_hidden = REPLAY_HIDDEN
+        self.replays.start(request)
+        self.mode = Mode.GAME
+
+    def entry_word(self, entry_id: str) -> str:
+        """The word a game-menu button shows: its ``[words]`` key, except Main Menu during a
+        replay (``replay_end``)."""
+        if entry_id == "main_menu" and self.replay is not None:
+            return self.words.get(REPLAY_END_WORD)
+        return self.words.get(entry_id)
+
+    def end_replay(self) -> None:
+        """End Replay (the game menu's Main Menu during a replay): nothing is asked. Story
+        audio stops, any question goes, everything fades to black over ``ui.fade_ms``
+        taking no input, then ``_after_replay``."""
+        if self.mode is not Mode.GAME or self.replay is None:
+            return
+        self._stop_story_audio()
+        self.mode = Mode.ENDING
+        for screen in list(self.stack):
+            if isinstance(screen, ConfirmScreen):
+                self.stack.remove(screen)
+        self._fade_then(self.theme.cfg.ui.fade_ms / 1000.0, self._after_replay)
+
+    def _after_replay(self) -> None:
+        """The replay is over (its end or End Replay, after the fade): the in-game reset
+        stops it (``replays.stop()``) and clears ``replay`` and ``session_hidden``. Dev
+        ``--replay``: the game quits. Otherwise the title shows with no fade-in and Extras
+        over it on the request's page with its row or tile focused; Back returns to the
+        title with Extras focused."""
+        from engine.ui.builtin.title_screen import TitleScreen
+
+        request = self.replay
+        self._reset_in_game()
+        if request is not None and request.page is None:
+            self.ports.request_quit()               # mode ENDING: nothing asks first
+            return
+        self.mode = Mode.TITLE
+        self._choose()                              # F32: every title opening
+        title = TitleScreen(self, fade_in=False)
+        self.stack.replace_all([title])
+        if request is None:
+            return
+        extras = self.open_extras(request.page, by=request.by, focus=request.key)
+        if extras is not None:
+            title._opener = title._buttons.get("extras")
+
     # -- a loaded game (F11 C8, 04 §7.6 step 5) --
 
     def show_loaded_game(self) -> None:
@@ -655,6 +777,11 @@ class GameShell:
         self.stack.replace_all(self.ports.in_game_screens())
 
     def _reset_in_game(self) -> None:
+        if self.replay is not None:                 # F36: the replay ends here, whatever
+            self.replay = None                      # way the game is left
+            self.menus.session_hidden = frozenset()
+            if self.replays is not None:
+                self.replays.stop()
         self.kept_thumbnail = None                  # nothing of the last scene (C3)
         self.ports.reset_in_game()
         for fn in list(self._resets):
@@ -746,7 +873,11 @@ class GameShell:
 
     def ask_main_menu(self, by: InputKind) -> None:
         """The game menu's Main Menu: ask, and on Yes return to the title (with no title:
-        the quit question, and Yes quits)."""
+        the quit question, and Yes quits). F36: during a replay it is End Replay, which asks
+        nothing (``end_replay``)."""
+        if self.replay is not None:
+            self.end_replay()
+            return
         if not self.config.title.enabled:
             self.ask_quit(by)
             return
@@ -804,13 +935,15 @@ class GameShell:
 
     def story_ended(self, cmd: StoryEnded) -> None:
         """The ``StoryEnded`` handler. It arrives only while an in-game screen is top (the
-        story hold); in any other mode it is ignored with a DEBUG line."""
+        story hold); in any other mode it is ignored with a DEBUG line. F36: a replay's end
+        fades the same way, then ``_after_replay`` (back to Extras)."""
         if self.mode is not Mode.GAME:
             _log.debug("StoryEnded ignored: the shell is in mode %s", self.mode.name)
             return
         self._stop_story_audio()
         self.mode = Mode.ENDING
-        self._fade_then(STORY_END_FADE_S, self._after_story_end)
+        then = self._after_replay if self.replay is not None else self._after_story_end
+        self._fade_then(STORY_END_FADE_S, then)
 
     def return_to_title(self) -> None:
         """Main Menu → Yes: story audio stops in this frame, the question goes, everything
@@ -1012,6 +1145,6 @@ def w66_empty_text(section: str, registered: list[str], names: "Sequence[str]" =
 
 
 __all__ = ["CONFIRM_KEYS", "STORY_AUDIO_FADE_S", "STORY_END_FADE_S", "AudioPort", "CueLayer",
-           "GameShell", "Mode",
+           "GameShell", "Mode", "REPLAY_HIDDEN", "ReplayPort", "ReplayRequest",
            "MusicHandle", "QuestionPort", "ShellPorts", "WarningPort", "reduce_motion_of", "w66_empty_text",
            "w66_text"]

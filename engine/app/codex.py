@@ -7,7 +7,8 @@ imports ``engine.app`` and the runtime never reads config. So, once per windowed
 (``install_story``, after ``install_nvl`` and before ``install_settings_ui``):
 
 - ``CodexAdded`` → ``shell.notify("<word>: <title>")`` with ``codex_new_tip`` or
-  ``codex_new_item`` (06 D5), when ``[codex] notify`` is true and the shell exists. The
+  ``codex_new_item`` (06 D5), when ``[codex] notify`` is true, the shell exists, and no
+  scene replay runs (F36: the tip is put back when it ends, so it isn't announced). The
   handler is always registered (the router raises on a command with none); headless runs
   release the same command and show nothing (06 D3).
 - ``AppCodexPort``: the page's ``CodexPort`` over ``interp.codex`` (read through the story
@@ -93,8 +94,11 @@ def install_codex(app: "App", interp: "Interpreter",
 
     def on_added(cmd: CodexAdded) -> None:
         shell = getattr(app, "shell", None)
-        if shell is not None and app.config.codex.notify:
-            shell.notify(notice_text(shell.words, cmd))
+        if shell is None or not app.config.codex.notify:
+            return
+        if getattr(shell, "replay", None) is not None:
+            return                      # F36 (04 decision 9): a replay's tip isn't kept
+        shell.notify(notice_text(shell.words, cmd))
 
     app.router.register(CodexAdded, on_added)
     port = AppCodexPort(codex, images, show_locked=app.config.codex.show_locked)

@@ -31,6 +31,9 @@ not ``in_game``) and takes mouse, keys, and gamepad the same way as every F10 sc
 - **Extras** (F34, ``GameShell.open_extras``): the same title-page screen with ``menu =
   "extras"``: the sidebar is Return and the shown pages of the ``extras`` menu (Gallery,
   Endings, Scenes, Music room, Achievements, in that fixed order).
+- **During a replay** (F36): a button's word is ``shell.entry_word(id)``, so Main Menu reads
+  ``replay_end`` ("End Replay"); the shell's ``session_hidden`` leaves out Save, Load and
+  Flowchart.
 
 ``GameMenuKeys`` is the ``InGameOverlay`` that opens the menu (Esc without Ctrl/Alt/Meta,
 right click in the canvas, gamepad east or Start). It is hosted by the in-game line screen
@@ -156,8 +159,10 @@ class GameMenuScreen(MenuScreen):
         self.revision += 1
 
     def _button(self, entry: MenuEntry) -> Button:
-        words = self.shell.words
-        return Button(lambda: words.get(entry.id), lambda: self._activate(entry),
+        # F36: the shell's ``entry_word`` (Main Menu reads "End Replay" during a replay); a
+        # bare ``MenuShell`` (test rigs) has only its words.
+        word = getattr(self.shell, "entry_word", self.shell.words.get)
+        return Button(lambda: word(entry.id), lambda: self._activate(entry),
                       enabled=entry.enabled, on=entry.on,
                       selected=lambda: self.page_id == entry.id)
 

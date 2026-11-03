@@ -64,6 +64,12 @@ not ``main.py``'s). Persistent data stays in memory (as ``--no-persistent``), ev
 Extras counts as unlocked there, and the title shows with Extras open on PAGE (default
 ``gallery``); ``--start`` and ``--try-stdin`` can't go with it, and a PAGE that isn't one of
 ``EXTRAS_PAGES`` is a usage error naming them.
+
+F36 (``04`` §7.4): ``run`` also gains ``--replay LABEL``, Studio's "Play replay", under the
+same dev-runs-only rule. The scene replay of LABEL starts at once (no title; a ``lock replay``
+of it gives its end scene and starting values) and the game closes at its end. LABEL that
+isn't a name is a usage error, and ``--start``, ``--extras`` and ``--try-stdin`` can't go
+with it; a LABEL the story doesn't have is an error at launch (``app/replays.py``).
 """
 
 import argparse
@@ -105,6 +111,9 @@ EXTRAS_DEFAULT_PAGE = "gallery"
 EXTRAS_NEEDS_PAGE = ("--extras takes one of these pages: " + ", ".join(EXTRAS_PAGES)
                      + ", like --extras gallery")
 EXTRAS_WITH_START = "--extras can't be used with --start or --try-stdin"
+# F36 (04 §7.4): run --replay LABEL.
+REPLAY_NEEDS_LABEL = "--replay needs a label name, like festival"
+REPLAY_WITH_START = "--replay can't be used with --start, --extras or --try-stdin"
 EDITOR_DEV_ONLY = "the editor is only available in dev runs"
 CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
 HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
@@ -329,6 +338,11 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
         _refuse_dev_options(run, args)
         if args.extras is not None and (args.start is not None or args.try_stdin):
             run.error(EXTRAS_WITH_START)                # F34: the title is needed
+        if args.replay is not None:                     # F36: a replay is its own start
+            if args.start is not None or args.extras is not None or args.try_stdin:
+                run.error(REPLAY_WITH_START)
+            if not args.replay.isidentifier():
+                run.error(REPLAY_NEEDS_LABEL)
         if args.try_stdin:                              # F47 P2-F: the throwaway label
             from engine.app import trystory     # only here: Studio imports this module
 
@@ -377,6 +391,10 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
                      type=_extras_page, default=None,
                      help="open Extras on PAGE (default gallery) with everything in it "
                           "unlocked, keeping persistent data in memory (dev runs)")
+    # F36: Studio's "Play replay".
+    run.add_argument("--replay", metavar="LABEL", default=None,
+                     help="play the scene replay of LABEL at once, as from Extras, and close "
+                          "the game at its end (dev runs)")
 
 
 def _try_lines(run: argparse.ArgumentParser) -> tuple[str, ...]:
@@ -409,7 +427,8 @@ def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) 
                           ("--resume-from-editor", args.resume_from_editor),
                           ("--window-at", args.window_at is not None),
                           ("--try-stdin", args.try_stdin),
-                          ("--extras", args.extras is not None)):
+                          ("--extras", args.extras is not None),
+                          ("--replay", args.replay is not None)):
         if given:
             run.error(dev_only(option))
 
@@ -479,7 +498,8 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        resume=getattr(args, "resume_from_editor", False),
                        window_at=getattr(args, "window_position", None),
                        try_lines=getattr(args, "try_lines", None),
-                       extras=getattr(args, "extras", None))
+                       extras=getattr(args, "extras", None),
+                       replay=getattr(args, "replay", None))
     except KeyboardInterrupt:
         return 0        # Ctrl+C before logging starts exits silently (§7.1 step 19)
 
@@ -490,7 +510,8 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             seed: int | None = None, no_persistent: bool = False, resume: bool = False,
             window_at: tuple[int, int] | None = None,
             try_lines: tuple[str, ...] | None = None,
-            playthrough: int | None = None, extras: str | None = None) -> int:
+            playthrough: int | None = None, extras: str | None = None,
+            replay: str | None = None) -> int:
     """The startup sequence (``engine.app.bootstrap.launch``)."""
     from engine.app import bootstrap
 
@@ -500,4 +521,4 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
                             window_at=window_at, try_lines=try_lines,
-                            playthrough=playthrough, extras=extras)
+                            playthrough=playthrough, extras=extras, replay=replay)

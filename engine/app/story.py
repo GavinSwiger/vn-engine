@@ -68,6 +68,10 @@ launch (``app/loading.py`` calls it after the launch phase). Seams, one line eac
 - F35 S2 (``SPEC.md`` §5.1, §5.2): ``install_music_room`` right after ``install_gallery``:
   the ``"track"`` kind (before ``preview_all``, 07 I-6), F08's ``on_track_started`` hook,
   and the Music Room's Extras row.
+- F36 W3 (``04`` §3, §7.4): ``install_replays`` right after ``install_music_room``: the
+  Endings and Scenes Extras rows, the shell's replay port, and dev ``run --replay``. The
+  driver starts a replay (``start_replay(run)``: a seed as ``new_game``'s, the inbox
+  cleared) and stops one (``stop_replay()``, only while it runs).
 
 The watchdog (§7.7; the thread rule of ``docs/architecture.md``, ``07`` §3.3): author code
 runs only on the main thread, between ``guard.enter()`` and ``guard.exit()``. The watchdog's
@@ -111,6 +115,7 @@ from engine.app.menus import install_ui
 from engine.app.minigames import install_minigames
 from engine.app.musicroom import install_music_room
 from engine.app.points import install_points
+from engine.app.replays import install_replays
 from engine.app.rollback import install_rollback
 from engine.app.saves import install_saves
 from engine.app.settings import install_settings_ui
@@ -138,6 +143,7 @@ from engine.ui.builtin.stage_screen import StageScreen
 
 if TYPE_CHECKING:
     from engine.app.app import App
+    from engine.runtime.replay import ReplayRun
 
 INBOX_MAX = 64                       # events queued between two pumps; extras are dropped
 PUMP_MAX_COMMANDS = 256              # commands returned by one pump; the rest spill over
@@ -414,6 +420,23 @@ class RuntimeStoryDriver:
         self._inbox.clear()
         self.interp.new_game(seed)
 
+    def start_replay(self, run: "ReplayRun") -> None:
+        """F36: a new game that is the replay ``run`` (``Interpreter.new_game(seed,
+        replay=run)``), seeded and with the inbox cleared as ``new_game``. The caller has
+        checked that ``run.scene`` is a label."""
+        seed = self.fixed_seed if self.fixed_seed is not None else self._seed_source()
+        self._inbox.clear()
+        self.interp.new_game(seed, replay=run)
+
+    def stop_replay(self) -> None:
+        """F36: End Replay or the way back to Extras while the replay still runs
+        (``Interpreter.stop_replay``: the store put back, nothing more released); events
+        queued for it are dropped. Nothing once it has ended."""
+        if self.interp.replay is None:
+            return
+        self._inbox.clear()
+        self.interp.stop_replay()
+
     def checkpoint(self) -> GameState | None:
         """The last checkpoint (F11 saves, F14 rollback); None before the first line and
         after a failure."""
@@ -476,6 +499,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_extras(app)                                      # F34: Extras button, thumbnails
     install_gallery(app, interp, images)                     # F34: the Gallery page
     install_music_room(app, interp)                          # F35: the Music Room page
+    install_replays(app, interp, images)                     # F36: Endings, Scenes, replays
     install_settings_ui(app)                                 # F16 (I-11): last entry install
     preview_all(app, interp.persistent)                      # F34: run --extras only
     shell.check_entries()                                    # W66, W68: always the last line

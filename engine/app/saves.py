@@ -54,7 +54,8 @@ quit guard after F10's: ``autosave_now("quit")`` encodes at once and submits, ne
 make an Auto save, and the Main Menu and Quit questions drop "Unsaved progress will be lost."
 (``set_confirm_key``). ``set_blocked`` (F23, F32) blocks saving or loading with a reason the
 pages show; while saving is blocked ``can_save()`` is False and F5, the timer, and auto-saves
-do nothing (F9 likewise while loading is blocked).
+do nothing (F9 likewise while loading is blocked). F36's ``set_replay_block`` blocks both for a
+whole scene replay with ``replay_no_saving``, a layer ``set_blocked`` can't lift (``_reason``).
 
 Load polish (step 11, §7.6 steps 2–6 and the table): the read is checked with
 ``restore(check_only=True)`` before anything changes; a saved line that is gone is looked
@@ -264,6 +265,7 @@ class SaveService:
         self.pictures: OrderedDict[SlotId, tuple[object, pygame.Surface]] = OrderedDict()
         # F32 (step 10's ``set_blocked``): a reason shown in place of a page, per mode.
         self._blocked: dict[str, str | None] = {"save": None, "load": None}
+        self._replay_block: str | None = None         # F36: both modes, over _blocked
         self.slots = SaveSlots(self)
         # Seams: the checkpoint a load or ``note_restore`` restored (never auto-saved), the
         # load listeners (``add_load_listener``), F18's chapter provider.
@@ -293,7 +295,7 @@ class SaveService:
         07 I-6): False while a ``private_picture`` screen (the fake crash) is on the stack,
         unless ``quitting`` (the quit save, which then has no picture)."""
         if (not self.available or self._error_mode() or self.shell.mode is not Mode.GAME
-                or self._blocked["save"] is not None or self._wipe):
+                or self._reason("save") is not None or self._wipe):
             return False
         if not quitting and self._picture_private():
             return False
@@ -318,11 +320,28 @@ class SaveService:
                                 f"{type(reason).__name__}")
             self._blocked[mode] = reason
 
+    def set_replay_block(self, reason: str | None) -> None:
+        """F36 (04 §7.4, 07 I-11): while a scene replay runs, saving and loading are both
+        blocked with ``reason`` (``replay_no_saving``), a layer over ``set_blocked`` that F32's
+        ``ui saving on``/``ui loading on`` can't lift; None lifts it (what ``set_blocked``
+        set shows again). The one gate of saving in a replay: the hidden menu entries are
+        cosmetic."""
+        if reason is not None and not isinstance(reason, str):
+            raise TypeError(f"set_replay_block takes a str or None, not "
+                            f"{type(reason).__name__}")
+        self._replay_block = reason
+
+    def _reason(self, mode: str) -> str | None:
+        """Why ``mode`` (``"save"``/``"load"``) is blocked now: the replay's reason first,
+        else ``set_blocked``'s; None: not blocked. Every block check reads this."""
+        replay = self._replay_block
+        return replay if replay is not None else self._blocked.get(mode)
+
     # --- requests -----------------------------------------------------------------------------
 
     def quick_save(self, by: InputKind | None = None) -> None:
         """F5 and Q.Save: save to the Quick page's rotation target (PR-F11-09)."""
-        if not self.available or self._blocked["save"] is not None:
+        if not self.available or self._reason("save") is not None:
             return
         self._request("quick")
 
@@ -330,7 +349,7 @@ class SaveService:
         """F9 and Q.Load: the newest quick save, after ``confirm_load`` unless
         ``[saves] confirm_quick_load = false``; none → ``No quick save yet.``"""
         if (not self.available or self._error_mode() or self.app.story is None
-                or self._blocked["load"] is not None):
+                or self._reason("load") is not None):
             return
         slot = self.newest_quick()
         if slot is None:
@@ -355,7 +374,7 @@ class SaveService:
         once. The cell's "Loading…" badge is drawn for a frame, then the slot is loaded (a
         save still being written to it first finishes)."""
         if (not self.available or self._error_mode() or self.app.story is None
-                or self._blocked["load"] is not None):
+                or self._reason("load") is not None):
             return
         if origin == "title":
             self._start_load(slot, origin, by)
@@ -613,7 +632,7 @@ class SaveService:
         """§7.8 steps 1–2, at the top of ``update``: in mode GAME, not blocked (error mode
         never reaches ``update``)."""
         if (self.shell.mode is not Mode.GAME or self._error_mode()
-                or self._blocked["save"] is not None or self._wipe):
+                or self._reason("save") is not None or self._wipe):
             return
         app = self.app
         if not getattr(app, "minimized", False) and self.shell.stack.story_may_run():
@@ -1176,7 +1195,7 @@ class SaveSlots:
         return 0 if best is None else best.n - 1
 
     def blocked(self, mode: str) -> str | None:
-        return self.service._blocked.get(mode)
+        return self.service._reason(mode)
 
     def no_saves(self) -> bool:
         """PR-F11-37: no slot of any page holds a save (a damaged file counts as one)."""
