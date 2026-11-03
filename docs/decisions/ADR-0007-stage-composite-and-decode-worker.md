@@ -104,9 +104,22 @@ Options 2 and 5.
 - Memory outside the budget: one composite, 3.5 MB at 1280×720 and 33 MB at 3840×2160 (two
   with F09). This is accepted.
 - **F09** transitions blend two complete pictures (`StageView.picture()`). **F28** stage
-  effects act on the composite. **F38** animating a sprite every frame would recompose every
-  frame, so F38 must split the composite into "below", "the animated sprite", and "above"
-  layers, or bring a new ADR.
+  effects act on the composite.
+- **F38 sprite frames (F38 amendment; replaces the planned split into "below", "animated
+  sprite" and "above" layers).** There is still one composite. When a sprite's blink or
+  talking frame changes, `StageView.show_frames` repaints the composite inside that
+  sprite's visible device rect only (`set_clip`). It draws the background and every sprite
+  in order, using cached variants only, and never scales.
+  - The result is pixel-identical to a full compose with the same frames (AC-F38-04).
+  - At most one sprite is repainted per draw, oldest change first.
+  - No frame changes during a transition, under a title card, on FAST settle frames, while
+    any colorshift filter is set, or for a variant larger than `CROP_AREA_FACTOR` viewports.
+  - A filter set while a frame shows, and every full compose (a stage change, a resize, a
+    quality change), draws plain looks. That is still one long frame per change.
+  - `picture()` may contain a frame.
+  - A second `AssetHold` pins the shown looks' frame variants inside `SizedLru`.
+  - No thread is added (frames decode and pre-scale on the F04 worker).
+  - Cost: about 1.3 ms per change at 1080p, against 10–15 ms for a full compose.
 - **F28 glitch buffers (F28 amendment).** While a glitch kind is in effect, the stage may
   hold, outside the budget:
   - two colorshift outputs `X` (viewport-sized, display format, swapped like composite and
@@ -175,4 +188,9 @@ Options 2 and 5.
     creates the root. This breaks the earlier "unlinks only its own temp file", so the clause is
     amended. Job kinds become three.
   - `WriterClient.drop_queued()` is added; only `meta` calls it, first at quit.
+  - No thread is added. Status remains accepted.
+- 2026-11-02: amended at F38 approval (F38 `SPEC.md` §5, `07` I-2 to I-6).
+  - A clipped repaint of one sprite's rect replaces the planned split composite.
+  - Frames are held during transitions, cards, FAST frames and colorshift, and a full compose
+    shows plain looks.
   - No thread is added. Status remains accepted.
