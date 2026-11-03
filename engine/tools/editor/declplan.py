@@ -12,7 +12,12 @@ undo step per file), checked against the live texts right before it is applied.
   script includes it, the plan also inserts ``include "database.vns"`` into ``main.vns`` at
   ``files.include_position`` (once: the next plan sees the include).
 - **Edits stay where the declaration is**: only its line(s) are replaced, by one line that
-  keeps the trailing comment.
+  keeps the trailing comment (a codex entry: its head and paragraph lines; a meter on a
+  shared ``points`` line: that line without it, then its own line). ``plan_edit``'s ``kind``
+  switches between ``declarations.SWAPS`` kinds (P2-D: a variable remembered across
+  playthroughs, a tip that becomes an item).
+- **Positions** (P2-D) live in config.toml: ``plan_position``/``plan_position_remove`` are
+  ``tomlpatch`` plans for ``[stage.positions]``.
 - **Stale-safe** (§7.1 step 4). Declarations sit outside F46's chunk digests, so each plan
   carries line guards (the old text of each line it replaces) and the line count of each
   file it inserts into. ``verify_decl`` fails when a guard no longer holds, when the changed
@@ -25,7 +30,7 @@ no file access.
 
 import re
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from typing import Final
 
@@ -34,6 +39,8 @@ from engine.script.nodes import ScriptFile
 from engine.script.parser import parse_file
 from engine.script.statements import ParseContext
 from engine.tools.editor import declarations as dec
+from engine.tools.editor import tomlpatch
+from engine.tools.editor.tomlpatch import TomlPlan
 from engine.tools.editor.files import MAIN_REF, include_line, include_position
 from engine.tools.editor.forms import code_of
 from engine.tools.editor.scriptedit import STALE, FilePlan, LineEdit, Plan, Refuse, apply_lines
@@ -52,7 +59,11 @@ CANT_WRITE: Final = "Studio can't write that value. Check the fields and try aga
 NO_MAIN: Final = "main.vns can't be found, so Studio can't add the Database to the story."
 
 KIND_WORDS: Final[Mapping[str, str]] = {
-    dec.CHARACTER: "character", dec.COLOR: "colour background", dec.VARIABLE: "variable"}
+    dec.CHARACTER: "character", dec.COLOR: "colour background", dec.VARIABLE: "variable",
+    dec.PERSISTENT: "remembered variable", dec.METER: "meter", dec.TIP: "tip",
+    dec.ITEM: "item", dec.ROUTE: "route", dec.TRANSITION: "transition",
+    dec.POSITION: "position"}
+SWAP_REFUSED: Final = "Studio can't turn that into another kind of entry."
 
 _INCLUDE: Final = re.compile(r'include[ \t]+"([^"\n]*)"')
 _SINK_LIMIT: Final = 10_000
@@ -94,12 +105,25 @@ def _count(text: str, kind: str, name: str, ref: str) -> int:
     return sum(1 for d in dec.scan({ref: text}) if d.kind == kind and d.name == name)
 
 
-def _expected(kind: str, name: str, line: str) -> Mapping[str, object] | None:
-    """The values ``line`` reads back as (None when it doesn't read as ``kind`` ``name``)."""
-    decl = dec.read("", 1, 1, [line])
-    if decl is None or decl.kind != kind or decl.name != name:
-        return None
-    return decl.values
+def _expected(kind: str, name: str, lines: tuple[str, ...]) -> Mapping[str, object] | None:
+    """The values ``lines`` read back as (None when they don't read as ``kind`` ``name``)."""
+    for decl in dec.read_all("", 1, len(lines), list(lines)):
+        if decl.kind == kind and decl.name == name:
+            return decl.values
+    return None
+
+
+def _write(kind: str, name: str, values: Mapping[str, object]
+           ) -> tuple[tuple[str, ...], Mapping[str, object]] | Refuse:
+    """The code lines for ``values`` and what they read back as, or ``CANT_WRITE``."""
+    try:
+        lines = dec.lines_for(kind, name, values)
+    except ValueError:
+        return Refuse(CANT_WRITE)
+    expected = _expected(kind, name, lines)
+    if expected is None:
+        return Refuse(CANT_WRITE)
+    return lines, expected
 
 
 def _name_refusal(kind: str, name: str, texts: Mapping[str, str],
@@ -125,13 +149,10 @@ def plan_new(kind: str, name: str, values: Mapping[str, object],
     refusal = _name_refusal(kind, name, texts)
     if refusal is not None:
         return refusal
-    try:
-        line = dec.line_for(kind, name, values)
-    except ValueError:
-        return Refuse(CANT_WRITE)
-    expected = _expected(kind, name, line)
-    if expected is None:
-        return Refuse(CANT_WRITE)
+    written = _write(kind, name, values)
+    if isinstance(written, Refuse):
+        return written
+    new_lines, expected = written
     db_text = texts.get(DATABASE_REF)
     create = None
     if db_text is None:
@@ -140,11 +161,11 @@ def plan_new(kind: str, name: str, values: Mapping[str, object],
     same = [d for d in dec.scan({DATABASE_REF: db_text}) if d.kind == kind]
     guards: list[tuple[str, int, str]] = []
     if lines == [""]:                                  # an empty file: its one line
-        edit = LineEdit(1, 1, (line,))
+        edit = LineEdit(1, 1, new_lines)
         guards.append((DATABASE_REF, 1, ""))
     else:
         at = same[-1].last + 1 if same else len(lines) + 1
-        edit = LineEdit(at, at - 1, (line,))
+        edit = LineEdit(at, at - 1, new_lines)
         guards.append((DATABASE_REF, at - 1, lines[at - 2]))
     sizes = [(DATABASE_REF, len(lines))]
     files = [FilePlan(DATABASE_REF, (), (edit,))]
@@ -172,59 +193,120 @@ def _current(decl: dec.Decl, texts: Mapping[str, str]) -> list[str] | Refuse:
     lines = text.split("\n")
     if decl.last > len(lines):
         return Refuse(STALE)
-    now = dec.read(decl.ref, decl.first, decl.last, lines[decl.first - 1:decl.last])
-    if now != decl:
+    now = dec.read_all(decl.ref, decl.first, decl.last, lines[decl.first - 1:decl.last])
+    if decl not in now:
         return Refuse(STALE)
     return lines
 
 
+def _comment(decl: dec.Decl, old: list[str]) -> str:
+    """The trailing comment an edit keeps: a codex entry's head line's, else the
+    statement's."""
+    return code_of(old[:1] if decl.kind in (dec.TIP, dec.ITEM) else old)[1]
+
+
+def _others_line(decl: dec.Decl, old: list[str]) -> tuple[str, ...]:
+    """A shared ``points`` line without ``decl``'s name (its comment kept), or ``()``."""
+    others = tuple(n for n in decl.group if n != decl.name)
+    if not others:
+        return ()
+    return (dec.meter_line(others, decl.values or {}) + _comment(decl, old),)
+
+
 def plan_edit(decl: dec.Decl, values: Mapping[str, object], texts: Mapping[str, str],
-              name: str | None = None) -> DeclPlan | Refuse | None:
-    """Rewrite ``decl``'s line(s) as one line with ``values`` (and, while the entry is
-    unused, a new ``name``), keeping its trailing comment. None: the values (and name)
-    are the ones it has, so nothing is written."""
+              name: str | None = None, kind: str | None = None
+              ) -> DeclPlan | Refuse | None:
+    """Rewrite ``decl``'s line(s) with ``values`` (and, while the entry is unused, a new
+    ``name``; and ``kind``, one of ``declarations.SWAPS[decl.kind]``: "Remembered across
+    playthroughs", Tips / Items), keeping its trailing comment. A meter on a shared
+    ``points`` line moves to its own line under it, and the line keeps the other names.
+    None: the values (and name and kind) are the ones it has, so nothing is written."""
     if decl.kind not in dec.EDITABLE_KINDS or decl.values is None:
         return Refuse(COMPLEX)
+    new_kind = decl.kind if kind is None else kind
+    if new_kind not in dec.SWAPS.get(decl.kind, frozenset((decl.kind,))):
+        return Refuse(SWAP_REFUSED)
     lines = _current(decl, texts)
     if isinstance(lines, Refuse):
         return lines
     new_name = decl.name if name is None else name
-    if new_name != decl.name:
-        refusal = _name_refusal(decl.kind, new_name, texts, old=decl.name)
+    moved = new_name != decl.name or new_kind != decl.kind
+    if moved:
+        same_space = dec.taken_names([decl], new_kind) == {decl.name}
+        refusal = _name_refusal(new_kind, new_name, texts,
+                                old=decl.name if same_space else None)
         if refusal is not None:
             return refusal
-    try:
-        code = dec.line_for(decl.kind, new_name, values)
-    except ValueError:
-        return Refuse(CANT_WRITE)
-    expected = _expected(decl.kind, new_name, code)
-    if expected is None:
-        return Refuse(CANT_WRITE)
-    if new_name == decl.name and expected == decl.values:
+    written = _write(new_kind, new_name, values)
+    if isinstance(written, Refuse):
+        return written
+    code, expected = written
+    if not moved and expected == decl.values:
         return None                        # same values: the line stays as written
     old = lines[decl.first - 1:decl.last]
-    _code, comment = code_of(old)
-    new_line = code + comment
+    try:
+        others = _others_line(decl, old)
+    except ValueError:
+        return Refuse(COMPLEX)
+    if others:
+        new_lines = (*others, *code)
+    else:
+        new_lines = (code[0] + _comment(decl, old), *code[1:])
     guards = tuple((decl.ref, decl.first + k, text) for k, text in enumerate(old))
     text = texts[decl.ref]
-    count = _count(text, decl.kind, new_name, decl.ref) + (new_name != decl.name)
-    plan = Plan(_title("Change", decl.kind, new_name),
-                (FilePlan(decl.ref, (), (LineEdit(decl.first, decl.last, (new_line,)),)),))
-    return DeclPlan(plan, guards, (), None, decl.kind, new_name, decl.ref, expected, count)
+    count = _count(text, new_kind, new_name, decl.ref) + moved
+    plan = Plan(_title("Change", new_kind, new_name),
+                (FilePlan(decl.ref, (), (LineEdit(decl.first, decl.last, new_lines),)),))
+    return DeclPlan(plan, guards, (), None, new_kind, new_name, decl.ref, expected, count)
 
 
 def plan_delete(decl: dec.Decl, texts: Mapping[str, str]) -> DeclPlan | Refuse:
-    """Remove ``decl``'s line(s). The caller refuses first while it is used
-    (``dbmodel.delete_refusal``)."""
+    """Remove ``decl``'s line(s); a meter on a shared ``points`` line leaves the line with
+    the other names. The caller refuses first while it is used (``dbmodel.delete_refusal``)."""
     lines = _current(decl, texts)
     if isinstance(lines, Refuse):
         return lines
     old = lines[decl.first - 1:decl.last]
+    if decl.group and decl.values is None:
+        return Refuse(COMPLEX)
+    try:
+        others = _others_line(decl, old)
+    except ValueError:
+        return Refuse(COMPLEX)
     guards = tuple((decl.ref, decl.first + k, text) for k, text in enumerate(old))
     count = _count(texts[decl.ref], decl.kind, decl.name, decl.ref) - 1
     plan = Plan(_title("Delete", decl.kind, decl.name),
-                (FilePlan(decl.ref, (), (LineEdit(decl.first, decl.last, ()),)),))
+                (FilePlan(decl.ref, (), (LineEdit(decl.first, decl.last, others),)),))
     return DeclPlan(plan, guards, (), None, decl.kind, decl.name, decl.ref, None, count)
+
+
+# --- Positions (config.toml [stage.positions]; design §4.3, AC-F47-40) ----------------------
+
+POSITIONS_SECTION: Final = "stage.positions"
+
+
+def plan_position(config_text: str, name: str, x: float, y: float,
+                  taken: Collection[str] = ()) -> TomlPlan | Refuse | None:
+    """Set position ``name`` to ``(x, y)`` in config.toml's editor text (x alone when y is
+    the bottom edge). ``taken``: the other positions' names, for a new one (a clash is
+    refused with §6.4's text). None: it already has that value."""
+    if dec.name_problem(name, dec.POSITION):
+        return Refuse(BAD_NAME.format(name=name))
+    if name.casefold() in {n.casefold() for n in taken}:
+        return Refuse(NAME_CLASH.format(name=name))
+    try:
+        value = dec.position_value(x, y)
+    except (TypeError, ValueError, OverflowError):
+        return Refuse(CANT_WRITE)
+    return tomlpatch.plan_set(config_text, POSITIONS_SECTION, name, value,
+                              title=_title("Move", dec.POSITION, name))
+
+
+def plan_position_remove(config_text: str, name: str) -> TomlPlan | Refuse | None:
+    """Remove position ``name`` (a built-in one goes back to its default). None: config.toml
+    doesn't have it."""
+    return tomlpatch.plan_remove(config_text, POSITIONS_SECTION, name,
+                                 title=_title("Delete", dec.POSITION, name))
 
 
 # --- Verifying (§7.1 step 4) -------------------------------------------------------------------
@@ -281,6 +363,7 @@ def verify_decl(decl_plan: DeclPlan, texts: Mapping[str, str]) -> bool:
 
 
 __all__ = ["BAD_NAME", "CANT_WRITE", "COMPLEX", "DATABASE_HEADER", "DATABASE_INCLUDE",
-           "DATABASE_REF", "DATABASE_TEXT", "KIND_WORDS", "NAME_CLASH", "NO_MAIN", "DeclPlan",
-           "includes_database", "plan_delete", "plan_edit", "plan_new", "problems",
+           "DATABASE_REF", "DATABASE_TEXT", "KIND_WORDS", "NAME_CLASH", "NO_MAIN",
+           "POSITIONS_SECTION", "SWAP_REFUSED", "DeclPlan", "includes_database", "plan_delete",
+           "plan_edit", "plan_new", "plan_position", "plan_position_remove", "problems",
            "verify_decl"]

@@ -72,3 +72,59 @@ def test_ac15_used_in_counts_and_delete_refusal(tmp_path):
     assert backgrounds["bg room"] == (db.BACKGROUND, 1)
     assert db.looks_of("hana", names) == ("happy",)
     assert [e.name for e in db.sound_entries(names)[db.OTHER_SOUNDS]] == ["bgm/theme.ogg"]
+
+
+P2_MAIN = """\
+points hana courage 0 to 10
+points unused_meter
+lock tip lanterns "Paper Lanterns":
+    "Folded paper."
+lock item key "Key"
+lock route promise "Promise" until good
+define slow = Dissolve(1.5)
+define spare = Fade(0.5)
+label start:
+    scene bg dusk with slow
+    show hana happy at left with slow   # one line, two uses: counted once
+    points hana += 1
+    if points.courage > 2 and points["hana"] > 0:
+        unlock tip lanterns
+    if "key" in codex.items or "lanterns" in codex.tips:
+        unlock route promise
+    if points.highest("hana", "courage") == "hana":
+        unlock item key
+    jump promise
+
+label promise:
+    if "promise" in persistent.routes:
+        ending good "Good End"
+    ending good2 "Also Good"
+"""
+
+
+def test_ac15_p2_use_rows(tmp_path):
+    """AC-F47-15 for the P2 categories (P2-D): the check's ``meter_use``, ``codex_use``,
+    ``route_use``, ``transition_use`` and ``position_use`` rows give their Used-in counts and
+    Delete refusals."""
+    game = studio(tmp_path)
+    (game / "script" / "main.vns").write_text(P2_MAIN, encoding="utf-8")
+    result = check(game, launch=False)
+    names = result.names
+    assert result.loaded and not [p for p in result.problems if p.severity == "error"]
+    decls = dec.scan({"script/main.vns": P2_MAIN})
+    ref = "script/main.vns"
+    assert db.use_places(names, dec.METER, "hana") == ((ref, 12), (ref, 13), (ref, 17))
+    assert {e.name: e.uses for e in db.meter_entries(decls, names)} == {
+        "courage": 2, "hana": 3, "unused_meter": 0}
+    codex = db.codex_entries(decls, names)
+    assert [(e.name, e.uses) for e in codex[dec.TIP]] == [("lanterns", 2)]
+    assert [(e.name, e.uses) for e in codex[dec.ITEM]] == [("key", 2)]
+    assert db.use_places(names, dec.ROUTE, "promise") == ((ref, 16), (ref, 22))
+    trans = {e.name: e.uses for e in db.transition_entries(decls, names)}
+    assert trans == {"slow": 2, "spare": 0}
+    positions = {e.name: e.uses for e in db.position_entries("", names)}
+    assert positions == {"left": 1, "center": 0, "right": 0}
+    meters = {e.name: e for e in db.meter_entries(decls, names)}
+    assert db.delete_refusal(meters["hana"]) == (
+        "hana is used in 3 lines, so it can't be deleted yet.")
+    assert db.delete_refusal(meters["unused_meter"]) is None

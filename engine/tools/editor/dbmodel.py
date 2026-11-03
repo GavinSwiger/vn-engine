@@ -5,7 +5,9 @@ Why this module exists: each Database category is a list of entries with "Used i
 and a Delete that is refused while the entry is used. The lists merge what
 ``declarations.scan`` reads from the texts (so a new author's characters show without a
 launch check) with the last good check's name index (``CheckResult.names``: ``character``,
-``image``, ``audio``, ``variable`` and the ``*_use`` rows of ``tools/check.py``). Pure: no Tk;
+``image``, ``audio``, ``variable`` and the ``*_use`` rows of ``tools/check.py``). P2-D adds
+the Meters, Codex, Endings & routes, Chapters, Transitions and Positions lists
+(``P2_CATEGORIES``) and remembered variables; W7 adds them to the tab. Pure: no Tk;
 ``names`` is any mapping of kind → rows with ``name``, ``file`` and ``line`` (``NameEntry``).
 """
 
@@ -39,15 +41,44 @@ CATEGORY_PICTURE: Final = "picture"
 CATEGORY_SOUND: Final = "sound"
 CATEGORY_VARIABLE: Final = "variable"
 CATEGORIES: Final = (CATEGORY_CHARACTER, CATEGORY_PICTURE, CATEGORY_SOUND, CATEGORY_VARIABLE)
+# P2 categories (design §4.3, P2-D), in the design's order; W7 adds them to the tab.
+# "Endings & routes" is one category: its key is "ending".
+CATEGORY_METER: Final = "meter"
+CATEGORY_CODEX: Final = "codex"
+CATEGORY_ENDING: Final = "ending"
+CATEGORY_CHAPTER: Final = "chapter"
+CATEGORY_TRANSITION: Final = "transition"
+CATEGORY_POSITION: Final = "position"
+P2_CATEGORIES: Final = (CATEGORY_METER, CATEGORY_CODEX, CATEGORY_ENDING, CATEGORY_CHAPTER,
+                        CATEGORY_TRANSITION, CATEGORY_POSITION)
+CATEGORY_TITLES: Final[Mapping[str, str]] = {
+    CATEGORY_CHARACTER: "Characters", CATEGORY_PICTURE: "Pictures", CATEGORY_SOUND: "Sounds",
+    CATEGORY_VARIABLE: "Variables", CATEGORY_METER: "Meters", CATEGORY_CODEX: "Codex",
+    CATEGORY_ENDING: "Endings & routes", CATEGORY_CHAPTER: "Chapters",
+    CATEGORY_TRANSITION: "Transitions", CATEGORY_POSITION: "Positions"}
+# The "{things}" of each P2 category's empty state (§6.4 "No {things} yet").
+EMPTY_THINGS: Final[Mapping[str, str]] = {
+    CATEGORY_METER: "meters", CATEGORY_CODEX: "tips or items", CATEGORY_ENDING: "routes",
+    CATEGORY_CHAPTER: "chapters", CATEGORY_TRANSITION: "transitions",
+    CATEGORY_POSITION: "positions"}
+REMEMBERED: Final = "Remembered across playthroughs"
+TIPS: Final = "Tips"
+ITEMS: Final = "Items"
+ENDINGS_HINT: Final = "Endings come from the Ending lines of your story."
+CHAPTERS_HINT: Final = "Chapters come from the Chapter lines of your story."
 
 # Entry kinds beyond declarations' (pictures and sounds are files, not declarations).
 BACKGROUND: Final = "background"   # an image named bg …: a file, or a colour (dec.COLOR)
 SOUND: Final = "sound"
 
-# Which check rows count an entry's uses.
+# Which check rows count an entry's uses. An ending is "used" by the routes that wait for
+# it (``route_until``); chapters and remembered variables have no rows.
 USE_KINDS: Final[Mapping[str, str]] = {
     dec.CHARACTER: "character_use", dec.COLOR: "image_use", BACKGROUND: "image_use",
-    dec.VARIABLE: "variable_use", SOUND: "audio_use"}
+    dec.VARIABLE: "variable_use", SOUND: "audio_use", dec.METER: "meter_use",
+    dec.TIP: "codex_use", dec.ITEM: "codex_use", dec.ROUTE: "route_use",
+    dec.TRANSITION: "transition_use", dec.POSITION: "position_use",
+    dec.ENDING: "route_until"}
 _FOLDED: Final = frozenset((dec.COLOR, BACKGROUND))    # image names compare without case
 
 
@@ -75,6 +106,7 @@ class Entry:
     uses: int
     decl: dec.Decl | None = None
     folder: str | None = None                  # sounds: one of SOUND_FOLDERS or OTHER_SOUNDS
+    values: Mapping[str, object] | None = None  # positions: x, y, builtin, written
 
     @property
     def name_editable(self) -> bool:
@@ -138,13 +170,106 @@ def _decl_entries(kind: str, decls: Iterable[dec.Decl], names: Names) -> list[En
         if decl.kind != kind or decl.name in seen:
             continue
         seen.add(decl.name)
-        shown = decl.name
-        if kind == dec.CHARACTER and decl.values is not None \
-                and isinstance(decl.values.get(dec.NAME), str) and decl.values[dec.NAME]:
-            shown = str(decl.values[dec.NAME])
-        out.append(Entry(kind, decl.name, shown, decl.place, decl.values is not None,
+        out.append(Entry(kind, decl.name, _shown(decl), decl.place,
+                         decl.values is not None and kind in dec.EDITABLE_KINDS,
                          uses_of(names, kind, decl.name), decl))
     return out
+
+
+def _shown(decl: dec.Decl) -> str:
+    """The list text: a character's shown name, an entry's title, else the script name."""
+    values = decl.values or {}
+    key = dec.NAME if decl.kind == dec.CHARACTER else "title"
+    shown = values.get(key)
+    return shown if isinstance(shown, str) and shown else decl.name
+
+
+def _merged(kind: str, decls: Iterable[dec.Decl], names: Names,
+            row_kinds: Iterable[str]) -> list[Entry]:
+    """``kind`` entries read from the texts (or marks), then the check's ``row_kinds``
+    names the reader didn't find (read-only), sorted by shown name."""
+    out = _decl_entries(kind, decls, names)
+    known = {entry.name for entry in out}
+    for row_kind in row_kinds:
+        for row in names.get(row_kind, ()):
+            if row.name not in known:
+                known.add(row.name)
+                out.append(Entry(kind, row.name, row.name, _first_place([row], row.name),
+                                 False, uses_of(names, kind, row.name)))
+    return sorted(out, key=lambda e: (e.shown.casefold(), e.name))
+
+
+def meter_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Meters: ``points`` declarations (one entry per name), then the check's ``meter``
+    names the reader didn't find."""
+    return _merged(dec.METER, decls, names, ("meter",))
+
+
+def codex_entries(decls: Iterable[dec.Decl], names: Names) -> dict[str, list[Entry]]:
+    """Codex ▸ Tips and Items (``dec.TIP``, ``dec.ITEM``), each listed by title."""
+    decls = list(decls)
+    return {dec.TIP: _merged(dec.TIP, decls, names, ("tip",)),
+            dec.ITEM: _merged(dec.ITEM, decls, names, ("item",))}
+
+
+def codex_categories(decls: Iterable[dec.Decl], names: Names) -> tuple[str, ...]:
+    """Every codex category the story names, for the Category field's choices."""
+    found = {str(d.values["category"]) for d in decls if d.kind in (dec.TIP, dec.ITEM)
+             and d.values is not None and d.values.get("category")}
+    found.update(row.name for row in names.get("category", ()) if row.name)
+    return tuple(sorted(found, key=str.casefold))
+
+
+def route_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Endings & routes ▸ Routes: ``lock route`` declarations by title (editable), then the
+    check's ``route`` names the reader didn't find."""
+    return _merged(dec.ROUTE, decls, names, ("route",))
+
+
+def ending_entries(marks: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Endings & routes ▸ Endings: every ``ending`` line (``declarations.marks``) with Go to,
+    read-only; "used" by the routes waiting for it."""
+    return _merged(dec.ENDING, marks, names, ("ending",))
+
+
+def ending_names(marks: Iterable[dec.Decl], names: Names) -> tuple[str, ...]:
+    """Every ending name, for a route's "locked until endings" multi-pick."""
+    return tuple(sorted({e.name for e in ending_entries(marks, names)}, key=str.casefold))
+
+
+def chapter_entries(marks: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Chapters: every ``chapter`` line (``declarations.marks``), read-only, in story order
+    (ref, then line) with Go to and Play from here."""
+    out = _merged(dec.CHAPTER, marks, names, ("chapter",))
+    return sorted(out, key=lambda e: (e.place is None, e.place or ("", 0)))
+
+
+def transition_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Transitions: ``define n = Dissolve/Fade/Mask(...)`` (editable when literal), then the
+    check's defined transitions the reader didn't find; the built-ins (cut, dissolve,
+    fade…) aren't entries."""
+    defined = {"transition_defined": [row for row in names.get("transition", ())
+                                      if row.file is not None]}
+    return _merged(dec.TRANSITION, decls, {**names, **defined}, ("transition_defined",))
+
+
+def remembered_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
+    """Variables remembered across playthroughs (``default persistent.<n>``), by name."""
+    return _merged(dec.PERSISTENT, decls, names, ())
+
+
+def position_entries(config_text: str, names: Names) -> list[Entry] | None:
+    """Positions: the built-ins (left, center, right), then ``[stage.positions]`` in file
+    order. ``values``: ``x``, ``y`` (None: Edit as script), ``builtin``, ``written``. None
+    when config.toml isn't valid TOML."""
+    rows = dec.position_rows(config_text)
+    if rows is None:
+        return None
+    return [Entry(dec.POSITION, row.name, row.name, None, row.x is not None,
+                  uses_of(names, dec.POSITION, row.name),
+                  values={"x": row.x, "y": row.y, "builtin": row.builtin,
+                          "written": row.written})
+            for row in rows]
 
 
 def character_entries(decls: Iterable[dec.Decl], names: Names) -> list[Entry]:
@@ -236,10 +361,16 @@ def search(entries: Iterable[Entry], text: str) -> list[Entry]:
             if not needle or needle in e.shown.casefold() or needle in e.name.casefold()]
 
 
-__all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHARACTER", "CATEGORY_PICTURE",
-           "CATEGORY_SOUND", "CATEGORY_VARIABLE", "DELETE_REFUSED", "EDIT_AS_SCRIPT",
-           "EMPTY_HINT", "EMPTY_TITLE", "Entry", "NOT_USED", "NameRow", "Names",
-           "OTHER_SOUNDS", "SCRIPT_NAME", "SHOW_USES", "SOUND", "SOUND_FOLDERS",
-           "SOUND_TITLES", "USED_IN", "USE_KINDS", "background_entries", "character_entries",
-           "delete_refusal", "looks_of", "search", "sound_entries", "sound_folder",
-           "use_places", "used_text", "uses_of", "variable_entries", "variable_names"]
+__all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
+           "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_METER", "CATEGORY_PICTURE",
+           "CATEGORY_POSITION", "CATEGORY_SOUND", "CATEGORY_TITLES", "CATEGORY_TRANSITION",
+           "CATEGORY_VARIABLE", "CHAPTERS_HINT", "DELETE_REFUSED", "EDIT_AS_SCRIPT",
+           "EMPTY_HINT", "EMPTY_THINGS", "EMPTY_TITLE", "ENDINGS_HINT", "Entry", "ITEMS",
+           "NOT_USED", "NameRow", "Names", "OTHER_SOUNDS", "P2_CATEGORIES", "REMEMBERED",
+           "SCRIPT_NAME", "SHOW_USES", "SOUND", "SOUND_FOLDERS", "SOUND_TITLES", "TIPS",
+           "USED_IN", "USE_KINDS", "background_entries", "chapter_entries",
+           "character_entries", "codex_categories", "codex_entries", "delete_refusal",
+           "ending_entries", "ending_names", "looks_of", "meter_entries", "position_entries",
+           "remembered_entries", "route_entries", "search", "sound_entries", "sound_folder",
+           "transition_entries", "use_places", "used_text", "uses_of", "variable_entries",
+           "variable_names"]

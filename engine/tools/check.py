@@ -82,7 +82,10 @@ from engine.runtime.limits import IMAGE_SCAN_MAX_DEPTH
 from engine.runtime.transitions import TransitionDef
 from engine.script import LoadOptions, load_story
 from engine.script.audio import PLAYABLE_EXTS, PlayAudio, QueueMusic, StopAudio, Voice
-from engine.script.effects import BUILTIN_TRANSITION_NAMES
+from engine.script.codex import CodexLock
+from engine.script.effects import BUILTIN_TRANSITION_NAMES, WithClause
+from engine.script.points import PointsChange
+from engine.script.routes import Lock
 from engine.script.labelgraph import label_links
 from engine.script.assetgroups import MINIGAME_FILE_MAX_BYTES
 from engine.script.limits import SCRIPT_FILE_MAX_BYTES
@@ -93,7 +96,7 @@ from engine.script.minigame import Minigame
 from engine.script.nodes import Chapter, Define, PyCode, Say, Statement
 from engine.script.pluginsigs import PluginSig, dict_keys, plugin_sigs
 from engine.script.program import Program
-from engine.script.stage import Scene, Show
+from engine.script.stage import At, Scene, Show
 from engine.script.texttags import NameMark, TaggedText, VarMark
 from engine.script.ui import FORMS as UI_FORMS
 
@@ -496,9 +499,31 @@ def _minigame_uses(ctx: CheckContext) -> Iterable[NameRow] | None:
 # Syntactic, so they are sent under --no-launch too. One row per (name, file, line): Studio's
 # Database counts a name's distinct lines ("Used in N lines").
 
-USE_KINDS = ("character_use", "image_use", "audio_use", "variable_use")
+USE_KINDS = ("character_use", "image_use", "audio_use", "variable_use",
+             # F47 P2-D: meters, codex entries, routes, transitions, positions.
+             "meter_use", "codex_use", "route_use", "transition_use", "position_use")
 _USE_MAX_DEPTH = 8                              # nested node data walked per statement
 _USES_CACHE: list[tuple[Program, dict[str, list[NameRow]]]] = []   # the last program's rows
+# ``"x" in <view>`` in code: which use row the view's names count for.
+_IN_VIEWS = {("codex", "tips"): "codex_use", ("codex", "items"): "codex_use",
+             ("persistent", "routes"): "route_use"}
+
+
+def _is_name(node: ast.AST, name: str) -> bool:
+    return isinstance(node, ast.Name) and node.id == name
+
+
+def _text_of(node: ast.AST) -> str | None:
+    """A string constant's text, else None."""
+    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) \
+        else None
+
+
+def _view_of(node: ast.AST) -> tuple[str, str] | None:
+    """``(owner, attr)`` of ``codex.tips``-like code, else None."""
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+        return node.value.id, node.attr
+    return None
 
 
 def _variable_names(ctx: CheckContext) -> Iterable[NameRow] | None:
@@ -564,6 +589,18 @@ class _UseWalk:
                     self.add("variable_use", node.id, ref, py.line)
                 elif node.id in self.characters:
                     self.add("character_use", node.id, ref, py.line)
+            elif isinstance(node, ast.Attribute) and _is_name(node.value, "points"):
+                self.add("meter_use", node.attr, ref, py.line)             # points.hana
+            elif isinstance(node, ast.Subscript) and _is_name(node.value, "points"):
+                self.add("meter_use", _text_of(node.slice), ref, py.line)  # points["hana"]
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                    and _is_name(node.func.value, "points") and node.func.attr == "highest":
+                for arg in node.args:
+                    self.add("meter_use", _text_of(arg), ref, py.line)
+            elif isinstance(node, ast.Compare) and len(node.comparators) == 1:
+                kind = _IN_VIEWS.get(_view_of(node.comparators[0]))
+                if kind is not None:                         # "lanterns" in codex.tips
+                    self.add(kind, _text_of(node.left), ref, py.line)
 
     def node(self, obj: object, ref: str, line: int, depth: int) -> None:
         if depth > _USE_MAX_DEPTH or obj is None or isinstance(obj, (str, int, float, bool)):
@@ -596,6 +633,16 @@ class _UseWalk:
             self.add("image_use", obj.image, ref, line)
         elif isinstance(obj, (PlayAudio, QueueMusic, StopAudio, Voice)):
             self.add("audio_use", obj.audio_file, ref, line)
+        elif isinstance(obj, PointsChange):
+            self.add("meter_use", obj.name, ref, line)
+        elif isinstance(obj, CodexLock):
+            self.add("codex_use", obj.name, ref, line)
+        elif isinstance(obj, Lock) and obj.kind == "route":
+            self.add("route_use", obj.name, ref, line)
+        elif isinstance(obj, WithClause):
+            self.add("transition_use", obj.name, ref, line)
+        elif isinstance(obj, At):
+            self.add("position_use", obj.name, ref, line)
         for item in fields(obj):
             if item.name not in ("file", "sid", "label", "path"):
                 self.node(getattr(obj, item.name, None), ref, line, depth + 1)
@@ -695,6 +742,11 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "image_use": _uses("image_use"),        # F47: each scene/show line (and say attributes)
     "audio_use": _uses("audio_use"),        # F47: each audio line, and Character blips
     "variable_use": _uses("variable_use"),  # F47: each line whose code or text names a default
+    "meter_use": _uses("meter_use"),        # F47 P2: points changes and points.<n> in code
+    "codex_use": _uses("codex_use"),        # F47 P2: lock/unlock tip|item, "n" in codex.tips
+    "route_use": _uses("route_use"),        # F47 P2: lock/unlock route, "n" in persistent.routes
+    "transition_use": _uses("transition_use"),  # F47 P2: each with clause's transition
+    "position_use": _uses("position_use"),  # F47 P2: each show … at <position name>
 }
 
 
