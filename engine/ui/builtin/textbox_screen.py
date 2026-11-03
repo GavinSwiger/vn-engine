@@ -50,6 +50,14 @@ Seams (``04`` §7.10): ``settings`` (``TextSettings``; F16 replaces it whole),
 ``wait_for_menu(on_shown)`` (F07), ``cue_anchor()`` and ``set_bump(dy)`` (F14 A4: the limit
 mark's point and the say window's bump; ``nvl_cue`` is F17's NVL branch).
 
+**Looks** (F32 ``04`` §6.5): ``set_looks(looks)`` gives the textbox F32's current look. Each
+``draw`` and ``show`` starts with ``_sync_look``: when ``looks.revision`` moved, the part
+``looks.part("textbox")`` (a ``TextboxLook``) restyles both views at once (box fill, border,
+frame, tab, indicator draw in the new look on the line already shown) and waits as pending.
+The next ``show`` makes it the layout look: ``faces``, ``box_theme`` (geometry, text font and
+color, padding) and, in NVL, the presenter's look (a re-plan). So glyphs keep their look until
+the next line (D1). ``text_size`` and ``text_scale`` are measured on ``box_theme``.
+
 **NVL** (F17 ``04`` §7.2): ``show_nvl`` (the ``NvlPage`` handler) sets the mode and the
 page (``self.nvl``, an ``NvlPresenter``); ``show`` stays the one ``Say`` handler, and in NVL
 lays the line out at the NVL text area (a row of the presenter's plan) instead of the box.
@@ -80,13 +88,14 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from engine.core.constants import TEXT_SIZE_RANGE
+from engine.core.settings_schema import effective_text_size
 from engine.render.canvas import Canvas
 from engine.render.nvl import NvlView
-from engine.render.nvllayout import nvl_look
+from engine.render.nvllayout import NvlLook, nvl_look, nvl_metrics
 from engine.render.textbox import BoxGeometry, TextboxView, bob_offset, box_geometry, hex_rgb, \
     rgb_hex
 from engine.render.textfx import FxTime, line_seed
-from engine.render.textlayout import FaceSet, LayoutContext, LineLayout
+from engine.render.textlayout import FaceSet, FaceSource, LayoutContext, LineLayout
 from engine.render.typewriter import (
     Completed,
     PressResult,
@@ -104,7 +113,8 @@ from engine.ui.screen import InGameOverlay, Screen
 from engine.ui.shell import reduce_motion_of
 
 if TYPE_CHECKING:
-    from engine.core.config_schema import Config
+    from engine.core.config_schema import Config, TextboxTheme
+    from engine.ui.looks import LookSource
 
 ADVANCE_KEYS = (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER)
 HIDE_BLOCKING_MODS = pygame.KMOD_CTRL | pygame.KMOD_ALT | pygame.KMOD_META | pygame.KMOD_GUI
@@ -145,6 +155,24 @@ class TextSettings:
     instant: bool | None = None
     text_size: int | None = None
     reduce_motion: bool | None = None
+    # F32 (04 §6.5): F16's Text size percent; when set it wins over ``text_size`` and is
+    # applied to the layout look's ``text_size`` (so a style's size scales too).
+    text_size_pct: int | None = None
+
+
+@dataclass(frozen=True)
+class TextboxLook:
+    """F32's ``"textbox"`` part of a look (``app/text_check.textbox_look``): the box theme,
+    its faces and name face, the checked image refs (None: the drawn look), and NVL's look."""
+
+    theme: "TextboxTheme"
+    faces: FaceSet
+    name_face: FaceSource
+    frame: str | None
+    tab_frame: str | None
+    line_image: str | None
+    page_image: str | None
+    nvl: NvlLook
 
 
 class TextboxScreen(Screen):
@@ -159,6 +187,7 @@ class TextboxScreen(Screen):
         self.config = config
         self.view = view
         self.faces = faces
+        self.box_theme = config.theme.textbox      # F32: the layout look's box theme
         look = nvl_look(config.theme)
         # F17: the NVL page and its view (install_textbox builds the view; by hand: here).
         self.nvl = NvlPresenter(view.assets, faces, look)
@@ -175,7 +204,7 @@ class TextboxScreen(Screen):
         self.line: Say | None = None
         self.layout: LineLayout | None = None
         self.typer: Typewriter | None = None
-        self.geometry: BoxGeometry = box_geometry(config.theme.textbox, self.text_size())
+        self.geometry: BoxGeometry = box_geometry(self.box_theme, self.text_size())
         self._hidden = False
         self._box_only = False         # clear(hide=False): the empty box stays drawn
         self._line_id = 0
@@ -199,6 +228,11 @@ class TextboxScreen(Screen):
         # word), and the shell's clean capture, called before a frame that draws the name.
         self._name_source: Callable[[], str | None] = lambda: None
         self._clean_capture: Callable[[Canvas], None] | None = None
+        # F32 (04 §6.5): the current look, the revision last restyled to, and the part that
+        # becomes the layout look at the next show.
+        self._looks: "LookSource | None" = None
+        self._look_rev = 0
+        self._pending_look: TextboxLook | None = None
 
     # -- settings --
 
@@ -210,9 +244,13 @@ class TextboxScreen(Screen):
         return float(settings.cps if settings.cps is not None else self.config.textbox.cps)
 
     def text_size(self) -> int:
-        size = self.settings.text_size
+        settings = self.settings
+        if settings.text_size_pct is not None:     # F32: F16's percent of the layout look
+            return max(TEXT_SIZE_RANGE[0],
+                       effective_text_size(self.box_theme.text_size, settings.text_size_pct))
+        size = settings.text_size
         if size is None:
-            size = self.config.theme.textbox.text_size
+            size = self.box_theme.text_size
         return max(TEXT_SIZE_RANGE[0], min(TEXT_SIZE_RANGE[1], int(size)))
 
     def focused(self) -> bool:
@@ -224,9 +262,10 @@ class TextboxScreen(Screen):
         return reduce_motion_of(self.config) if flag is None else bool(flag)
 
     def text_scale(self) -> float:
-        """F16's text scale: the effective text size over ``[theme.textbox] text_size``
-        (F17's NVL size is ``[theme.nvl] text_size`` times this)."""
-        base = self.config.theme.textbox.text_size
+        """F16's text scale: the effective text size over the layout look's ``text_size``
+        (F17's NVL size is ``[theme.nvl] text_size`` times this; F07's choices and F10's
+        quick menu ask it too)."""
+        base = self.box_theme.text_size
         return self.text_size() / base if base else 1.0
 
     # -- seams --
@@ -269,7 +308,7 @@ class TextboxScreen(Screen):
 
     def tab_top(self) -> float:
         """F07: the name tab's top y at the current text size, plate shown or not."""
-        return self.view.tab_top(box_geometry(self.config.theme.textbox, self.text_size()))
+        return self.view.tab_top(box_geometry(self.box_theme, self.text_size()))
 
     def cue_anchor(self) -> tuple[float, float]:
         """F14 A4: the limit mark's center, ``CUE_INSET`` in from the say window's right
@@ -331,6 +370,38 @@ class TextboxScreen(Screen):
         self._auto_due = None
         self.view.forget_line()
         self.nvl_view.forget_line()
+
+    # -- F32: looks --
+
+    def set_looks(self, looks: "LookSource") -> None:
+        """F32 (04 §6.2 step 4): the session's looks; the current revision is the launch
+        look this screen was built in, so nothing restyles until the key changes."""
+        self._looks = looks
+        self._look_rev = looks.revision
+
+    def _sync_look(self) -> None:
+        """When the look's revision moved: restyle both views now and keep the part for the
+        next ``show`` (04 §6.5 step 1). One integer compare per call otherwise."""
+        looks = self._looks
+        if looks is None or looks.revision == self._look_rev:
+            return
+        self._look_rev = looks.revision
+        part = looks.part("textbox")
+        assert isinstance(part, TextboxLook)
+        self.view.restyle(part.theme, part.name_face, frame=part.frame,
+                          tab_frame=part.tab_frame, line_image=part.line_image,
+                          page_image=part.page_image)
+        self.nvl_view.restyle(part.nvl, part)
+        self._pending_look = part
+
+    def _apply_pending_look(self) -> None:
+        """At ``show``: a pending part becomes the layout look (04 §6.5 step 2)."""
+        part, self._pending_look = self._pending_look, None
+        if part is None:
+            return
+        self.faces = part.faces
+        self.box_theme = part.theme
+        self.nvl.restyle(part.nvl, part.faces, nvl_metrics(part.nvl, self.text_scale()))
 
     # -- F30: the player's name --
 
@@ -442,6 +513,8 @@ class TextboxScreen(Screen):
 
     def show(self, cmd: Say) -> None:
         """The ``Say`` handler: ``cmd`` replaces the shown line (in NVL: joins the page)."""
+        self._sync_look()
+        self._apply_pending_look()
         for fn in tuple(self._say_listeners):
             fn(cmd)
         if self.nvl.on:
@@ -454,7 +527,7 @@ class TextboxScreen(Screen):
             if rows and rows[0].entry == nvl.current:
                 self._fx_t = 0.0                   # F29: the line starts a page (page time)
         else:
-            theme = self.config.theme.textbox
+            theme = self.box_theme
             geometry = box_geometry(theme, self.text_size())
             ctx = LayoutContext(self.view.assets, self.faces, geometry.text_size,
                                 rgb_hex(theme.text_color), geometry.area[2], geometry.area[3],
@@ -638,6 +711,7 @@ class TextboxScreen(Screen):
         on_shown()
 
     def draw(self, canvas: Canvas) -> None:
+        self._sync_look()
         shown = self.box_shown
         if shown and self._clean_capture is not None and self.name_drawn():
             self._clean_capture(canvas)            # F30: the picture before the box
@@ -670,7 +744,7 @@ class TextboxScreen(Screen):
         if line.name:                              # None: narration; "": no name plate
             tab = view.name_tab(line.name, geometry)
             color = hex_rgb(line.name_color) if _is_hex(line.name_color) \
-                else self.config.theme.textbox.name_tab.text_color
+                else view.theme.name_tab.text_color
             view.draw_tab(canvas, tab, color)
         page = layout.page(typer.page)
         view.draw_typed(canvas, page, self._line_id, typer.shown, geometry,
@@ -697,4 +771,5 @@ def _is_hex(color: str | None) -> bool:
     return True
 
 
-__all__ = ["ADVANCE_KEYS", "CUE_INSET", "CueTarget", "TextSettings", "TextboxScreen"]
+__all__ = ["ADVANCE_KEYS", "CUE_INSET", "CueTarget", "TextSettings", "TextboxLook",
+           "TextboxScreen"]

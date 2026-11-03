@@ -75,8 +75,9 @@ def rig(tmp_path, values=None, *, config=None, writer=None, window=None):
     return service, log, attached, window
 
 
-def text(cps=None, instant=False, size=28, reduce=False) -> TextSettings:
-    return TextSettings(cps=cps, instant=instant, text_size=size, reduce_motion=reduce)
+def text(cps=None, instant=False, size=28, reduce=False, pct=100) -> TextSettings:
+    return TextSettings(cps=cps, instant=instant, text_size=size, reduce_motion=reduce,
+                        text_size_pct=pct)          # F32: the percent goes along too
 
 
 # --- AC-F16-09 — each change reaches its target ---------------------------------------------------
@@ -88,7 +89,7 @@ AC09_ROWS = [
     ("mono", True, [("audio.set_mono", (True,))], []),
     ("text_cps", 80, [("textbox.settings", text(cps=80))], []),
     ("text_cps", 0, [("textbox.settings", text(instant=True))], []),     # G8: cps None
-    ("text_size_pct", 130, [("textbox.settings", text(size=36))], []),
+    ("text_size_pct", 130, [("textbox.settings", text(size=36, pct=130))], []),
     ("text_blips", False, [("blips.set_enabled", (False,))], []),
     ("skip_all", True, [("skip_auto.settings", SkipAutoSettings(skip_all=True))], []),
     ("auto_scale_pct", 25, [("skip_auto.settings", SkipAutoSettings(auto_scale=0.25))], []),

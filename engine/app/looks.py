@@ -12,8 +12,11 @@ hand the shell its ``Looks``, and turn the commands into F11 calls:
   copy ``Looks`` gets, so the ``[theme]`` value shows. Good non-title look images are held
   for the session (a style switch draws from the cache); title pictures never are. The shell
   gets the ``Looks`` and ``read_playthrough`` (``GameShell.set_looks`` chooses the launch
-  look there). Dev only: W67 for each table's look (``LOOK_PAIRS`` too, only the pairs its
-  tokens touch) and W206 for each style no ``ui style`` line names.
+  look there). Step 5: the ``[theme]`` refs the parts use join ``LookChecks``
+  (``check_base_refs``); the ``"textbox"`` and ``"choice"`` parts (``textbox_look``,
+  ``choice_look``) are added, and the textbox and ``app.choices`` get the ``Looks``. Dev
+  only: W67 for each table's look (``LOOK_PAIRS`` too, only the pairs its tokens touch) and
+  W206 for each style no ``ui style`` line names.
 - **Handlers**: ``UiStyle`` → ``Looks.set_style``, then the last ``UiBlocks`` again (a
   style may rename ``saving_off``); ``UiBlocks`` → ``SaveService.set_blocked`` with the
   reason or the current look's word; ``DeleteSaves`` → ``SaveService.delete_all``, except in
@@ -30,8 +33,10 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from engine.app.choices import choice_look
+from engine.app.text_check import textbox_look
 from engine.app.ui_contrast import LOOK_PAIRS, PAIRS, contrast_warnings
-from engine.core.config_schema import LookTable
+from engine.core.config_schema import LookTable, ThemeConfig
 from engine.core.logsetup import get_logger
 from engine.runtime.commands import DeleteSaves, UiBlocks, UiStyle
 from engine.runtime.errors import format_message
@@ -101,6 +106,40 @@ def check_tables(assets, tables: Mapping[object, LookTable], section: str,
                         extra={"code": "W207"})
         out[name] = dataclasses.replace(table, tokens=MappingProxyType(kept))
     return out
+
+
+BASE_REFS: tuple[tuple[str, str], ...] = (
+    ("textbox.text_font", "font"), ("textbox.bold_font", "font"),
+    ("textbox.italic_font", "font"), ("textbox.bold_italic_font", "font"),
+    ("textbox.name_tab.text_font", "font"), ("textbox.frame_image", "image"),
+    ("textbox.name_tab.frame_image", "image"), ("textbox.indicator.line_image", "image"),
+    ("textbox.indicator.page_image", "image"), ("choice.text_font", "font"),
+    ("choice.frame_image", "image"), ("choice.focused.frame_image", "image"))
+
+
+def check_base_refs(assets, cfg: ThemeConfig, checks: LookChecks) -> None:
+    """The ``[theme]`` refs the textbox and choice parts use, through the same memoized
+    ``AssetManager.check`` the installs already asked (no log line): good ones join
+    ``checks``, so building a part asks only sets (04 §6.2 step 1)."""
+    for path, kind in BASE_REFS:
+        node: object = cfg
+        for name in path.split("."):
+            node = getattr(node, name)
+        if isinstance(node, str) and assets.check(node, kind) is None:
+            (checks.fonts if kind == "font" else checks.images).add(node)
+
+
+def add_parts(looks: Looks, checks: LookChecks, choices: object | None) -> None:
+    """F32 step 5 (04 §6.2 step 3): the ``"textbox"`` and ``"choice"`` parts, both pure.
+    The choice part keeps ``[theme.choice]``'s W48-checked sounds when a look doesn't set
+    its own."""
+    usable = checks.usable
+    looks.add_part("textbox", lambda cfg: textbox_look(cfg, usable))
+    base = looks.base.cfg.choice
+    sounds = {key: (getattr(base, key), getattr(choices, key, getattr(base, key)))
+              for key in ("focus_sound", "pick_sound")}
+    looks.add_part("choice", lambda cfg: choice_look(cfg, looks.part("textbox").faces,
+                                                     usable, sounds))
 
 
 def read_playthrough(store: "PersistentStore | None", warned: list[bool]) -> int:
@@ -220,9 +259,17 @@ def install_looks(app: "App", interp: "Interpreter") -> Looks:
     looks = Looks(shell.base_theme, styles=MappingProxyType(styles),
                   playthroughs=MappingProxyType(playthroughs), overrides=shell.overrides,
                   image=assets.image)
+    check_base_refs(assets, shell.base_theme.cfg, checks)
+    choices = getattr(app, "choices", None)
+    add_parts(looks, checks, choices)
     store = getattr(interp, "persistent", None)
     warned = [False]
     shell.set_looks(looks, lambda: read_playthrough(store, warned))
+    textbox = getattr(app, "textbox", None)
+    if textbox is not None:
+        textbox.set_looks(looks)
+    if choices is not None:
+        choices.set_looks(looks)
     handlers = LookHandlers(app, looks)
     router = app.router
     router.register(UiStyle, handlers.on_style)
@@ -237,5 +284,6 @@ def install_looks(app: "App", interp: "Interpreter") -> Looks:
     return looks
 
 
-__all__ = ["LookChecks", "LookHandlers", "check_tables", "install_looks", "look_warnings",
+__all__ = ["BASE_REFS", "LookChecks", "LookHandlers", "add_parts", "check_base_refs",
+           "check_tables", "install_looks", "look_warnings",
            "read_playthrough", "ref_kind", "unused_styles"]

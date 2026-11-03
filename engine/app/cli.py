@@ -32,6 +32,11 @@ F45 (``04`` §3, §7.1; ``07`` I-1): ``main(argv, checker=…)`` adds the dev-on
 ``edit`` it runs its handler without ``prepare_environment`` or the pygame check (the check
 child never imports pygame); ``--release`` is a usage error and a frozen build doesn't
 define it.
+
+F47 (``04`` §3.3, §7.3): ``main(argv, helper=…)`` adds the dev-only ``helper [GAME_DIR]``,
+Studio's long-lived helper child (settings stills, thumbnails, ▶). Like ``check`` it runs its
+handler without ``prepare_environment`` or the pygame check (the handler sets up SDL itself);
+``--release`` is a usage error and a frozen build doesn't define it.
 """
 
 import argparse
@@ -60,6 +65,7 @@ SEED_MAX = (1 << 64) - 1
 SEED_NEEDS_NUMBER = f"--seed needs a whole number from 0 to {SEED_MAX}, like 42"
 EDITOR_DEV_ONLY = "the editor is only available in dev runs"
 CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
+HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
 
 
 def dev_only(option: str) -> str:
@@ -70,6 +76,8 @@ def dev_only(option: str) -> str:
 EditorHandler = Callable[[Path], int]
 # F45: check_handler(game_dir, report=…, overlay=…, launch=…) -> exit code.
 CheckHandler = Callable[..., int]
+# F47: helper_handler(game_dir) -> exit code.
+HelperHandler = Callable[[Path], int]
 
 
 def _bench_seconds(text: str) -> float:
@@ -116,7 +124,8 @@ def launcher_main(argv: list[str]) -> int:
 
 
 def main(argv: list[str], *, editor: EditorHandler | None = None,
-         checker: CheckHandler | None = None) -> int:
+         checker: CheckHandler | None = None,
+         helper: HelperHandler | None = None) -> int:
     """``python -m engine run [GAME_DIR] [options]``, and ``edit [GAME_DIR]`` when
     ``editor`` is given (``engine/__main__.py``) and the build isn't frozen; likewise
     ``check [GAME_DIR] …`` with ``checker`` (F45). ``GAME_DIR`` defaults to
@@ -152,6 +161,15 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
         check.add_argument("--no-launch", action="store_true",
                            help="load only: run no define, default, or module() code")
         check.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
+    helper_cmd = None
+    if helper is not None and dev_tools:                # F47
+        helper_cmd = commands.add_parser("helper", help="Studio's preview and sound helper",
+                                         description="Answer Studio's still, thumbnail, and "
+                                                     "sound requests on stdin for GAME_DIR.")
+        helper_cmd.add_argument("game_dir", nargs="?", metavar="GAME_DIR", default=None,
+                                help="the game folder (default: the game folder next to "
+                                     "main.py)")
+        helper_cmd.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.game_dir is None:
         game_dir = engine_root() / "game"
@@ -168,6 +186,10 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
         # Likewise: the check child never imports pygame (F45 04 §3).
         return checker(game_dir, report=args.report_to_editor, overlay=args.stdin_overlay,
                        launch=not args.no_launch)
+    if args.command == "helper":
+        if args.release:
+            helper_cmd.error(HELPER_DEV_ONLY)
+        return helper(game_dir)
     if dev_tools:
         _refuse_dev_options(run, args)
         args.start_options = _start_options(run, args)

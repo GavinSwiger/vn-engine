@@ -427,6 +427,24 @@ class TextboxView:
         self._stops_key: tuple | None = None
         self._stops: tuple[list[int], list[_Stop]] = ([], [])
 
+    def restyle(self, theme: TextboxTheme, name_face: FaceSource, *, frame: str | None,
+                tab_frame: str | None, line_image: str | None,
+                page_image: str | None) -> None:
+        """F32 (04 §4.3, §6.5): draw in another look from now on. The box, tab, name, and
+        shape caches go; the shown line's glyph lists and typed layer stay (its glyphs keep
+        their look until the next line, D1)."""
+        self.theme = theme
+        self.name_face = name_face
+        self.frame = frame
+        self.tab_frame = tab_frame
+        self.line_image = line_image
+        self.page_image = page_image
+        self._box_key = None
+        self._box_surface = None
+        self._tabs.clear()
+        self._names.clear()
+        self._shapes.clear()
+
     # -- geometry helpers --
 
     def name_spec(self) -> FontSpec:

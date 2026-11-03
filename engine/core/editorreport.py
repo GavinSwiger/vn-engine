@@ -41,3 +41,17 @@ OVERLAY_READ_CHUNK = 1 << 20            # the body is read in chunks of this siz
 CHECK_TIMEOUT_S = 30                    # a check child still running after this is stopped
 CHECK_DEBOUNCE_MS = 1_500               # a check runs this long after the last change
 CHECK_SLOW_S = 5                        # auto-checks pause while the last one took longer
+
+# --- F47 Studio's helper child (F47 ``04`` §7.3) -------------------------------------------
+# ``python -B -m engine helper GAME`` (``tools/helper.py``) is one long-lived child: Studio's
+# ``HelperRunner`` (``tools/editor/helperrunner.py``) writes one request per stdin line,
+# ``{"v": 1, "op", "serial", ...}`` (a ``still`` with ``"overlay": true`` is followed by
+# ``checker.encode_overlay``'s bytes for ``config.toml``), and the child answers each in the
+# framing above: ``ready`` once, then ``png``, ``played``, ``stopped`` or ``failed``.
+HELPER_OPS = ("still", "thumb", "play", "stop")
+HELPER_EVENTS = ("ready", "png", "played", "stopped", "failed")
+HELPER_STILL_KINDS = ("textbox", "title")
+HELPER_REQUEST_MAX = 4_096              # one request line, newline not included
+HELPER_STILL_MAX_WIDTH = 640            # stills are 16:9, at most 640 px wide
+HELPER_THUMB_MAX = 384                  # a thumbnail's longer side (96 px at up to 400 %)
+HELPER_REPLY_TIMEOUT_S = 10             # no answer after this: Studio restarts the child

@@ -15,7 +15,9 @@ the pill works over choices too; the choice floor (C6) keeps the buttons above t
 - **Layout** ``UiTheme.quick_menu_layout`` (the pill inside the strip under the box, I-4),
   recomputed when the labels or the text scale change. The scale is the say window's text
   size over ``textbox.text_size`` (F16's one source, ``TextboxScreen.settings``); the
-  quick-menu text stops scaling at 24.
+  quick-menu text stops scaling at 24. F32 (04 §6.5, D2): the scale is
+  ``textbox.text_scale()`` and the key gains ``shell.looks.revision``, so a style switch
+  changes the pill's colors and layout in the switch frame.
 - **Input** (only while visible, except to finish a capture): button-1 down on an item
   captures it (an enabled one shows the pressed chip; a disabled one does nothing) and is
   consumed; a release with a capture is consumed and acts only over the same enabled item
@@ -70,8 +72,7 @@ class QuickMenu:
     def __init__(self, shell: "GameShell", textbox: object) -> None:
         self.shell = shell
         self.textbox = textbox
-        cfg = shell.theme.cfg
-        self._measure = measure_with(shell.assets, shell.theme.font(cfg.quick_menu.text_size))
+        self._measure = self._measure_for(shell.theme)
         self._layout_key: tuple | None = None
         self._layout: QuickMenuLayout | None = None
         self.captured: str | None = None       # the entry id a button-1 press holds
@@ -96,8 +97,19 @@ class QuickMenu:
         except KeyError:
             return entry.id.replace("_", " ").capitalize()
 
+    def _measure_for(self, theme) -> object:
+        return measure_with(self.shell.assets, theme.font(theme.cfg.quick_menu.text_size))
+
+    def _revision(self) -> int:
+        looks = getattr(self.shell, "looks", None)
+        return 0 if looks is None else looks.revision
+
     def text_scale(self) -> float:
-        """F16's text scale: the say window's text size over ``textbox.text_size``."""
+        """F16's text scale: the textbox's own (F32: measured on its layout look), else the
+        say window's text size over ``textbox.text_size``."""
+        scale_of = getattr(self.textbox, "text_scale", None)
+        if scale_of is not None:
+            return scale_of()
         base = self.shell.config.theme.textbox.text_size
         size_of = getattr(self.textbox, "text_size", None)
         if size_of is None or not base:
@@ -111,8 +123,11 @@ class QuickMenu:
             return None
         labels = tuple(self.label(e) for e in entries)
         scale = self.text_scale()
-        key = (labels, scale)
+        revision = self._revision()
+        key = (labels, scale, revision)
         if key != self._layout_key or self._layout is None:
+            if self._layout_key is not None and self._layout_key[2] != revision:
+                self._measure = self._measure_for(self.shell.theme)     # F32: a new look
             self._layout = self.shell.theme.quick_menu_layout(list(labels), self._measure,
                                                               scale=scale)
             self._layout_key = key

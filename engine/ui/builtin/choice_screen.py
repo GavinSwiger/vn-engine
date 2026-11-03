@@ -65,6 +65,7 @@ guard is not kept.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import pygame
@@ -89,6 +90,7 @@ from engine.ui.screen import Screen, ScreenStack
 
 if TYPE_CHECKING:
     from engine.core.config_schema import ChoiceTheme
+    from engine.ui.looks import LookSource
     from engine.render.canvas import Canvas
 
 GUARD_S: Final = 0.25                    # PR-F07-12: picks are ignored this long after open
@@ -126,6 +128,21 @@ class _Textbox(Protocol):
     def set_hidden(self, hidden: bool) -> None: ...
 
     def reduce_motion(self) -> bool: ...
+
+
+@dataclass(frozen=True)
+class ChoiceLook:
+    """F32's ``"choice"`` part of a look (``app/choices.choice_look``): the choice theme, the
+    faces, the size base (the look's ``[theme.textbox] text_size``), the checked frame refs
+    (None: the drawn button), and the sounds (None: silence)."""
+
+    theme: "ChoiceTheme"
+    faces: FaceSet
+    base_text_size: int
+    frame: str | None
+    focused_frame: str | None
+    focus_sound: str | None
+    pick_sound: str | None
 
 
 class MenuListener(Protocol):
@@ -170,6 +187,8 @@ class ChoiceController:
         self._layout_key: tuple | None = None
         self._layout: ChoiceLayout | None = None
         self._layout_cmd: ShowMenu | None = None
+        self._looks: "LookSource | None" = None       # F32 (04 §6.5)
+        self._look_rev = 0
 
     # -- seams --
 
@@ -180,6 +199,30 @@ class ChoiceController:
     def set_floor(self, fn: Callable[[], float]) -> None:
         """F10 C6, I-3: the last-resort fit (and a ``none`` menu's area) ends at ``fn()``."""
         self.floor = fn
+
+    def set_looks(self, looks: "LookSource") -> None:
+        """F32 (04 §6.2 step 4, §6.5): the session's looks. When a menu is shown and the
+        revision moved, the theme, faces, size base, view and sounds come from
+        ``looks.part("choice")`` (a ``ChoiceLook``). A menu can't be open across a switch (the
+        story waits on it; a restore sends the menu again)."""
+        self._looks = looks
+        self._look_rev = looks.revision
+
+    def _sync_look(self) -> None:
+        looks = self._looks
+        if looks is None or looks.revision == self._look_rev:
+            return
+        self._look_rev = looks.revision
+        part = looks.part("choice")
+        assert isinstance(part, ChoiceLook)
+        self.theme = part.theme
+        self.faces = part.faces
+        self.base_text_size = part.base_text_size
+        self.view = ChoiceStackView(self.assets, part.theme, frame=part.frame,
+                                    focused_frame=part.focused_frame)
+        self.focus_sound = part.focus_sound
+        self.pick_sound = part.pick_sound
+        self._layout = self._layout_key = self._layout_cmd = None
 
     def close(self) -> None:
         """Remove the open ``ChoiceScreen`` (wherever it is) and drop a menu waiting for its
@@ -212,6 +255,7 @@ class ChoiceController:
             _log.debug("A menu's line was shown after the menu closed; nothing opens")
             return
         self._pending = None
+        self._sync_look()
         screen = ChoiceScreen(self, pending[1])
         self.screen = screen
         self.stack.push(screen)
@@ -263,7 +307,13 @@ class ChoiceController:
         """s0: ``choice.text_size`` × the player's text scale, half up, 20–48."""
         base = self.theme.text_size if self.theme.text_size is not None \
             else self.base_text_size
-        scale = self.textbox.text_size() / self.base_text_size if self.base_text_size else 1.0
+        # F32 (04 §6.5): the textbox's text scale, measured on its layout look.
+        text_scale = getattr(self.textbox, "text_scale", None)
+        if text_scale is not None:
+            scale = text_scale()
+        else:
+            scale = self.textbox.text_size() / self.base_text_size \
+                if self.base_text_size else 1.0
         return max(MIN_SIZE, min(MAX_SIZE, half_up(base * scale)))
 
     def area(self, line: str, fits: Callable[[float, float], bool] | None = None
@@ -473,5 +523,5 @@ class ChoiceScreen(Screen):
         self.controller.pick(self, self.cmd.choices[index].key)
 
 
-__all__ = ["FADE_LEAD_S", "GUARD_S", "PICK_KEYS", "ChoiceController", "ChoiceScreen",
+__all__ = ["FADE_LEAD_S", "GUARD_S", "PICK_KEYS", "ChoiceController", "ChoiceLook", "ChoiceScreen",
            "MenuListener"]

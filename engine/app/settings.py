@@ -594,7 +594,8 @@ class SettingsService:
                             instant=cps == 0,
                             text_size=effective_text_size(
                                 self.config.theme.textbox.text_size, pct),
-                            reduce_motion=self.effective_reduce())
+                            reduce_motion=self.effective_reduce(),
+                            text_size_pct=pct)      # F32: the textbox scales its look's size
 
     def skip_auto_settings(self) -> "SkipAutoSettings":
         """F15's ``SkipAutoSettings`` (I-8): the player's stored values, None = config;

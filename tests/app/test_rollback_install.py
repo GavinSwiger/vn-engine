@@ -1156,7 +1156,7 @@ def test_ac31_limit_cue_look_and_placement(tmp_path, scripted_app, unthreaded, c
         wheel(1)
         yield from frames(16)                          # the bump is over
         res["px"] = fb_px(app, 1068, 512)
-        app.textbox.settings.text_size = 42            # 150%, from the next line
+        app.textbox.settings.text_size_pct = 150       # 42, from the next line (F32: the %)
         post_key(pygame.K_1)
         for _ in range(30):
             yield

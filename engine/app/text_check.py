@@ -100,7 +100,7 @@ from engine.runtime.fourthwall import identity_lines, name_lines   # F30 W189, W
 from engine.runtime.nvl import Nvl                 # F17 07 I-8: the statement, through runtime
 from engine.runtime.text import format_value
 from engine.ui.blips import BlipPlayer
-from engine.ui.builtin.textbox_screen import TextboxScreen
+from engine.ui.builtin.textbox_screen import TextboxLook, TextboxScreen
 
 if TYPE_CHECKING:
     from engine.app.app import App
@@ -170,6 +170,19 @@ def resolve_faces(theme: "TextboxTheme", assets: AssetManager,
                                     made_from_text_font)))
         return None
 
+    return faces_from(theme, usable, warn)
+
+
+def faces_from(theme: "TextboxTheme",
+               usable: Callable[[str, str | None, bool], str | None],
+               warn: Callable[[str], None] | None = None) -> FaceSet:
+    """The textbox ``FaceSet`` of ``theme``: ``usable(key, ref, made_from_text_font)`` gives
+    the ref when it can be used, else None; ``warn`` (if any) gets W45 (F32 split it out of
+    ``resolve_faces`` for ``textbox_look``, which warns nothing)."""
+    if warn is None:
+        def warn(message: str) -> None:
+            return None
+
     custom = usable("text_font", theme.text_font, False)
     made = custom is not None
     bold = usable("bold_font", theme.bold_font, made)
@@ -202,6 +215,27 @@ def resolve_faces(theme: "TextboxTheme", assets: AssetManager,
     else:
         faces[Face.BOLD_ITALIC] = FaceSource(None, Face.BOLD_ITALIC)
     return FaceSet(faces)
+
+
+def textbox_look(cfg: ThemeConfig, usable: Callable[[str, str], bool]) -> TextboxLook:
+    """F32's ``"textbox"`` part of a look's ``cfg`` (04 §6.2 step 3): pure, no warning and
+    no file read. ``usable(ref, kind)`` is ``LookChecks.usable`` (launch-checked refs); an
+    unusable font is the bundled face, an unusable image the drawn look."""
+    theme = cfg.textbox
+
+    def font(key: str, ref: str | None, made: bool) -> str | None:
+        return ref if ref is not None and usable(ref, "font") else None
+
+    def image(ref: str | None) -> str | None:
+        return ref if ref is not None and usable(ref, "image") else None
+
+    faces = faces_from(theme, font)
+    name_font = font("name_tab.text_font", theme.name_tab.text_font, False)
+    name_face = FaceSource(name_font, Face.BOLD) if name_font is not None \
+        else faces.faces[Face.BOLD]
+    return TextboxLook(theme, faces, name_face, image(theme.frame_image),
+                       image(theme.name_tab.frame_image), image(theme.indicator.line_image),
+                       image(theme.indicator.page_image), nvl_look(cfg))
 
 
 def _checked_image(assets: AssetManager, key: str, ref: str | None,
@@ -744,5 +778,6 @@ def fourthwall_warnings(program: object, *, offered: bool, fallback: str
 __all__ = ["NAME_MIN_RATIO", "TEXT_CHECK_CHARS", "TEXT_CHECK_CHUNK", "TEXT_MIN_RATIO", "W40_MAX_LINES",
            "W47_MAX_CHOICES", "W101_MAX_LINES", "TextLaunchCheck", "box_colors_warning", "box_contrast",
            "character_warnings", "composite", "contrast_ratio", "fourthwall_warnings", "install_blips", "install_nvl", "install_textbox",
-           "nvl_character_warning", "nvl_colors_warnings", "relative_luminance", "resolve_faces",
+           "faces_from", "nvl_character_warning", "nvl_colors_warnings", "relative_luminance",
+           "resolve_faces", "textbox_look",
            "text_launch_check", "w47_more"]

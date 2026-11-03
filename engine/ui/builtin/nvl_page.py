@@ -87,6 +87,16 @@ class NvlPresenter:
         self._layouts.clear()
         self._replan(self.metrics)
 
+    def restyle(self, look: NvlLook, faces: FaceSet, m: NvlMetrics) -> None:
+        """F32 (04 §4.3, §6.5): lay the page out in another look (its faces and metrics
+        ``m``), as a text-size change does: the heights cache and kept layouts go, one
+        re-plan."""
+        self.look = look
+        self.faces = faces
+        clear_heights()
+        self._layouts.clear()
+        self._replan(m)
+
     def rows(self) -> tuple[Row, ...]:
         """The rows on screen: a menu's view plan while one is set, else the page."""
         return (self.plan if self.view is None else self.view).rows

@@ -51,9 +51,18 @@ LAZY_ONLY = {"__main__": {"tools"}}
 # Sub-packages with a stricter row than their package (F44 I-12).
 # F45 (04 §3, 07 O-2): tools/check.py, Studio's check child, imports core, script, and
 # runtime only (no pygame, app, render, ui, audio, persist, meta, or minigames).
+# F47 (04 §9): tools/helper.py, Studio's helper child, imports core, script, render, ui, and
+# audio (and runtime, which they build on), never app, meta, minigames, persist, or
+# runtime.interpreter (``SUBPACKAGE_BANNED``); unlike the other rows it may import pygame.
 SUBPACKAGES: dict[tuple[str, str], set[str]] = {("tools", "editor"): {"core", "script"},
                                                 ("tools", "check"): {"core", "script",
-                                                                     "runtime"}}
+                                                                     "runtime"},
+                                                ("tools", "helper"): {"core", "script",
+                                                                      "runtime", "render",
+                                                                      "ui", "audio"}}
+SUBPACKAGE_BANNED: dict[str, tuple[str, ...]] = {
+    "engine.tools.helper": ("engine.runtime.interpreter",)}
+PYGAME_SUBPACKAGES = {"engine.tools.helper"}
 
 
 def _module_name(path: Path, engine_dir: Path) -> list[str]:
@@ -149,7 +158,9 @@ def scan(engine_dir: Path) -> list[str]:
             lazy = LAZY_ONLY.get(top, set())
         in_functions = _function_imports(tree)
         for line, name in _imports(tree, module, path.name == "__init__.py"):
-            if name.split(".")[0] == "pygame" and (package in NO_PYGAME or own_prefix):
+            if name.split(".")[0] == "pygame" and (
+                    package in NO_PYGAME
+                    or (own_prefix and own_prefix not in PYGAME_SUBPACKAGES)):
                 violations.append(f"{rel}:{line}: {package} must not import pygame")
                 continue
             layer = _layer(name)
@@ -157,6 +168,9 @@ def scan(engine_dir: Path) -> list[str]:
                 continue
             if own_prefix and layer == name.split(".")[1] == own_prefix.split(".")[1] \
                     and not (name + ".").startswith(own_prefix + "."):
+                violations.append(f"{rel}:{line}: {package} must not import {name}")
+            elif own_prefix and any(name == banned or name.startswith(banned + ".")
+                                    for banned in SUBPACKAGE_BANNED.get(own_prefix, ())):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
             elif layer in lazy and line in in_functions:
                 continue

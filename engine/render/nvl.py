@@ -79,6 +79,16 @@ class NvlPageSource(Protocol):
     def settled_page(self, row: Row) -> Page: ...
 
 
+class _LookPart(Protocol):
+    """What ``restyle`` reads of F32's ``TextboxLook`` (``ui`` owns it)."""
+
+    theme: object
+    faces: FaceSet
+    name_face: object
+    line_image: str | None
+    page_image: str | None
+
+
 class NvlView:
     """Draws NVL mode; owns the settled draw list and the fitted names."""
 
@@ -105,6 +115,22 @@ class NvlView:
         line_view = TextboxView(view.assets, theme, view.name_face,  # type: ignore[arg-type]
                                 line_image=view.line_image, page_image=view.page_image)
         return cls(view.assets, look, faces, line_view)
+
+    def restyle(self, look: NvlLook, part: "_LookPart") -> None:
+        """F32 (04 §4.3, §6.5): the panel, names and indicator in ``look`` from now on;
+        ``line_view`` takes the part's box theme with ``look.indicator_color``. The settled
+        draw list and the fitted names are built again."""
+        self.look = look
+        self.faces = part.faces
+        theme = part.theme
+        theme = replace(theme, indicator=replace(theme.indicator,
+                                                 fill_color=look.indicator_color))
+        self.line_view.restyle(theme, part.name_face, frame=None, tab_frame=None,
+                               line_image=part.line_image, page_image=part.page_image)
+        self._settled_key = None
+        self._settled = []
+        self._settled_fx = []
+        self._names.clear()
 
     # -- F14 A4 (NVL branch) --
 

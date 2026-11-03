@@ -39,13 +39,15 @@ from engine.render.textlayout import LINE_PITCH, FaceSet, FaceSource
 from engine.runtime.commands import ShowMenu
 # Through runtime: only loading.py of engine.app imports engine.script (AC-F02-66).
 from engine.runtime.errors import format_message
-from engine.ui.builtin.choice_screen import ChoiceController
+from engine.ui.builtin.choice_screen import ChoiceController, ChoiceLook
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from engine.app.app import App
-    from engine.core.config_schema import ChoiceTheme
+    from collections.abc import Mapping
+
+    from engine.core.config_schema import ChoiceTheme, ThemeConfig
     from engine.render.assets import AssetManager
     from engine.ui.builtin.textbox_screen import TextboxScreen
 
@@ -107,6 +109,35 @@ def choice_faces(theme: "ChoiceTheme", textbox_faces: FaceSet, assets: "AssetMan
     faces = dict(textbox_faces.faces)
     faces[Face.REGULAR] = FaceSource(ref, Face.REGULAR)
     return FaceSet(faces)
+
+
+def choice_look(cfg: "ThemeConfig", textbox_faces: FaceSet,
+                usable: "Callable[[str, str], bool]",
+                base_sounds: "Mapping[str, tuple[str | None, str | None]]") -> ChoiceLook:
+    """F32's ``"choice"`` part of a look's ``cfg`` (04 §6.2 step 3, §6.5): pure, no warning
+    and no file read. ``textbox_faces`` are the look's textbox faces; ``usable(ref, kind)``
+    is ``LookChecks.usable``. ``base_sounds`` maps each sound key to ``([theme.choice]'s
+    token, the token that passed W48)``: a look that keeps the base token gets the checked
+    one; a style's own sound plays as set (F08's line if missing, 04 §6.2 step 1)."""
+    theme = cfg.choice
+    faces = textbox_faces
+    ref = theme.text_font
+    if ref is not None and usable(ref, "font"):
+        table = dict(textbox_faces.faces)
+        table[Face.REGULAR] = FaceSource(ref, Face.REGULAR)
+        faces = FaceSet(table)
+
+    def image(ref: str | None) -> str | None:
+        return ref if ref is not None and usable(ref, "image") else None
+
+    def sound(key: str) -> str | None:
+        token = getattr(theme, key)
+        base, checked = base_sounds.get(key, (None, None))
+        return checked if token == base else token
+
+    return ChoiceLook(theme, faces, cfg.textbox.text_size, image(theme.frame_image),
+                      image(theme.focused.frame_image), sound("focus_sound"),
+                      sound("pick_sound"))
 
 
 def _checked_image(assets: "AssetManager", key: str, ref: str | None,
@@ -190,4 +221,4 @@ def _play(app: "App", file: str) -> None:
         audio.play_ui(file)
 
 
-__all__ = ["choice_colors_warnings", "choice_faces", "install_choices"]
+__all__ = ["choice_colors_warnings", "choice_faces", "choice_look", "install_choices"]
