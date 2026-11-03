@@ -377,6 +377,16 @@ class StoryEditor:
         out["position"] = sorted(set(out.get("position", ())) | set(BUILTIN_POSITIONS))
         return out
 
+    def form_assets(self) -> Any:
+        """The forms' thumbnails, ▶/■ and colour dots (F47 W5), read again for this form."""
+        from engine.tools.editor.formassets import WindowAssets
+        assets = getattr(self, "_form_assets", None)
+        if assets is None:
+            assets = self._form_assets = WindowAssets(self.win)
+        else:
+            assets.refresh()
+        return assets
+
     def insert(self, index: int | None = None) -> Plan | None:
         """Insert… (the button, Insert, Enter on a ◆ row): the picker, then the doc's form
         (Cancel inserts nothing), or a text-only doc's example with its first field
@@ -407,7 +417,7 @@ class StoryEditor:
         else:
             values = formdialogs.edit_form(self.win.root, form,
                                            formdialogs.new_values(form, doc),
-                                           names=self.names())
+                                           names=self.names(), assets=self.form_assets())
         if values is None:
             return None
         new = forms.insert_lines(form, values, "", unit)
@@ -463,7 +473,7 @@ class StoryEditor:
             if form is None:
                 return None
             values = formdialogs.edit_form(self.win.root, form, dict(row.values or {}),
-                                           names=self.names())
+                                           names=self.names(), assets=self.form_assets())
         if values is None:
             return None
         return self.act(lambda read_, lines, start: scriptedit.plan_form(

@@ -371,3 +371,52 @@ def test_should_forms():
     new = _with(old, choices=(old.choices[0], replace(old.choices[1], condition="coins > 5")))
     assert choice_patches(read, 0, lines, new) == [
         Patch(6, 6, ('        "Just look" if coins > 5:',))]
+
+
+# --- F47 P1-H: the Ending form ------------------------------------------------------------------
+
+def test_ac_f47_23_ending_form_reads_and_writes_every_shape():
+    """AC-F47-23: every ``ending <name> ["heading"] "title" [seconds] [with ...]`` shape reads
+    into the form and writes back as written; shapes it can't hold stay Script rows."""
+    ending = form_by_key("ending")
+    doc = next(d for d in all_docs() if d.key == "ending")
+    assert form_for_doc(doc) is ending and "ending" not in forms.TEXT_ONLY
+    assert ending in forms.all_forms() and ending not in forms.FORMS     # F46's tuple kept
+    assert [f.key for f in ending.fields] == ["name", "heading", "title", "hold",
+                                              "transition", "seconds"]
+    blank = {"heading": "", "hold": "", "transition": "", "seconds": ""}
+    table = [
+        ('ending good "The Lantern Festival"', {"name": "good", "title": "The Lantern Festival"},
+         "Ending  good · The Lantern Festival"),
+        ('ending good "Good End" "The Lantern Festival"',
+         {"name": "good", "heading": "Good End", "title": "The Lantern Festival"},
+         "Ending  good · Good End: The Lantern Festival"),
+        ('ending good "T" 5', {"name": "good", "title": "T", "hold": "5"},
+         "Ending  good · T · 5 s"),
+        ('ending good "H" "T" 0', {"name": "good", "heading": "H", "title": "T", "hold": "0"},
+         "Ending  good · H: T · no card"),
+        ('ending good "T" with dissolve', {"name": "good", "title": "T",
+                                           "transition": "dissolve"},
+         "Ending  good · T · dissolve"),
+        ('ending good "H" "T" 2.5 with fade 1.5',
+         {"name": "good", "heading": "H", "title": "T", "hold": "2.5", "transition": "fade",
+          "seconds": "1.5"}, "Ending  good · H: T · 2.5 s · fade 1.5 s"),
+        ('ending good "Say \\"hi\\" {{wave}"', {"name": "good", "title": 'Say "hi" {wave}'},
+         'Ending  good · Say "hi" {wave}'),
+    ]
+    for code, values, text in table:
+        want = {**blank, **values}
+        read, lines = _inline(code)
+        row = rows(read, lines)[0]
+        assert (row.form, row.values, row.text) == ("ending", want, text), code
+        assert ending.write(want) == code
+        assert _probe_shape_equal(read, lines, row), code
+    # Extra spaces are only spacing (TR-F46-01); a colour `with` the form can't write stays a
+    # Script row.
+    read, lines = _inline('ending  good "T"   5')
+    assert rows(read, lines)[0].values == {**blank, "name": "good", "title": "T", "hold": "5"}
+    read, lines = _inline('ending good "T" with fade 0.4 "#ffe08a"')
+    assert rows(read, lines)[0].form is None
+    # Insert writes one line at the row's indent.
+    assert forms.insert_lines(ending, {**blank, "name": "next_year", "title": "Next Year"},
+                              "    ", "    ") == ['    ending next_year "Next Year"']

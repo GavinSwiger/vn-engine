@@ -322,8 +322,8 @@ def answer_dialogs(monkeypatch, picks: list, values: list, seen: dict) -> None:
             picker._pick(0)
         return picker.result
 
-    def edit(parent, form, start, *, names, ok="OK"):
-        dialog = formdialogs.FormDialog(parent, form, start, names=names, ok=ok)
+    def edit(parent, form, start, *, names, ok="OK", assets=None):
+        dialog = formdialogs.FormDialog(parent, form, start, names=names, ok=ok, assets=assets)
         answer = values.pop(0)
         if callable(answer):
             answer = answer()

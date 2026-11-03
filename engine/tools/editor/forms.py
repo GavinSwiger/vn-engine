@@ -7,7 +7,8 @@ what it read, or the row stays a plain Script row. Pure: no Tk.
 
 - ``FORMS`` sits beside F45's statement docs: each ``CommandForm`` names the docs it covers
   (``form_for_doc``), and ``TEXT_ONLY`` marks the docs that insert their example as text
-  (PR-F46-24; ``missing_forms`` is the completeness check).
+  (PR-F46-24; ``missing_forms`` is the completeness check). ``all_forms()`` adds F47's
+  forms (``forms_more.FORMS``: Ending, …) and the Choice form; lookups and rows use it.
 - ``read(node, code)`` gives a form's values (strings as written, so ``pause 1`` stays ``1``)
   or None when the line holds anything the form can't (``behind``, ``zoom``, a colour,
   ``volume``, …). ``write(values)`` gives one code line, ``summary(values)`` the row text.
@@ -60,7 +61,7 @@ CONTINUES: Final = "continues here"
 # Doc keys that insert their example as text, with no form (PR-F46-24). ``points`` is the
 # declaration; ``points <name> +=`` has the Change meter form.
 TEXT_ONLY: Final = frozenset((
-    "at", "chapter", "default", "define", "effect", "ending", "flowchart", "image", "include",
+    "at", "chapter", "default", "define", "effect", "flowchart", "image", "include",
     "label", "lock", "minigame", "nvl", "points", "queue", "rollback", "shake", "flash",
     "unlock", "voice", "with", "file",                       # file: F31 (four entries)
     "ui"))                                                   # ui: F32 (F47 adds its form)
@@ -604,15 +605,24 @@ CHOICE: Final = CommandForm(
     lambda v: v.get("question", "") or NO_QUESTION)
 
 
+def _line_forms() -> tuple[CommandForm, ...]:
+    """F46's one-line forms, then F47's (``forms_more``; imported here, as it imports us)."""
+    from engine.tools.editor import forms_more
+    return (*FORMS, *forms_more.FORMS)
+
+
+def all_forms() -> tuple[CommandForm, ...]:
+    """Every form: F46's ``FORMS``, the Choice form and F47's ``forms_more.FORMS``."""
+    return (*_line_forms(), CHOICE)
+
+
 def form_by_key(key: str) -> CommandForm | None:
-    if key == CHOICE_FORM:
-        return CHOICE
-    return next((form for form in FORMS if form.key == key), None)
+    return next((form for form in all_forms() if form.key == key), None)
 
 
 def form_for_doc(doc: StatementDoc) -> CommandForm | None:
     """The form that inserts ``doc`` (the Choice form for ``menu``), or None."""
-    for form in (*FORMS, CHOICE):
+    for form in all_forms():
         for key, prefix in form.docs:
             if doc.key == key and doc.syntax.startswith(prefix):
                 return form
@@ -700,7 +710,7 @@ class _Candidate:
 
 
 def _forms_for(node: Statement) -> list[CommandForm]:
-    return [form for form in FORMS if isinstance(node, form.node)]
+    return [form for form in _line_forms() if isinstance(node, form.node)]
 
 
 def _head_code(lines: Sequence[str], head: Span) -> tuple[str, str]:
@@ -1050,6 +1060,7 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
 
 __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "CONTINUES",
            "ChoiceItem", "ChoiceValues", "CommandForm", "END_WORD", "FORMS", "Field", "IN_TEXT",
-           "MORE_TEXT", "NOTHING", "NO_QUESTION", "Patch", "Row", "TEXT_ONLY", "choice_lines",
+           "MORE_TEXT", "NOTHING", "NO_QUESTION", "Patch", "Row", "TEXT_ONLY", "all_forms",
+           "choice_lines",
            "choice_patches", "choice_summary", "code_of", "form_by_key", "form_for_doc",
            "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape"]

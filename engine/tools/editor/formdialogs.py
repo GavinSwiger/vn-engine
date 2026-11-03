@@ -12,6 +12,12 @@ menu (``assist.insert_menu``).
   ``name_kind`` (filtered as you type). A name not offered is allowed, with ``NOT_FOUND``
   under it.
 - Every form shows the line it will write (``FormDialog.preview``), updated as fields change.
+- Pictures and sounds (F47 W5, AC-F47-13, AC-F47-22): given a ``FormAssets`` (the window's
+  is ``formassets.WindowAssets``), a picture field (Background) shows a 96 px thumbnail
+  beside its drop-down, a Look field becomes a drop-down of the speaker's or character's
+  looks with the look's thumbnail, a sound field (Music, Sound) gets ▶/■, and a character
+  field shows the character's colour dot and shown name. Closing the dialog stops the sound.
+  Without one the dialog is F46's.
 - They share ``dialogs``' dark look (F45 ``08`` §7): ``overlay`` fill, padding 20, inputs with
   a 1 px border, a ``raised`` code card for the line, OK primary and right-aligned, Esc and
   the close box cancel.
@@ -19,7 +25,8 @@ menu (``assist.insert_menu``).
   tests answer them by patching it. The classes build without running, for tests that drive
   the real widgets.
 
-Imports: ``tkinter``, ``dialogs``, ``forms``, ``theme`` (no pygame; ADR-0008).
+Imports: ``tkinter``, ``dialogs``, ``fieldwidgets``, ``forms``, ``theme`` (no pygame;
+ADR-0008).
 """
 
 import math
@@ -30,10 +37,18 @@ from tkinter import ttk
 
 from engine.script.statement_docs import StatementDoc
 from engine.tools.editor import dialogs, forms
+from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
-from engine.tools.editor.theme import THEME, TYPE_SCALE, font_families, scale_of
+from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, scale_of
 
 NOT_FOUND = "Not found yet; the check will tell you."
+NEW_NAME = {"ending": "A new ending."}         # name kinds where a new name is normal
+NO_PICTURE = "No picture"
+DOT_PX = 12
+PICTURE_KINDS = frozenset(("image",))          # name kinds whose value is a picture
+SOUND_KINDS = frozenset(("audio",))            # name kinds whose value is a sound file
+WHO_KINDS = frozenset(("character", "sprite"))  # name kinds that name a character
+LOOK_KEY = "look"
 LINE_CAPTION = "Line"
 LINES_CAPTION = "Lines"
 OK = "OK"
@@ -115,18 +130,77 @@ def _set_card(card: tk.Text, text: str, rows: int | None = None) -> None:
     card.configure(state="disabled")
 
 
+class FormAssets:
+    """What a form's pickers show besides names (W5): thumbnails, ▶/■ and colour dots.
+    This base shows nothing; ``formassets.WindowAssets`` answers from the window (the
+    Database's declarations, the project's pictures, the helper child), and a test may
+    answer with a fake. Names are as a script writes them: ``who`` is a character
+    (``define`` name) or a sprite tag, ``image`` an image name (``bg river``), ``audio`` a
+    file under ``audio/``. ``changed()`` tells the open dialog that a thumbnail arrived or
+    a sound started or stopped."""
+
+    on_change: Callable[[], object] | None = None
+
+    def names(self, kind: str) -> Sequence[str]:
+        """Names of ``kind`` the Database knows beyond the check's (a character added a
+        moment ago, a picture not checked yet); the pickers offer both."""
+        return ()
+
+    def tag(self, who: str) -> str:
+        """The sprite tag whose pictures ``who`` shows (a Character's ``image_tag``)."""
+        return who
+
+    def looks(self, tag: str) -> Sequence[str]:
+        """The looks of sprite ``tag`` (``hana smile`` → ``smile``), sorted."""
+        return ()
+
+    def color(self, who: str) -> str | None:
+        """``who``'s name colour (``#rrggbb``), or None."""
+        return None
+
+    def shown(self, who: str) -> str | None:
+        """The name the player sees for ``who``, or None."""
+        return None
+
+    def thumb(self, image: str) -> object | None:
+        """A ``tk.PhotoImage`` at most ``THUMB_PX`` (× scale) square, or None (none yet)."""
+        return None
+
+    def play(self, audio: str) -> None:
+        """Play ``audio``; any other sound stops."""
+
+    def stop(self) -> None:
+        """Stop the sound playing."""
+
+    def playing(self) -> str | None:
+        """The ``audio`` playing now, or None."""
+        return None
+
+    def changed(self) -> None:
+        if self.on_change is not None:
+            self.on_change()
+
+
 class _NameBox:
     """A combobox offering ``names`` (filtered as you type), with ``NOT_FOUND`` under it
-    while its text is a name it doesn't offer."""
+    while its text is a name it doesn't offer (``new``: the hint for a name kind where a new
+    name is normal; ``quiet``: no hint while it offers nothing)."""
 
     def __init__(self, parent: tk.Misc, var: tk.StringVar, names: Sequence[str], *,
-                 width: int, hint_parent: tk.Misc | None = None, wrap: int = 300) -> None:
+                 width: int, hint_parent: tk.Misc | None = None, wrap: int = 300,
+                 new: str | None = None, quiet: bool = False) -> None:
         self.names = list(names)
         self.var = var
+        self.new = new
+        self.quiet = quiet
         self.box = ttk.Combobox(parent, textvariable=var, values=self.names, width=width,
                                 postcommand=self._filter)
         self.hint = ttk.Label(hint_parent or parent, text="", style="Dialog.Hint.TLabel",
                               wraplength=wrap, justify="left")
+
+    def set_names(self, names: Sequence[str]) -> None:
+        self.names = list(names)
+        self.box.configure(values=self.names)
 
     def _filter(self) -> None:
         typed = self.var.get().strip().lower()
@@ -136,31 +210,43 @@ class _NameBox:
 
     def hint_text(self) -> str:
         value = self.var.get().strip()
-        return NOT_FOUND if value and value not in self.names else ""
+        if not value or value in self.names or (self.quiet and not self.names):
+            return ""
+        return self.new if self.new is not None else NOT_FOUND
 
 
 # --- One command form -------------------------------------------------------------------------
 
 class FormDialog:
     """``form``'s dialog over ``parent``, filled from ``values``; built hidden, so a test can
-    drive it. ``names``: name kind → the names its pickers offer. ``result`` is the values
+    drive it. ``names``: name kind → the names its pickers offer; ``assets``: thumbnails,
+    ▶/■ and colour dots (module docstring), or None for none. ``result`` is the values
     after OK (every field's key), None after Cancel."""
 
     def __init__(self, parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
-                 names: Mapping[str, Sequence[str]], ok: str = OK) -> None:
+                 names: Mapping[str, Sequence[str]], ok: str = OK,
+                 assets: FormAssets | None = None) -> None:
         self.form = form
         self.result: dict[str, str] | None = None
+        self.assets = assets
         dialog = self.dialog = dialogs._dialog(parent)
         dialog.title(form.title)
         body, scale = dialogs._body(dialog)
         self.scale = scale
         gap = round(GAP * scale)
-        grid = ttk.Frame(body, style="Dialog.TFrame")
+        grid = self.grid = ttk.Frame(body, style="Dialog.TFrame")
         grid.pack(anchor="w", fill="x")
         grid.columnconfigure(1, weight=1)
         self.vars: dict[str, tk.Variable] = {}
         self.widgets: dict[str, tk.Widget] = {}
         self.names: dict[str, _NameBox] = {}
+        self.thumbs: dict[str, tk.Canvas] = {}          # field key → its thumbnail card
+        self.thumb_shows: dict[str, str | None] = {}    # field key → the image it shows
+        self.play_buttons: dict[str, ttk.Button] = {}
+        self.dots: dict[str, tuple[ttk.Label, ttk.Label]] = {}   # (dot, shown name)
+        self._dot_images: dict[str | None, tk.PhotoImage] = {}
+        self.owner = next((f.key for f in form.fields if f.name_kind in WHO_KINDS), None) \
+            if assets is not None and any(f.key == LOOK_KEY for f in form.fields) else None
         row = 0
         for field in form.fields:
             value = str(values.get(field.key, ""))
@@ -170,6 +256,11 @@ class FormDialog:
             widget, var = self._field(grid, field, value, names)
             widget.grid(row=row, column=1, sticky="w" if field.kind == "number" else "ew",
                         pady=(0 if row == 0 else gap, 0))
+            holder = self._holder(field)
+            if holder is not None:                      # a thumbnail, ▶/■ or a colour dot
+                self._extras(holder, field)
+                holder.grid(row=row, column=2, sticky="w", padx=(gap, 0),
+                            pady=(0 if row == 0 else gap, 0))
             self.vars[field.key], self.widgets[field.key] = var, widget
             row += 1
             if field.key in self.names:
@@ -191,6 +282,8 @@ class FormDialog:
             if isinstance(widget, (ttk.Entry, ttk.Combobox)):
                 for key in ("<Return>", "<KP_Enter>"):
                     widget.bind(key, lambda _e: self._pick(0))
+        if assets is not None:
+            assets.on_change = self._sync_assets
         self._changed()
 
     def _field(self, parent: tk.Misc, field: Field, value: str,
@@ -205,13 +298,142 @@ class FormDialog:
             return ttk.Combobox(parent, textvariable=var, values=field.options,
                                 state="readonly", width=FIELD_CHARS), var
         if field.kind in ("name", "scene"):
-            offered = names.get(field.name_kind or "label", ())
+            kind = field.name_kind or "label"
+            offered = list(names.get(kind, ()))
+            if self.assets is not None:
+                extra = [n for n in self.assets.names(kind) if n not in offered]
+                if extra:
+                    offered = sorted([*offered, *extra], key=str.casefold)
+            if kind in PICTURE_KINDS:                   # backgrounds first (bg …)
+                offered.sort(key=lambda n: not n.casefold().startswith("bg "))
             name_box = _NameBox(parent, var, offered, width=FIELD_CHARS,
-                                wrap=round(300 * self.scale))
+                                wrap=round(300 * self.scale), new=NEW_NAME.get(kind))
+            self.names[field.key] = name_box
+            return name_box.box, var
+        if field.key == LOOK_KEY and self.owner is not None:
+            name_box = _NameBox(parent, var, self._looks(), width=FIELD_CHARS,
+                                wrap=round(300 * self.scale), quiet=True)
             self.names[field.key] = name_box
             return name_box.box, var
         width = NUMBER_CHARS if field.kind == "number" else FIELD_CHARS
         return ttk.Entry(parent, textvariable=var, width=width), var
+
+    # --- Pictures, sounds and colour dots (W5) --------------------------------------------
+
+    def _holder(self, field: Field) -> ttk.Frame | None:
+        """A frame for a field with something beside it (assets only), else None."""
+        if self.assets is None:
+            return None
+        if field.name_kind in PICTURE_KINDS | SOUND_KINDS | WHO_KINDS \
+                or (field.key == LOOK_KEY and self.owner is not None):
+            return ttk.Frame(self.grid, style="Dialog.TFrame")
+        return None
+
+    def _extras(self, holder: ttk.Frame, field: Field) -> None:
+        if field.name_kind in SOUND_KINDS:
+            button = ttk.Button(holder, text=PLAY, width=3, style="Secondary.TButton",
+                                command=lambda: self.toggle_sound(field.key))
+            button.pack(side="left")
+            self.play_buttons[field.key] = button
+        elif field.name_kind in WHO_KINDS:
+            dot = ttk.Label(holder, style="Dialog.TLabel")
+            dot.pack(side="left")
+            shown = ttk.Label(holder, text="", style="Dialog.Hint.TLabel")
+            shown.pack(side="left", padx=(round(6 * self.scale), 0))
+            self.dots[field.key] = (dot, shown)
+        else:
+            side = round(THUMB_PX * self.scale)
+            card = tk.Canvas(holder, width=side, height=side, background=ROLES["raised"],
+                             highlightthickness=1, highlightbackground=THEME["border"],
+                             borderwidth=0, takefocus=0)
+            card.pack(side="left")
+            self.thumbs[field.key] = card
+            self.thumb_shows[field.key] = None
+
+    def _who(self) -> str:
+        return str(self.vars[self.owner].get()).strip() if self.owner in self.vars else ""
+
+    def _looks(self) -> list[str]:
+        if self.assets is None or self.owner is None:
+            return []
+        who = self._who()
+        return list(self.assets.looks(self.assets.tag(who))) if who else []
+
+    def picture_of(self, key: str) -> str | None:
+        """The image name field ``key``'s thumbnail is for (None: none)."""
+        value = str(self.vars[key].get()).strip() if key in self.vars else ""
+        if key != LOOK_KEY or self.owner is None or self.assets is None:
+            return value or None
+        who = self._who()
+        if not who:
+            return None
+        tag = self.assets.tag(who)
+        return f"{tag} {value}" if value else tag
+
+    def _draw_thumb(self, key: str) -> None:
+        card = self.thumbs[key]
+        image_name = self.picture_of(key)
+        image = self.assets.thumb(image_name) if self.assets and image_name else None
+        self.thumb_shows[key] = image_name if image is not None else None
+        card.delete("all")
+        side = round(THUMB_PX * self.scale)
+        if image is not None:
+            card.create_image(side // 2 + 1, side // 2 + 1, image=image)
+            card.image = image                                       # type: ignore[attr-defined]
+        else:
+            card.create_text(side // 2 + 1, side // 2 + 1, text=NO_PICTURE,
+                             fill=THEME["muted"], width=side - 8, justify="center")
+
+    def _dot(self, color: str | None) -> tk.PhotoImage:
+        image = self._dot_images.get(color)
+        if image is None:
+            image = self._dot_images[color] = color_dot(self.dialog, color,
+                                                        round(DOT_PX * self.scale))
+        return image
+
+    def _sync_assets(self) -> None:
+        """Thumbnails, looks, dots and ▶/■ as the fields are now."""
+        assets = self.assets
+        if assets is None or not self.dialog.winfo_exists():
+            return
+        if self.owner is not None and LOOK_KEY in self.names:
+            box = self.names[LOOK_KEY]
+            looks = self._looks()
+            if looks != box.names:
+                box.set_names(looks)
+        for key in self.thumbs:
+            self._draw_thumb(key)
+        for key, (dot, shown) in self.dots.items():
+            who = str(self.vars[key].get()).strip()
+            name = assets.shown(who) if who else None
+            dot.configure(image=self._dot(assets.color(who)) if who else "")
+            shown.configure(text=name if name and name != who else "")
+        playing = assets.playing()
+        for key, button in self.play_buttons.items():
+            value = str(self.vars[key].get()).strip()
+            on = bool(value) and playing == value
+            button.configure(text=STOP if on else PLAY,
+                             state="normal" if value else "disabled")
+
+    def toggle_sound(self, key: str) -> None:
+        """▶ plays field ``key``'s sound; ■ (it is playing) stops it."""
+        if self.assets is None:
+            return
+        value = str(self.vars[key].get()).strip()
+        if not value:
+            return
+        if self.assets.playing() == value:
+            self.assets.stop()
+        else:
+            self.assets.play(value)
+        self._sync_assets()
+
+    def _close_assets(self) -> None:
+        if self.assets is not None:
+            if self.assets.on_change == self._sync_assets:
+                self.assets.on_change = None
+            if self.assets.playing() is not None:
+                self.assets.stop()
 
     def values(self) -> dict[str, str]:
         """Every field's value as typed (outer blanks dropped)."""
@@ -226,6 +448,7 @@ class FormDialog:
 
     def _changed(self) -> None:
         _set_card(self.card, self.preview())
+        self._sync_assets()                     # first: a new speaker changes the looks
         for name_box in self.names.values():
             text = name_box.hint_text()
             name_box.hint.configure(text=text)
@@ -241,18 +464,22 @@ class FormDialog:
     def _pick(self, index: int) -> None:
         if index == 0:
             self.result = self.values()
+        self._close_assets()
         self.dialog.destroy()
 
     def run(self, parent: tk.Misc) -> dict[str, str] | None:
         first = next(iter(self.widgets.values()), self.buttons[0])
         dialogs._run(parent, self.dialog, first)
+        self._close_assets()
         return self.result
 
 
 def edit_form(parent: tk.Misc, form: CommandForm, values: Mapping[str, str], *,
-              names: Mapping[str, Sequence[str]], ok: str = OK) -> dict[str, str] | None:
-    """``form``'s modal dialog: its values after OK, or None (Cancel, Esc, the close box)."""
-    return FormDialog(parent, form, values, names=names, ok=ok).run(parent)
+              names: Mapping[str, Sequence[str]], ok: str = OK,
+              assets: FormAssets | None = None) -> dict[str, str] | None:
+    """``form``'s modal dialog: its values after OK, or None (Cancel, Esc, the close box).
+    ``assets``: thumbnails, ▶/■ and colour dots (``FormAssets``)."""
+    return FormDialog(parent, form, values, names=names, ok=ok, assets=assets).run(parent)
 
 
 # --- The Choice form ----------------------------------------------------------------------------
@@ -816,6 +1043,6 @@ def pick_scene(parent: tk.Misc, names: Sequence[str], *, title: str = PICK_SCENE
     return ScenePicker(parent, names, title=title, ok=ok).run(parent)
 
 
-__all__ = ["ChoiceDialog", "FormDialog", "InsertPicker", "NOT_FOUND", "NewSceneDialog",
+__all__ = ["ChoiceDialog", "FormAssets", "FormDialog", "InsertPicker", "NOT_FOUND", "NewSceneDialog",
            "ScenePicker", "ask_new_scene", "edit_choice", "edit_form", "entry_title",
            "new_values", "pick_insert", "pick_scene", "scene_name"]
