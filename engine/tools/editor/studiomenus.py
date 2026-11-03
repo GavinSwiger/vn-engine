@@ -21,6 +21,8 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
+from engine.tools.editor.builddialog import open_build_dialog
+from engine.tools.build.texts import MENU as BUILD_MENU
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
 PLAY_MENU = "Play"                      # Run menu (F47 §6.1)
@@ -73,6 +75,9 @@ class StudioMenus:
                 SEPARATOR,
                 Item("Save", f"{key}+S", self.save_current),
                 Item("Save all", f"{key}+Shift+S", self.save_all),
+                SEPARATOR,
+                Item(BUILD_MENU, f"{key}+Shift+B", lambda: open_build_dialog(self),
+                     guarded=True),
                 SEPARATOR,
                 Item("Close", command=self.on_close),
             ]),

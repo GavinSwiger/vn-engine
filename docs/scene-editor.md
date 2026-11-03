@@ -122,9 +122,9 @@ inside the double quotes.
 
 ## Keys
 
-- Ctrl+S: save. Ctrl+Shift+S: save all.
+- Ctrl+S: save. Ctrl+Shift+S: save all. Ctrl+Shift+B: [Build game](build-game.md).
 - Ctrl+N: new script file. Ctrl+Shift+O: Add files…
-- F2, Delete: rename or delete the file selected in the **Project** panel.
+- F2, Delete: rename or delete the selected **Project** file.
 - Ctrl+Space: completion. Ctrl+G: Go to label.
 - Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5: Editor, Story map, [Database](database.md),
   Asset, Outline.

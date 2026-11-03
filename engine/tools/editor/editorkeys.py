@@ -13,6 +13,7 @@ from __future__ import annotations
 import tkinter as tk
 from collections.abc import Callable
 
+from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.studiolook import FONT_STEP_PX
 
 EDITOR = "editor"       # bound on the editor texts' bindtag
@@ -63,6 +64,8 @@ class EditorKeys:
             ((f"<{mod}-Shift-S>",), lambda _e: brk(self.save_all), MAIN),
             (both("n"), lambda _e: brk(self.new_script_file), MAIN),
             ((f"<{mod}-Shift-O>",), lambda _e: brk(self.add_files), MAIN),
+            # F42: File ▸ Build game… (it does nothing while a build runs).
+            ((f"<{mod}-Shift-B>",), lambda _e: brk(open_build_dialog, self), MAIN),
             (both("g"), lambda _e: brk(self.go_to_label), MAIN),
             (("<F7>",), lambda _e: brk(self.check_now), MAIN),
             # Ctrl+1, Ctrl+2, …: one per tab, in ``tabs`` order.

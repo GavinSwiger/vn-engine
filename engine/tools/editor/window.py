@@ -73,6 +73,8 @@ from engine.tools.editor.config_help import (
     config_help,
     section_at,
 )
+from engine.tools.build import texts as build_texts
+from engine.tools.editor.builddialog import build_running
 from engine.tools.editor.dialogs import ask, show_error
 from engine.tools.editor.document import (
     SaveError,
@@ -1469,6 +1471,12 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         """The close box, Alt+F4, and Cmd+Q: ask about unsaved files, then close."""
         if self.closed:
             return
+        if build_running(self):                 # F42 PR-F42-23: CLOSE_WHILE_BUILDING
+            if ask(self.root, build_texts.CLOSE_WHILE_BUILDING,
+                   (build_texts.STOP_AND_CLOSE, build_texts.KEEP_BUILDING),
+                   escape=1, default=1) != 0:
+                return
+            self.build_runner.stop()            # the tree is killed and staging removed
         dirty = self.dirty_files()
         if dirty:
             choice = ask(self.root, close_message([record.ref for record in dirty]),
