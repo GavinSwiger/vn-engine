@@ -5,11 +5,12 @@ import pytest
 
 from engine.core.config_schema import SECTIONS, config_fields, section_class
 from engine.tools.editor import settingsmodel as sm
+from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 
 def test_ac16_p1_pages_and_all_settings_reach_every_key():
     shown = sm.pages()
-    assert [p.title for p in shown if p.key not in sm.P2_PAGES] == [
+    assert [p.title for p in shown if p.key not in (*sm.P2_PAGES, sm.LOOKS)] == [
         "Game", "Title screen", "Text box", "Content warning", "All settings"]
     assert [f.path for f in sm.page("game").fields] == [
         "game.title", "game.version", "window.width", "window.height", "window.fullscreen",
@@ -27,8 +28,8 @@ def test_ac16_p1_pages_and_all_settings_reach_every_key():
     # section a later feature adds too, is on All settings or text only with a reason.
     assert {k.split(".")[0] for k in sm.all_keys()} >= set(SECTIONS)
     for key in sm.all_keys():
-        assert key in sm.fields_by_path() or sm.text_only(key), key
-    assert sm.text_only("playthrough.<N>.title_entries") == sm.LOOK_REASON
+        assert key in sm.fields_by_path() or sm.text_only(key) or sm.on_looks_page(key), key
+    assert sm.on_looks_page("playthrough.<N>.title_entries")            # W9's Looks page
     assert set(paths[sm.ALL_SETTINGS]) == set(sm.fields_by_path())
     for p in shown[:-1]:                               # hand-picked keys are real keys
         assert paths[p.key] <= paths[sm.ALL_SETTINGS], p.key

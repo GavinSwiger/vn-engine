@@ -20,6 +20,10 @@ change.
   "This one is written in a way the form can't edit." and **Edit as script**.
 - A ``config.toml`` that doesn't parse shows only PR-F47-18's message and **Open in Editor**.
 - **All settings** lists every section, built a few sections at a time, with a search box.
+- **Styles & playthrough looks** (F47 W9): a picker of the file's ``[style.<name>]`` and
+  ``[playthrough.N]`` tables, **+ New style** and **+ New playthrough look** (a name, then
+  one key written so the table exists), and the shown look's fields (``settingsmodel``'s
+  ``look_page``; a key not set keeps the main look).
 
 The tab reads ``config.toml`` again when it shows, after each check (``win.on_check_done``),
 after each of its writes and when the document's text changed since it last looked.
@@ -36,7 +40,7 @@ from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import settingsmodel as sm
 from engine.tools.editor import tomlpatch
 from engine.tools.editor.dbmodel import EDIT_AS_SCRIPT
-from engine.tools.editor.dialogs import ask, show_error
+from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import SaveError, encode
 from engine.tools.editor.fieldwidgets import (
     AssetPicker,
@@ -87,7 +91,23 @@ INTRO: Mapping[str, str] = {
     "fourth_wall": "Moments where the game reaches outside itself.",
     "words": "Every word the game shows. Change one to rename or translate it.",
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
+    sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
+               "the story says so (a Game UI line). A playthrough look changes the title "
+               "screen from that playthrough on. Anything a look doesn't set keeps the main "
+               "look."),
 }
+# W9: the Styles & playthrough looks page (design §4.4 PR-F47-17).
+LOOK_LABEL = "Look"
+NEW_STYLE = "+ New style"
+NEW_PLAYTHROUGH = "+ New playthrough look"
+NO_LOOKS = "No styles or playthrough looks yet."
+NO_LOOKS_HINT = "Add one with + New style."
+NEW_STYLE_ASK = ("Name the new style. The story turns it on with a Game UI line "
+                 "(ui style <name>).")
+NEW_PLAYTHROUGH_ASK = ("Which playthrough is this title look for? It shows once "
+                       "persistent.playthrough reaches this number.")
+CREATE = "Create"
+LOOK_DELETE_HINT = "To delete a look, remove its tables in the Editor."
 
 # --- Sizes (px at 100 %) ----------------------------------------------------------------------
 
@@ -221,6 +241,7 @@ class SettingsPane:
         self._playing_path: str | None = None
         self._image: tk.PhotoImage | None = None
         self.compact = False
+        self.look: tuple[str, str] | None = None    # W9: the look the Looks page shows
 
         style = ttk.Style(self.root)
         style.configure("Caption.TLabel", background=THEME["editor.background"],
@@ -484,7 +505,7 @@ class SettingsPane:
         self.found = found if found is not None else {}
         if changed or self.form_key is None:
             self.complex_paths = self._complex_paths(text)
-        key = (self.page.key, self.complex_paths, self.search_text())
+        key = (self.page.key, self.complex_paths, self.search_text(), self._looks_key())
         if key != self.form_key:
             self._build_form()
             self.form_key = key
@@ -507,7 +528,7 @@ class SettingsPane:
 
     def _complex_paths(self, text: str) -> frozenset[str]:
         """The keys of the page on screen that ``tomlpatch`` refuses as too complex."""
-        fields = sm.page(self.page.key).fields if self.page.key != sm.ALL_SETTINGS \
+        fields = self._page_fields() if self.page.key != sm.ALL_SETTINGS \
             else self._interesting(text)
         return frozenset(f.path for f in fields if self._is_complex(text, f))
 
@@ -556,8 +577,108 @@ class SettingsPane:
             self._pending = list(sections)
             self._build_more()
             return
+        if self.page.key == sm.LOOKS:
+            self._build_looks(body)
+            return
         for section in self.page.sections:
             self._build_section(body, section)
+
+    # --- Styles & playthrough looks (W9) -----------------------------------------------------
+
+    def looks(self) -> tuple[tuple[str, str], ...]:
+        """The look tables in ``config.toml``'s open text."""
+        return sm.looks(self.text or "")
+
+    def _looks_key(self) -> tuple:
+        """The Looks page's part of the form key: the looks and the one shown (kept, else
+        the first); () on other pages."""
+        if self.page.key != sm.LOOKS:
+            return ()
+        found = self.looks()
+        if self.look not in found:
+            self.look = found[0] if found else None
+        return (found, self.look)
+
+    def _page_fields(self) -> tuple[sm.Field, ...]:
+        if self.page.key == sm.LOOKS:
+            self._looks_key()
+            return sm.look_page(*self.look).fields if self.look is not None else ()
+        return sm.page(self.page.key).fields
+
+    def _build_looks(self, body: ttk.Frame) -> None:
+        """The look picker, + New style and + New playthrough look, then the shown look's
+        sections (or the empty state)."""
+        px = self._px
+        found = self.looks()
+        bar = ttk.Frame(body)
+        bar.pack(fill="x", pady=(px(4), 0))
+        self.look_box: ttk.Combobox | None = None
+        if found:
+            ttk.Label(bar, text=LOOK_LABEL).pack(side="left", padx=(0, px(8)))
+            titles = [sm.look_title(*look) for look in found]
+            box = self.look_box = ttk.Combobox(bar, values=titles, state="readonly",
+                                               width=28)
+            if self.look in found:
+                box.current(found.index(self.look))
+            box.bind("<<ComboboxSelected>>",
+                     lambda _e: self.select_look(found[box.current()]), add="+")
+            box.pack(side="left")
+        buttons = ttk.Frame(body)                 # their own row: they fit a narrow form
+        buttons.pack(fill="x", pady=(px(8), 0))
+        self.new_style_button = ttk.Button(buttons, text=NEW_STYLE, style="Secondary.TButton",
+                                           command=lambda: self.new_look(sm.STYLE))
+        self.new_style_button.pack(side="left")
+        self.new_playthrough_button = ttk.Button(
+            buttons, text=NEW_PLAYTHROUGH, style="Secondary.TButton",
+            command=lambda: self.new_look(sm.PLAYTHROUGH))
+        self.new_playthrough_button.pack(side="left", padx=(px(8), 0))
+        if self.look is None:
+            ttk.Label(body, text=NO_LOOKS, style="EmptyTitle.TLabel").pack(
+                anchor="w", pady=(px(24), 0))
+            ttk.Label(body, text=NO_LOOKS_HINT, style="Hint.TLabel").pack(anchor="w")
+            return
+        ttk.Label(body, text=LOOK_DELETE_HINT, style="Hint.TLabel").pack(
+            anchor="w", pady=(px(6), 0))
+        for section in sm.look_page(*self.look).sections:
+            self._build_section(body, section)
+
+    def select_look(self, look: tuple[str, str]) -> None:
+        """Show ``look`` ((kind, name)) on the Looks page."""
+        if look == self.look:
+            return
+        self.look = look
+        self.form_key = None
+        self.complex_paths = self._complex_paths(self.text or "")
+        self.refresh()
+
+    def new_look(self, kind: str, name: str | None = None) -> bool:
+        """+ New style / + New playthrough look: ask for its name (``name``: tests), then
+        write its first key as one undo step and show it."""
+        text = self.config_text()
+        if text is None:
+            return False
+        if name is None:
+            taken = [n for k, n in sm.looks(text) if k == kind]
+            start = "" if kind == sm.STYLE else str(
+                next((n for n in range(2, 100) if str(n) not in taken), 2))
+            answer = ask_text(self.root, NEW_STYLE_ASK if kind == sm.STYLE
+                              else NEW_PLAYTHROUGH_ASK, start, ok=CREATE,
+                              hint=lambda typed: sm.new_look_problem(kind, typed, text)
+                              if typed.strip() else None, select_stem=False)
+            if answer is None:
+                return False
+            name = answer[0]
+        name = name.strip()
+        problem = sm.new_look_problem(kind, name, text)
+        if problem is not None:
+            show_error(self.root, problem)
+            return False
+        section, key, value = sm.new_look_change(kind, name, self.found)
+        found = sm.look_page(kind, name).fields
+        field = next(f for f in found if f.section == section and f.key == key)
+        self.look = (kind, name)
+        self.form_key = None
+        return self._apply(tomlpatch.plan_set(text, section, key, value), field)
 
     def _build_more(self) -> None:
         """All settings: the next few sections, then the rest on later idle steps (each
@@ -717,7 +838,8 @@ class SettingsPane:
         if text is None:
             self.refresh()
             return False
-        if not found.is_set(self.found) and same_value(found, value, found.default):
+        if not found.is_set(self.found) and same_value(found, value, found.default) \
+                and not sm.is_look(found):      # a look's "not set" is the main look
             self.refresh()
             return True                 # the default, unchanged: nothing to write
         return self._apply(tomlpatch.plan_set(text, found.section, found.key, value), found)

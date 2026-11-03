@@ -15,7 +15,9 @@ provider for a Studio window, built from what the Database shows:
   child; ``changed()`` when one arrives); a colour background is its colour;
 - sounds through the window's ``HelperHub`` (one at a time; ``changed()`` on its replies);
 - the condition builder's names (F47 P2): story and remembered variables
-  (``persistent.<name>``), meters, codex tips and items, and routes, as declared.
+  (``persistent.<name>``), meters, codex tips and items, and routes, as declared;
+- W9: the Meta file form's names from ``files/`` (F31's originals) and the Game UI form's
+  styles from ``config.toml``'s open text (``[style.<name>]``, then ``off``).
 
 ``refresh()`` re-reads all of it; the Events tab calls it each time a form opens.
 Imports the standard library, ``tkinter`` and its own package; never pygame.
@@ -25,14 +27,21 @@ import tkinter as tk
 from collections.abc import Sequence
 from typing import Any
 
+from engine.core.paths import is_meta_name
+from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import files
 from engine.tools.editor.fieldwidgets import THUMB_PX
+from engine.tools.editor.forms_files_ui import STYLE_OFF
+from engine.tools.editor.settingsmodel import style_names
 from engine.tools.editor.formdialogs import FormAssets
 from engine.tools.editor.helperhub import ThumbLoader, hub_for
 from engine.tools.editor.theme import scale_of
 
 AUDIO_PREFIX = "audio/"
+META_FILE_KIND = "meta_file"                    # W9: the Meta file form's names
+META_GROUP = "files"                            # F31's asset group of originals
+STYLE_KIND = "style"                            # W9: the Game UI form's styles
 # Declaration kinds → the name kind the forms' pickers ask for.
 _DECLARED = {dec.VARIABLE: "variable", dec.PERSISTENT: "variable", dec.METER: "meter",
              dec.TIP: "tip", dec.ITEM: "item", dec.ROUTE: "route"}
@@ -110,7 +119,29 @@ class WindowAssets(FormAssets):
             tags = {name.split()[0] for name in self.image_names if len(name.split()) > 1}
             return tuple(sorted((t for t in tags if t.casefold() != dec.BACKGROUND_TAG),
                                 key=str.casefold))
+        if kind == META_FILE_KIND:
+            return self.meta_files()
+        if kind == STYLE_KIND:
+            return (*style_names(self._config_text()), STYLE_OFF)
         return ()
+
+    # --- W9: meta file originals and config styles ----------------------------------------
+
+    def meta_files(self) -> tuple[str, ...]:
+        """The originals in ``files/`` (F31's names only), so a new one is offered before
+        the next check."""
+        project = getattr(self.win, "project", None)
+        refs = project.file_refs(META_GROUP) if project is not None else []
+        names = (ref.rpartition("/")[2] for ref in refs)
+        return tuple(sorted(n for n in names if is_meta_name(n)))
+
+    def _config_text(self) -> str:
+        """``config.toml``'s editor text (unsaved changes included), or ""."""
+        try:
+            record = self.win.record_for(CONFIG_REF)
+            return record.widget.get("1.0", "end-1c") if record.editable else ""
+        except Exception:  # noqa: BLE001  (no config open: no styles to offer)
+            return ""
 
     def _character_of(self, who: str) -> dict | None:
         """``who``'s Character values: by its ``define`` name, else by its sprite tag."""
