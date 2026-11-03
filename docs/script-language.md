@@ -779,6 +779,64 @@ The squares use the `button.*` and `panel.*` settings. The words are `extras` "E
 | `there is no gallery picture "cg festivl". Did you mean "cg festival"? Add pictures to the gallery at the top level, e.g. lock gallery cg festivl "Title".` | Fix the name, or add the picture to the gallery. |
 | `the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.` (warning, dev runs) | Show the picture somewhere, add an `unlock gallery` line, or take it out of the gallery. |
 
+### lock track (music room)
+```
+lock track main_theme "Main Theme" file "bgm/main_theme.ogg" open
+lock track festival "Festival Night" file "bgm/festival.ogg"
+lock track credits "Paper Lanterns" file "bgm/credits.ogg" until true
+```
+
+The **Music Room** is a page of **Extras**, on the title screen, where players listen to
+the game's music again. It lists the tracks in the order of their lines; a track that isn't
+open yet is a `???` row. Picking a row plays it from the start; the buttons are Previous,
+Play/Pause, Next, and Play all / Repeat track (Play all plays each open track once, then the
+next; Repeat track plays the same one again and again). Page Up and Page Down, and a
+gamepad's shoulder buttons, are Previous and Next too.
+
+**Declare** each track once at the top level of any file: **`lock track name "Title" file
+"file"`**, then how it opens.
+- **Name**: a name as in section 6, up to 64 characters. The game remembers a heard track
+  by its name, so you can change its file later.
+- **Title**: plain text, 1–60 characters, shown in the list. No `{b}` or `{var}` (write
+  `{{` for a `{`).
+- **File**: as `play music` writes it, inside `audio/`. Each file is in the Music Room
+  once, and each name once. Up to 200 tracks.
+- **How it opens**:
+  - nothing more: the track opens the first time the story plays its file, with `play
+    music` or `queue music` (loading a save that has it playing counts too), and **stays
+    open across playthroughs**;
+  - **`open`**: it is there from the start;
+  - **`until ending, ending`**: it opens once the player has reached every one of those
+    endings, and closes again if a `lock ending` line makes the game forget one.
+
+There is no `unlock track` line, and `lock track` goes only at the top level.
+
+The **Extras** button (and the Music Room in it) shows once at least one track is open.
+While the Music Room is open, its track plays in place of the title music, at the
+player's Music volume; leaving the page fades it out and the title music starts again.
+To try the Music Room while you work, run `python -m engine run game --extras music_room`
+(dev runs only): every track counts as open, and nothing is saved. Players close the heard
+tracks again with "delete persistent data" in Settings.
+
+`track`, `open` and `until` are still free as names: they mean something only right after
+`lock`. (`file` is a statement word of its own, section 23.)
+
+**Words**: `music_room` "Music Room", `music_play` "Play", `music_pause` "Pause",
+`music_previous` "Previous", `music_next` "Next", `music_play_all` "Play all",
+`music_repeat_one` "Repeat track", `music_locked` "???", and `music_pick` "Pick a track to
+play.", each changed under `[words]`. The page uses the `list.*`, `button.*`, `panel.*` and
+`slider.*` settings.
+
+| Message | Fix |
+|---|---|
+| `lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".` / `this line has "loud" left over. lock track takes a name, a title, file "…", then open or until and endings, in that order.` / `until needs 1 to 32 ending names, e.g. until good, true.` | Write the line in that order. |
+| `lock track main_theme "Main Theme" declares a music-room track, so it goes at the top level.` / `there is no unlock track: a track opens when the story plays its music. Add open or until to its lock track line to open it another way.` | Declare tracks at the top level; use `open` or `until` instead of an unlock line. |
+| `the track title is empty.` / `the track title has 75 characters; keep it to 60.` / `track titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".` | Plain titles of 1–60 characters. |
+| `there are two tracks named "festival": here and at database.vns, line 4. Give each track its own name.` / `tracks festival and night_walk both play "music/festival.ogg". Put each file in the music room once.` / `this story has 230 music-room tracks; the engine allows 200.` | One line per name and per file; up to 200 tracks. |
+| `until names endings, but there is no ending "ture". Did you mean "true"?` | Use the name of an `ending` line. |
+| `track festival plays "music/festval.ogg", but there is no such file in audio/. Did you mean "music/festival.ogg"?` (warning, dev runs) | Fix the file name, or add the file. |
+| `track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.` (warning, dev runs) | Play the file somewhere in the story, or add `open` or `until`. |
+
 ### flowchart (the story map)
 ```
 lock route promise "Hana's Promise" until sad, good

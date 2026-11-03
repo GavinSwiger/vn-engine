@@ -2475,10 +2475,10 @@ script/main.vns, line 7: unlock ending can't be used: an ending is recorded when
 script/main.vns, line 7: lock route promise declares a route, so it goes at the top level. To lock it again during the story, write lock route promise with no title.
 
 [F19-04-E244-top-1]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-04-E244-top-2]
-script/main.vns, line 16: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 16: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F19-05-E241-ending]
 script/main.vns, line 9: there are two endings named "sad": here and at script/main.vns, line 7. Give each ending its own name.
@@ -2650,7 +2650,7 @@ script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gall
 script/main.vns, line 10: lock and unlock take route, ending, tip, item, or gallery, then a name, e.g. unlock route promise.
 
 [F21-02-E244-top]
-script/main.vns, line 12: at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
+script/main.vns, line 12: at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.
 
 [F21-03-E252-1]
 script/main.vns, line 12: the tip name has 65 characters; keep it to 64.
@@ -3894,3 +3894,85 @@ script/main.vns, line 5: there is no gallery picture "cg qqqq". Add pictures to 
 
 [F34-15-W226]
 script/main.vns, line 9: the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.
+
+[F35-01-E336-need-1]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-2]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-3]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-4]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-5]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-6]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-need-7]
+script/main.vns, line 9: lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".
+
+[F35-01-E336-left-1]
+script/main.vns, line 9: this line has "loud" left over. lock track takes a name, a title, file "…", then open or until and endings, in that order.
+
+[F35-01-E336-left-2]
+script/main.vns, line 9: this line has "loud" left over. lock track takes a name, a title, file "…", then open or until and endings, in that order.
+
+[F35-01-E336-left-3]
+script/main.vns, line 9: this line has "loud" left over. lock track takes a name, a title, file "…", then open or until and endings, in that order.
+
+[F35-01-E336-top]
+script/main.vns, line 5: lock track main_theme "Main Theme" declares a music-room track, so it goes at the top level.
+
+[F35-01-E336-unlock-1]
+script/main.vns, line 9: there is no unlock track: a track opens when the story plays its music. Add open or until to its lock track line to open it another way.
+
+[F35-01-E336-unlock-2]
+script/main.vns, line 9: there is no unlock track: a track opens when the story plays its music. Add open or until to its lock track line to open it another way.
+
+[F35-01-E336-unlock-3]
+script/main.vns, line 11: there is no unlock track: a track opens when the story plays its music. Add open or until to its lock track line to open it another way.
+
+[F35-01-E336-title-1]
+script/main.vns, line 9: the track title is empty.
+
+[F35-01-E336-title-2]
+script/main.vns, line 9: the track title is empty.
+
+[F35-01-E336-title-3]
+script/main.vns, line 9: the track title has 75 characters; keep it to 60.
+
+[F35-01-E336-title-4]
+script/main.vns, line 9: track titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".
+
+[F35-01-E336-until-1]
+script/main.vns, line 9: until needs 1 to 32 ending names, e.g. until good, true.
+
+[F35-01-E336-until-2]
+script/main.vns, line 9: until needs 1 to 32 ending names, e.g. until good, true.
+
+[F35-01-E336-until-3]
+script/main.vns, line 9: until needs 1 to 32 ending names, e.g. until good, true.
+
+[F35-01-E336-until-4]
+script/main.vns, line 9: until needs 1 to 32 ending names, e.g. until good, true.
+
+[F35-01-E338-1]
+script/main.vns, line 9: until names endings, but there is no ending "ture". Did you mean "true"?
+
+[F35-01-E338-2]
+script/main.vns, line 9: until names endings, but there is no ending "qqqq". Use the name of an ending line.
+
+[F35-02-E337-1]
+script/main.vns, line 10: there are two tracks named "festival": here and at script/main.vns, line 9. Give each track its own name.
+
+[F35-02-E337-2]
+script/main.vns, line 10: tracks festival and night_walk both play "music/festival.ogg". Put each file in the music room once.
+
+[F35-02-W221]
+script/main.vns, line 9: track festival plays "music/festival.ogg", but there is no such file in audio/.
+script/main.vns, line 9: track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.

@@ -23,7 +23,9 @@ Flows (§7.7):
   over the in-game screens only in mode GAME with no menu open. Its Main Menu and Quit ask
   first (``ask_main_menu``, ``ask_quit``: No is focused when opened by keys).
 - **Extras** (F34, ``open_extras``, the title's ``extras`` button): the title-page screen
-  filled from the ``extras`` menu, pushed over the title only in mode TITLE.
+  filled from the ``extras`` menu, pushed over the title only in mode TITLE. F35's Music Room
+  borrows the title's music stream (``room_music``) and gives it back when it closes
+  (``resume_title_music``, which does nothing once the title is going, F36 07 I-5).
 - **Return to title** (``return_to_title``, Main Menu → Yes): the question goes at once,
   story audio stops, everything fades to black over ``ui.fade_ms`` (no input), then the
   title.
@@ -908,6 +910,31 @@ class GameShell:
         if self._music is not None and not self._music_stopping:
             self._music.stop(fadeout=self.config.audio.music_fadeout)
         self._music_stopping = True
+
+    def room_music(self) -> MusicHandle | None:
+        """F35 (``SPEC.md`` §5.1, PR-F35-05): the music handle the Music Room plays on, the
+        title's own (taken now when the title has no music, so the room still holds the
+        stream). None with no audio, off the title, or while the title is going."""
+        audio = self.ports.audio
+        if audio is None or self.mode is not Mode.TITLE or self._music_stopping:
+            return None
+        if self._music is None:
+            self._music = audio.take_music(TITLE_MUSIC_OWNER)
+        return self._music
+
+    def resume_title_music(self) -> None:
+        """F35: the Music Room closed. The title's track plays again from its start with
+        ``[audio] music_fadein`` (the room's track fades out over ``music_fadeout`` as it
+        starts), or the handle is released when the title has no music. Nothing unless the
+        shell is on the title and not leaving it (F36 07 I-5: a replay's cut or a quit closes
+        the room after the title music was let go)."""
+        if self.mode is not Mode.TITLE or self._music_stopping:
+            return
+        file = self.title_music_file()
+        if file is None:
+            self._release_title_music()
+            return
+        self.title_entered()
 
     def title_exited(self) -> None:
         """``TitleScreen.on_exit``: whatever replaced the title, its music is let go."""

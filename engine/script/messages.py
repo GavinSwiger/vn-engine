@@ -2942,7 +2942,9 @@ def _e243(form: str = "need", *args: object) -> str:
 
 
 # E244's ``top`` form names what each row declares; a row's word unless listed here.
-_TOP_NOUNS: dict[str, str] = {"gallery": "gallery picture"}
+_TOP_NOUNS: dict[str, str] = {"gallery": "gallery picture", "track": "music-room track"}
+# Rows with no in-label form (F35's ``track``: E336), left out of E244's ``need`` list.
+_TOP_ONLY: frozenset[str] = frozenset({"track"})
 
 
 def _e244(form: str = "need", *args: object) -> str:
@@ -2963,7 +2965,7 @@ def _e244(form: str = "need", *args: object) -> str:
                 "ending line.")
     if form == "top":
         # F21 07 I-14: the words of the rows with a top-level form, table order.
-        # F34: the gallery row declares a picture ("a route, tip, item, or gallery picture").
+        # F34: the gallery row declares a picture; F35: the track row a music-room track.
         words = [_TOP_NOUNS.get(str(w), str(w)) for w in args[0]] if args and args[0] \
             else ["route"]
         return (f'at the top level, lock only declares a {_join_or(words)}, e.g. lock route '
@@ -2972,7 +2974,8 @@ def _e244(form: str = "need", *args: object) -> str:
         name = show_name(str(args[0])) if args else "promise"
         return (f"lock route {name} declares a route, so it goes at the top level. To lock it "
                 f"again during the story, write lock route {name} with no title.")
-    words = [str(w) for w in args[0]] if args and args[0] else ["route", "ending"]
+    words = ([str(w) for w in args[0] if str(w) not in _TOP_ONLY] if args and args[0]
+             else ["route", "ending"])
     return (f"lock and unlock take {_join_or(words)}, then a name, e.g. unlock route "
             "promise.")
 
@@ -3232,6 +3235,83 @@ def _e345(picture: str = "cg festivl", suggestion: str | None = None) -> str:
 def _w226(picture: str = "cg storm") -> str:
     return (f'the gallery picture "{show_name(str(picture))}" never shows in the story and no '
             "unlock gallery line names it, so players can't get it.")
+
+
+# --- F35 Music room (F35 SPEC.md §3) -------------------------------------------------------------
+# Load E336 (engine/script/musicroom.py); E337, E338, W220, W221 (checks.py; W220 and W221 dev
+# only, area script). W222 is claimed and spare. Track and ending names go through
+# ``show_name``, titles, files and leftovers through ``show``; nothing read from the
+# persistent file is printed.
+
+_TRACK_EXAMPLE = 'lock track main_theme "Main Theme" file "music/main_theme.ogg"'
+
+
+def _e336(form: str = "need", *args: object) -> str:
+    """``need``; ``left`` (written); ``top`` ([name[, title as written]]); ``unlock``;
+    ``empty``; ``long`` (count, limit); ``tags``; ``until``."""
+    if form == "left":
+        written = str(args[0]) if args else "loud"
+        return (f'this line has "{show(written)}" left over. lock track takes a name, a title, '
+                'file "…", then open or until and endings, in that order.')
+    if form == "top":
+        name, title = (args + ("main_theme", '"Main Theme"')[len(args):])[:2]
+        line = f"lock track {show_name(str(name))}"
+        if title is not None:
+            line += f" {show(str(title))}"
+        return f"{line} declares a music-room track, so it goes at the top level."
+    if form == "unlock":
+        return ("there is no unlock track: a track opens when the story plays its music. Add "
+                "open or until to its lock track line to open it another way.")
+    if form == "empty":
+        return "the track title is empty."
+    if form == "long":
+        count, limit = (args + (75, 60)[len(args):])[:2]
+        return f"the track title has {int(count):,} characters; keep it to {int(limit):,}."
+    if form == "tags":
+        return ("track titles are shown as written, so they can't use text tags such as {b}. "
+                'Write {{ for a "{".')
+    if form == "until":
+        return "until needs 1 to 32 ending names, e.g. until good, true."
+    return f"lock track needs a name, a title in quotes and a file, e.g. {_TRACK_EXAMPLE}."
+
+
+def _e337(form: str = "twice", *args: object) -> str:
+    """``twice`` (name, first place); ``file`` (first name, this name, file); ``many``
+    (count, limit)."""
+    if form == "file":
+        first, name, file = (args + ("festival", "night_walk",
+                                     "music/festival.ogg")[len(args):])[:3]
+        return (f"tracks {show_name(str(first))} and {show_name(str(name))} both play "
+                f'"{show(str(file))}". Put each file in the music room once.')
+    if form == "many":
+        count, limit = (args + (230, 200)[len(args):])[:2]
+        return (f"this story has {int(count):,} music-room tracks; the engine allows "
+                f"{int(limit):,}.")
+    name, first = (args + ("festival", ("database.vns", 4))[len(args):])[:2]
+    return (f'there are two tracks named "{show_name(str(name))}": here and at '
+            f"{_place(first)}. Give each track its own name.")  # type: ignore[arg-type]
+
+
+def _e338(name: str = "ture", suggestion: str | None = "true") -> str:
+    text = f'until names endings, but there is no ending "{show_name(str(name))}".'
+    if suggestion is not None:
+        return text + " " + _did_you_mean(str(suggestion), str(name))
+    return text + " Use the name of an ending line."
+
+
+def _w220(name: str = "festival", file: str = "music/festval.ogg",
+          suggestion: str | None = "music/festival.ogg") -> str:
+    text = (f'track {show_name(str(name))} plays "{show(str(file))}", but there is no such file '
+            "in audio/.")
+    if suggestion is not None:
+        text += f' Did you mean "{show(str(suggestion))}"?'
+    return text
+
+
+def _w221(name: str = "festival", file: str = "music/festival.ogg") -> str:
+    return (f'track {show_name(str(name))} opens when the story plays "{show(str(file))}", but '
+            "no play music or queue music line plays it, so players never get it. Add open or "
+            "until, or play it in the story.")
 
 
 # --- F23 minigames (02-script.md §4.1; 04 §5.2, §5.3, §5.4) ---------------------------------
@@ -4228,6 +4308,12 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E344": _e344,
     "E345": _e345,
     "W226": _w226,
+    # F35 music room (SPEC §3): load E336 (musicroom.py); E337, E338, W220, W221 (checks.py).
+    "E336": _e336,
+    "E337": _e337,
+    "E338": _e338,
+    "W220": _w220,
+    "W221": _w221,
     # F23 minigames (02 §4.1): load E270, E271 (minigame.py, checks.py; E270's $ form
     # pycheck.py); run E272 (runtime/minigame.py, F23 s2). Drafts per the section comment.
     "E270": _e270,

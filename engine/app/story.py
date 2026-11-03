@@ -65,6 +65,9 @@ launch (``app/loading.py`` calls it after the launch phase). Seams, one line eac
   after them. Dev ``run --extras``: ``preview_all`` unlocks every Extras name in the memory
   store after every install, just before ``check_entries``. ``install_stage`` keeps the
   launch's ``ImagePrefetcher`` on ``app.prefetcher`` (the thumbnails use it on the title).
+- F35 S2 (``SPEC.md`` §5.1, §5.2): ``install_music_room`` right after ``install_gallery``:
+  the ``"track"`` kind (before ``preview_all``, 07 I-6), F08's ``on_track_started`` hook,
+  and the Music Room's Extras row.
 
 The watchdog (§7.7; the thread rule of ``docs/architecture.md``, ``07`` §3.3): author code
 runs only on the main thread, between ``guard.enter()`` and ``guard.exit()``. The watchdog's
@@ -106,6 +109,7 @@ from engine.app.history import install_history
 from engine.app.looks import install_looks
 from engine.app.menus import install_ui
 from engine.app.minigames import install_minigames
+from engine.app.musicroom import install_music_room
 from engine.app.points import install_points
 from engine.app.rollback import install_rollback
 from engine.app.saves import install_saves
@@ -471,6 +475,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_flowchart_page(app, interp)                      # F20 s8: page, entries
     install_extras(app)                                      # F34: Extras button, thumbnails
     install_gallery(app, interp, images)                     # F34: the Gallery page
+    install_music_room(app, interp)                          # F35: the Music Room page
     install_settings_ui(app)                                 # F16 (I-11): last entry install
     preview_all(app, interp.persistent)                      # F34: run --extras only
     shell.check_entries()                                    # W66, W68: always the last line

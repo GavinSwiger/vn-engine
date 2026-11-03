@@ -1551,6 +1551,17 @@ class WordsConfig:
     # picture tile not seen yet. ``extras`` (the title button) is F10's.
     gallery: str = _word("Gallery")
     gallery_locked: str = _word("???")
+    # F35 (SPEC.md §5.1): the Extras screen's Music Room button and page heading, its controls,
+    # a track not open yet, and the line shown before a track is picked.
+    music_room: str = _word("Music Room")
+    music_play: str = _word("Play")
+    music_pause: str = _word("Pause")
+    music_previous: str = _word("Previous")
+    music_next: str = _word("Next")
+    music_play_all: str = _word("Play all")
+    music_repeat_one: str = _word("Repeat track")
+    music_locked: str = _word("???")
+    music_pick: str = _word("Pick a track to play.")
     # F23 (04 §7.9): a minigame's own words, raw until the minigames load; not a word key
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
@@ -2206,6 +2217,16 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
                    "reason",
     "gallery": "the Extras screen's button and heading of the Gallery page",
     "gallery_locked": "a gallery picture the player hasn't seen yet",
+    "music_room": "the Extras screen's button and heading of the Music Room page",
+    "music_play": "the Music Room's button that plays the chosen song or goes on after a pause",
+    "music_pause": "the Music Room's button that pauses the song playing",
+    "music_previous": "the Music Room's button for the song before",
+    "music_next": "the Music Room's button for the next song",
+    "music_play_all": "the Music Room's mode button while each song plays once, then the next",
+    "music_repeat_one": "the Music Room's mode button while the same song plays again and "
+                        "again",
+    "music_locked": "a song in the Music Room the player can't play yet",
+    "music_pick": "the Music Room's line before a song is chosen",
 })
 
 

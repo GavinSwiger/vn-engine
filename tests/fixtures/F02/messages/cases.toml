@@ -6265,7 +6265,7 @@ needs = "load"
 each = ['unlock route promise', 'lock ending sad']
 edit = { T = '<x>' }
 where = "16"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F19-05-E241-ending"
@@ -6508,7 +6508,7 @@ code = "E244"
 needs = "load"
 edit = { T = 'lock ending sad' }
 where = "12"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, or gallery picture, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, or music-room track, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F21-03-E252"
@@ -8342,3 +8342,109 @@ needs = "load"
 edit = { T = 'lock gallery cg storm "Storm"' }
 where = "9"
 expect = { exact = '''the gallery picture "cg storm" never shows in the story and no unlock gallery line names it, so players can't get it.''' }
+
+# --- F35 rows (SPEC §3; AC-F35-01, 02): template T (S line 5, T line 9). The track row registers
+# --- at import; the load is a release load except for warning rows (W220, W221: dev). E337's
+# --- over-200 form, W220's did-you-mean and the parsed values are tests/script/test_musicroom_script.py's.
+
+[[case]]
+id = "F35-01-E336-need"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+each = ['lock track', 'lock track main_theme', 'lock track main_theme "Main Theme"', 'lock track main_theme "Main Theme" file', 'lock track "Main Theme" file "music/main_theme.ogg"', 'lock track main_theme "Main Theme" "music/main_theme.ogg"', 'lock track main_theme "Main Theme" file ""']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''lock track needs a name, a title in quotes and a file, e.g. lock track main_theme "Main Theme" file "music/main_theme.ogg".''' }
+
+[[case]]
+id = "F35-01-E336-left"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+each = ['lock track festival "Festival Night" file "music/festival.ogg" loud', 'lock track festival "Festival Night" file "music/festival.ogg" open loud', 'lock track festival "Festival Night" loud file "music/festival.ogg"']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''this line has "loud" left over. lock track takes a name, a title, file "…", then open or until and endings, in that order.''' }
+
+[[case]]
+id = "F35-01-E336-top"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+edit = { S = 'lock track main_theme "Main Theme" file "music/main_theme.ogg"' }
+where = "5"
+expect = { exact = '''lock track main_theme "Main Theme" declares a music-room track, so it goes at the top level.''' }
+
+[[case]]
+id = "F35-01-E336-unlock"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+each = [['unlock track main_theme', '9'], ['unlock track main_theme "Main Theme" file "music/main_theme.ogg" open', '9'], ['⏎label more:⏎[4]unlock track main_theme', '11']]
+edit = { T = '<x>' }
+where = "<y>"
+expect = { exact = '''there is no unlock track: a track opens when the story plays its music. Add open or until to its lock track line to open it another way.''' }
+
+[[case]]
+id = "F35-01-E336-title"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+each = [['lock track a "" file "music/a.ogg"', '''the track title is empty.'''],
+        ['lock track a "   " file "music/a.ogg"', '''the track title is empty.'''],
+        ['lock track a "<<紙*75>>" file "music/a.ogg"', '''the track title has 75 characters; keep it to 60.'''],
+        ['lock track a "{b}Night{/b}" file "music/a.ogg"', '''track titles are shown as written, so they can't use text tags such as {b}. Write {{ for a "{".''']]
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F35-01-E336-until"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E336"
+needs = "load"
+each = ['lock track a "A" file "music/a.ogg" until', 'lock track a "A" file "music/a.ogg" until good,', 'lock track a "A" file "music/a.ogg" until good true', 'lock track a "A" file "music/a.ogg" until <<e, *32>>e']
+edit = { T = '<x>' }
+where = "9"
+expect = { exact = '''until needs 1 to 32 ending names, e.g. until good, true.''' }
+
+[[case]]
+id = "F35-01-E338"
+ac = "AC-F35-01"
+feature = "F35"
+code = "E338"
+needs = "load"
+each = [['ture', '''until names endings, but there is no ending "ture". Did you mean "true"?'''],
+        ['true, qqqq', '''until names endings, but there is no ending "qqqq". Use the name of an ending line.''']]
+edit = { T = 'lock track credits "Paper Lanterns" file "music/credits.ogg" until <x>⏎label fin:⏎[4]ending true "True"' }
+where = "9"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F35-02-E337"
+ac = "AC-F35-02"
+feature = "F35"
+code = "E337"
+needs = "load"
+each = [['lock track festival "Festival Night" file "music/festival.ogg"⏎lock track festival "Night Walk" file "music/night_walk.ogg"', '''there are two tracks named "festival": here and at script/main.vns, line 9. Give each track its own name.'''],
+        ['lock track festival "Festival Night" file "music/festival.ogg"⏎lock track night_walk "Night Walk" file "music/festival.ogg"', '''tracks festival and night_walk both play "music/festival.ogg". Put each file in the music room once.''']]
+edit = { T = '<x>' }
+where = "10"
+expect = { exact = '''<y>''' }
+
+[[case]]
+id = "F35-02-W221"
+ac = "AC-F35-02"
+feature = "F35"
+code = "W221"
+needs = "load"
+edit = { T = 'lock track festival "Festival Night" file "music/festival.ogg"' }
+where = "9"
+expect = { exact = '''track festival opens when the story plays "music/festival.ogg", but no play music or queue music line plays it, so players never get it. Add open or until, or play it in the story.''' }

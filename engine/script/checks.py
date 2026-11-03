@@ -97,6 +97,14 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    (dev load) once per gallery picture that no ``scene``/``show`` names, no dialogue line's
    speaker tag and words build, and no ``unlock gallery`` line names. ``Program.gallery`` is
    built by ``program.py``.
+14. F35 (``SPEC.md`` §3, ``_iter_tracks``): E337 at a track's second declaration of a name,
+   naming the first, else at the second track of a file (as written), naming the first's
+   track, and (whole game) past ``TRACKS_MAX`` tracks; E338 for an ``until`` name that is no
+   ending (did-you-mean over the endings; skipped when a file couldn't be read); in dev loads
+   W220 for a track whose file isn't in ``audio/`` (its folder listed once by
+   ``GamePaths.list_dir``, a did-you-mean over that folder's files) and W221 for a
+   default-rule track whose file no ``play music``/``queue music`` line plays.
+   ``Program.tracks`` is built by ``program.py``.
 
 Steps 3–5 are skipped when a file couldn't be read (``checks_skipped``, SR-F02-69); after a
 story limit (``limit_hit``) only step 1 runs. Errors go to the sink; did-you-mean
@@ -115,8 +123,9 @@ from dataclasses import dataclass, field
 from engine.core.constants import META_NAMES_MAX, META_ORIGINAL_MAX_BYTES, META_ORIGINALS_DIR
 from engine.core.errors import AssetRefError, EngineError
 from engine.core.minigame_types import REQUIRED, MinigameSig
-from engine.core.paths import GamePaths
+from engine.core.paths import DirListing, GamePaths
 from engine.script import bindings, limits
+from engine.script.audio import AUDIO_FOLDER, PlayAudio, QueueMusic, audio_ref
 from engine.script.audio_checks import iter_attach_voices
 from engine.script.codex import CATEGORIES_MAX as CODEX_CATEGORIES_MAX
 from engine.script.codex import ITEMS_MAX as CODEX_ITEMS_MAX
@@ -133,6 +142,7 @@ from engine.script.flowchart import MarkTargets, iter_attach_marks
 from engine.script.gallery import GALLERY_MAX, WORD_GALLERY, GalleryDecl
 from engine.script.metafiles import WRITE, MetaFile
 from engine.script.minigame import Minigame
+from engine.script.musicroom import TRACKS_MAX, TrackDecl
 from engine.script.nodes import (Default, Define, Label, Node, PersistentDefault, Say,
                                  ScriptFile)
 from engine.script.points import METERS_MAX
@@ -1181,6 +1191,95 @@ def _iter_gallery(inp: CheckInput, labels: "_Labels | None"
     return warnings
 
 
+# --- Step 14: the music room (F35) -------------------------------------------------------------
+
+def _missing_audio(paths: GamePaths, file: str,
+                   listings: dict[str, DirListing | None]) -> tuple[bool, str | None]:
+    """W220's lookup: whether ``audio/<file>`` is a file in the game (its folder listed once,
+    by ``GamePaths.list_dir``; nothing is opened), and a did-you-mean for a missing one (a
+    close file name in the same folder)."""
+    folder, _, name = audio_ref(file).rpartition("/")
+    if folder not in listings:
+        try:
+            listings[folder] = paths.list_dir(folder)
+        except (AssetRefError, EngineError, OSError):
+            listings[folder] = None
+    listing = listings[folder]
+    if listing is not None and name in listing.files:
+        return False, None
+    if listing is None:
+        return True, None
+    found = _Names(listing.files).suggest(name)
+    if found is None:
+        return True, None
+    inside = folder[len(AUDIO_FOLDER):]
+    return True, f"{inside}/{found}" if inside else found
+
+
+def _iter_tracks(inp: CheckInput, labels: "_Labels | None"
+                 ) -> Generator[None, None, list[ScriptWarning]]:
+    """Step 14 (module docstring). ``labels`` is None when a file couldn't be read: E338 is
+    skipped then, like F19's E243."""
+    sink = inp.sink
+    decls = [node for node in inp.nodes if isinstance(node, TrackDecl)]
+    if not decls:
+        return []
+    endings: set[str] = set()
+    played: set[str] = set()                        # audio refs a play/queue music line starts
+    count = 0
+    for node in inp.nodes:
+        if not isinstance(node, Label):
+            continue
+        for stmt, _ in walk_block(node.block):
+            if isinstance(stmt, Ending):
+                endings.add(stmt.name)
+            elif isinstance(stmt, PlayAudio) and stmt.channel == "music":
+                played.add(audio_ref(stmt.audio_file))
+            elif isinstance(stmt, QueueMusic):
+                played.add(audio_ref(stmt.audio_file))
+            count += 1
+            if count % IDENTITY_YIELD_ITEMS == 0:
+                yield
+    names: dict[str, TrackDecl] = {}
+    files: dict[str, TrackDecl] = {}
+    for decl in decls:
+        first = names.setdefault(decl.name, decl)
+        if first is not decl:
+            sink.add(Diagnostic("E337", decl.file, decl.line, None,
+                                ("twice", decl.name, (first.file.ref, first.line))))
+            continue
+        other = files.setdefault(audio_ref(decl.audio_file), decl)
+        if other is not decl:
+            sink.add(Diagnostic("E337", decl.file, decl.line, None,
+                                ("file", other.name, decl.name, decl.audio_file)))
+    if len(decls) > TRACKS_MAX:
+        sink.add(Diagnostic("E337", args=("many", len(decls), TRACKS_MAX)))
+    yield
+    if labels is not None:
+        known = _Names(endings)
+        for decl in decls:
+            missing = next((n for n in decl.until if n not in endings), None)
+            if missing is not None:
+                sink.add(LazyDiagnostic(
+                    "E338", decl.file, decl.line, None,
+                    build=lambda name=missing: (name, known.suggest(name))))
+    if not inp.dev:
+        return []
+    warnings: list[ScriptWarning] = []
+    listings: dict[str, DirListing | None] = {}
+    for decl in decls:
+        missing_file, suggestion = _missing_audio(inp.paths, decl.audio_file, listings)
+        if missing_file:
+            warnings.append(ScriptWarning(
+                format_message("W220", (decl.name, decl.audio_file, suggestion)), code="W220",
+                file=decl.file.ref, line=decl.line))
+        if not decl.always_open and not decl.until and audio_ref(decl.audio_file) not in played:
+            warnings.append(ScriptWarning(
+                format_message("W221", (decl.name, decl.audio_file)), code="W221",
+                file=decl.file.ref, line=decl.line))
+    return warnings
+
+
 # --- The checks ---------------------------------------------------------------------------
 
 def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
@@ -1244,6 +1343,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     yield from _iter_meta_files(inp)                                  # F31
     yield
     out.warnings += yield from _iter_gallery(inp, labels)             # F34
+    yield
+    out.warnings += yield from _iter_tracks(inp, labels)              # F35
     return out
 
 
