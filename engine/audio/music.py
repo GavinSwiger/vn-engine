@@ -353,8 +353,11 @@ class MusicPlayer:
 
     def _same_track(self, current: Track, track: Track, ramp: float | None,
                     now: float) -> None:
-        """§7.1 rule 1 (SR-F08-07): it continues; the volume applies over ``ramp``."""
+        """§7.1 rule 1 (SR-F08-07): it continues; the volume applies over ``ramp``. A
+        holder's track the story now plays (the title's theme, then ``play music`` of the
+        same file) is reported to ``on_start`` as a story start (F35's heard rule)."""
         self.pending = None
+        became_story = track.story and not current.story
         current.volume = track.volume
         current.story = track.story
         if self.phase is Phase.FADING_OUT:
@@ -366,11 +369,13 @@ class MusicPlayer:
             again = Track(current.file, current.loop, track.volume, SAME_TRACK_FADEIN_S,
                           start=pos, story=track.story, restored=track.restored,
                           data=current.data, length=current.length, loop_pt=current.loop_pt)
-            self._start(again, now, notify=False)
+            self._start(again, now, notify=became_story)
             return
         self._arm_next(now)
         self._ramp(curve(track.volume), ramp if ramp is not None and ramp > 0.0 else 0.0, now)
         self._send_volume(now)
+        if became_story and self._on_start is not None:
+            self._on_start(current)
 
     def _start(self, track: Track | None, now: float, *, notify: bool = True) -> None:
         """§7.1 ``start``: play ``track`` now; a track that can't be read or decoded is

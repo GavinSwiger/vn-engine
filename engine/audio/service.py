@@ -29,7 +29,9 @@ after the old one's fade-out. Step 11: device loss and ``set_mono`` (below). F06
 worker); a reopen drops the blip playing, the pending one, and the ``("blip", …)`` entries.
 F23's audio seam (``07`` C4, I-4): ``play_ui(owner=)`` and ``stop_ui(fadeout, *, owner)``,
 which fades only that owner's UI sounds. F15 (``07`` I-3): ``set_skipping(False,
-resume=sid)`` plays the voice of line ``sid`` that skipping held back.
+resume=sid)`` plays the voice of line ``sid`` that skipping held back. F35 (music room):
+``MusicHandle.play(start=)`` starts a track again at an offset, ``length()`` reads the
+playing track's length, and ``stop(None)`` fades over ``[audio] music_fadeout``.
 
 **Device loss** (§7.9; R3, R5; PR-F08-18, 19): an ``AUDIODEVICEREMOVED`` or ``ADDED`` event
 for an output device (``iscapture == 0``; pygame doesn't say which device is ours) sets
@@ -117,21 +119,26 @@ class MusicHandle:
         return self._service._taker is self and not self._service._closed
 
     def play(self, file: str, *, loop: bool = True, fadein: float = 0.0,
-             fadeout: float = HANDLE_FADEOUT_S, volume: int = 100) -> None:
+             fadeout: float = HANDLE_FADEOUT_S, volume: int = 100,
+             start: float | None = None) -> None:
         """Play ``file`` (inside ``audio/``) on the stream: the playing track fades out over
         ``fadeout``, then this one fades in over ``fadein``. The same file with the same
-        ``loop`` continues (SR-F08-07). A missing file is the W26 log line and silence."""
+        ``loop`` continues (SR-F08-07) unless ``start`` is given (F35): then it starts again
+        at ``start`` seconds (0.0: from the beginning), as ``play music … from`` does. A
+        missing file is the W26 log line and silence."""
         if not self.active:
             return
         self._looping = (file, volume) if loop else None
         service = self._service
         music = service.music
-        track = Track(file, loop, volume, music.resolve_fadein(fadein), story=False)
-        music.play(track, fadeout=music.resolve_fadeout(fadeout), restart=False, ramp=None,
-                   now=service.now())
+        track = Track(file, loop, volume, music.resolve_fadein(fadein),
+                      start=max(0.0, start or 0.0), story=False)
+        music.play(track, fadeout=music.resolve_fadeout(fadeout), restart=start is not None,
+                   ramp=None, now=service.now())
         service._repause()
 
-    def stop(self, fadeout: float = HANDLE_FADEOUT_S) -> None:
+    def stop(self, fadeout: float | None = HANDLE_FADEOUT_S) -> None:
+        """Fade the holder's track out over ``fadeout`` (None: ``[audio] music_fadeout``)."""
         if self.active:
             self._looping = None
             music = self._service.music
@@ -149,6 +156,15 @@ class MusicHandle:
         if not self.active:
             return None
         return self._service.music.position(self._service.now())
+
+    def length(self) -> float | None:
+        """F35: the length in seconds of the track playing on the stream, once it is read
+        (its header's); None before anything plays, when silent, for a header with no length
+        (MP3), or not the holder. While a fade-out runs it is still the fading track's."""
+        if not self.active:
+            return None
+        current = self._service.music.current
+        return None if current is None else current.length
 
     def release(self) -> None:
         """The holder is done: the story's music comes back (reconcile, §7.6)."""
