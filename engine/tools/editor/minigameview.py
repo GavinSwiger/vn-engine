@@ -47,6 +47,7 @@ from engine.tools.editor.views import EmptyState, panel_header
 
 CATEGORY = "minigame"
 CATEGORY_TITLE = "Minigame data"
+CATEGORY_AFTER = db.CATEGORY_META   # Minigame data goes before Character files
 GROUP_TITLES: Mapping[str, str] = {
     mg.POEM: "Poem word lists", mg.TESTIMONY: "Evidence", mg.CHAT: "Phone chats",
     mg.ROOM: "Puzzle rooms"}
@@ -2056,7 +2057,7 @@ def attach(database: Any) -> MinigamePane:
     ``DatabasePane``). The pane swaps its own list and editor into the Database's columns
     while the category is picked."""
     pane = MinigamePane(database)
-    database.add_category(CATEGORY, CATEGORY_TITLE)
+    database.add_category(CATEGORY, CATEGORY_TITLE, before=CATEGORY_AFTER)   # design §4.3
     pane.cat_choice = database.category_choice(pane.list_frame)  # narrow windows
     database.on_compact.append(pane.compact)
     pane.compact(database.compact)

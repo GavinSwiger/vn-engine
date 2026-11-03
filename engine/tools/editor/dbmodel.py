@@ -57,6 +57,7 @@ CATEGORY_TRANSITION: Final = "transition"
 CATEGORY_POSITION: Final = "position"
 CATEGORY_GALLERY: Final = "gallery"        # F34-W4: after Pictures (database.ALL_CATEGORIES)
 CATEGORY_MUSIC_ROOM: Final = "music_room"  # F35-S3: after Sounds (database.ALL_CATEGORIES)
+CATEGORY_META: Final = "meta_file"         # F31 originals in files/: last (dbmeta)
 P2_CATEGORIES: Final = (CATEGORY_METER, CATEGORY_CODEX, CATEGORY_ENDING, CATEGORY_CHAPTER,
                         CATEGORY_TRANSITION, CATEGORY_POSITION)
 CATEGORY_TITLES: Final[Mapping[str, str]] = {
@@ -64,13 +65,14 @@ CATEGORY_TITLES: Final[Mapping[str, str]] = {
     CATEGORY_VARIABLE: "Variables", CATEGORY_METER: "Meters", CATEGORY_CODEX: "Codex",
     CATEGORY_ENDING: "Endings & routes", CATEGORY_CHAPTER: "Chapters",
     CATEGORY_TRANSITION: "Transitions", CATEGORY_POSITION: "Positions",
-    CATEGORY_GALLERY: "Gallery", CATEGORY_MUSIC_ROOM: "Music room"}
+    CATEGORY_GALLERY: "Gallery", CATEGORY_MUSIC_ROOM: "Music room",
+    CATEGORY_META: "Character files"}
 # The "{things}" of each P2 category's empty state (§6.4 "No {things} yet").
 EMPTY_THINGS: Final[Mapping[str, str]] = {
     CATEGORY_METER: "meters", CATEGORY_CODEX: "tips or items", CATEGORY_ENDING: "routes",
     CATEGORY_CHAPTER: "chapters", CATEGORY_TRANSITION: "transitions",
     CATEGORY_POSITION: "positions", CATEGORY_GALLERY: "gallery pictures",
-    CATEGORY_MUSIC_ROOM: "tracks"}
+    CATEGORY_MUSIC_ROOM: "tracks", CATEGORY_META: "character files"}
 REMEMBERED: Final = "Remembered across playthroughs"
 TIPS: Final = "Tips"
 ITEMS: Final = "Items"
@@ -80,6 +82,7 @@ CHAPTERS_HINT: Final = "Chapters come from the Chapter lines of your story."
 # Entry kinds beyond declarations' (pictures and sounds are files, not declarations).
 BACKGROUND: Final = "background"   # an image named bg …: a file, or a colour (dec.COLOR)
 SOUND: Final = "sound"
+META_FILE: Final = "meta_file"     # F31: an original in files/ (``file write`` copies it)
 
 # Which check rows count an entry's uses. An ending is "used" by the routes that wait for
 # it (``route_until``); chapters and remembered variables have no rows.
@@ -88,7 +91,7 @@ USE_KINDS: Final[Mapping[str, str]] = {
     dec.VARIABLE: "variable_use", SOUND: "audio_use", dec.METER: "meter_use",
     dec.TIP: "codex_use", dec.ITEM: "codex_use", dec.ROUTE: "route_use",
     dec.TRANSITION: "transition_use", dec.POSITION: "position_use",
-    dec.ENDING: "route_until"}
+    dec.ENDING: "route_until", META_FILE: "meta_file_use"}
 _FOLDED: Final = frozenset((dec.COLOR, BACKGROUND))    # image names compare without case
 
 
@@ -458,10 +461,11 @@ def search(entries: Iterable[Entry], text: str) -> list[Entry]:
 
 
 __all__ = ["BACKGROUND", "CATEGORIES", "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
-           "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_METER", "CATEGORY_MUSIC_ROOM", "CATEGORY_PICTURE",
+           "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_META", "CATEGORY_METER",
+           "CATEGORY_MUSIC_ROOM", "CATEGORY_PICTURE",
            "CATEGORY_POSITION", "CATEGORY_SOUND", "CATEGORY_TITLES", "CATEGORY_TRANSITION",
            "CATEGORY_VARIABLE", "CHAPTERS_HINT", "DELETE_REFUSED", "EDIT_AS_SCRIPT",
-           "EMPTY_HINT", "EMPTY_THINGS", "EMPTY_TITLE", "ENDINGS_HINT", "Entry", "ITEMS",
+           "EMPTY_HINT", "EMPTY_THINGS", "EMPTY_TITLE", "ENDINGS_HINT", "Entry", "ITEMS", "META_FILE",
            "NOT_USED", "NameRow", "Names", "OTHER_SOUNDS", "P2_CATEGORIES", "REMEMBERED",
            "SCRIPT_NAME", "SHOW_USES", "SOUND", "SOUND_FOLDERS", "SOUND_TITLES", "TIPS",
            "USED_IN", "USE_KINDS", "background_entries", "chapter_entries",

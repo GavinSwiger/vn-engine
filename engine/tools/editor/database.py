@@ -28,6 +28,8 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   live in ``dbgallery.GalleryCategory``, another mixin.
 - F35-S3: **Music room** (after Sounds) and the Sounds ▸ Music form's **In the music room**
   switch live in ``dbextras.MusicRoomCategory``.
+- F31: **Character files** (last; the originals in ``files/``, + Add…, a text preview) lives
+  in ``dbmeta.MetaFilesCategory``.
 
 Every entry shows "Used in N lines" (the last check's ``*_use`` rows) with **Show uses**
 (the Problems panel lists the lines), and Delete is refused while it is used. The lists are
@@ -49,6 +51,7 @@ from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.animpanel import FRAME_PX, LookPanel
 from engine.tools.editor.dbextras import ABOUT_MUSIC, MusicRoomCategory
 from engine.tools.editor.dbgallery import ABOUT_GALLERY, GalleryCategory
+from engine.tools.editor.dbmeta import ABOUT_META, MetaFilesCategory
 from engine.tools.editor.dbmore import (
     ABOUT_MORE,
     DELETE,
@@ -91,7 +94,7 @@ ALL_CATEGORIES = (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE, db.CATEGORY_GALLER
                   *(key for key in db.CATEGORIES
                     if key not in (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE,
                                    db.CATEGORY_SOUND)),
-                  *db.P2_CATEGORIES)
+                  *db.P2_CATEGORIES, db.CATEGORY_META)
 TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
 # core/constants.py (the meta-files write root; tests/core/test_paths_meta.py).
@@ -109,6 +112,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
                           "the player made or how many coins they have.",
     db.CATEGORY_GALLERY: ABOUT_GALLERY,
     db.CATEGORY_MUSIC_ROOM: ABOUT_MUSIC,
+    db.CATEGORY_META: ABOUT_META,
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
@@ -226,7 +230,7 @@ class _Form:
     fields: dict[str, Any] = field(default_factory=dict)
 
 
-class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
+class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, MetaFilesCategory):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -405,6 +409,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
                      db.CATEGORY_GALLERY: self._gallery_rows(),
                      **self._p2_rows()}
         self.rows[db.CATEGORY_MUSIC_ROOM] = self._track_rows()
+        self.rows[db.CATEGORY_META] = self._meta_rows()
         for key in ALL_CATEGORIES:
             count = sum(1 for row in self.rows[key] if row.entry is not None)
             self.cat_tree.item(key, values=(str(count),))
@@ -529,7 +534,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
 
     def category_choices(self) -> list[tuple[str, str]]:
         """Every category as (key, title), in the side bar's order."""
-        return [(k, TITLES[k]) for k in ALL_CATEGORIES] + list(self.extra_categories.items())
+        return [(str(k), str(self.cat_tree.item(k, "text")))
+                for k in self.cat_tree.get_children()]
 
     def category_choice(self, parent: tk.Misc) -> ChoiceField:
         """A drop-down of every category (narrow windows), kept showing the picked one."""
@@ -538,11 +544,12 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
         self.cat_choices.append(choice)
         return choice
 
-    def add_category(self, key: str, title: str) -> None:
-        """A category with its own list and form (Minigame data): in the side bar and in
-        every category drop-down."""
+    def add_category(self, key: str, title: str, *, before: str | None = None) -> None:
+        """A category with its own list and form (Minigame data): in the side bar (before
+        category ``before``, else last) and in every category drop-down."""
         self.extra_categories[key] = title
-        self.cat_tree.insert("", "end", iid=key, text=title, values=("",))
+        at = self.cat_tree.index(before) if before is not None and             self.cat_tree.exists(before) else "end"
+        self.cat_tree.insert("", at, iid=key, text=title, values=("",))
         for choice in self.cat_choices:
             choice.set_choices(self.category_choices())
 
@@ -673,6 +680,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
                     self._message_form(PICK_ENTRY)
         self._gallery_after_fill(has_entries)
         self._music_after_fill(has_entries)
+        self._meta_after_fill(has_entries)
 
     def _row(self, iid: str) -> Row | None:
         return next((r for r in self.rows[self.category] if r.iid == iid), None)
@@ -764,6 +772,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
             shape += self._sound_music_shape(entry)
         if entry.kind == dec.TRACK:
             return (self.category, row.iid, entry.kind, self._track_key(entry, shape))
+        if entry.kind == db.META_FILE:                          # F31: Character files
+            return (self.category, row.iid, entry.kind, self._meta_key(row, shape))
         more = self._p2_key(entry, shape)
         if more == ("stage",):
             return (self.category, "stage")
@@ -794,6 +804,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
             self._gallery_form(row, key)
         elif entry.kind == dec.TRACK:
             self._track_form(row, key)
+        elif entry.kind == db.META_FILE:
+            self._meta_form(row, key)
         else:
             self._p2_form(row, key)
         self._wrap_hints()
@@ -1359,6 +1371,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
             self.add_gallery_pictures()
         elif self.category == db.CATEGORY_MUSIC_ROOM:
             self.add_tracks()
+        elif self.category == db.CATEGORY_META:
+            self.add_meta_files()
         else:
             self._p2_new()
 
@@ -1527,7 +1541,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory):
         if row is None or row.entry is None:
             return
         entry = row.entry
-        if entry.kind in (db.BACKGROUND, db.SOUND):
+        if entry.kind in (db.BACKGROUND, db.SOUND, db.META_FILE):
             self.delete_entry(entry, lambda: self._delete_file(entry, row.ref))
         elif entry.kind == dec.POSITION:
             if entry.values and not entry.values.get("builtin"):
