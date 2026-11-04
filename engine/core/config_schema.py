@@ -2225,6 +2225,8 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "activate_sound": "the sound when it is clicked or pressed",
     "back_sound": "the sound when going back",
     "pick_sound": "the sound when a choice is picked", "limit_sound": "the sound at the limit",
+    "timer": "the countdown bar over a timed choice",
+    "tick_sound": "the sound at 3, 2 and 1 seconds left",
     "sound": "the sound it plays", "music": "the music file",
     "theme.title.music": "the title screen's music, a file in audio/",
 })
