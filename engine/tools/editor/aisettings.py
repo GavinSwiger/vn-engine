@@ -33,12 +33,13 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
+import webbrowser
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from queue import Empty, SimpleQueue
 from tkinter import ttk
-from typing import Any
+from typing import Any, Final
 
 from engine.tools.assistant import keystore
 from engine.tools.assistant import prefs as prefs_store
@@ -85,6 +86,23 @@ ADDRESS_HINT = "Ollama: http://localhost:11434/v1 · LM Studio: http://localhost
 STEPS_HINT = ("How many times the assistant may look something up or check a change before "
               "it stops.")
 TOKEN_HINT = "A new chat starts from zero."
+GET_KEY = "Get a key"
+USE_PLAN = "Use my Claude plan…"
+KEY_HELP: Final = {
+    ANTHROPIC: ("Make one at platform.claude.com under API keys. API use is paid separately "
+                "from a Claude Pro or Max plan; to use your plan instead, connect Claude Code "
+                "or Claude Desktop."),
+    OPENAI: ("Make one at platform.openai.com under API keys. API use is paid separately "
+             "from a ChatGPT plan."),
+}
+KEY_PAGES: Final = {ANTHROPIC: "https://platform.claude.com/settings/keys",
+                    OPENAI: "https://platform.openai.com/api-keys"}
+KEY_ADMIN = ("This is an Admin key, which can't send messages. Make a regular key under API "
+             "keys (it starts with sk-ant-api).")
+KEY_LOOKS_OPENAI = ("This looks like an OpenAI key. Pick OpenAI as the provider, or paste an "
+                    "Anthropic key (it starts with sk-ant-api).")
+KEY_LOOKS_ANTHROPIC = ("This looks like an Anthropic key. Pick Anthropic as the provider, or "
+                       "paste an OpenAI key.")
 REMOVE_ASK = "Remove the saved API key?"
 REMOVE_BUTTONS = (REMOVE, "Cancel")
 
@@ -157,6 +175,19 @@ def target_for(prefs: Prefs) -> Target:
     origin = keystore.FIXED_ORIGINS.get(provider, endpoint.origin)
     return Target(provider, origin, PROVIDER_NAMES.get(provider, endpoint.display_host),
                   endpoint.display_host, endpoint.loopback)
+
+
+def key_mismatch(provider: str, key: str) -> str | None:
+    """Why ``key`` can't work with ``provider`` judged by its well-known start, or None. Only
+    the clear cases: an Anthropic Admin key, or the other provider's key."""
+    if provider == ANTHROPIC:
+        if key.startswith("sk-ant-admin"):
+            return KEY_ADMIN
+        if key.startswith(("sk-proj-", "sk-svcacct-")):
+            return KEY_LOOKS_OPENAI
+    if provider == OPENAI and key.startswith("sk-ant-"):
+        return KEY_LOOKS_ANTHROPIC
+    return None
 
 
 def slot_of(target: Target) -> Slot | None:
@@ -511,6 +542,17 @@ class AiSettingsDialog:
         self.env_box.grid(row=6, column=1, columnspan=2, sticky="w")
         self.key_hint = self._hint(form, KEY_HINT_COMPATIBLE, wrap)
         self.key_hint.grid(row=7, column=1, columnspan=2, sticky="w")
+        # Where to get a key (Anthropic, OpenAI): in the same row, shown instead.
+        self.help_row = ttk.Frame(form, style="Dialog.TFrame")
+        self.help_row.grid(row=7, column=1, columnspan=2, sticky="ew", pady=(px(4), 0))
+        self.key_help = self._hint(self.help_row, "", wrap)
+        self.key_help.pack(anchor="w")
+        links = ttk.Frame(self.help_row, style="Dialog.TFrame")
+        links.pack(anchor="w", pady=(px(6), 0))
+        self.get_key_button = self._button(links, GET_KEY, self.open_key_page)
+        self.get_key_button.pack(side="left")
+        self.plan_button = self._button(links, USE_PLAN, self.use_plan)
+        self.plan_button.pack(side="left", padx=(px(8), 0))
         # Server address (compatible only).
         self.address_label = self._label(SERVER_ADDRESS, 8)
         self.address_var = tk.StringVar(dialog)
@@ -628,6 +670,12 @@ class AiSettingsDialog:
         for widget in (self.model_hint, self.key_hint, self.address_label, self.address_entry,
                        self.address_hint, self.address_status):
             self._show(widget, compatible)
+        self._show(self.help_row, not compatible)
+        self.key_help.configure(text=KEY_HELP.get(provider, ""))
+        if provider == ANTHROPIC:
+            self.plan_button.pack(side="left", padx=(self.px(8), 0))
+        else:
+            self.plan_button.pack_forget()
         self.address_var.set(prefs.address)
         self.address_status.configure(text="")
         self.steps_var.set(_int_text(prefs.steps))
@@ -785,8 +833,13 @@ class AiSettingsDialog:
         _target, slot = self._target_and_slot()
         if slot is None:
             return
-        if keystore.check_key(text) is None:    # refused before any child sees it
+        key = keystore.check_key(text)
+        if key is None:                         # refused before any child sees it
             self.key_status.configure(text=keystore.BAD_SHAPE)
+            return
+        mismatch = key_mismatch(slot.provider, key)
+        if mismatch is not None:
+            self.key_status.configure(text=mismatch)
             return
         self._set_key_buttons(False)
         self.background.run(lambda: self.session.save_key(slot, text),
@@ -801,6 +854,19 @@ class AiSettingsDialog:
         else:
             self._show_key()
             self.key_status.configure(text=result.text)
+
+    def open_key_page(self) -> None:
+        """**Get a key**: the provider's API keys page in the browser."""
+        page = KEY_PAGES.get(self.provider_id())
+        if page is not None:
+            webbrowser.open(page)
+
+    def use_plan(self) -> None:
+        """**Use my Claude plan…**: this page closes and Connect an AI app opens."""
+        win = self.win
+        self.close()
+        from engine.tools.editor.connectdialog import open_connect_dialog
+        open_connect_dialog(win)
 
     def remove_key(self) -> None:
         """**Remove**, after "Remove the saved API key?" (Cancel is the default)."""

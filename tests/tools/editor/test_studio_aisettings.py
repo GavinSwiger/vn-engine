@@ -10,6 +10,7 @@ import json
 import pytest
 
 from engine.tools.assistant import keystore
+from engine.tools.assistant.providers import errors as provider_errors
 from engine.tools.assistant import prefs as prefs_store
 from engine.tools.assistant.providers import (
     ANTHROPIC, ANTHROPIC_ORIGIN, COMPATIBLE, OPENAI, PROVIDER_LABELS, errors)
@@ -239,7 +240,7 @@ def test_ac_f48_32_test_connection_texts(studio, tmp_path, ai):
     settle(ed, page)
     page.test_button.invoke()
     settle(ed, page)
-    assert page.test_status.cget("text") == "Set up AI in Studio settings ▸ AI first."
+    assert page.test_status.cget("text") == provider_errors.NO_KEY
     assert transports.made[-1].requests == []
     # A compatible server on this computer: no key needed; the loopback wording.
     pick_provider(ed, page, COMPATIBLE)
@@ -335,3 +336,13 @@ def _buttons(widget):
         if child.winfo_class() == "TButton":
             yield child
         yield from _buttons(child)
+
+
+def test_a_key_for_the_wrong_place_is_named_before_it_is_saved():
+    mismatch = aisettings.key_mismatch
+    assert mismatch("anthropic", "sk-ant-admin01-abc") == aisettings.KEY_ADMIN
+    assert mismatch("anthropic", "sk-proj-abc") == aisettings.KEY_LOOKS_OPENAI
+    assert mismatch("openai", "sk-ant-api03-abc") == aisettings.KEY_LOOKS_ANTHROPIC
+    assert mismatch("anthropic", "sk-ant-api03-abc") is None
+    assert mismatch("openai", "sk-proj-abc") is None
+    assert mismatch("compatible", "sk-ant-admin01-abc") is None

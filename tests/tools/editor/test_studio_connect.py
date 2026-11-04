@@ -29,7 +29,7 @@ def test_snippets_follow_01_section_6_5():
     shown = cd.snippets(PYTHON, ENGINE, GAME, windows=True)
     assert shown.server == "vn-lantern-night"
     assert shown.claude_code == (
-        f'claude mcp add vn-lantern-night -e PYTHONPATH="{ENGINE}" "--" "{PYTHON}" -P -m engine '
+        f'claude mcp add --scope user vn-lantern-night -e PYTHONPATH="{ENGINE}" "--" "{PYTHON}" -P -m engine '
         f'assist-mcp "{GAME}"')
     assert json.loads(shown.claude_desktop) == {"mcpServers": {"vn-lantern-night": {
         "command": str(PYTHON), "args": ["-P", "-m", "engine", "assist-mcp", str(GAME)],
@@ -120,3 +120,58 @@ def test_ac_f48_28_connect_an_ai_app(studio, tmp_path, caplog):
     for path in (str(game), str(engine_root()), sys.executable):
         assert path not in logged
     assert not [r for r in caplog.records if r.pathname.endswith("connectdialog.py")]
+
+
+def test_set_up_claude_code_runs_claude_without_a_shell(tmp_path):
+    calls = []
+
+    class Done:
+        returncode, stdout, stderr = 0, b"", b""
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return Done()
+
+    game = tmp_path / "Lantern Night"
+    ok, text = cd.setup_claude_code("py", "eng", game, which=lambda _n: "/bin/claude", run=run)
+    assert ok and text == cd.CODE_DONE
+    assert calls[0] == ["/bin/claude", "mcp", "remove", "--scope", "user", "vn-lantern-night"]
+    assert calls[1] == ["/bin/claude", "mcp", "add", "--scope", "user", "vn-lantern-night",
+                        "-e", "PYTHONPATH=eng", "--", "py", "-P", "-m", "engine",
+                        "assist-mcp", str(game)]
+    assert cd.setup_claude_code("py", "eng", game, which=lambda _n: None, run=run) == (
+        False, cd.CODE_MISSING)
+    # A .cmd launcher goes through cmd.exe: a folder name it would read is refused.
+    assert cd.setup_claude_code("py", "eng", tmp_path / "a&b", which=lambda _n: "c.cmd",
+                                run=run) == (False, cd.CODE_UNSAFE)
+
+    class Failed:
+        returncode, stdout, stderr = 1, b"", b"some detail\nError: no can do\n"
+
+    ok, text = cd.setup_claude_code("py", "eng", game, which=lambda _n: "claude",
+                                    run=lambda argv, **kw: Failed())
+    assert not ok and text == cd.CODE_FAILED.format(reason="Error: no can do")
+
+
+def test_set_up_claude_desktop_keeps_the_rest_of_its_settings(tmp_path):
+    config = tmp_path / cd.DESKTOP_CONFIG
+    config.write_text('{"theme": "dark", "mcpServers": {"other": {"command": "x"}}}',
+                      encoding="utf-8")
+    game = tmp_path / "My Game"
+    assert cd.setup_claude_desktop("py", "eng", game, write=False, path=config) == (
+        True, cd.DESKTOP_DONE)
+    data = json.loads(config.read_text(encoding="utf-8"))
+    assert data["theme"] == "dark" and data["mcpServers"]["other"] == {"command": "x"}
+    assert data["mcpServers"]["vn-my-game"] == {
+        "command": "py", "args": ["-P", "-m", "engine", "assist-mcp", str(game), "--read-only"],
+        "env": {"PYTHONPATH": "eng"}}
+    assert json.loads((tmp_path / (cd.DESKTOP_CONFIG + ".bak")).read_text())["theme"] == "dark"
+    # A file that isn't JSON is left alone; no folder means Claude Desktop isn't installed.
+    config.write_text("{oops", encoding="utf-8")
+    ok, text = cd.setup_claude_desktop("py", "eng", game, path=config)
+    assert not ok and cd.DESKTOP_BAD_FILE in text and config.read_text() == "{oops"
+    assert cd.desktop_config_path({"APPDATA": str(tmp_path / "none")}, "win32") is None
+    (tmp_path / "Roaming" / "Claude").mkdir(parents=True)
+    assert cd.desktop_config_path({"APPDATA": str(tmp_path / "Roaming")}, "win32") == \
+        tmp_path / "Roaming" / "Claude" / cd.DESKTOP_CONFIG
+    assert cd.desktop_config_path({}, "linux") is None

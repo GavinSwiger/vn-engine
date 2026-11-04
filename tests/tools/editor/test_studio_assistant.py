@@ -157,8 +157,7 @@ def test_ac_f48_31_no_key_shows_the_empty_state_and_sends_nothing(studio, tmp_pa
     pane = open_pane(ed)
     assert pane.is_empty_state()
     assert pane.texts() == ["AI ASSISTANT", "New chat", "Claude · claude-sonnet-5-5",
-                            "Connect an AI to get help writing your game.", "Set up AI…",
-                            "You can also use Claude Code or Claude Desktop with this game.",
+                            assistpane.EMPTY_TEXT, "Set up AI…", assistpane.EMPTY_MCP,
                             "Connect an AI app…", "Send", "This chat: 0 tokens"]
     # [Set up AI…] opens Studio settings ▸ AI; [Connect an AI app…] the connect dialog.
     pane.set_up_button.invoke()
@@ -171,7 +170,7 @@ def test_ac_f48_31_no_key_shows_the_empty_state_and_sends_nothing(studio, tmp_pa
     asked = []
     monkeypatch.setattr(aisettings, "ask_consent", lambda *a, **k: asked.append(a) or True)
     send(ed, "Add a choice.")
-    assert "Set up AI in Studio settings ▸ AI first." in pane.transcript_text()
+    assert aisettings.provider_errors.NO_KEY in pane.transcript_text()
     buttons = [c for c in pane.transcript.winfo_children() if c.winfo_class() == "TButton"]
     assert [b.cget("text") for b in buttons] == ["Open settings"]
     assert transports.made == [] and asked == []

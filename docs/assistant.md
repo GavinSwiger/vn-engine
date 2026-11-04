@@ -2,11 +2,12 @@
 
 An AI can read your game, check it and suggest changes. You can use it two ways:
 
-- **In Studio**: the **AI Assistant** pane, with your own API key for Anthropic (Claude),
-  OpenAI (ChatGPT), or a model server on your computer (Ollama, LM Studio and others).
 - **In an AI app**: Claude Code, Claude Desktop and other apps that support MCP can work on
-  your game through **Help ▸ Connect an AI app…**. They use your account with that app, and
-  Studio sends nothing itself.
+  your game. They run on your plan with that app, so **a Claude Pro or Max plan is all you
+  need**: no API key, no API credit. Open **Help ▸ Connect an AI app…** and click **Set up**.
+- **In Studio**: the **AI Assistant** pane, with your own API key for Anthropic (Claude),
+  OpenAI (ChatGPT), or a model server on your computer (Ollama, LM Studio and others). API
+  use is paid by use and separately from a chat plan such as Claude Pro or ChatGPT Plus.
 
 Either way, the AI never changes a file until you say so, and it never runs Python code it
 wrote before you apply the change.
@@ -15,10 +16,13 @@ wrote before you apply the change.
 
 1. Open **File ▸ Studio settings…** (Ctrl+,) and pick the **AI** page.
 2. Pick a **Provider** and a **Model**.
-3. Copy your API key from the provider's website and press **Paste**. Studio shows only its
-   last 4 characters after that. **Remove** deletes the saved key.
-4. Press **Test connection**. It should say "Connected."
-5. Open the pane with **AI Assistant** on the Play bar or **View ▸ AI Assistant**
+3. Press **Get a key** to open the provider's API keys page, make a key, copy it and press
+   **Paste**. Studio shows only its last 4 characters after that. **Remove** deletes the
+   saved key. An Anthropic key starts with `sk-ant-api`; Studio says so if you paste an
+   Admin key or the other provider's key.
+4. Add credit to your API account on the provider's website if you haven't yet.
+5. Press **Test connection**. It should say "Connected."
+6. Open the pane with **AI Assistant** on the Play bar or **View ▸ AI Assistant**
    (Ctrl+Shift+A), and ask about your game.
 
 If `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set and no key is saved, settings offer
@@ -76,8 +80,13 @@ the game." Remove the key and build again.
 
 ## Use an AI app (MCP)
 
-**Help ▸ Connect an AI app…** shows what to paste into Claude Code, Claude Desktop or another
-MCP app. The app can then list and read your script files, read the story map and the
+Open **Help ▸ Connect an AI app…** and click **Set up** next to Claude Code or Claude Desktop.
+Studio adds this game to that app for you; restart the app afterwards (in VS Code, run
+**Developer: Reload Window**). Claude Code gets it in every folder you open it in. If Set up
+can't finish, it says why, and you can copy the command or settings text shown instead. For
+other MCP apps, copy the command, arguments and environment from **Other apps**.
+
+The app can then list and read your script files, read the story map and the
 language reference, run the check, and propose changes. With **Let the app change script
 files** ticked, the app shows each change first and applies it only through `apply_edit`.
 Studio can't undo changes an app makes, so save your work first; if a file is open in Studio,

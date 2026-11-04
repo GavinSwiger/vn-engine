@@ -14,6 +14,9 @@ The full paths appear only in this dialog (and on the clipboard when the author 
 module logs nothing (01 §6.5).
 
 - ``snippets(python, engine, game, *, write=True) -> Snippets``: the three texts (pure).
+- ``setup_claude_code`` / ``setup_claude_desktop``: the **Set up** buttons. The first runs
+  ``claude mcp add --scope user`` as an argument list (no shell); the second adds this game's
+  entry to Claude Desktop's settings file, keeping the rest and a ``.bak`` of the old file.
 - ``open_connect_dialog(win)``: the menu row (the open one is raised).
 
 Looks like Studio's other dialogs (``dialogs``: padding, buttons, title bar; ``theme``
@@ -26,8 +29,12 @@ import json
 import math
 import os
 import shlex
+import shutil
+import subprocess
 import sys
+import threading
 import tkinter as tk
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import font as tkfont
@@ -44,16 +51,33 @@ MENU = "Connect an AI app…"
 TITLE = "Connect an AI app"
 HEADING = "USE THIS GAME IN AN AI APP"
 INTRO = ("Claude Code, Claude Desktop and other apps that support MCP can read this game, "
-         "check it and suggest changes. They use your account with that app; Studio sends "
+         "check it and suggest changes. They run on your plan with that app (for Claude, "
+         "your Pro or Max plan), so no API key or API credit is needed. Studio sends "
          "nothing itself.")
 WRITE_OPTION = "Let the app change script files (it shows each change first)"
 CLAUDE_CODE = "CLAUDE CODE"
-CLAUDE_CODE_HOW = "Run this in a terminal:"
+CLAUDE_CODE_HOW = "Click Set up, or run this in a terminal:"
 CLAUDE_DESKTOP = "CLAUDE DESKTOP"
-CLAUDE_DESKTOP_HOW = "Settings ▸ Developer ▸ Edit config, add this, then restart Claude:"
+CLAUDE_DESKTOP_HOW = "Click Set up, or add this under Settings ▸ Developer ▸ Edit config:"
 OTHER_APPS = "OTHER APPS"
 NO_UNDO = "Studio can't undo changes an app makes. Save your work first."
 COPY = "Copy"
+SET_UP = "Set up"
+SETTING_UP = "Setting up…"
+CODE_DONE = ("Done. Restart Claude Code (in VS Code: Developer: Reload Window), then ask it "
+             "about your game.")
+CODE_MISSING = ("Claude Code isn't installed on this computer. Install it from "
+                "claude.com/claude-code, then click Set up again.")
+CODE_FAILED = "Claude Code couldn't add it: {reason}. Copy the command and run it in a terminal."
+CODE_UNSAFE = ("Studio can't start Claude Code safely with these folder names. Copy the command "
+               "and run it in a terminal.")
+DESKTOP_DONE = "Done. Quit Claude Desktop fully (also from the tray), then open it again."
+DESKTOP_MISSING = ("Claude Desktop isn't installed on this computer. Install it from "
+                   "claude.com/download, open it once, then click Set up again.")
+DESKTOP_FAILED = "Couldn't change Claude Desktop's settings: {reason}. Copy the text instead."
+DESKTOP_BAD_FILE = "its settings file isn't valid JSON, so Studio left it alone"
+DESKTOP_CONFIG = "claude_desktop_config.json"
+SETUP_TIMEOUT_S = 60
 CLOSE = "Close"
 SERVER_PREFIX = "vn-"
 READ_ONLY = "--read-only"
@@ -129,7 +153,7 @@ def snippets(python: Path | str, engine: Path | str, game: Path | str, *,
     # option; a quoted "--" reaches claude from PowerShell and cmd alike.
     dashes = quoted("--", windows=True) if (os.name == "nt" if windows is None else windows) \
         else "--"
-    claude_code = (f"claude mcp add {name} -e PYTHONPATH={quoted(engine, windows=windows)} "
+    claude_code = (f"claude mcp add --scope user {name} -e PYTHONPATH={quoted(engine, windows=windows)} "
                    f"{dashes} {quoted(python, windows=windows)} -P -m engine assist-mcp "
                    f"{quoted(str(game), windows=windows)}{flag}")
     desktop = desktop_config(name, python, server_args(game, write=write), engine)
@@ -137,6 +161,96 @@ def snippets(python: Path | str, engine: Path | str, game: Path | str, *,
              f"Arguments: -P -m engine assist-mcp {quoted(str(game), windows=windows)}{flag}\n"
              f"Environment: PYTHONPATH={engine}")
     return Snippets(name, claude_code, desktop, other)
+
+
+def claude_code_argv(claude: str, python: str, engine: str, game: Path | str, *,
+                     write: bool = True) -> list[str]:
+    """``claude mcp add`` as an argument list (no shell, so nothing needs quoting). User
+    scope: the server is there in every folder Claude Code is opened in."""
+    return [claude, "mcp", "add", "--scope", "user", server_name(Path(game)),
+            "-e", f"PYTHONPATH={engine}", "--", str(python),
+            *server_args(Path(game), write=write)]
+
+
+# cmd.exe reads these even inside quotes, so a .cmd launcher can't take them safely.
+_CMD_SPECIAL = frozenset('%^&|<>!"\n\r')
+
+
+def setup_claude_code(python: str, engine: str, game: Path | str, *, write: bool = True,
+                      which: Callable[[str], str | None] = shutil.which,
+                      run: Callable[..., Any] = subprocess.run) -> tuple[bool, str]:
+    """**Set up** for Claude Code: replace any earlier user-scope entry for this game, then
+    add this one. Returns (done, the text to show)."""
+    claude = which("claude")
+    if claude is None:
+        return False, CODE_MISSING
+    argv = claude_code_argv(claude, python, engine, game, write=write)
+    if claude.lower().endswith((".cmd", ".bat")) and any(
+            char in _CMD_SPECIAL for arg in argv[1:] for char in arg):
+        return False, CODE_UNSAFE
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        run([claude, "mcp", "remove", "--scope", "user", server_name(Path(game))],
+            capture_output=True, timeout=SETUP_TIMEOUT_S, creationflags=flags)
+        done = run(argv, capture_output=True, timeout=SETUP_TIMEOUT_S, creationflags=flags)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, CODE_FAILED.format(reason=type(exc).__name__)
+    if done.returncode != 0:
+        said = (done.stderr or done.stdout or b"").decode("utf-8", "replace").strip()
+        reason = said.splitlines()[-1][:200] if said else f"exit status {done.returncode}"
+        return False, CODE_FAILED.format(reason=reason)
+    return True, CODE_DONE
+
+
+def desktop_config_path(environ: Mapping[str, str] | None = None,
+                        platform: str | None = None) -> Path | None:
+    """Claude Desktop's settings file, or None when Claude Desktop isn't installed (its
+    folder is missing). Windows also checks the Microsoft Store install's folder."""
+    environ = os.environ if environ is None else environ
+    platform = sys.platform if platform is None else platform
+    if platform == "win32":
+        roaming = environ.get("APPDATA")
+        if roaming and (Path(roaming) / "Claude").is_dir():
+            return Path(roaming) / "Claude" / DESKTOP_CONFIG
+        local = environ.get("LOCALAPPDATA")
+        if local:
+            for package in sorted((Path(local) / "Packages").glob("Claude_*")):
+                folder = package / "LocalCache" / "Roaming" / "Claude"
+                if folder.is_dir():
+                    return folder / DESKTOP_CONFIG
+        return None
+    if platform == "darwin":
+        folder = Path.home() / "Library" / "Application Support" / "Claude"
+        return folder / DESKTOP_CONFIG if folder.is_dir() else None
+    return None
+
+
+def setup_claude_desktop(python: str, engine: str, game: Path | str, *, write: bool = True,
+                         path: Path | None = None) -> tuple[bool, str]:
+    """**Set up** for Claude Desktop: add (or replace) this game's entry in its settings
+    file, keeping everything else. The old file is kept beside it as ``….json.bak``."""
+    path = desktop_config_path() if path is None else path
+    if path is None:
+        return False, DESKTOP_MISSING
+    try:
+        old = path.read_bytes() if path.exists() else b""
+        try:
+            data = json.loads(old.decode("utf-8-sig")) if old.strip() else {}
+        except (UnicodeDecodeError, ValueError):
+            data = None
+        if not isinstance(data, dict) or not isinstance(data.get("mcpServers", {}), dict):
+            return False, DESKTOP_FAILED.format(reason=DESKTOP_BAD_FILE)
+        data.setdefault("mcpServers", {})[server_name(Path(game))] = {
+            "command": str(python), "args": server_args(Path(game), write=write),
+            "env": {"PYTHONPATH": str(engine)}}
+        if old:
+            path.with_name(path.name + ".bak").write_bytes(old)
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        os.replace(temp, path)
+    except OSError as exc:
+        return False, DESKTOP_FAILED.format(reason=exc.strerror or type(exc).__name__)
+    return True, DESKTOP_DONE
 
 
 def studio_python() -> Path:
@@ -197,6 +311,8 @@ class ConnectDialog:
         self.write_box.pack(anchor="w", pady=(self.px(12), 0))
         self.codes: list[tk.Text] = []
         self.copies: list[ttk.Button] = []
+        self.setups: list[ttk.Button] = []            # Claude Code, Claude Desktop
+        self.statuses: list[ttk.Label] = []
         for index, (caption, how) in enumerate(((CLAUDE_CODE, CLAUDE_CODE_HOW),
                                                 (CLAUDE_DESKTOP, CLAUDE_DESKTOP_HOW),
                                                 (OTHER_APPS, None))):
@@ -237,6 +353,9 @@ class ConnectDialog:
         if how is not None:
             self._label(head, how, wrap=self.wrap - self.px(120)).pack(
                 side="left", padx=(self.px(12), 0))
+            setup = self._button(head, SET_UP, lambda i=index: self.set_up(i), primary=True)
+            setup.pack(side="right")
+            self.setups.append(setup)
         frame = ttk.Frame(body, style="Dialog.TFrame")
         frame.pack(fill="x")
         font = self.fonts["codeSmall"]
@@ -256,6 +375,10 @@ class ConnectDialog:
         code.bind("<Configure>", lambda _e, c=code: self._fit_box(c))
         self.codes.append(code)
         self.copies.append(copy)
+        if how is not None:
+            status = self._label(body, "", "ConnectHint.TLabel")
+            status.pack(anchor="w", pady=(self.px(4), 0))
+            self.statuses.append(status)
 
     def _code_width(self) -> int:
         """The snippet boxes' text width in px (the body less Copy, its gap and padding)."""
@@ -312,6 +435,30 @@ class ConnectDialog:
         self.dialog.clipboard_clear()
         self.dialog.clipboard_append(self.snippets().all()[index])
 
+    def set_up(self, index: int) -> None:
+        """**Set up** (0: Claude Code, 1: Claude Desktop), off the Tk thread; the result
+        shows under the section."""
+        work = (setup_claude_code, setup_claude_desktop)[index]
+        args = (str(self.python), str(self.engine), self.game)
+        write = bool(self.write.get())
+        result: list[tuple[bool, str]] = []
+        self.setups[index].state(["disabled"])
+        self.statuses[index].configure(text=SETTING_UP)
+        threading.Thread(target=lambda: result.append(work(*args, write=write)),
+                         daemon=True).start()
+
+        def poll() -> None:
+            if not self.alive:
+                return
+            if not result:
+                self.dialog.after(100, poll)
+                return
+            self.setups[index].state(["!disabled"])
+            self.statuses[index].configure(text=result[0][1])
+            self._fit()
+
+        self.dialog.after(100, poll)
+
     def close(self) -> None:
         if not self.alive:
             return
@@ -339,7 +486,8 @@ class ConnectDialog:
             pass
 
 
-__all__ = ["CLAUDE_CODE", "CLAUDE_DESKTOP", "CLOSE", "COPY", "ConnectDialog", "HEADING",
+__all__ = ["CLAUDE_CODE", "CLAUDE_DESKTOP", "CLOSE", "COPY", "SET_UP", "claude_code_argv",
+           "desktop_config_path", "setup_claude_code", "setup_claude_desktop", "ConnectDialog", "HEADING",
            "INTRO", "MENU", "NO_UNDO", "OTHER_APPS", "READ_ONLY", "Snippets", "TITLE",
            "WRITE_OPTION", "desktop_config", "open_connect_dialog", "quoted", "server_args",
            "server_name", "snippets", "studio_python"]

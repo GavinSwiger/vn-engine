@@ -26,7 +26,8 @@ from engine.core.redact import KEY_TOKEN, echo
 
 # --- 01 §6.6 texts ----------------------------------------------------------------------------
 
-NO_KEY: Final = "Set up AI in Studio settings ▸ AI first."
+NO_KEY: Final = ("Add an API key in Studio settings ▸ AI first, or use your Claude plan "
+                 "through Help ▸ Connect an AI app.")
 BAD_KEY: Final = "{provider} didn't accept the API key. Check it in Studio settings ▸ AI."
 # An Admin API key (sk-ant-admin…) manages an organization and can't send messages.
 NOT_A_CHAT_KEY: Final = ("This is an Admin key, which can't send messages. Make a regular API "
@@ -38,8 +39,11 @@ NO_MODEL: Final = "{provider} has no model named {model}. Pick another in Studio
 LIMITED: Final = "{provider} is limiting requests right now. Try again in {seconds} s."
 LIMITED_NO_HINT: Final = "{provider} is limiting requests right now. Try again in a minute."
 BUSY: Final = "{provider} is busy right now. Try again in a minute."
-CREDIT: Final = ("Your {provider} account is out of credit. Add credit on {provider}'s "
-                 "website, then try again.")
+CREDIT: Final = ("Your {provider} account is out of API credit, which is separate from a "
+                 "chat plan. Add credit on {provider}'s website, then try again.")
+# Added for Anthropic: a Claude plan works through Claude Code or Claude Desktop instead.
+CREDIT_PLAN: Final = " Or use your Claude plan: Help ▸ Connect an AI app."
+CLAUDE_PROVIDER: Final = "Anthropic"
 NETWORK: Final = "Couldn't reach {host}. Check your internet connection."
 NETWORK_LOCAL: Final = "Couldn't reach {host}. Is the server running?"
 TLS: Final = "Couldn't make a secure connection to {host}."
@@ -193,7 +197,8 @@ def classify(status: int | None, kind: str, code: str, message: str, *, provider
         return other(provider, REDIRECT.format(status=status), status=status)
     if (status == 402 or kind == "billing_error" or code == "insufficient_quota"
             or _has(message, "credit balance", "insufficient_quota", "exceeded your current quota")):
-        return ProviderError(CREDIT.format(**names), "credit", status=status)
+        text = CREDIT.format(**names) + (CREDIT_PLAN if provider == CLAUDE_PROVIDER else "")
+        return ProviderError(text, "credit", status=status)
     if (status == 413 or kind == "request_too_large" or code == "context_length_exceeded"
             or _has(message, "prompt is too long", "context length", "context window",
                     "maximum context", "too many tokens")):
