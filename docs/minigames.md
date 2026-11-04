@@ -1550,6 +1550,86 @@ neutral = "{name} accepted it."
 disliked = "{name} didn't like it."
 ```
 
+## Ask for text
+
+Ask for text (`ask_text`) comes with the engine. A question and a text field appear over the
+dimmed scene; the player types an answer (a name, a password, a word) and presses Enter or
+OK. The answer, trimmed at both ends, goes into the `into` variable.
+
+```
+default player_name = ""
+
+label start:
+    hana "Wait, I never asked. What's your name?"
+    minigame ask_text prompt="What's your name?" max_length=12 allowed="name" into player_name
+    hana "{var=player_name}! That's a nice name."
+```
+
+`{var=player_name}` shows the answer exactly as typed: braces in it stay braces, so a player
+can't add text tags.
+
+In Studio: **Events ▸ Insert ▸ Ask for a name…** fills in the line above (and offers to add
+`default player_name = ""`), or **Insert ▸ Minigame ▸ Ask for text** for any question.
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `prompt` | the word `prompt` | text of 1 to 300 characters | The question |
+| `default` | `None` | `None`, or text | The starting text (also the test answer) |
+| `max_length` | `20` | a whole number from 1 to 200 | The longest answer, in characters |
+| `allowed` | `"any"` | `"any"`, `"name"` (letters, marks, space, `-`, `'`, `’`, `.`), `"letters"`, `"digits"` (0 to 9), `"letters_digits"` | What the player can type |
+| `hide` | `False` | `True` or `False` | Dots instead of letters (a password) |
+| `can_be_empty` | `False` | `True` or `False` | Whether OK takes an empty answer |
+
+### Playing
+
+- **Keyboard:** type, fix mistakes with Backspace, Delete, Left, Right, Home and End, and
+  press Enter. Japanese and other input methods work, and Ctrl+V pastes the first line of
+  the clipboard. A character `allowed` refuses isn't added ("That character can't be used
+  here."), and typing stops at `max_length` ("That's as long as it can be.").
+- **Controller:** press A on the field for the on-screen keyboard: the D-pad moves, A types,
+  X deletes, Y adds a space, the bumpers change the page, and Done finishes. B closes it and
+  keeps the text. Its pages follow the game's language and fonts.
+- **Mouse:** click in the field to place the cursor, and the small keyboard picture at its
+  right end for the on-screen keyboard.
+- Esc opens the game menu; the typed text is still there afterwards. Saving while typing
+  and loading that save asks the question again, starting from `default`.
+
+### When the arguments are refused
+
+The story stops at the line (E272) with one of these:
+
+- `prompt must be text of 1 to 300 characters, but it has 412.`
+- `max_length must be a whole number from 1 to 200, not 0.`
+- `allowed must be "any", "name", "letters", "digits" or "letters_digits", not "letter". Did you mean "letters"?`
+- `default can hold at most 12 characters (max_length), but it has 31.`
+- `default has characters allowed="digits" doesn't let the player type: "a", "b".`
+- `hide must be True or False, not "yes".`
+
+### Testing the question
+
+Headless runs and Shift+F8 answer with `default`, or `"Test"` when there is none. The
+question can't be `skippable` (the story needs the answer; E271).
+
+### Changing the look and the words
+
+The field uses `[theme.text_entry]` (its colors follow `[theme.button]` when not set) and the
+panel `[theme.panel]`. The words are in `[words.plugin.ask_text]`:
+
+```
+[words.plugin.ask_text]
+title = "Your answer"           # the save's description while asking
+prompt = "Type your answer."    # the question when the line gives none
+placeholder = "Type here"       # in the empty field
+ok = "OK"
+empty = "Type something first." # OK with an empty answer
+hint = "Type, then press Enter. With a controller, press A for the keyboard."
+```
+
+The on-screen keyboard's keys and the field's notes are in `[words]`: `text_entry_space`,
+`text_entry_delete`, `text_entry_done`, `text_entry_full`, `text_entry_refused`.
+
 ## Writing a minigame
 
 A minigame of your own is a **plugin**: a Python file in your game's `game/minigames/`
