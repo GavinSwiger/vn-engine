@@ -385,6 +385,8 @@ def out_of_date(indexes: Iterable[SceneIndex]) -> set[str]:
 
 
 def _shift(links: Iterable[LabelLink], by: int) -> list[LabelLink]:
+    if not by:
+        return list(links)
     return [replace(link, line=link.line + by) for link in links]
 
 
@@ -427,15 +429,19 @@ def map_data(labels: Iterable[NameEntry], links: Iterable[LabelLink],
             by_src.setdefault(link.src, []).append(link)
 
     out_links: list[LabelLink] = []
+    chunks_of: dict[str, dict[str, list[tuple[Key, int]]]] = {}    # F58: no labels × starts
     for entry in out_labels:
         name, ref = entry.name, entry.file
         index = indexes.get(ref) if ref is not None else None
         if index is None:
             out_links.extend(by_src.pop(name, ()))
             continue
-        for key, start in index.starts.items():
-            if key[0] != name:
-                continue
+        named = chunks_of.get(ref)              # type: ignore[arg-type]
+        if named is None:
+            named = chunks_of[ref] = {}         # type: ignore[index]
+            for key, start in index.starts.items():
+                named.setdefault(key[0], []).append((key, start))
+        for key, start in named.get(name, ()):
             read = index.reads.get(key)
             if read is not None and read.error is not None:
                 read = index.good.get(key)
@@ -448,6 +454,44 @@ def map_data(labels: Iterable[NameEntry], links: Iterable[LabelLink],
     for rest in by_src.values():
         out_links.extend(rest)
     return out_labels, out_links
+
+
+# --- F58: closed files and big batches (04 §7.3, §7.11; PR-F58-10, PR-F58-18) ----------------
+
+def changed_lines(text: str, checked: Mapping[Key, bytes] | None) -> int:
+    """How many lines of ``text`` sit in chunks whose digest differs from ``checked`` (a
+    new chunk counts whole; no snapshot: every line). The big-batch rule adds these up."""
+    if checked is None:
+        return _line_count(text)
+    total = 0
+    ordinals: dict[str, int] = {}
+    for name, first, last, start, end in _chunk_spans(text):
+        n = ordinals[name] = ordinals.get(name, -1) + 1
+        if checked.get((name, n)) != digest(text[start:end]):
+            total += last - first + 1
+    return total
+
+
+def _slim_read(read: SceneRead) -> SceneRead:
+    if not read.statements and not read.blocks:
+        return read
+    return replace(read, statements=(), blocks=())
+
+
+def slim(index: SceneIndex) -> SceneIndex:
+    """A file that isn't open keeps starts, digests and its parsed scenes' links and
+    errors, but no statements (PR-F58-18): about 100 bytes a scene."""
+    return replace(index, reads={k: _slim_read(r) for k, r in index.reads.items()},
+                   good={k: _slim_read(r) for k, r in index.good.items()})
+
+
+def drop_checked_reads(index: SceneIndex, checked: Mapping[Key, bytes]) -> SceneIndex:
+    """After a check that saw this text: ``checked`` becomes the baseline and the reads
+    the check now covers (same digest) are dropped, so the child's links take over."""
+    return replace(index, reads={k: r for k, r in index.reads.items()
+                                 if checked.get(k) != r.digest},
+                   good={k: r for k, r in index.good.items() if checked.get(k) != r.digest},
+                   checked=dict(checked))
 
 
 # --- Duplicated labels (I-3) ------------------------------------------------------------------
@@ -475,5 +519,5 @@ def duplicate_text(name: str, here: Place, places: Sequence[Place]) -> str:
 
 __all__ = ["BlockRead", "DIGEST_SIZE", "FOLLOW_MS", "Key", "LABEL_START", "SCENE_PARSE_MAX_LINES",
            "SCENE_ROW_CAP", "SCENE_TOO_LONG", "SceneIndex", "SceneRead", "Span", "StmtRead",
-           "chunks", "digest", "duplicate_text", "duplicates", "map_data", "out_of_date",
-           "parse_chunk", "reindex"]
+           "changed_lines", "chunks", "digest", "drop_checked_reads", "duplicate_text",
+           "duplicates", "map_data", "out_of_date", "parse_chunk", "reindex", "slim"]
