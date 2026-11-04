@@ -75,6 +75,13 @@ F41 (``04`` §16 W1; PR-F41-08..12): ``main(argv, linter=…)`` adds the dev-onl
 ``lint [GAME_DIR] [--json] [--strict]``, the full check printed for editors and CI. Its
 handler (``engine/__main__.py``) has no release mode, so ``--release`` is refused here and a
 frozen build doesn't define it.
+
+F48 (``04`` §7.6; ``07`` I-10): ``main(argv, assist_mcp=…)`` adds the dev-only
+``assist-mcp [GAME_DIR] [--read-only] [--no-launch]``, the assistant's MCP server for AI apps
+(newline-delimited JSON-RPC on stdin and stdout), under the same dev-runs-only rule
+(``--release`` is a usage error, a frozen build doesn't define it). Its ``GAME_DIR`` default
+is ``lint``'s. Nothing on this path writes to stdout before the handler's ``serve`` takes the
+protocol stream: an argument error or ``--help`` exits before the server starts.
 """
 
 import argparse
@@ -124,6 +131,7 @@ CHECK_DEV_ONLY = "check is only available in dev runs"           # F45
 HELPER_DEV_ONLY = "helper is only available in dev runs"         # F47
 BUILD_DEV_ONLY = "build is only available in dev runs"           # F42 PR-F42-01
 LINT_DEV_ONLY = "lint is only available in dev runs"             # F41 PR-F41-12
+ASSIST_MCP_DEV_ONLY = "assist-mcp is only available in dev runs"  # F48 04 §7.6
 # F42 01 §6.3; the same text as tools/build/texts.py's, kept here because a built game has
 # no engine/tools (PR-F42-04).
 GAME_FOLDER_MISSING = ("The game folder is missing. "
@@ -146,6 +154,8 @@ HelperHandler = Callable[[Path], int]
 BuildHandler = Callable[..., int]
 # F41: lint_handler(game_dir, as_json=…, strict=…) -> exit code.
 LintHandler = Callable[..., int]
+# F48: assist_mcp_handler(game_dir, read_only=…, launch=…) -> exit code.
+AssistMcpHandler = Callable[..., int]
 # F40: console_factory(app) -> the App's console (``engine/__main__.py``'s ``_console``).
 ConsoleFactory = Callable[..., object]
 
@@ -252,12 +262,14 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
          helper: HelperHandler | None = None,
          builder: BuildHandler | None = None,
          linter: LintHandler | None = None,
-         console: ConsoleFactory | None = None) -> int:
+         console: ConsoleFactory | None = None,
+         assist_mcp: AssistMcpHandler | None = None) -> int:
     """``python -m engine run [GAME_DIR] [options]``, and ``edit [GAME_DIR]`` when
     ``editor`` is given (``engine/__main__.py``) and the build isn't frozen; likewise
     ``check [GAME_DIR] …`` with ``checker`` (F45), ``helper`` (F47), ``build [GAME_DIR]
-    [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42) and ``lint [GAME_DIR]
-    [--json] [--strict]`` with ``linter`` (F41). F40: ``console`` (the developer
+    [--out FOLDER] [--zip] [--replace]`` with ``builder`` (F42), ``lint [GAME_DIR]
+    [--json] [--strict]`` with ``linter`` (F41) and ``assist-mcp [GAME_DIR] [--read-only]
+    [--no-launch]`` with ``assist_mcp`` (F48). F40: ``console`` (the developer
     console's factory) reaches ``bootstrap.launch`` only for a dev ``run``; a frozen build
     or ``--release`` drops it. ``GAME_DIR`` defaults to
     ``<repo>/game``; a relative ``GAME_DIR`` (or ``--out``) is resolved against the CWD
@@ -333,6 +345,20 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
         lint.add_argument("--strict", action="store_true",
                           help="exit 1 on warnings too, not only on errors")
         lint.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
+    assist = None
+    if assist_mcp is not None and dev_tools:            # F48 04 §7.6
+        assist = commands.add_parser(
+            "assist-mcp", help="let an AI app (MCP) read, check and edit a game folder",
+            description="Serve the game in GAME_DIR to an AI app over MCP: JSON-RPC "
+                        "messages, one per line, on stdin and stdout. Started by the app "
+                        "(see Studio's Help > Connect an AI app).")
+        assist.add_argument("game_dir", nargs="?", metavar="GAME_DIR", default=None,
+                            help="the game folder (default: the game folder next to main.py)")
+        assist.add_argument("--read-only", action="store_true",
+                            help="offer no tool that changes files")
+        assist.add_argument("--no-launch", action="store_true",
+                            help="checks load only: run no define, default, or module() code")
+        assist.add_argument("--release", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.game_dir is None:
         game_dir = engine_root() / "game"
@@ -366,6 +392,11 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
             lint.error(LINT_DEV_ONLY)
         # Like check: no pygame; the handler writes nothing in the game folder.
         return linter(game_dir, as_json=args.json, strict=args.strict)
+    if args.command == "assist-mcp":
+        if args.release:
+            assist.error(ASSIST_MCP_DEV_ONLY)
+        # No prepare_environment, no pygame check and no output: stdout is the protocol's.
+        return assist_mcp(game_dir, read_only=args.read_only, launch=not args.no_launch)
     if dev_tools:
         _refuse_dev_options(run, args)
         if args.extras is not None and (args.start is not None or args.try_stdin):

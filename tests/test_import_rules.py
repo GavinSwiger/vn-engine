@@ -85,6 +85,22 @@ SUBPACKAGES[("tools", "lint")] = {"core", "script", "runtime"}
 # Narrow sibling exceptions to the sub-package rule: importer → the one module it may load.
 # F41 P3 (04 §3): the check child runs the linter's rules.
 SUBPACKAGE_ALLOWED: dict[str, tuple[str, ...]] = {"engine.tools.check": ("engine.tools.lint",)}
+# F48 (04 §3, 07 §2.2, I-2; AC-F48-01): tools/assistant imports core, script, itself, the
+# pure editor modules 04 §3 names (and ``cleanup``, S4) and tools.build.procs; never tkinter,
+# pygame, runtime, app, meta or tools.check, and the network modules only in ``providers/``.
+# Outside engine/tools only ``__main__`` imports it, inside its ``assist-mcp`` handler
+# (``LAZY_ONLY``); the other rows already refuse ``tools``.
+ASSISTANT = "engine.tools.assistant"
+ASSISTANT_EDITOR = ("checker", "document", "scenes", "scriptedit", "files", "config_help",
+                    "assist", "dbmodel", "declarations", "cleanup")
+SUBPACKAGES[("tools", "assistant")] = {"core", "script"}
+SUBPACKAGE_ALLOWED[ASSISTANT] = (*(f"engine.tools.editor.{m}" for m in ASSISTANT_EDITOR),
+                                 "engine.tools.build.procs")
+NETWORK_MODULES = ("socket", "ssl", "http", "urllib")
+EXTERNAL_BANNED[ASSISTANT] = ("tkinter", *NETWORK_MODULES)
+# Files allowed one of their package's EXTERNAL_BANNED modules (prefix of the repo path).
+EXTERNAL_ALLOWED: dict[str, tuple[str, ...]] = {
+    "engine/tools/assistant/providers/": NETWORK_MODULES}
 
 
 def _module_name(path: Path, engine_dir: Path) -> list[str]:
@@ -169,6 +185,28 @@ def _build_modules(line: int, name: str,
             if at == line and target.startswith(BUILD_PACKAGE + ".")}
 
 
+def _sibling_allowed(own_prefix: str, line: int, name: str,
+                     targets: list[tuple[int, str]]) -> bool:
+    """Whether ``own_prefix`` may import ``name`` (on ``line``) by ``SUBPACKAGE_ALLOWED``:
+    ``from engine.tools.editor import files`` counts as ``engine.tools.editor.files``."""
+    allowed = SUBPACKAGE_ALLOWED.get(own_prefix, ())
+
+    def ok(target: str) -> bool:
+        return any((target + ".").startswith(a + ".") for a in allowed)
+
+    if ok(name):
+        return True
+    loaded = [t for at, t in targets if at == line and t.startswith(name + ".")]
+    return bool(loaded) and all(ok(t) for t in loaded)
+
+
+def _external_banned(own_prefix: str | None, rel: str, top: str) -> bool:
+    if not own_prefix or top not in EXTERNAL_BANNED.get(own_prefix, ()):
+        return False
+    return not any(rel.startswith(prefix) and top in modules
+                   for prefix, modules in EXTERNAL_ALLOWED.items())
+
+
 def scan(engine_dir: Path) -> list[str]:
     """Every ADR-0002 violation under ``engine_dir`` as ``"<file>:<line>: <message>"``."""
     violations = []
@@ -204,7 +242,7 @@ def scan(engine_dir: Path) -> list[str]:
                     or (own_prefix and own_prefix not in PYGAME_SUBPACKAGES)):
                 violations.append(f"{rel}:{line}: {package} must not import pygame")
                 continue
-            if own_prefix and top in EXTERNAL_BANNED.get(own_prefix, ()):
+            if _external_banned(own_prefix, rel, top):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
                 continue
             layer = _layer(name)
@@ -219,8 +257,7 @@ def scan(engine_dir: Path) -> list[str]:
             if own_prefix and layer != ROOT_LAYER \
                     and layer == name.split(".")[1] == own_prefix.split(".")[1] \
                     and not (name + ".").startswith(own_prefix + ".") \
-                    and not any((name + ".").startswith(ok + ".")
-                                for ok in SUBPACKAGE_ALLOWED.get(own_prefix, ())):
+                    and not _sibling_allowed(own_prefix, line, name, targets):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
             elif own_prefix and any(name == banned or name.startswith(banned + ".")
                                     for banned in SUBPACKAGE_BANNED.get(own_prefix, ())):
@@ -744,3 +781,78 @@ def test_f43_pure_modules_import_only_their_rows():
             top = name.split(".")[0]
             assert (top != "engine" and top in sys.stdlib_module_names) or any(
                 name == k or name.startswith(k + ".") for k in allowed), (ref, name)
+
+
+# --- AC-F48-01: tools/assistant (04 §3; 07 §2.2, I-2) -------------------------------------------
+
+def test_ac_f48_01_assistant_row(tmp_path):
+    """tools/assistant imports core, script, itself, the named pure editor modules and
+    tools.build.procs; never tkinter, pygame, runtime, app, tools.check or another editor or
+    build module; network modules only in ``providers/``. ``__main__`` imports it only inside
+    a function, and no other package imports it."""
+    engine = tmp_path / "engine"
+    for package in ("core", "script", "runtime", "app", "ui", "tools", "tools/assistant",
+                    "tools/assistant/providers", "tools/editor", "tools/build"):
+        (engine / package).mkdir(parents=True)
+        (engine / package / "__init__.py").write_text("", encoding="utf-8")
+    (engine / "__init__.py").write_text("", encoding="utf-8")
+
+    def write(ref: str, *lines: str) -> None:
+        (engine / ref).write_text("".join(line + chr(10) for line in lines), encoding="utf-8")
+
+    write("tools/assistant/ok.py", "import json", "from engine.core import redact",
+          "from engine.script.parser import parse_file", "from engine.tools.assistant import ok",
+          "from engine.tools.editor import files, scenes as sc",
+          "from engine.tools.editor.checker import CheckItem",
+          "from engine.tools.build.procs import without_keys",
+          "from engine.tools.build import procs")
+    write("tools/assistant/providers/http.py", "import socket", "import ssl",
+          "import http.client", "from urllib.parse import urlsplit")
+    write("tools/assistant/bad.py", "import tkinter", "import pygame", "import socket",
+          "from http import client", "from engine.runtime import launch",
+          "from engine.app import cli", "from engine.tools import check",
+          "from engine.tools.editor import files, window",
+          "from engine.tools.editor.studiomenus import x", "from engine.tools.build import tree")
+    write("ui/x.py", "from engine.tools.assistant import ok")
+    write("__main__.py", "from engine.app import cli", "", "def _assist_mcp():",
+          "    from engine.tools.assistant.mcp import serve", "",
+          "import engine.tools.assistant.mcp")
+    assert scan(engine) == [
+        "engine/__main__.py:6: __main__ must not import engine.tools.assistant.mcp",
+        "engine/tools/assistant/bad.py:1: tools.assistant must not import tkinter",
+        "engine/tools/assistant/bad.py:2: tools.assistant must not import pygame",
+        "engine/tools/assistant/bad.py:3: tools.assistant must not import socket",
+        "engine/tools/assistant/bad.py:4: tools.assistant must not import http",
+        "engine/tools/assistant/bad.py:5: tools.assistant must not import engine.runtime",
+        "engine/tools/assistant/bad.py:6: tools.assistant must not import engine.app",
+        "engine/tools/assistant/bad.py:7: tools.assistant must not import engine.tools",
+        "engine/tools/assistant/bad.py:8: tools.assistant must not import engine.tools.editor",
+        "engine/tools/assistant/bad.py:9: tools.assistant must not import "
+        "engine.tools.editor.studiomenus",
+        "engine/tools/assistant/bad.py:10: tools.assistant must not import "
+        "engine.tools.build",
+        "engine/ui/x.py:1: ui must not import engine.tools.assistant",
+    ]
+    assert scan(REPO / "engine") == []
+
+
+def test_f48_i2_the_server_closure_loads_no_tk_or_network():
+    """07 I-2: with tkinter and pygame blocked, importing ``tools.assistant.mcp`` and
+    ``.tools`` (the MCP server's closure, the pure editor modules included) succeeds and
+    loads no ``socket``, ``ssl`` or ``http``."""
+    import os
+    import subprocess
+    import sys
+
+    code = ("import sys\n"
+            "sys.modules['tkinter'] = sys.modules['pygame'] = None\n"
+            "import engine.tools.assistant.mcp, engine.tools.assistant.tools\n"
+            "print(sorted(m for m in sys.modules\n"
+            "             if m.split('.')[0] in ('socket', '_socket', 'ssl', '_ssl', 'http')))\n")
+    env = {key: value for key, value in os.environ.items()
+           if not key.upper().startswith("PYTHON")}
+    env["PYTHONPATH"] = str(REPO)
+    proc = subprocess.run([sys.executable, "-P", "-c", code], capture_output=True, text=True,
+                          timeout=120, cwd=str(REPO), env=env)
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert proc.stdout.strip() == "[]"

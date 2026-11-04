@@ -7,6 +7,8 @@ players can run (F42, dev runs only); ``engine.tools.build`` is imported only in
 ``_build``.
 ``python -m engine lint [GAME_DIR] [--json] [--strict]``: print every problem and unused
 thing in a game (F41, dev runs only).
+``python -m engine assist-mcp [GAME_DIR] [--read-only] [--no-launch]``: the assistant's MCP
+server for AI apps, over stdin and stdout (F48, dev runs only).
 ``run`` in a dev run gets the developer console (F40): ``engine.tools.console`` is imported
 only inside ``_console``, which the bootstrap calls once with the App.
 
@@ -18,7 +20,10 @@ must stay parseable by old Pythons.
 editor process loads nothing of ``engine.app`` but ``cli`` (ADR-0008, F44 I-1, I-12).
 Likewise ``engine.tools.check`` is imported only inside ``_check`` (F45 ``04`` §3) and
 ``_lint`` (F41), and
-``engine.tools.helper`` only inside ``_helper`` (F47 ``04`` §3.3).
+``engine.tools.helper`` only inside ``_helper`` (F47 ``04`` §3.3), and
+``engine.tools.assistant`` only inside ``_assist_mcp`` (F48 ``04`` §7.6, AC-F48-01: the one
+place outside ``engine/tools`` that imports it). Nothing on that path writes to stdout before
+``serve`` takes it (``07`` I-10).
 """
 
 import sys
@@ -56,6 +61,15 @@ def _lint(game_dir, *, as_json, strict):
     return lint_command(game_dir, as_json=as_json, strict=strict)
 
 
+def _assist_mcp(game_dir, *, read_only, launch):
+    """The ``assist-mcp`` handler given to ``cli.main`` (F48): imports the server only
+    now, and prints nothing first, since stdout is the protocol stream."""
+    from pathlib import Path
+
+    from engine.tools.assistant.mcp import serve
+    return serve(Path(game_dir), read_only=read_only, launch=launch)
+
+
 def _console(app):
     """The console factory given to ``cli.main`` (F40): called by ``bootstrap.launch``
     only in a dev run."""
@@ -68,4 +82,4 @@ if __name__ == "__main__":
     from engine.app import cli
     sys.exit(cli.main(sys.argv[1:], editor=_edit, checker=_check,
                       helper=_helper, builder=_build, linter=_lint,
-                      console=_console))
+                      console=_console, assist_mcp=_assist_mcp))

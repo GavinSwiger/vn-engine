@@ -1,17 +1,21 @@
-"""F48 step S5: the MCP server (AC-F48-19 to 22, 24, 26; 04 §7.6; SEC-F48-05 to -08; 05 §10
-"§7.6"; 07 I-10). The subprocess tests start ``serve`` through ``mcp_harness`` in the form
-01 §6.5 gives (``python -P -m … <game>`` with ``PYTHONPATH`` the engine folder); W1 adds
-``python -m engine assist-mcp``."""
+"""F48 steps S5 and W1: the MCP server (AC-F48-19 to 22, 24, 26, 27; 04 §7.6; SEC-F48-05 to
+-08; 05 §10 "§7.6"; 07 I-10). The subprocess tests start the server with 01 §6.5's own
+command, ``python -P -m engine assist-mcp <game>`` with ``PYTHONPATH`` the engine folder
+only."""
 
 import io
 import json
 import os
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
+from engine import __main__ as entry
+from engine.app import cli
+from engine.core.paths import engine_root
 from engine.tools.assistant.mcp import (
     INVALID_PARAMS, INVALID_REQUEST, LINE_MAX_BYTES, METHOD_NOT_FOUND, PARSE_ERROR, SUPPORTED,
     Server, run)
@@ -22,9 +26,23 @@ from engine.tools.assistant.workspace import CheckService
 from engine.tools.editor import files
 from engine.tools.editor.checker import CheckRunner, check_argv
 from tests.tools.assistant.assist_games import disk, studio
-from tests.tools.assistant.mcp_harness import NOISE
 
-REPO = Path(__file__).resolve().parents[3]
+ENGINE_ROOT = engine_root()
+# AB-07's import-time ``print`` row (07 I-10): a ``sitecustomize`` on an extra path prints
+# NOISE as the server imports its tool layer, after ``__main__``, ``cli`` and ``serve`` began.
+NOISE = '{"jsonrpc":"2.0","id":1,"result":{"forged":true}}'
+NOISY_SITE = f"""import importlib.abc, sys
+
+
+class _Noisy(importlib.abc.MetaPathFinder):
+    def find_spec(self, name, path=None, target=None):
+        if name == "engine.tools.assistant.tools":
+            print({NOISE!r})
+        return None
+
+
+sys.meta_path.insert(0, _Noisy())
+"""
 
 
 # --- A client over a real server process ------------------------------------------------------
@@ -36,20 +54,20 @@ def sample_game(tmp_path: Path) -> Path:
 
 
 class Client:
-    """``serve`` in a child: one JSON-RPC line out, one line back."""
+    """``python -P -m engine assist-mcp GAME`` in a child, as 01 §6.5 starts it:
+    one JSON-RPC line out, one line back. ``site``: an extra path after the engine's."""
 
     def __init__(self, game: Path, *flags: str, cwd: Path | None = None,
-                 tmp: Path | None = None) -> None:
+                 tmp: Path | None = None, site: Path | None = None) -> None:
         env = {key: value for key, value in os.environ.items()
                if not key.upper().startswith("PYTHON")}
-        env["PYTHONPATH"] = str(REPO)
+        env["PYTHONPATH"] = str(ENGINE_ROOT) + (os.pathsep + str(site) if site else "")
         self.err_path = (tmp or game.parent) / f"stderr-{os.getpid()}-{id(self)}.txt"
         self.err = self.err_path.open("wb")
         self.proc = subprocess.Popen(
-            [sys.executable, "-P", "-m", "tests.tools.assistant.mcp_harness", str(game),
-             *flags],
+            [sys.executable, "-P", "-m", "engine", "assist-mcp", str(game), *flags],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.err,
-            cwd=str(cwd or REPO), env=env)
+            cwd=str(cwd or ENGINE_ROOT), env=env)
         self.lines: list[bytes] = []
         self.count = 0
 
@@ -178,7 +196,10 @@ def test_ac21_a_checked_games_prints_and_an_import_time_print_stay_off_stdout(tm
         f"define noisy = print({forged!r}) or print('x' * 100_000_000) or "
         f"open({str(ran)!r}, 'w').close()\n" + main.read_text(encoding="utf-8"),
         encoding="utf-8")
-    client = Client(game, "--import-print")
+    site = tmp_path / "site"
+    site.mkdir()
+    (site / "sitecustomize.py").write_text(NOISY_SITE, encoding="utf-8")
+    client = Client(game, site=site)
     try:
         client.request("initialize", {"protocolVersion": SUPPORTED[0]})
         checked = client.tool("run_check")
@@ -257,3 +278,45 @@ def test_ac26_disk_checks_are_full_unless_no_launch(tmp_path, launch):
         "file": "script/ch2.vns", "old_text": "jump river", "new_text": "jump bridge"}]})
     assert len(argvs) >= 3
     assert all(("--no-launch" in argv) is not launch for argv in argvs), argvs
+
+
+# --- AC-F48-27: dev runs only ------------------------------------------------------------------
+
+def test_ac27_assist_mcp_is_dev_only(tmp_path, monkeypatch, capsys):
+    """``assist-mcp --release`` is a usage error (exit 2); a frozen parser has no
+    ``assist-mcp``; ``GAME_DIR`` defaults as ``lint``'s and a relative one resolves against
+    the CWD; the flags reach the handler; ``_assist_mcp`` imports the server only when
+    called and hands ``serve`` the folder and flags."""
+    calls = []
+
+    def handler(game_dir, **kwargs):
+        calls.append((game_dir, kwargs))
+        return 0
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["assist-mcp", "--release"], assist_mcp=handler)
+    assert exit_info.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.rstrip().endswith("error: assist-mcp is only available in dev runs")
+    assert cli.ASSIST_MCP_DEV_ONLY == "assist-mcp is only available in dev runs"
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["assist-mcp"], assist_mcp=handler) == 0
+    assert cli.main(["assist-mcp", "mygame", "--read-only", "--no-launch"],
+                    assist_mcp=handler) == 0
+    assert calls == [(ENGINE_ROOT / "game", {"read_only": False, "launch": True}),
+                     (tmp_path / "mygame", {"read_only": True, "launch": False})]
+    assert capsys.readouterr().out == ""                 # 07 I-10: stdout stays empty
+    served = []
+    stub = types.ModuleType("engine.tools.assistant.mcp")
+    stub.serve = lambda game_dir, **kw: served.append((game_dir, kw)) or 5
+    monkeypatch.setitem(sys.modules, "engine.tools.assistant.mcp", stub)
+    assert entry._assist_mcp(str(tmp_path), read_only=True, launch=False) == 5
+    assert served == [(tmp_path, {"read_only": True, "launch": False})]
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["assist-mcp"], assist_mcp=handler)
+    assert exit_info.value.code == 2
+    assert "invalid choice: 'assist-mcp'" in capsys.readouterr().err
+    assert len(calls) == 2

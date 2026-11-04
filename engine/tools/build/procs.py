@@ -17,8 +17,9 @@ stop a child and everything it started. Shared by the build child and Studio (st
   (``CREATE_NO_WINDOW``), on POSIX a new session so ``kill_tree`` reaches grandchildren.
 - ``kill_tree(proc)``: Windows ``%SystemRoot%\\System32\\taskkill.exe /T /F /PID``; POSIX
   ``killpg(SIGKILL)``. Then waits for the child. Never raises.
-- ``tool_status()``: is the pinned PyInstaller installed? Read with ``importlib.metadata``;
-  PyInstaller is never imported (SEC-F42-05). ``ToolStatus.key`` is None, ``B_NO_TOOL`` or
+- ``tool_status()``: is the pinned PyInstaller installed? Read with ``importlib.metadata``
+  (imported only there: it loads ``email`` and ``socket``, which the MCP server's import
+  closure must not, F48 07 I-2); PyInstaller is never imported (SEC-F42-05). ``ToolStatus.key`` is None, ``B_NO_TOOL`` or
   ``B_TOOL_VERSION`` (values ``found``, ``wanted`` for the message's ``<x>``/``<y>``).
 - ``install_argv()``: the only pip command (§8): ``-E -m pip install --require-hashes
   --only-binary=:all: --no-input --disable-pip-version-check -r <engine root>/
@@ -30,7 +31,6 @@ stop a child and everything it started. Shared by the build child and Studio (st
   ``build_roots(save_to, staging)`` gives the build's extra roots (SEC-F42-09).
 """
 
-import importlib.metadata
 import os
 import signal
 import subprocess
@@ -133,10 +133,13 @@ class ToolStatus:
         return self.key is None
 
 
-def tool_status(*, version: Callable[[str], str] = importlib.metadata.version) -> ToolStatus:
-    """Whether the pinned PyInstaller is installed for this interpreter (no import)."""
+def tool_status(*, version: Callable[[str], str] | None = None) -> ToolStatus:
+    """Whether the pinned PyInstaller is installed for this interpreter (no import).
+    ``version`` defaults to ``importlib.metadata.version``."""
+    import importlib.metadata
+
     try:
-        found = version(PACKAGE)
+        found = (version or importlib.metadata.version)(PACKAGE)
     except importlib.metadata.PackageNotFoundError:
         return ToolStatus("B_NO_TOOL")
     except Exception:                  # a damaged installation counts as missing
