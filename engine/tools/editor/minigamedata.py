@@ -1904,7 +1904,7 @@ MINIGAME_FORM: Final = "minigame"
 GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
-    "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game",
+    "code_lock": "Code lock", "stay_still": "Stay still", "hand_game": "Hand game",
     "gift_giving": "Gift giving", "ask_text": "Ask for text", "cipher_note": "Coded note",
     "terminal": "Computer terminal"}
 

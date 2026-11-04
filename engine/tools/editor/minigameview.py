@@ -2379,7 +2379,8 @@ class MinigameDialog:
     """The Minigame form over ``win``'s window, filled from ``values`` (``{"line": …}`` or
     None for a new row); built hidden so a test can drive it. ``result`` after OK."""
 
-    def __init__(self, win: Any, values: Mapping[str, str] | None, *, ok: str = OK) -> None:
+    def __init__(self, win: Any, values: Mapping[str, str] | None, *, ok: str = OK,
+                 game: str | None = None) -> None:
         from engine.tools.editor import dialogs
         self.win = win
         self.result: dict[str, str] | None = None
@@ -2388,7 +2389,10 @@ class MinigameDialog:
         self.plugin_texts = plugin_texts(win)
         self.games = list(mg.games(self.plugin_texts))
         self.old = mg.read_call(values.get("line", "")) if values else None
-        game = self.old.game if self.old is not None else (self.games[0] if self.games else "")
+        if self.old is not None:
+            game = self.old.game
+        elif game is None or game not in self.games:
+            game = self.games[0] if self.games else ""
         if game not in self.games:
             self.games.append(game)
         self.dialog = dialog = dialogs._dialog(win.root)
@@ -2758,9 +2762,11 @@ def plugin_texts(win: Any) -> dict[str, str]:
     return out
 
 
-def edit_minigame(win: Any, values: Mapping[str, str] | None) -> dict[str, str] | None:
-    """The Minigame form, modal: ``{"line": …}`` after OK, None after Cancel."""
-    return MinigameDialog(win, values).run()
+def edit_minigame(win: Any, values: Mapping[str, str] | None, *,
+                  game: str | None = None) -> dict[str, str] | None:
+    """The Minigame form, modal: ``{"line": …}`` after OK, None after Cancel. ``game``: a new
+    row's game (Insert's "Poem game"), when it is one of the game's minigames."""
+    return MinigameDialog(win, values, game=game).run()
 
 
 __all__ = ["CATEGORY", "CATEGORY_TITLE", "ChatEditor", "DataDialog", "Editor", "EditorHost",

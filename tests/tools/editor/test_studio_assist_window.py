@@ -12,6 +12,8 @@ import zlib
 
 import pytest
 
+from engine.tools.editor.formdialogs import entry_title
+
 from engine.script.statement_docs import GROUPS, all_docs, docs_for
 from tests.tools.editor.canvas_counter import box_parts
 from tests.tools.editor.conftest import png
@@ -146,17 +148,18 @@ def test_ac40_insert_menu_and_one_step_insert(studio, studio_game):
     for group in groups:
         sub = ed.insert_submenus[group]
         titles = [sub.entrycget(i, "label") for i in range(sub.index("end") + 1)]
-        assert titles == [d.title for d in all_docs() if d.insert and d.group == group]
+        # The names Events ▸ Insert… uses.
+        assert titles == [entry_title(d) for d in all_docs() if d.insert and d.group == group]
     every = [t for g in groups for t in (ed.insert_submenus[g].entrycget(i, "label")
              for i in range(ed.insert_submenus[g].index("end") + 1))]
     for key in ("dialogue", "narration", "$"):
-        assert docs_for(key)[0].title in every
+        assert entry_title(docs_for(key)[0]) in every
     for key in ("elif", "else"):
-        assert all(d.title not in every for d in docs_for(key))
+        assert all(d.title not in every for d in docs_for(key))   # under If, not listed
 
     set_line(ed, 9, "    ")                            # a blank line in label start
     before = ed.body()
-    ed.insert_submenus["Choices"].invoke("Menu")
+    ed.insert_submenus["Choices"].invoke("Choice")
     ed.root.update()
     assert [line(ed, n) for n in range(9, 14)] == [
         "    menu:", '        "Go to the river":', "            jump river",
@@ -270,7 +273,7 @@ def test_ac43_the_story_map_view(studio, studio_game):
     ed.root.update()
     assert "out of date" in view.note.cget("text") and len(view.layout.boxes) == 5
 
-    ed.answers.append("river")                           # Go to label (Ctrl+G)
+    ed.answers.append("river")                           # Find scene (Ctrl+G)
     ed.text.mark_set("insert", "1.0")
     ed.press(ed.text, "<Control-g>")
     assert ed.dialogs[-1][1] == window.GO_TO_LABEL_ASK
@@ -414,7 +417,7 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         (ed.file_menu, "Save", ed.text, "<Control-s>", ("save_current",)),
         (ed.file_menu, "Save all", ed.text, "<Control-Shift-S>", ("save_all",)),
         (ed.edit_menu, "Complete", ed.text, "<Control-space>", ("complete",)),
-        (ed.edit_menu, "Go to label…", ed.text, "<Control-g>", ("go_to_label",)),
+        (ed.edit_menu, "Find scene…", ed.text, "<Control-g>", ("go_to_label",)),
         (ed.view_menu, "Editor", ed.text, "<Control-Key-1>", ("show_tab", 0)),
         (ed.view_menu, "Story map", ed.text, "<Control-Key-2>", ("show_tab", 1)),
         (ed.view_menu, "Database", ed.text, "<Control-Key-3>", ("show_tab", 2)),   # F47 W2

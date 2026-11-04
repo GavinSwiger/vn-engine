@@ -49,6 +49,7 @@ DEFAULT_DOCKS: Final = {PROJECT: LEFT, PROBLEMS: BOTTOM, HELP: BOTTOM, GUIDE: RI
 
 # --- Texts ---------------------------------------------------------------------------------------
 
+PANE_MENU: Final = "{title} pane"        # View's row: "Help pane", not "Help"
 PANE_TITLES: Final = {PROJECT: "Project", PROBLEMS: "Problems", HELP: "Help", GUIDE: "Guide",
                       ASSISTANT: "AI Assistant"}
 LOCK_MENU: Final = "Lock pane layout"
@@ -412,5 +413,5 @@ def header_of(frame: tk.Misc) -> tk.Misc | None:
 
 
 __all__ = ["ASSISTANT", "BOTTOM", "CLOSABLE", "DOCKS", "DockWiring", "GUIDE", "HELP", "LEFT",
-           "LOCK_MENU", "Layout", "PANES", "PANE_TITLES", "PROBLEMS", "PROJECT", "RESET_MENU",
+           "LOCK_MENU", "Layout", "PANES", "PANE_MENU", "PANE_TITLES", "PROBLEMS", "PROJECT", "RESET_MENU",
            "RIGHT", "drop_zone", "header_of", "zone_box"]

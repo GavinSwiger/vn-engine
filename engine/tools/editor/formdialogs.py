@@ -123,7 +123,15 @@ def field_tip(label: tk.Widget, form_key: str, field_key: str) -> object | None:
 
 def entry_title(doc: StatementDoc) -> str:
     """The picker's plain-words name for ``doc``: its form's title when it has a form
-    (Narration and Stop music by their own words), else the doc's title."""
+    (Narration and Stop music by their own words), else the doc's title. A form several
+    entries open (Lock, Unlock, Game UI, Meta file, Minigame) would name them all alike, so
+    those keep the doc's own title ("Forget a gallery picture", "Delete all saves") when
+    the short name would clash."""
+    short = _form_title(doc)
+    return doc.title if _clashes().get(short, 0) > 1 else short
+
+
+def _form_title(doc: StatementDoc) -> str:
     form = forms.form_for_doc(doc)
     if form is None:
         return doc.title
@@ -134,13 +142,38 @@ def entry_title(doc: StatementDoc) -> str:
     return form.title
 
 
+_CLASHES: dict[int, dict[str, int]] = {}      # docs registered → title counts
+
+
+def _clashes() -> dict[str, int]:
+    """How many Insert entries each form title would name (counted again when more docs
+    are registered)."""
+    docs = forms.all_docs()
+    found = _CLASHES.get(len(docs))
+    if found is None:
+        found = {}
+        for doc in docs:
+            if doc.insert and doc.group != forms.DECLARATIONS_GROUP:
+                title = _form_title(doc)
+                found[title] = found.get(title, 0) + 1
+        _CLASHES.clear()
+        _CLASHES[len(docs)] = found
+    return found
+
+
 def new_values(form: CommandForm, doc: StatementDoc | None = None) -> dict[str, str]:
     """A new row's starting values: every field empty, a pick at its first option (Music:
-    play or stop as the doc says)."""
+    play or stop as the doc says; Lock and Unlock at the entry's kind, so Insert's "Unlock a
+    gallery picture" opens on Gallery picture)."""
     values = {f.key: (f.options[0] if f.kind == "pick" and f.options else "")
               for f in form.fields}
     if form.key == "music" and doc is not None and doc.key == "stop":
         values["action"] = "stop"
+    if form.key in ("lock", "unlock") and doc is not None:
+        words = doc.syntax.split()
+        what = words[1].split("|")[0] if len(words) > 1 else ""
+        if what in SWITCHED[form.key][1]:
+            values["what"] = what
     if doc is not None:                         # W9: Insert's "Read a meta file" reads
         values.update(forms_files_ui.new_values(form.key, doc.syntax) or {})
     return values
@@ -291,7 +324,9 @@ class FormDialog:
         self.result: dict[str, str] | None = None
         self.assets = assets
         dialog = self.dialog = dialogs._dialog(parent)
-        dialog.title(form.title)
+        # The title says what the line does ("Unlock gallery picture", "Delete all saves"),
+        # not just the form's name; ``_changed`` keeps it in step with the picks.
+        dialog.title(self.title_for(values))
         body, scale = dialogs._body(dialog)
         self.scale = scale
         gap = round(GAP * scale)
@@ -611,9 +646,20 @@ class FormDialog:
         except (KeyError, ValueError, TypeError):
             return ""
 
+    def title_for(self, values: Mapping[str, str]) -> str:
+        """The dialog's title for ``values``: the row word when it depends on a pick (Lock,
+        Unlock, Game UI, Meta file, Voice), else the form's title."""
+        if self.form.words is None:
+            return self.form.title
+        try:
+            return self.form.row_word(values) or self.form.title
+        except (KeyError, ValueError, TypeError):
+            return self.form.title
+
     def _changed(self) -> None:
         if not self._ready:
             return
+        self.dialog.title(self.title_for(self.values()))
         self._name_chapter()
         _set_card(self.card, self.preview())
         self._sync_assets()                     # first: a new speaker changes the looks

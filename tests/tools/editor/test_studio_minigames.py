@@ -286,7 +286,7 @@ def test_ac_f47_46_minigame_form_in_events(studio, tmp_path, helper, monkeypatch
     form = mv.MinigameDialog(win, None)
     assert form.games == [*mg.BUNDLED, "lantern_memory"]
     assert list(form.game_box.cget("values")) == [
-        "Poem", "Present evidence", "Phone chat", "Puzzle room", "Heartbeat", "Lock",
+        "Poem", "Present evidence", "Phone chat", "Puzzle room", "Heartbeat", "Code lock",
         "Stay still", "Hand game", "Gift giving", "Ask for text", "Coded note",
         "Computer terminal", "lantern_memory"]
     form.set_game("poem_game")
@@ -344,7 +344,7 @@ def test_ac_f47_46_minigame_form_in_events(studio, tmp_path, helper, monkeypatch
     assert "    minigame puzzle_room skippable room=attic into attic_state  # loop" in lines
 
     # Insert ▸ Minigame goes through the same form.
-    monkeypatch.setattr(mv, "edit_minigame", lambda win_, values: {
+    monkeypatch.setattr(mv, "edit_minigame", lambda win_, values, **_kw: {
         "line": "minigame phone_chat chat=late_chat contact=\"Sayori\""})
     story.insert(0, doc_of("minigame"))
     assert '    minigame phone_chat chat=late_chat contact="Sayori"' in \

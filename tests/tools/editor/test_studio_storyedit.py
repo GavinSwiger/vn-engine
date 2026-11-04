@@ -960,7 +960,7 @@ def test_ac_f46_32_the_walkthrough(studio, blank, monkeypatch):
     assert check(blank).problem_total == 0
 
 
-STORY_MENU = ["New scene", "Go to scene…", "Rename scene", "Delete scene", "Move box",
+STORY_MENU = ["New scene", "Add arrow to scene…", "Rename scene", "Delete scene", "Move box",
               "Delete arrow", "Edit choice text", "Change target…", "Tidy up",
               "Insert command…", "Edit command", "Move up", "Move down"]
 
@@ -981,7 +981,7 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
         "File", "Edit", "Insert", "Story", "View", "Run", "Help"]
     assert [label for label, _state in menu_entries(menu)] == STORY_MENU
     assert menu.entrycget("New scene", "accelerator") == "Ctrl+Shift+N"
-    assert menu.entrycget("Go to scene…", "accelerator") == "Ctrl+J"
+    assert menu.entrycget("Add arrow to scene…", "accelerator") == "Ctrl+J"
 
     # Each entry fires the handler its key fires (recorded).
     calls: list[tuple] = []
@@ -996,7 +996,7 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
                           lambda self, *a, n=name: calls.append((n, *a)))
         view.focus_box(view.layout.index_of("stall"))
         for entry, key, call in (("New scene", "<Control-Shift-N>", ("new_scene",)),
-                                 ("Go to scene…", "<Control-j>", ("go_to_scene",)),
+                                 ("Add arrow to scene…", "<Control-j>", ("go_to_scene",)),
                                  ("Rename scene", "<F2>", ("rename_scene",)),
                                  ("Delete scene", "<Delete>", ("delete_scene",))):
             calls.clear()
@@ -1053,14 +1053,14 @@ def test_ac_f46_33_keys_and_menus(studio, lanterns, monkeypatch):
     canvas.event_generate("<Button-3>", x=x, y=y)
     ed.root.update()
     assert view.focused_name() == "festival"
-    assert shown() == [("New scene", "normal"), ("Go to scene…", "normal"),
+    assert shown() == [("New scene", "normal"), ("Add arrow to scene…", "normal"),
                        ("Rename scene", "normal"), ("Delete scene", "normal"),
                        ("Move box", "normal"), ("Play from this scene", "normal"),
                        ("Jump the game here",                  # F40: dimmed, no game
                         "normal" if views.MENU_DIM_ENTRIES else "disabled")]
     win.last_context = None
     ed.press(canvas, "<Shift-F10>")
-    assert [label for label, _ in shown()][:2] == ["New scene", "Go to scene…"]
+    assert [label for label, _ in shown()][:2] == ["New scene", "Add arrow to scene…"]
     view.select_edge(view.edge_index("stall", "river", "menu"))
     win.last_context = None
     ed.press(canvas, "<App>")

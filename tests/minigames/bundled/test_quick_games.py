@@ -364,7 +364,7 @@ def test_ac_f53_08_layouts_fit(game, scale):
 def test_ac_f53_33_docs():
     text = (REPO / "docs" / "minigames.md").read_text(encoding="utf-8")
     sections = {}
-    for heading, name in (("Lock", "code_lock"), ("Stay still", "stay_still"),
+    for heading, name in (("Code lock", "code_lock"), ("Stay still", "stay_still"),
                           ("Hand game", "hand_game")):
         sections[name] = text.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0]
         assert f"(`{name}`)" in sections[name]

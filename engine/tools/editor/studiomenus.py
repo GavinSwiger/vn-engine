@@ -39,7 +39,10 @@ from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
 from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
-from engine.tools.editor.docking import CLOSABLE, LOCK_MENU, PANE_TITLES, RESET_MENU
+from engine.tools.editor.docking import CLOSABLE, LOCK_MENU, PANE_MENU, PANE_TITLES, RESET_MENU
+from engine.tools.editor.formdialogs import entry_title
+
+FIND_SCENE_MENU = "Find scene…"           # Edit: goes to a scene's line by name
 from engine.tools.build.texts import MENU as BUILD_MENU
 from engine.tools.editor.livemap import FOLLOW_CHANGES, REDUCE_MOTION
 
@@ -111,7 +114,7 @@ class StudioMenus:
                 Item("Paste", f"{key}+V", lambda: self._clipboard(self.text, "<<Paste>>")),
                 SEPARATOR,
                 Item("Complete", f"{key}+Space", self.complete),
-                Item("Go to label…", f"{key}+G", self.go_to_label),
+                Item(FIND_SCENE_MENU, f"{key}+G", self.go_to_label),
             ]),
             ("Insert", "insert_menu", self._build_insert_menu),
             ("Story", "story_menu", self._build_story_menu),
@@ -127,7 +130,7 @@ class StudioMenus:
                 Check(REDUCE_MOTION, self.reduce_motion, self.toggle_reduce_motion),   # F58
                 SEPARATOR,
                 Item(ASSISTANT_MENU, f"{key}+Shift+A", self.toggle_assistant),   # F48 §6.1
-                *(Check(PANE_TITLES[pane], self.dock_vars[pane],
+                *(Check(PANE_MENU.format(title=PANE_TITLES[pane]), self.dock_vars[pane],
                         lambda p=pane: self.toggle_pane(p)) for pane in CLOSABLE),
                 Check(LOCK_MENU, self.lock_var, self.toggle_lock),
                 Item(RESET_MENU, command=self.reset_layout),
@@ -192,7 +195,9 @@ class StudioMenus:
         for group, docs in insert_menu():
             sub = tk.Menu(menu, tearoff=0)
             for doc in docs:
-                sub.add_command(label=doc.title, command=lambda d=doc: self.insert_doc(d))
+                # The names Events ▸ Insert… uses ("Background", not "Scene").
+                sub.add_command(label=entry_title(doc),
+                                command=lambda d=doc: self.insert_doc(d))
             menu.add_cascade(label=group, menu=sub)
             self.insert_submenus[group] = sub
         return menu

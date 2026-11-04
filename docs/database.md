@@ -101,8 +101,9 @@ Show or a line that changes a look), so there is nothing else to set up.
 - **▶ Preview the gallery** plays the game straight into Extras ▸ Gallery with every
   picture unlocked. Nothing is saved.
 
-In Events, **Unlock** with **What: gallery** adds a picture to the player's gallery without
-showing it (`unlock gallery cg festival`), and **Lock** makes the game forget one. Game
+In Events, Insert… ▸ **Unlock a gallery picture** adds a picture to the player's gallery
+without showing it (`unlock gallery cg festival`), and **Forget a gallery picture** makes the
+game forget one. Game
 settings ▸ **Extras** has "Show locked pictures as ???" and the gallery's look.
 
 ## Music room
@@ -167,8 +168,9 @@ lock replay bridge "On the Footbridge" image cg lanterns to fireworks:
   scene needs, such as the player's name: **+ Add a starting value**, pick the variable,
   then its value (Yes or No, a number or a text, as the variable's kind). **Remove** takes
   one away. Up to 32.
-- Players unlock a replay the first time they reach its scene. An **Unlock** or **Forget**
-  event (Events ▸ Lock / Unlock ▸ Scene replay) opens or locks one from the story; while
+- Players unlock a replay the first time they reach its scene. An **Unlock a scene
+  replay** or **Forget a scene replay** event (Events ▸ Insert…) opens or locks one from the
+  story; while
   one names a replay, its scene can't change and **Delete** is refused, with **Show uses**.
 - **◀ Move earlier** and **Move later ▶** (or Alt+Up / Alt+Down in the list) change the
   order. Both replays must be in the same script file.
@@ -198,8 +200,8 @@ lock achievement completionist "Completionist" "See every ending." when "lantern
 - Click one to see its form: the **Name shown**, a **Description**, an **Icon** (a picture;
   a square one, 64 × 64 or larger, looks best) and **Hidden** (players see "Hidden
   achievement" until they unlock it).
-- **Unlocked**: **By an Unlock achievement line in the story** (add Events ▸ Unlock ▸
-  Achievement where the player earns it; the form says so while no line gives it), or
+- **Unlocked**: **By an Unlock achievement line in the story** (add Events ▸ Insert… ▸
+  **Unlock achievement** where the player earns it; the form says so while no line gives it), or
   **Automatically, when:** — the same checks as an If (an ending was seen, a variable, a
   meter, a codex tip or item, a route, the playthrough), All of or Any of them. The game
   checks them at every line and choice, and when the story ends. A condition the checks

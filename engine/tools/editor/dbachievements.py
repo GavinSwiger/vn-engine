@@ -5,8 +5,8 @@ list under the title screen's Extras. A non-programmer never types ``lock achiev
 Database ▸ **Achievements** they click **+ New achievement**, type the name players see, and
 Studio writes one line into ``database.vns`` (the script name made from it, unique). The form
 changes the name shown, the description, the icon (a thumbnail picker), **Hidden** and how
-players earn it: **By an Unlock achievement line in the story** (Events ▸ Unlock ▸
-Achievement) or **Automatically, when:** a condition comes true, built with the If form's
+players earn it: **By an Unlock achievement line in the story** (Events ▸ Insert… ▸
+Unlock achievement) or **Automatically, when:** a condition comes true, built with the If form's
 condition builder (``formtools.ConditionBuilder`` over ``conditions.py``; "Written as script"
 when the builder can't show it). **▲ Move up** / **▼ Move down** reorder the Achievements page
 (``declplan.plan_move``); **▶ Preview achievements** runs the game's dev ``run --extras

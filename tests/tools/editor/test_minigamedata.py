@@ -489,7 +489,7 @@ def test_ac_f53_28_quick_games_fields():
     quick = ("code_lock", "stay_still", "hand_game")
     at = md.BUNDLED.index("code_lock")
     assert md.BUNDLED[at:at + 3] == quick and at > md.BUNDLED.index("heartbeat")
-    assert [md.game_title(g) for g in quick] == ["Lock", "Stay still", "Hand game"]
+    assert [md.game_title(g) for g in quick] == ["Code lock", "Stay still", "Hand game"]
     shape = {g: [(f.name, f.label, f.widget, f.required, f.default_text, f.lo, f.hi, f.choices)
                  for f in md.BUILTIN_FIELDS[g]] for g in quick}
     assert shape["code_lock"] == [
@@ -543,14 +543,14 @@ def test_ac_f53_30_every_field_has_a_hint():
 def test_ac_f53_31_row_summaries():
     summary = md.FORM.summary
     assert summary({"line": 'minigame code_lock code="0417" tries=3 into safe_open'}) == (
-        "Lock · 0417 → safe_open")
+        "Code lock · 0417 → safe_open")
     assert summary({"line": "minigame stay_still seconds=15 into flinches"}) == (
         "Stay still · 15 s → flinches")
     assert summary({"line": "minigame stay_still"}) == "Stay still · 10 s"
     assert summary({"line": 'minigame hand_game opponent="Hana" rounds=3 mode="cheat" '
                             "into rps"}) == "Hand game · Hana, cheat → rps"
     assert summary({"line": 'minigame hand_game opponent="Hana"'}) == "Hand game · Hana, fair"
-    assert summary({"line": "minigame code_lock code=secret_code"}) == "Lock · secret_code"
+    assert summary({"line": "minigame code_lock code=secret_code"}) == "Code lock · secret_code"
 
 
 @pytest.mark.parametrize("kind,code", [

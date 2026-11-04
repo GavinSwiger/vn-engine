@@ -30,7 +30,7 @@ The basics of the map (box marks, arrow styles, the Outline) are in
 ## Arrows and choices
 
 - **Connect two scenes:** drag from the handle on a box's right edge onto another box, or
-  press Ctrl+J (**Go to scene…**) and pick one. Studio writes a `jump`.
+  press Ctrl+J (**Add arrow to scene…**) and pick one. Studio writes a `jump`.
 - If the scene already goes somewhere, Studio asks: **Make a choice** turns the two arrows
   into a `menu` with one option each, and opens the new option's text.
 - **Choice text:** select a choice arrow and press F2 (or double-click its label). Enter
@@ -92,4 +92,4 @@ your choice.
 - Studio changes only the lines an action needs; your comments and spacing stay.
 - If a scene's text has a mistake, its map actions wait until you fix it.
 - Tk (Studio's toolkit) has limited screen-reader support; the text itself (Ctrl+1) and
-  **Go to label** (Ctrl+G) are the keyboard path through the story.
+  **Find scene…** (Ctrl+G) are the keyboard path through the story.

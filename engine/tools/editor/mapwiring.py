@@ -72,14 +72,16 @@ SIDE_CLOSE = "\u2715"
 SIDE_TAB_EVENTS = "Events"              # the side pane's tabs (F46 C1, 04 \u00a76.11)
 SIDE_TAB_SCRIPT = "Script"
 SIDE_PAGES = ("events", "script")       # side_tab values, in tab order
-GO_TO_LABEL_ASK = "Go to label:"
+GO_TO_LABEL_ASK = "Find scene:"
 GO_TO_LABEL_OK = "Go"
-NO_SUCH_LABEL = "There is no label named `{name}` in the last check."
-NO_LABELS_YET = "Labels are listed after the first check."
+NO_SUCH_LABEL = "There is no scene named `{name}` in the last check."
+NO_LABELS_YET = "Scenes are listed after the first check."
 # F46 step 5: the Story menu and context menus (design §6.1; plain words, AC-F46-34).
 STORY_NEW_SCENE = "New scene"
 STORY_NEW_SCENE_HERE = "New scene here"
-STORY_GO_TO = "Go to scene…"
+# It writes a jump from the chosen box (Edit ▸ Find scene… is the one that goes there).
+STORY_GO_TO = "Add arrow to scene…"
+STORY_GO_TO_OK = "Add arrow"
 STORY_RENAME = "Rename scene"
 STORY_DELETE_SCENE = "Delete scene"
 STORY_MOVE_BOX = "Move box"
@@ -1122,13 +1124,14 @@ class MapWiring:
             self._map_say(getattr(plan, "status", None) or "")
 
     def go_to_scene(self) -> None:
-        """Go to scene… (Ctrl+J): pick a scene; the focused box gets an arrow to it, as a
+        """Add arrow to scene… (Ctrl+J): pick a scene; the focused box gets an arrow to it, as a
         drag would write."""
         view = self.story_map
         src = view.focused_name()
         if src is None:
             return
-        picked = formdialogs.pick_scene(self.root, self._scene_names())
+        picked = formdialogs.pick_scene(self.root, self._scene_names(),
+                                        title=STORY_GO_TO.rstrip("…"), ok=STORY_GO_TO_OK)
         if picked is not None:
             self.add_arrow(src, picked)
 

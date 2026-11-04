@@ -439,7 +439,8 @@ class StoryEditor:
                 self.win.root, ChoiceValues(choices=(ChoiceItem(""),)), names=self.names(),
                 assets=self.form_assets())
         elif form.key == MINIGAME_FORM:                 # F47 W8: fields from the game
-            values = minigameview.edit_minigame(self.win, None)
+            # A game's own entry ("Poem game") opens on that game.
+            values = minigameview.edit_minigame(self.win, None, game=_game_of(doc))
         else:
             values = formdialogs.edit_form(self.win.root, form,
                                            formdialogs.new_values(form, doc),
@@ -764,6 +765,14 @@ def _span_of(read: SceneRead, row: Row) -> Span | None:
     if row.kind == "header" and 0 <= row.block < len(read.blocks):
         block = read.blocks[row.block]
         return block.span or block.head
+    return None
+
+def _game_of(doc: object) -> str | None:
+    """The minigame an Insert entry names (``minigame poem_game …``), or None for the
+    general Minigame entry (``minigame <name> …``)."""
+    words = str(getattr(doc, "syntax", "")).split()
+    if len(words) > 1 and words[0] == "minigame" and not words[1].startswith("<"):
+        return words[1]
     return None
 
 

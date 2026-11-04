@@ -1114,9 +1114,9 @@ miss = "Missed"
 result = "{hits} of {beats}"
 ```
 
-## Lock
+## Code lock
 
-The Lock (`code_lock`) comes with the engine. It shows a keypad, or a combination dial, over
+The Code lock (`code_lock`) comes with the engine. It shows a keypad, or a combination dial, over
 the dimmed scene. The player opens it with a code the story gave them, such as the date in a
 diary. The result is `True` when it opened, else `False`. No data is needed: in Studio, the
 Minigame form is the whole setup.

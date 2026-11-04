@@ -99,7 +99,7 @@ def test_ac_f45_48_page_covers_studio():
                    "New script file", "**Rename**", "New game…", "F7 (**Check now**)",
                    "**Problems**", "`E`", "`W`", "Show warnings", "Ctrl+Space", "**Insert**",
                    "**Help**", "**Story map**", "(Ctrl+2)", "Ctrl+= and Ctrl+-", "out of date",
-                   "Go to label", "(Ctrl+G)", "Delete** is permanent", "screen-reader"):
+                   "Find scene", "(Ctrl+G)", "Delete** is permanent", "screen-reader"):
         assert needed in flat, needed
 
 
@@ -146,9 +146,9 @@ def test_ac_f45_48_page_names_the_window_texts():
                  window.START_VALUES_HEADING, window.PROBLEMS_HEADING):
         assert name in flat, name
     menus = inspect.getsource(window.EditorWindow.menu_table)     # studiomenus' table
-    for name in ("New game…", "New script file", "Rename", "Delete", "Check now",
-                 "Go to label"):
+    for name in ("New game…", "New script file", "Rename", "Delete", "Check now"):
         assert f'Item("{name}' in menus and name in flat, name
+    assert "FIND_SCENE_MENU" in menus and "Find scene" in flat
 
 
 def test_ac_f45_48_key_list_holds_every_studio_key():

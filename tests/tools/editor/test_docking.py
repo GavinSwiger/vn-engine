@@ -106,5 +106,6 @@ def test_panes_move_close_lock_and_reset(studio, tmp_path):
     menu = win.view_menu
     labels = [str(menu.entrycget(i, "label")) for i in range(menu.index("end") + 1)
               if menu.type(i) in ("checkbutton", "command")]
-    for label in ("Project", "Problems", "Help", docking.LOCK_MENU, docking.RESET_MENU):
+    for label in ("Project pane", "Problems pane", "Help pane", docking.LOCK_MENU,
+                  docking.RESET_MENU):
         assert label in labels

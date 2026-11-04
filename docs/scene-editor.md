@@ -74,7 +74,7 @@ it. Map editing: [Story map editing](story-map.md). Ctrl+Enter or
 Ctrl+click uses the Editor tab. Ctrl+= and Ctrl+- zoom.
 
 If a change stops the script loading, the map keeps its last drawing, marked "out of date".
-**Go to label** (Ctrl+G) jumps to a label by name.
+**Find scene…** (Ctrl+G) jumps to a scene by name.
 
 ## Play a scene
 
@@ -126,7 +126,7 @@ inside the double quotes.
 - Ctrl+S: [save](hot-reload.md). Ctrl+Shift+S: save all. Ctrl+Shift+B: [Build game](build-game.md).
 - Ctrl+O: Open game… Ctrl+N: new script file. Ctrl+Shift+O: Add files…
 - F2, Delete: rename or delete the selected **Project** file.
-- Ctrl+Space: completion. Ctrl+G: Go to label.
+- Ctrl+Space: completion. Ctrl+G: Find scene.
 - Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5, Ctrl+6: Editor, Story map,
   [Database](database.md), [Game settings](game-settings.md), Asset, Outline.
 - Ctrl+=, Ctrl+-, Ctrl+0: zoom the text, or the map.
