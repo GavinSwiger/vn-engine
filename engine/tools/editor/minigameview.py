@@ -202,6 +202,16 @@ class Lookups:
         self.meters = list(dict.fromkeys(written + [e.name for e in db.meter_entries(decls,
                                                                                      names)]))
         self.variables = list(db.variable_names(decls, names))
+        # F55: declared tips (name, title) and the tip categories (the default's key is
+        # ``codex_tips``), for the Coded note's pick-lists.
+        self.tips = [(e.name, e.shown) for e in db.codex_entries(decls, names)[dec.TIP]]
+        cats: list[str] = []
+        for d in decls:
+            if d.kind == dec.TIP:
+                cat = (d.values or {}).get("category") or "codex_tips"
+                if cat not in cats:
+                    cats.append(str(cat))
+        self.tip_categories = cats
         self.images: dict[str, str | None] = {}         # image name → ref (None: a colour)
         self.colors: dict[str, str] = {}
         project = getattr(win, "project", None)
@@ -2315,7 +2325,7 @@ def shown_value(field: mg.ArgField, written: str) -> str:
     text = written.strip()
     if text == "None" and not field.required:
         return ""
-    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND):
+    if field.widget in mg.QUOTED:
         try:
             value = ast.literal_eval(text)
         except (ValueError, SyntaxError):
@@ -2329,7 +2339,7 @@ def is_raw(field: mg.ArgField, written: str) -> bool:
     """A TEXT, CHOICE, METER or SOUND value written as an expression (``"hi " + name``): the form
     shows and keeps it as script."""
     text = written.strip()
-    if field.widget not in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND) or text in ("", "None"):
+    if field.widget not in mg.QUOTED or text in ("", "None"):
         return False
     try:
         return not isinstance(ast.literal_eval(text), str)
@@ -2339,16 +2349,20 @@ def is_raw(field: mg.ArgField, written: str) -> bool:
 
 def written_value(field: mg.ArgField, shown: str, *, raw: bool = False) -> str:
     """The script text of what the form shows (``shown_value``'s inverse)."""
-    text = shown.strip()
-    if not text:
+    text = shown if field.widget == mg.LONG_TEXT else shown.strip()
+    if not text.strip() or (field.widget in (mg.TIP, mg.TIP_CATEGORY) and text == NONE_PICK):
         return ""
     if field.widget == mg.CHOICE and not raw:
         return mg.literal(field.choice_of(text))                     # F52: shown names
-    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND) and not raw:
+    if field.widget in mg.QUOTED and not raw:
         return mg.literal(text)
     if field.widget == mg.TOGGLE:
         return "True" if text in ("1", "True", "true") else "False"
     return text
+
+
+NONE_PICK = "(none)"            # F55: a TIP or TIP_CATEGORY pick-list's empty row
+LONG_TEXT_LINES = 4
 
 
 class MinigameDialog:
@@ -2472,6 +2486,16 @@ class MinigameDialog:
         elif field.widget == mg.SOUND:
             var = tk.StringVar(master=self.dialog, value=value)
             widget = self._sound_field(holder, field, var, value)
+        elif field.widget in (mg.TIP, mg.TIP_CATEGORY):                 # F55
+            lookups = self.store.lookups
+            names = ([n for n, _ in lookups.tips] if field.widget == mg.TIP
+                     else list(lookups.tip_categories))
+            var = tk.StringVar(master=self.dialog, value=value or NONE_PICK)
+            widget = ttk.Combobox(holder, textvariable=var, values=[NONE_PICK] + names,
+                                  width=24)
+        elif field.widget == mg.LONG_TEXT:                               # F55: 4 lines
+            var = tk.StringVar(master=self.dialog, value=value)
+            widget = self._long_text(holder, var)
         else:
             var = tk.StringVar(master=self.dialog, value=value)
             widget = ttk.Entry(holder, textvariable=var, width=28)
@@ -2606,6 +2630,26 @@ class MinigameDialog:
     def set(self, name: str, text: str) -> None:
         """Type ``text`` into the field ``name`` as the form shows it (tests)."""
         self.vars[name].set(text)
+
+    def _long_text(self, holder: ttk.Frame, var: tk.StringVar) -> tk.Text:
+        """F55: a 4-line text box kept in step with ``var`` both ways."""
+        box = tk.Text(holder, height=LONG_TEXT_LINES, width=40, wrap="word", undo=True)
+        box.insert("1.0", var.get())
+
+        def from_box(_event: object = None) -> None:
+            text = box.get("1.0", "end-1c")
+            if text != var.get():
+                var.set(text)
+
+        def from_var(*_args: object) -> None:
+            if box.get("1.0", "end-1c") != var.get():
+                box.delete("1.0", "end")
+                box.insert("1.0", var.get())
+
+        box.bind("<KeyRelease>", from_box, add="+")
+        box.bind("<FocusOut>", from_box, add="+")
+        var.trace_add("write", from_var)
+        return box
 
     def _refresh_sets(self, field: mg.ArgField, pick: str | None = None) -> None:
         self.store.read()

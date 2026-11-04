@@ -79,7 +79,8 @@ USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
     ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS}
 BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
-                  "code_lock", "stay_still", "hand_game", "gift_giving", "ask_text")
+                  "code_lock", "stay_still", "hand_game", "gift_giving", "ask_text",
+                  "cipher_note")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -1520,6 +1521,10 @@ METER: Final = "meter"
 VARIABLE: Final = "variable"
 VALUE: Final = "value"          # any value, written as script
 SOUND: Final = "sound"          # F57: a sound file under audio/ (quoted), or None
+TIP: Final = "tip"              # F55: a declared tip (quoted), or None
+TIP_CATEGORY: Final = "tip_category"   # F55: a tip category (quoted), or None
+LONG_TEXT: Final = "long_text"  # F55: a quoted text on several lines
+QUOTED: Final = (TEXT, CHOICE, METER, SOUND, TIP, TIP_CATEGORY, LONG_TEXT)
 NO_DEFAULT: Final = object()
 NO_PLUGINS: Final[Mapping[str, str]] = MappingProxyType({})
 
@@ -1641,6 +1646,17 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
            labels=("Anything", "Names", "Letters", "Digits", "Letters and digits")),
         _f("hide", "Show dots instead of letters", TOGGLE, False),
         _f("can_be_empty", "Can be left empty", TOGGLE, False)),
+    "cipher_note": (                                                    # F55 §4.3
+        _f("message", "Message", LONG_TEXT),
+        _f("kind", "Code", CHOICE, "letters", choices=("letters", "shift", "symbols"),
+           labels=("Letter swap", "Shift", "Symbols")),
+        _f("alphabet", "Alphabet", TEXT, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+        _f("shift", "Shift by", NUMBER, 3, lo=1, hi=59),
+        _f("key", "Swapped alphabet (empty: made from the message)", TEXT, None),
+        _f("symbols", "Symbols", TEXT, "ΓΔΘΛΞΠΣΦΨΩБДЖЗИЙЛФЦЧШЩЪЫЬЭЮЯξψ"),
+        _f("revealed", "Letters shown from the start", TEXT, ""),
+        _f("hints", "Hints from tip category", TIP_CATEGORY, None),
+        _f("tip", "Tip unlocked when solved", TIP, None)),
 }
 
 # F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
@@ -1679,9 +1695,66 @@ def code_problem(kind: str, code: str) -> str | None:
     return None
 
 
+def cipher_problem(values: Mapping[str, str]) -> str | None:
+    """F55 §4.3: the Coded note's refusals the form can see before OK, word for word as
+    ``cipher_rules.problem`` gives them (``test_minigamedata`` compares them; Studio may not
+    import the rules, ADR-0008). Expressions are left to the game."""
+    message = _literal_text(values.get("message", ""))
+    if values.get("message", "").strip() and message is None:
+        return None
+    if message is None or message == "":
+        return "message must be text of 1 to 300 characters, but it is empty."
+    if len(message) > 300:
+        return f"message must be text of 1 to 300 characters, but it has {len(message)}."
+    kind = _literal_text(values.get("kind", "")) or "letters"
+    alphabet_text = values.get("alphabet", "").strip()
+    alphabet = _literal_text(alphabet_text) if alphabet_text else "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if alphabet is None:
+        return None
+    head = "alphabet needs 2 to 60 different characters and no spaces, but "
+    if any(ch.isspace() for ch in alphabet):
+        return head + "it has a space."
+    if not 2 <= len(alphabet) <= 60:
+        return head + f"it has {len(alphabet)}."
+    for ch in alphabet:
+        if alphabet.count(ch) > 1:
+            return head + f"{ch} is in it twice."
+    upper = "".join(c.upper() if len(c.upper()) == 1 else c for c in message)
+    if not any(ch in alphabet for ch in upper):
+        return "message has no letter of the alphabet, so there is nothing to decode."
+    n = len(alphabet)
+    shift_text = values.get("shift", "").strip()
+    if kind == "shift" and shift_text.lstrip("-").isdigit() and not 1 <= int(shift_text) <= n - 1:
+        return (f"shift must be a whole number from 1 to {n - 1} (the alphabet has {n} letters), "
+                f"not {int(shift_text)}.")
+    key = _literal_text(values.get("key", ""))
+    if key:
+        if kind != "letters":
+            return ('key works only with kind="letters"; for symbols, the order of symbols '
+                    "is the key.")
+        if len(key) != n:
+            return (f"key must have {n} characters, one for each letter of the alphabet, but "
+                    f"it has {len(key)}.")
+        for ch in alphabet:
+            if ch not in key:
+                return f"key must use each letter of the alphabet once, but {ch} is missing."
+    revealed = _literal_text(values.get("revealed", "")) or ""
+    if revealed:
+        if kind == "shift":
+            return 'revealed works only with kind="letters" or kind="symbols".'
+        for ch in revealed:
+            up = ch.upper() if len(ch.upper()) == 1 else ch
+            if up not in alphabet:
+                return f'revealed can only hold letters of the alphabet, but "{up}" isn\'t one.'
+    return None
+
+
 def form_problem(game: str, values: Mapping[str, str]) -> str | None:
     """A problem the Minigame form can see before OK (F53 §5's form check): Lock's code that
-    doesn't fit its kind. Expressions and empty values are left to the game."""
+    doesn't fit its kind; F55: the Coded note's argument refusals. Expressions and empty
+    values are left to the game."""
+    if game == "cipher_note":
+        return cipher_problem(values)
     if game != "code_lock":
         return None
     code = _literal_text(values.get("code", ""))
@@ -1813,7 +1886,7 @@ GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
     "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game",
-    "gift_giving": "Gift giving", "ask_text": "Ask for text"}
+    "gift_giving": "Gift giving", "ask_text": "Ask for text", "cipher_note": "Coded note"}
 
 
 def game_title(game: str) -> str:
@@ -1893,7 +1966,8 @@ ASK_NAME: Final = _ask_name_form()
 
 
 __all__ = [
-    "ADDED", "ANSWER", "ASK", "ASK_NAME", "ASK_NAME_FORM", "ASK_NAME_LINE",
+    "ADDED", "ANSWER", "ASK", "ASK_NAME", "LONG_TEXT", "QUOTED", "TIP", "TIP_CATEGORY",
+    "cipher_problem", "ASK_NAME_FORM", "ASK_NAME_LINE",
     "ASK_NAME_VARIABLE", "AskStep", "ArgField", "BUILTIN_FIELDS", "BUNDLED", "CANVAS",
     "CHANGED", "CHAT", "CHOICE", "Call", "ChatStep", "DATA", "DONT_REPLY", "DataPlan",
     "DataSet", "Evidence", "FIELDS", "FROM_CONTACT", "FROM_ME", "FROM_OTHER", "GameForm",

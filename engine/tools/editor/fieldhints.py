@@ -289,6 +289,17 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "hide": "On: a dot shows for each letter, as for a password.",
         "can_be_empty": "On: OK takes an empty answer. Off: the player must type something.",
     },
+    "cipher_note": {                                    # F55 §4.3
+        "message": "The note in plain words, 1 to 300 characters. It is coded for the player.",
+        "kind": "Letter swap, a shift along the alphabet, or one symbol for each letter.",
+        "alphabet": "The letters that are coded. Anything else shows as written.",
+        "shift": "Shift: how many places each letter moves along the alphabet.",
+        "key": "Letter swap: the coded letter for each alphabet letter. Empty: made from the note.",
+        "symbols": "Symbols: one sign for each alphabet letter, in order.",
+        "revealed": "Letters that start solved, as a head start.",
+        "hints": "The tips of this category the player holds show under Hints.",
+        "tip": "A tip the player gets when the note is solved.",
+    },
     # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
     "poem_game": {
         "words": "The word list: each word and the points it gives each character.",
