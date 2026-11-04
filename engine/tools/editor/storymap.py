@@ -1334,6 +1334,7 @@ __all__ = ["BOX_HEIGHT", "BOX_WIDTH", "Box", "CHIP_CHARS", "CHIP_CHAR_PX", "CHIP
            "PLACE_MARGIN", "PLACE_STEP", "PLACE_TRIES", "Places", "ROW_STEP", "RectHash",
            "START_LABEL", "UNDO_BLOCKED", "UndoRecord", "box_rect", "chip_rect", "chip_size",
            "chip_center", "chip_slot", "chip_text", "curve_at", "curve_points", "cycle_target",
-           "edge_curve", "edge_line", "edge_port", "undo_blocked_text", "hidden_text", "label_files", "label_notes",
+           "edge_curve", "edge_line", "edge_port", "undo_blocked_text", "hidden_text",
+           "label_files", "label_notes",
            "layout", "layout_places", "map_undo", "neighbour", "out_edges", "place_free",
            "relayout", "stale_files", "targets"]

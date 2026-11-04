@@ -1,19 +1,13 @@
 """F58's budget measurements (``04-technical.md`` §11; ``07`` I-12, I-14; step P0).
 
 Every row of 04 §11's two tables, timed on this machine at 300 and 1,000 scenes with one file
-holding every scene (``gen_map_bench``), plus 07 I-14's extras. Rows whose code isn't built
-yet are timed on the operations the design plans (a *proxy*: say which in ``how``):
-
-- **relayout**: today's ``layout`` with chip slotting switched off (columns, marks, boxes and
-  edges, the O(n+e) part 04 §7.6 keeps), plus four ``chip_slot`` probes on a built
-  ``RectHash`` (the dirty chips of a one-scene change).
-- **model + delta**: one file's label and edge rows rebuilt from its ``SceneIndex`` and
-  compared with the shown rows (04 §7.5).
-- **apply + paint**: on a canvas holding the whole map (drawn by today's view), the stored-id
-  ops of a one-box change: its items deleted and drawn again, its four arrows' ``coords``,
-  two chips moved, every visible box's ``file:line`` text changed (a line inserted above
-  them), then ``update_idletasks``. Three cases: 100 % zoom; 50 % zoom on the ``start``
-  layout (more boxes in view); and 250 texts, Q4's "boxes in view" bound.
+holding every scene (``gen_map_bench``), plus 07 I-12/I-14's extras. Since P1-P5 the rows
+time the built code: ``storymap.relayout`` with every box pinned, ``livemap``'s model and
+delta, ``mapcanvas.MapPainter.apply`` + ``update_idletasks`` on a 1400 x 900 canvas
+(``file:line`` texts at most 50 a paint), ``edits.rebase`` with the editor's ``SceneIndex``.
+Rows the wiring steps build (the follow clock in the window, the watch's poll) add the
+measured timer lateness to their constants. P0's proxies and numbers are in the P0 commit
+(a13aaba) and the F58 build notes.
 
 Timer rows wait in ``mainloop`` as Studio does. 07 I-14's keystroke rows run an ``after(1)``
 chain on Tk while a thread decodes 16 MiB or reads a 2,000-file checkout, and report how
@@ -67,7 +61,7 @@ EST: dict[str, tuple[float | None, float | None]] = {
     "set_text": (30, 30),
     "outside_open": (364, 376),
     "ac14": (5, 11),
-    "full_redraw": (None, None),
+    "full_redraw": (200, 700),
 }
 MISS = 1.30                                 # a row misses when measured > 1.3 × its estimate
 
@@ -142,36 +136,19 @@ def reindex_ms(n: int, k: int) -> float:
 
 
 def model_delta_ms(n: int, k: int) -> float:
-    """04 §7.5's proxy: the changed file's rows rebuilt from its index and diffed."""
+    """``livemap``: the changed file's rows rebuilt from its index (``rows_from_index``)
+    and ``MapModel.delta`` against the shown snapshot (04 §7.5)."""
+    from engine.tools.editor import livemap
     text = gen.script(n)
     index = scenes.reindex(None, REF, text, 1, checked=None)
+    model = livemap.MapModel.from_check(gen.labels(n), gen.links(n))
+    shown = model.snapshot()
+    check = model.check_links(REF)
     index = scenes.reindex(index, REF, edited(text, n // 2), 2, checked=index.checked)
-    by_src: dict[str, list[tuple]] = {}
-    for link in gen.links(n):
-        by_src.setdefault(link.src, []).append(
-            (link.src, link.dst, link.kind, link.choice, link.conditional))
-
-    def rows() -> tuple[dict, list]:
-        labels = {name: line for (name, n_), line in index.starts.items() if n_ == 0}
-        edges: list[tuple] = []
-        for key in index.starts:
-            read = index.reads.get(key) or index.good.get(key)
-            if read is not None:
-                edges.extend((ln.src, ln.dst, ln.kind, ln.choice, ln.conditional)
-                             for ln in read.links)
-            elif key[1] == 0:
-                edges.extend(by_src.get(key[0], ()))
-        return labels, edges
-
-    shown = rows()
 
     def step() -> None:
-        labels, edges = rows()
-        old_labels, old_edges = shown
-        moved = [name for name, line in labels.items() if old_labels.get(name) != line]
-        gone = old_labels.keys() - labels.keys()
-        new_edges, old_set = set(edges), set(old_edges)
-        return moved, gone, new_edges - old_set, old_set - new_edges
+        model.set_file(REF, livemap.rows_from_index(index, check))
+        model.delta(shown, (REF,))
 
     return median_ms(step, k)
 
@@ -189,27 +166,81 @@ def layout_ms(n: int, k: int) -> float:
     return median_ms(lambda: storymap.layout(links, labels), k)
 
 
-def relayout_proxy_ms(n: int, k: int) -> tuple[float, float]:
-    """(layout without chip slotting, four ``chip_slot`` probes)."""
+def relayout_ms(n: int, k: int) -> float:
+    """``storymap.relayout`` of a one-scene change (an arrow added, then removed) with every
+    box pinned, as the live map runs it."""
     labels, links = gen.labels(n), gen.links(n)
-    real = storymap._slot_chips
-    storymap._slot_chips = lambda boxes, edges: edges
-    try:
-        base = median_ms(lambda: storymap.layout(links, labels), k)
-    finally:
-        storymap._slot_chips = real
-    found = storymap.layout(links, labels)
-    taken = storymap.RectHash(storymap.box_rect(b.x, b.y) for b in found.boxes)
-    mid = len(found.edges) // 2
-    picks = [i for i in range(mid, mid + 4)]
-    curves = [storymap.edge_curve(found, i) for i in picks]
-    size = storymap.chip_size("Go back")
+    first, diff = storymap.relayout(None, links, labels)
+    pins = dict(diff.placed)
+    more = links + [type(links[0])(f"s{n // 2}", f"s{(n // 2 + 7) % n}", "jump", REF, 1)]
+    state = [first]
 
-    def probes() -> None:
-        for line in curves:
-            storymap.chip_slot(line, size, taken)
+    def step() -> None:
+        now = more if len(state[0].edges) == len(first.edges) else links
+        state[0] = storymap.relayout(state[0], now, labels, pins=pins)[0]
 
-    return base, median_ms(probes, k)
+    return median_ms(step, k)
+
+
+def painter_rows(root: tk.Tk, n: int, k: int) -> dict[str, float]:
+    """``mapcanvas.MapPainter`` on a 1400 x 900 canvas: a full layout + draw, and for a
+    one-scene change (an arrow added or removed) and for a line inserted above every box
+    (all ``file:line`` texts shift; 50 painted now, in view first), ``relayout`` +
+    ``apply`` + ``update_idletasks``, and ``apply`` + paint alone."""
+    from tkinter import font as tkfont
+    from engine.tools.editor.mapcanvas import MapPainter
+    canvas = tk.Canvas(root, background="#1e1e1e", highlightthickness=0)
+    canvas.place(x=0, y=0, relwidth=1, relheight=1)
+    root.update()
+    fonts = [tkfont.Font(root=root, family="Segoe UI", size=-px) for px in (13, 11, 12)]
+    painter = MapPainter(canvas, name_font=fonts[0], detail_font=fonts[1],
+                         chip_font=fonts[2], idle=lambda fn: None)
+    labels, links = gen.labels(n), gen.links(n)
+    out: dict[str, float] = {}
+
+    def full() -> None:
+        painter.draw(storymap.layout(links, labels))
+        root.update_idletasks()
+
+    out["full"] = median_ms(full, 3, warm=1)
+    first, diff = storymap.relayout(None, links, labels)
+    painter.draw(first)
+    r = painter.box_rect(f"s{n // 2}")                  # the changed scene is in view
+    assert r is not None
+    canvas.xview_moveto(max(0.0, (r[0] - 200) / painter.extent[0]))
+    canvas.yview_moveto(max(0.0, (r[1] - 200) / painter.extent[1]))
+    root.update()
+    pins = dict(diff.placed)
+    more = links + [type(links[0])(f"s{n // 2}", f"s{(n // 2 + 7) % n}", "jump", REF, 1)]
+    shifted = [type(e)(e.name, e.file, e.line + 1) for e in labels]
+    state = [first]
+    spent: list[float] = []
+
+    def change(new_links, new_labels) -> None:
+        lay, d = storymap.relayout(state[0], new_links, new_labels, pins=pins)
+        a = time.perf_counter()
+        assert painter.apply(lay, d)
+        root.update_idletasks()
+        spent.append((time.perf_counter() - a) * 1000)
+        state[0] = lay
+
+    def one() -> None:
+        change(more if len(state[0].edges) == len(first.edges) else links, labels)
+
+    out["one"] = median_ms(one, k)
+    out["one_paint"] = statistics.median(spent[-k:])
+    spent.clear()
+    state[0] = storymap.relayout(state[0], links, labels, pins=pins)[0]
+    painter.draw(state[0])
+
+    def shift() -> None:
+        change(links, shifted if state[0].boxes[0].line == labels[0].line else labels)
+
+    out["shift"] = median_ms(shift, k)
+    out["shift_paint"] = statistics.median(spent[-k:])
+    painter.clear()
+    canvas.destroy()
+    return out
 
 
 # --- Tk pieces ---------------------------------------------------------------------------------
@@ -237,87 +268,6 @@ def full_draw_ms(root: tk.Tk, view, n: int, k: int) -> float:
         root.update_idletasks()
 
     return median_ms(draw, k, warm=1)
-
-
-def visible_boxes(view) -> list[int]:
-    """The boxes in the canvas's visible part."""
-    c = view.canvas
-    x0, y0 = c.canvasx(0), c.canvasy(0)
-    x1, y1 = c.canvasx(c.winfo_width()), c.canvasy(c.winfo_height())
-    out = []
-    for j in range(len(view.layout.boxes)):
-        a0, b0, a1, b1 = view.box_rect(j)
-        if a1 > x0 and a0 < x1 and b1 > y0 and b0 < y1:
-            out.append(j)
-    return out
-
-
-def apply_paint_ms(root: tk.Tk, view, n: int, k: int, *, zoom: int = 100,
-                   start: bool = False, lines_cap: int | None = None) -> dict[str, float]:
-    """The stored-id canvas ops of a one-box change on a fully drawn map (see the module
-    doc): every visible box's ``file:line`` text changes (a line inserted above them), or the
-    first ``lines_cap`` boxes' when given. Returns each part, the total and the line count."""
-    labels, links = gen.labels(n, start=start), gen.links(n, start=start)
-    view.zoom = zoom
-    view.set_data(labels, links, False)
-    root.update()
-    canvas = view.canvas
-    lay = view.layout
-    canvas.yview_moveto(0)
-    canvas.xview_moveto(0)
-    root.update()
-    shown = visible_boxes(view)
-    i = shown[min(len(shown) - 1, 3)]
-    picked = shown if lines_cap is None else list(range(min(lines_cap, len(lay.boxes))))
-    where = [canvas.find_withtag(f"where{j}")[0] for j in picked]
-    edges = [e for e, edge in enumerate(lay.edges) if i in (edge.src, edge.dst)][:4]
-    edge_ids = [view.edge_items[e][0] for e in edges]
-    chip_ids = [canvas.find_withtag(f"chip{e}") for e in edges[:2]]
-    counter = [0]
-    ids = list(canvas.find_withtag(f"box{i}"))
-
-    def redraw_box() -> None:
-        x0, y0, x1, y1 = view.box_rect(i)
-        for item in ids:
-            canvas.delete(item)
-        ids[:] = [
-            canvas.create_rectangle(x0, y0, x1, y1, outline="#888", fill="#252526",
-                                    tags=("box",)),
-            canvas.create_text(x0 + 8, y0 + 4, anchor="nw", text=lay.boxes[i].name,
-                               font=view.name_font, fill="#ccc", tags=("box",)),
-            canvas.create_text(x0 + 8, y1 - 4, anchor="sw", text="script/main.vns:1",
-                               font=view.detail_font, fill="#888", tags=("box",)),
-            canvas.create_text(x1 - 8, y0 + 4, anchor="ne", text="not reached",
-                               font=view.detail_font, fill="#888", tags=("box",))]
-
-    def arrows() -> None:
-        for item in edge_ids:
-            canvas.coords(item, *canvas.coords(item))
-        for items in chip_ids:
-            for item in items:
-                canvas.move(item, 0, 1 if counter[0] % 2 else -1)
-
-    def lines() -> None:
-        counter[0] += 1
-        for j, item in enumerate(where):
-            canvas.itemconfigure(item, text=f"script/main.vns:{9 * j + 1 + counter[0] % 2}")
-
-    def paint() -> None:
-        root.update_idletasks()
-
-    out = {"box": median_ms(redraw_box, k), "arrows": median_ms(arrows, k),
-           "lines": median_ms(lines, k)}
-
-    def total() -> None:
-        redraw_box()
-        arrows()
-        lines()
-        paint()
-
-    out["total"] = median_ms(total, k)
-    out["count"] = len(where)
-    view.zoom = 100
-    return out
 
 
 def shared_restyle_ms(root: tk.Tk, view, n: int, k: int) -> float:
@@ -437,7 +387,9 @@ def window_rows(root: tk.Tk, game: Path, n: int, k: int) -> dict[str, float]:
     pfile = edits.ProposalFile(REF, text_sha(live + "x"), plan.files[0], False, False, 1, 1,
                                (), touched=((key,),),
                                marks=tuple((m[0], m[1], m[3]) for m in marks if m[0] == key))
-    out["rebase"] = median_ms(lambda: edits.rebase(pfile, live), k)
+    out["rebase_full"] = median_ms(lambda: edits.rebase(pfile, live), k)
+    live_index = scenes.reindex(None, REF, live, 1, checked=None)
+    out["rebase"] = median_ms(lambda: edits.rebase(pfile, live, index=live_index), k)
     out["win"] = win
     return out
 
@@ -552,9 +504,9 @@ def measure(sizes=SIZES, *, quick: bool = False, only=("typing", "other", "extra
             spread = gen.write_game(tmp / f"spread{n}", n, n)
             rx = reindex_ms(n, 3 * k)
             md = model_delta_ms(n, 3 * k)
-            base, chips = relayout_proxy_ms(n, k)
-            rl = base + chips
-            ap = apply_paint_ms(root, view, n, k)
+            rl = relayout_ms(n, 3 * k)
+            pr = painter_rows(root, n, k)
+            ap = {"total": pr["one_paint"]}
             wr_root = tk.Tk()
             wr_root.withdraw()
             wr = window_rows(wr_root, game, n, k)
@@ -564,29 +516,19 @@ def measure(sizes=SIZES, *, quick: bool = False, only=("typing", "other", "extra
                 f"after(80) in mainloop, worst {80 + lat80[1]:.0f}")
             put("widget_get", "`widget.get` (one file, whole text)", n, wr["widget_get"])
             put("reindex", "`reindex`, one scene", n, rx)
-            put("model_delta", "Model + delta ~ (proxy)", n, md,
-                f"rows from index + set diff; today's map_data {map_data_today_ms(n, k):.1f}")
-            put("relayout", "`relayout` ~ (proxy)", n, rl,
-                f"layout w/o chips {base:.1f} + 4 chip_slot {chips:.2f}")
-            put("apply_paint", "`apply` + visible lines + paint ~ (proxy, 100 % zoom)", n,
-                ap["total"], f"box {ap['box']:.2f}, arrows+chips {ap['arrows']:.2f}, "
-                             f"{ap['count']} visible lines {ap['lines']:.2f}")
-            ap50 = apply_paint_ms(root, view, n, k, zoom=50, start=True)
-            ap250 = apply_paint_ms(root, view, n, k, zoom=50, start=True, lines_cap=250)
-            rows.setdefault("apply_paint_50", Row(
-                "apply_paint", "`apply` + visible lines + paint ~ (proxy, 50 % zoom, "
-                               "start layout)")).values[n] = ap50["total"]
-            rows["apply_paint_50"].how = (f"{ap50['count']} visible lines "
-                                          f"{ap50['lines']:.2f}")
-            rows.setdefault("apply_paint_250", Row(
-                "apply_paint", "`apply` + 250 lines + paint ~ (proxy, Q4's cap)")
-            ).values[n] = ap250["total"]
-            rows["apply_paint_250"].how = f"250 lines {ap250['lines']:.2f}"
+            put("model_delta", "Model + delta (`livemap`)", n, md,
+                f"scenes.map_data now {map_data_today_ms(n, k):.1f}")
+            put("relayout", "`relayout`, one scene, every box pinned", n, rl)
+            put("apply_paint", "`MapPainter.apply` + paint, one scene", n, ap["total"])
+            rows.setdefault("apply_paint_lines", Row(
+                "apply_paint", "`apply` + paint, a line inserted above every box (50 texts)")
+            ).values[n] = pr["shift_paint"]
             typing = 80 + lat80[0] + wr["widget_get"] + rx + update
             put("typing_total", "**Typing total (target 150)**", n, typing)
             put("throttle", "Throttle: 250 + lateness + update (target 300)", n,
                 250 + lat250[0] + wr["widget_get"] + rx + update)
-            put("rebase", "`rebase` (moved text: every chunk digested)", n, wr["rebase"])
+            put("rebase", "`rebase` with the `SceneIndex` (text moved)", n, wr["rebase"],
+                f"without the index {wr['rebase_full']:.2f}")
             put("record_for", "`record_for`, closed file (first open)", n, wr["record_for"])
             put("apply_plan", "`apply_plan` (one edit)", n, wr["apply_plan"])
             put("apply_total", "**Apply, one closed file (target 150)**", n,
@@ -610,12 +552,15 @@ def measure(sizes=SIZES, *, quick: bool = False, only=("typing", "other", "extra
             put("set_text", "`_set_text` (reload an open file)", n, wr["set_text"])
             put("outside_open", "**Outside edit, open clean file (target 500)**", n,
                 outside + wr["set_text"])
-            put("ac14", "**One-scene layout + draw, AC-14 (16 / 50)**", n, rl + ap["total"])
+            put("ac14", "**One-scene layout + draw, AC-14 (16 / 50)**", n, pr["one"],
+                "relayout + MapPainter.apply + update_idletasks")
+            put("full_redraw", "Full layout + draw (`layout` + `MapPainter.draw`)", n,
+                pr["full"], "04: <= 200 / <= 700", gated=False)
             if "extras" in only:
                 fd = full_draw_ms(root, view, n, 3)
-                put("full_redraw", "Full redraw today (`set_data` + draw)", n, fd,
-                    "not gated", gated=False)
-                put("layout_today", "`layout` today", n, layout_ms(n, k), gated=False)
+                put("full_redraw_view", "Full redraw, today's view (`set_data` + draw)", n,
+                    fd, "W1 moves the view onto MapPainter", gated=False)
+                put("layout_today", "`layout` (full)", n, layout_ms(n, k), gated=False)
                 put("shared_restyle", "Shared-tag restyle (`chip`), today", n,
                     shared_restyle_ms(root, view, n, k), gated=False)
                 put("glow_step", "Glow step: 50 outlines by id + paint", n,
