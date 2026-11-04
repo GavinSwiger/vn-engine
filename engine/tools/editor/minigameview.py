@@ -50,18 +50,18 @@ CATEGORY_TITLE = "Minigame data"
 CATEGORY_AFTER = db.CATEGORY_META   # Minigame data goes before Character files
 GROUP_TITLES: Mapping[str, str] = {
     mg.POEM: "Poem word lists", mg.TESTIMONY: "Evidence", mg.CHAT: "Phone chats",
-    mg.ROOM: "Puzzle rooms"}
+    mg.ROOM: "Puzzle rooms", mg.GIFTS: "Gift tables"}
 THING: Mapping[str, str] = {
     mg.POEM: "poem word list", mg.TESTIMONY: "evidence", mg.CHAT: "phone chat",
-    mg.ROOM: "puzzle room"}
+    mg.ROOM: "puzzle room", mg.GIFTS: "gift table"}
 NEW_BUTTON = "+ New"
 NEW_ITEM = "New {thing}…"
 NEW_ASK = "Name of the new {thing}:"
 IN_SCRIPT = "In the script: define {name}"
 EMPTY_TITLE = "No minigame data yet"
 EMPTY_HINT = "Add one with + New."
-ABOUT = ("Word lists, testimony, phone chats and puzzle rooms for the minigames. Make one "
-         "here, then pick it in a Minigame row in Events.")
+ABOUT = ("Word lists, testimony, phone chats, puzzle rooms and gift tables for the minigames. "
+         "Make one here, then pick it in a Minigame row in Events.")
 PICK_ENTRY = "Pick something in the list to see it here."
 NOT_SAVED = "Not saved yet: {problem}"
 COMMENTS_ASK = ("{name} has comments in the script. Saving it from here rewrites it without "
@@ -151,6 +151,17 @@ ADD_RECIPE = "+ Add recipe"
 RECIPE_PLUS, RECIPE_MAKES = "+", "makes"
 NEW_HOTSPOT_LABEL = "Hotspot {n}"
 EXIT_LABEL = "Door"
+
+# Gift tables (F54 §4.2).
+CHARACTER = "Character"
+ADD_CHARACTER = "+ Add character"
+REMOVE_CHARACTER = "Remove character"
+ADD_CHARACTER_ASK = "The character, as its meter is named (letters, digits and _):"
+GIFT_HEADS = ("Gift", "Reaction", "Points", "What they say")
+ANY_GIFT_TEXT = "Any other gift"
+ADD_GIFT = "+ Add gift"
+NO_GIFT_ITEMS = "No items yet. Add them in Database ▸ Codex, then pick the gifts here."
+NEW_GIFT = ("liked", 1)               # a new gift's reaction and points
 
 GAME = "Game"
 SET_UP = "Set up…"
@@ -358,6 +369,11 @@ def starter(kind: str, lookups: Lookups) -> object | None:
     if kind == mg.CHAT:
         return (mg.Step(mg.FROM_CONTACT, "hi!"), mg.Step(mg.FROM_ME, "hey"))  # a {"me": …}:
         #                                         so the scan knows it is a chat by its shape
+    if kind == mg.GIFTS:
+        items = lookups.item_names
+        rows = (mg.GiftRow(items[0], *NEW_GIFT),) if items else ()
+        meters = lookups.meters
+        return mg.GiftTable((mg.GiftSection(meters[0] if meters else "hana", rows),))
     backgrounds = lookups.backgrounds
     return mg.Room(backgrounds[0] if backgrounds else "bg room",
                    (mg.Hotspot("door", (1040, 200, 200, 400), EXIT_LABEL, exit=True),))
@@ -1708,9 +1724,230 @@ class RoomEditor(Editor):
         self._set_room(replace(self.room, combine=tuple(combine)), side=True)
 
 
+# Gift tables ---------------------------------------------------------------------------------
+
+class GiftsEditor(Editor):
+    """F54 §4.2: one character's gifts at a time (the Character pick-list), a row per gift
+    (the item, its reaction, its points, what the character says) under the "Any other gift"
+    row, which can't be removed and is written only when it isn't Neutral, 0, empty."""
+
+    kind = mg.GIFTS
+
+    def __init__(self, host: "EditorHost", parent: tk.Misc, ds: mg.DataSet,
+                 model: object) -> None:
+        super().__init__(host, parent, ds, model)
+        px = self.px
+        bar = ttk.Frame(self.frame)
+        bar.pack(fill="x")
+        ttk.Label(bar, text=CHARACTER).pack(side="left", padx=(0, px(8)))
+        self.current = 0
+        self.character = _Combo(bar, [], "", readonly=True, width=16,
+                                on_change=self.choose_character)
+        self.character.widget.pack(side="left")
+        ttk.Button(bar, text=ADD_CHARACTER, style="Secondary.TButton",
+                   command=self.add_character).pack(side="left", padx=(px(8), 0))
+        self.remove_button = ttk.Button(bar, text=REMOVE_CHARACTER, style="Secondary.TButton",
+                                        command=self.remove_character)
+        self.remove_button.pack(side="left", padx=(px(4), 0))
+        self.table = ttk.Frame(self.frame)
+        self.table.pack(anchor="w", fill="x", pady=(px(8), 0))
+        foot = ttk.Frame(self.frame)
+        foot.pack(fill="x", pady=(px(8), 0))
+        self.add_button = ttk.Button(foot, text=ADD_GIFT, style="Secondary.TButton",
+                                     command=self.add_gift)
+        self.add_button.pack(side="left")
+        self.no_items = ttk.Label(foot, text=NO_GIFT_ITEMS, style="Hint.TLabel",
+                                  wraplength=px(420), justify="left")
+        self.status.pack(in_=foot, side="right")
+        self.any_fields: dict[str, Any] = {}
+        self.rows: list[dict[str, Any]] = []
+        self.rebuild()
+
+    @property
+    def table_model(self) -> mg.GiftTable:
+        return self.model                                   # type: ignore[return-value]
+
+    @property
+    def section(self) -> mg.GiftSection | None:
+        sections = self.table_model.sections
+        return sections[self.current] if 0 <= self.current < len(sections) else None
+
+    def gifts(self) -> list[mg.GiftRow]:
+        """The current character's gifts, the "Any other gift" row left out."""
+        section = self.section
+        return [r for r in section.rows if r.item != mg.ANY_GIFT] if section else []
+
+    # -- building --
+
+    def rebuild(self) -> None:
+        for child in self.table.winfo_children():
+            child.destroy()
+        self.any_fields, self.rows = {}, []
+        sections = self.table_model.sections
+        self.current = min(self.current, max(0, len(sections) - 1))
+        names = [s.character for s in sections]
+        self.character.box.configure(values=names)
+        self.character.set(names[self.current] if names else "")
+        self.remove_button.configure(state="normal" if sections else "disabled")
+        items = self.lookups.items
+        if items:
+            self.no_items.pack_forget()
+            self.add_button.configure(state="normal" if sections else "disabled")
+        else:
+            self.add_button.configure(state="disabled")
+            self.no_items.pack(side="left", padx=(self.px(8), 0))
+        section = self.section
+        if section is None:
+            return
+        pad = self.px(6)
+        for c, head in enumerate(GIFT_HEADS):
+            ttk.Label(self.table, text=head.upper(), style="Caption.TLabel").grid(
+                row=0, column=c, sticky="w", padx=(0, pad))
+        row = section.any_row or mg.GiftRow(mg.ANY_GIFT, "neutral", 0)
+        ttk.Label(self.table, text=ANY_GIFT_TEXT).grid(row=1, column=0, sticky="w",
+                                                       padx=(0, pad), pady=1)
+        self.any_fields = self._cells(1, row, lambda **v: self.set_any(**v))
+        titles = [t for _n, t in items]
+        for r, gift in enumerate(self.gifts(), start=2):
+            index = r - 2
+            item = _Combo(self.table, titles, self.lookups.item_title(gift.item), width=18,
+                          readonly=True,
+                          on_change=lambda text, i=index: self.set_gift(
+                              i, item=self._item_name(text)))
+            item.widget.grid(row=r, column=0, sticky="w", padx=(0, pad), pady=1)
+            fields = self._cells(r, gift, lambda i=index, **v: self.set_gift(i, **v))
+            fields["item"] = item
+            ttk.Button(self.table, text=REMOVE, width=3, style="Ghost.TButton",
+                       command=lambda i=index: self.remove_gift(i)).grid(
+                row=r, column=4, sticky="w")
+            self.rows.append(fields)
+
+    def _cells(self, r: int, row: mg.GiftRow, set_: Callable[..., object]) -> dict[str, Any]:
+        """The Reaction, Points and What they say cells of grid row ``r``."""
+        pad = self.px(6)
+        titles = [mg.REACTION_TITLES[x] for x in mg.REACTIONS]
+        reaction = _Combo(self.table, titles, mg.REACTION_TITLES.get(row.reaction, row.reaction),
+                          width=10, readonly=True,
+                          on_change=lambda text: set_(reaction=self._reaction(text)))
+        reaction.widget.grid(row=r, column=1, sticky="w", padx=(0, pad), pady=1)
+        var = tk.StringVar(master=self.table, value=str(row.points))
+        lo, hi = mg.GIFT_POINTS
+        spin = ttk.Spinbox(self.table, from_=lo, to=hi, increment=1, width=4, textvariable=var,
+                           command=lambda: set_(points=self._points(var)))
+        for key in ("<Return>", "<KP_Enter>", "<FocusOut>"):
+            spin.bind(key, lambda _e: set_(points=self._points(var)), add="+")
+        spin.grid(row=r, column=2, sticky="w", padx=(0, pad), pady=1)
+        line = _Entry(self.table, row.line or "", width=30,
+                      on_change=lambda text: set_(line=text.strip() or None))
+        line.widget.grid(row=r, column=3, sticky="w", padx=(0, pad), pady=1)
+        return {"reaction": reaction, "points": var, "spin": spin, "line": line}
+
+    def _item_name(self, title: str) -> str:
+        return next((n for n, t in self.lookups.items if t == title), title)
+
+    @staticmethod
+    def _reaction(title: str) -> str:
+        return next((r for r, t in mg.REACTION_TITLES.items() if t == title), title.lower())
+
+    @staticmethod
+    def _points(var: tk.StringVar) -> int | None:
+        try:
+            value = int(str(var.get()).strip())
+        except ValueError:
+            return None
+        lo, hi = mg.GIFT_POINTS
+        return value if lo <= value <= hi else None
+
+    # -- changes --
+
+    def _set_section(self, section: mg.GiftSection, *, rebuild: bool = False) -> None:
+        sections = list(self.table_model.sections)
+        if sections[self.current] == section:
+            return
+        sections[self.current] = section
+        self.changed(mg.GiftTable(tuple(sections)), rebuild=rebuild)
+
+    def choose_character(self, name: str) -> None:
+        names = [s.character for s in self.table_model.sections]
+        if name in names:
+            self.current = names.index(name)
+            self.rebuild()
+
+    def add_character(self) -> None:
+        taken = {s.character for s in self.table_model.sections}
+        free = next((m for m in self.lookups.meters if m not in taken), "")
+        answer = ask_text(self.host.root, ADD_CHARACTER_ASK, free, ok="Add")
+        if answer is None or not answer[0].strip():
+            return
+        name = answer[0].strip()
+        if name in taken:
+            self.choose_character(name)
+            return
+        sections = self.table_model.sections + (mg.GiftSection(name),)
+        self.current = len(sections) - 1
+        self.changed(mg.GiftTable(sections), rebuild=True)
+
+    def remove_character(self) -> None:
+        sections = list(self.table_model.sections)
+        if not sections:
+            return
+        del sections[self.current]
+        self.current = max(0, self.current - 1)
+        self.changed(mg.GiftTable(tuple(sections)), rebuild=True)
+
+    def set_any(self, *, reaction: str | None = None, points: int | None = None,
+                line: object = ...) -> None:
+        section = self.section
+        if section is None:
+            return
+        row = section.any_row or mg.GiftRow(mg.ANY_GIFT, "neutral", 0)
+        if points is None and reaction is None and line is ...:
+            self.rebuild()                                   # a points value out of range
+            return
+        new = mg.gift_set_any(section, reaction or row.reaction,
+                              row.points if points is None else points,
+                              row.line if line is ... else line)   # type: ignore[arg-type]
+        self._set_section(new)
+
+    def set_gift(self, index: int, *, item: str | None = None, reaction: str | None = None,
+                 points: int | None = None, line: object = ...) -> None:
+        section = self.section
+        gifts = self.gifts()
+        if section is None or not 0 <= index < len(gifts):
+            return
+        old = gifts[index]
+        if item is None and reaction is None and points is None and line is ...:
+            self.rebuild()                                   # a points value out of range
+            return
+        new = mg.GiftRow(item or old.item, reaction or old.reaction,
+                         old.points if points is None else points,
+                         old.line if line is ... else line)  # type: ignore[arg-type]
+        rows = [new if r is old else r for r in section.rows]
+        self._set_section(mg.GiftSection(section.character, tuple(rows)),
+                          rebuild=item is not None)
+
+    def add_gift(self) -> None:
+        section = self.section
+        if section is None or not self.lookups.items:
+            return
+        used = {r.item for r in section.rows}
+        name = next((n for n in self.lookups.item_names if n not in used),
+                    self.lookups.item_names[0])
+        rows = section.rows + (mg.GiftRow(name, *NEW_GIFT),)
+        self._set_section(mg.GiftSection(section.character, rows), rebuild=True)
+
+    def remove_gift(self, index: int) -> None:
+        section = self.section
+        gifts = self.gifts()
+        if section is None or not 0 <= index < len(gifts):
+            return
+        rows = tuple(r for r in section.rows if r is not gifts[index])
+        self._set_section(mg.GiftSection(section.character, rows), rebuild=True)
+
+
 EDITORS: Mapping[str, type[Editor]] = {
     mg.POEM: PoemEditor, mg.TESTIMONY: EvidenceEditor, mg.CHAT: ChatEditor,
-    mg.ROOM: RoomEditor}
+    mg.ROOM: RoomEditor, mg.GIFTS: GiftsEditor}
 
 
 # --- The host (Database category, or a dialog) -------------------------------------------------
@@ -1905,7 +2142,7 @@ class MinigamePane:
         uses = self.store.uses()
         tree = self.tree
         tree.delete(*tree.get_children())
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS):
             members = [ds for ds in sets if ds.kind == kind or
                        (kind == mg.TESTIMONY and ds.kind == mg.ANSWER)]
             if not members:
@@ -2001,7 +2238,7 @@ class MinigamePane:
     # New and delete.
     def new_menu(self) -> None:
         menu = tk.Menu(self.root, tearoff=False)
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS):
             menu.add_command(label=NEW_ITEM.format(thing=THING[kind]),
                              command=lambda k=kind: self.new(k))
         self.last_menu = menu
