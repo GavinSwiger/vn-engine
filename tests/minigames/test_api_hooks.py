@@ -122,7 +122,7 @@ def test_ac_f25_18_item_categories_field():
     bare = StoryNames((), (), ())
     assert bare.item_categories == ()
     assert [f.name for f in dataclasses.fields(StoryNames)] == [
-        "meters", "items", "tips", "item_categories"]
+        "meters", "items", "tips", "item_categories", "tip_categories"]      # F55: + tips
     cats = (("Evidence", ("brass_key", "festival_map")), ("codex_items", ("shrine_photo",)))
     full = StoryNames(("credibility",), ("brass_key", "festival_map", "shrine_photo"), (),
                       cats)

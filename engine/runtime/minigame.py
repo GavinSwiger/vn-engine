@@ -221,15 +221,19 @@ def story_names(interp: "Interpreter") -> StoryNames:
     if names is None:
         index = interp.codex.index
         categories = []
+        tip_categories = []                                    # F55: hints by category
         for category in index.categories:
-            if category.kind != ITEM_KIND:
-                continue
             key = category.text if category.text is not None else category.word
-            categories.append((key, tuple(e.name for e in index.items
-                                          if e.category is category)))
+            if category.kind == ITEM_KIND:
+                categories.append((key, tuple(e.name for e in index.items
+                                              if e.category is category)))
+            else:
+                tip_categories.append((key, tuple(e.name for e in index.tips
+                                                  if e.category is category)))
         names = interp._story_names = StoryNames(
             meters=tuple(interp.points.names()), items=tuple(e.name for e in index.items),
-            tips=tuple(e.name for e in index.tips), item_categories=tuple(categories))
+            tips=tuple(e.name for e in index.tips), item_categories=tuple(categories),
+            tip_categories=tuple(tip_categories))
     return names
 
 

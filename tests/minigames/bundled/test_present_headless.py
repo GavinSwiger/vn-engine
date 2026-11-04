@@ -42,7 +42,8 @@ STORY_S = StoryNames(meters=("credibility",), items=("brass_key", "festival_map"
                                                      "shrine_photo"),
                      tips=("lanterns",),
                      item_categories=(("Evidence", ("brass_key", "festival_map")),
-                                      ("codex_items", ("shrine_photo",))))
+                                      ("codex_items", ("shrine_photo",))),
+                     tip_categories=(("codex_tips", ("lanterns",)),))           # F55
 WIN = {"action": "present", "statement": "gate", "evidence": "brass_key", "correct": True}
 WRONG = {"action": "present", "statement": "gate", "evidence": "festival_map",
          "correct": False}

@@ -79,6 +79,9 @@ class StoryNames:
     items: tuple[str, ...]
     tips: tuple[str, ...]
     item_categories: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    # F55 (additive, like ``item_categories``): one entry per tip category, ``(category key,
+    # tip names)``; the key is the author's text, or ``"codex_tips"`` for the default one.
+    tip_categories: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

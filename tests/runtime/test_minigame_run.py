@@ -395,7 +395,8 @@ def test_ac_f25_18_item_categories(tmp_path):
     assert names == StoryNames(meters=("hana",), items=("paper_lantern", "photo", "coin",
                                                         "badge"), tips=("lanterns",),
                                item_categories=(("codex_items", ("paper_lantern", "coin")),
-                                                ("Evidence", ("photo", "badge"))))
+                                                ("Evidence", ("photo", "badge"))),
+                               tip_categories=(("codex_tips", ("lanterns",)),))   # F55
     assert story_names(interp) is names                     # built once per interpreter
     first = load_m(tmp_path / "e", replace={5: 'lock item photo "Photo" in "Evidence"⏎'
                                                'lock item paper_lantern "Paper Lantern"'})
