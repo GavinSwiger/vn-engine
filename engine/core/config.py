@@ -29,6 +29,7 @@ from engine.core.config_schema import (
     PLUGIN_TABLE_KEYS_MAX,
     PLUGIN_TABLES_MAX,
     EntryMap,
+    HexColor,
     LookTable,
     RawPluginTable,
     RawPluginTables,
@@ -63,6 +64,7 @@ from engine.core.errors import (
 )
 from engine.core.paths import GamePaths
 from engine.core.redact import echo, escape_controls, truncate
+from engine.core.schemes import SCHEMES, scheme_colors
 
 # --- Messages (§7.2.1, §7.2.2) -----------------------------------------------------------
 
@@ -225,6 +227,7 @@ def did_you_mean(name: str, names: Iterable[str]) -> str | None:
 def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list[ConfigError]]:
     walk = _Walk(locator)
     sections: dict[str, object] = {}
+    doc = _with_scheme(doc, walk)                                         # F49
 
     for section, content in doc.items():
         if section in SECTIONS and isinstance(content, dict):
@@ -249,6 +252,75 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
     walk.warnings.sort(key=lambda item: _line_order(item[0]))
     walk.errors.sort(key=lambda error: _line_order(error.line))
     return config, [message for _, message in walk.warnings], walk.errors
+
+
+# --- F49: color schemes (SPEC §5) ---------------------------------------------------------
+
+def _with_scheme(doc: dict, walk: "_Walk") -> dict:
+    """``doc`` with ``[theme] preset``'s scheme laid *under* the author's ``[theme]`` keys
+    (F49 §5): a known id gives a copy whose ``theme`` table also holds every scheme color
+    the author didn't set, as raw ``"#RRGGBB"`` text the walk then checks as usual; a path
+    that meets a non-table is skipped (the walk reports that value). An unknown id warns
+    once and is dropped from the copy, so the engine colors show. A value that isn't text
+    is left for the walk's usual ``Choice`` error. ``doc`` itself is never changed."""
+    theme = doc.get("theme")
+    if not isinstance(theme, dict) or "preset" not in theme:
+        return doc
+    preset = _scheme_id(theme["preset"], walk, ("theme", "preset"))
+    if preset is _NOT_TEXT:
+        return doc
+    out = dict(doc)
+    if preset is None:
+        out["theme"] = {key: value for key, value in theme.items() if key != "preset"}
+    else:
+        out["theme"] = _merged_under(theme, scheme_colors(preset).items())
+    return out
+
+
+_NOT_TEXT = object()
+
+
+def _scheme_id(value: object, walk: "_Walk", path: tuple[str, ...]) -> object:
+    """A ``preset`` value: its id when it names a scheme; None (after the unknown-scheme
+    warning) for other text; ``_NOT_TEXT`` for a value that isn't text."""
+    if type(value) is not str:
+        return _NOT_TEXT
+    if value in SCHEMES:
+        return value
+    line = walk.locator.line_of(*path)
+    label = f"[{'.'.join(path[:-1])}] {path[-1]}"
+    message = f'{_where(line)}: unknown color scheme "{echo(value)}" in {label}'
+    close = did_you_mean(value, SCHEMES)
+    if close is not None:
+        message += f' — did you mean "{close}"?'
+    else:
+        message += ". Use one of " + ", ".join(f'"{key}"' for key in SCHEMES) + "."
+    walk.warnings.append((line, message))
+    return None
+
+
+def _merged_under(table: dict, colors: Iterable[tuple[str, str]]) -> dict:
+    """A copy of ``table`` with each dotted ``path`` → value set where the author set
+    nothing; ``table``'s own tables are copied, never changed."""
+    out = _copy_tables(table)
+    for path, value in colors:
+        node = out
+        *heads, key = path.split(".")
+        for head in heads:
+            child = node.setdefault(head, {})
+            if not isinstance(child, dict):
+                break                   # a non-table on the path: the walk reports it
+            node = child
+        else:
+            node.setdefault(key, value)
+    return out
+
+
+def _copy_tables(table: dict) -> dict:
+    """``table`` with every nested table copied (values are shared; they are immutable or
+    never changed)."""
+    return {key: _copy_tables(value) if isinstance(value, dict) else value
+            for key, value in table.items()}
 
 
 def _content_warning_errors(config: Config, doc: dict,
@@ -453,6 +525,7 @@ class _Walk:
         tokens: dict[str, object] = {}
         words: dict[str, str] = {}
         entries = None
+        preset: str | None = None
         for key, value in content.items():
             key_line = self.locator.line_of(*path, key)
             found = fields.get(key)
@@ -468,19 +541,32 @@ class _Walk:
             elif not isinstance(value, dict):
                 self.error(key_line, f"[{label}] {key}", validator, value)
             elif key == "theme":
-                self._look_theme(section, value, path + (key,), tokens)
+                preset = self._look_theme(section, value, path + (key,), tokens)
             else:
                 self._look_words(section, value, path + (key,), words)
-        return LookTable(MappingProxyType(tokens), MappingProxyType(words), entries, line)
+        return LookTable(MappingProxyType(tokens), MappingProxyType(words), entries, line,
+                         preset)
 
     def _look_theme(self, section: str, content: dict, path: tuple[str, ...],
-                    out: dict[str, object]) -> None:
-        """Each allowed area's set tokens into ``out`` as ``"area.key"`` paths."""
+                    out: dict[str, object]) -> str | None:
+        """Each allowed area's set tokens into ``out`` as ``"area.key"`` paths. F49: a
+        style's ``preset`` is read before the area check; a known one then adds every
+        scheme color outside ``title`` the style didn't set, and its id is returned. (A
+        playthrough table's ``preset`` gets the usual area error.)"""
         label = ".".join(path)
         areas = STYLE_AREAS if section == "style" else PLAYTHROUGH_AREAS
         theme_fields = config_fields(ThemeConfig)
+        preset: str | None = None
         for area, value in content.items():
             line = self.locator.line_of(*path, area)
+            if area == "preset" and section == "style":
+                found = _scheme_id(value, self, path + (area,))
+                if found is _NOT_TEXT:
+                    self.error(line, f"[{label}] {area}",
+                               theme_fields[area].metadata["validator"], value)
+                elif found is not None:
+                    preset = found                                   # type: ignore[assignment]
+                continue
             if area not in areas:
                 self.errors.append(ConfigError(f"[{label}.{toml_key(area)}] "
                                                + _LOOK_AREA_TEXTS[section],
@@ -491,6 +577,12 @@ class _Walk:
                 self.sparse(validator.cls, value, path + (area,), area + ".", out)
             else:
                 self.error(line, f"[{label}] {area}", validator, value)
+        if preset is not None:
+            color = HexColor()
+            for token, value in scheme_colors(preset).items():
+                if not token.startswith("title."):                   # D2: never the title
+                    out.setdefault(token, color.check(value))
+        return preset
 
     def _look_words(self, section: str, content: dict, path: tuple[str, ...],
                     out: dict[str, str]) -> None:

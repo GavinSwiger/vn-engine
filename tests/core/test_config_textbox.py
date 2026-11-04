@@ -26,6 +26,7 @@ from engine.core.config_schema import (
     TextboxTheme,
     ThemeConfig,
     ValueProblem,
+    config_fields,
 )
 
 LINE2 = "config.toml, line 2: "
@@ -116,7 +117,8 @@ def test_theme_areas():
         "codex",                                                 # F21 step 3
         "flowchart",                                             # F20 s8
         "gallery",                                               # F34 W3
-        "minigame", "plugin"}                                    # F23 s5b
+        "minigame", "plugin",                                    # F23 s5b
+        "preset"}                                                # F49 S1
 
 
 def test_theme_tables_are_frozen():
@@ -374,4 +376,4 @@ def test_validator_phrases():
     assert Opacity.expected == "a number from 0.0 to 1.0, such as 0.85 for 85%"
     assert FontRef.expected == "a .ttf or .otf file inside the game folder, written with /"
     assert GuiImageRef.expected == 'an image in gui/, e.g. "gui/textbox.png"'
-    assert isinstance(dataclasses.fields(ThemeConfig)[1].metadata["validator"], Table)
+    assert isinstance(config_fields(ThemeConfig)["textbox"].metadata["validator"], Table)

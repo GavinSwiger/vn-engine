@@ -51,6 +51,7 @@ from engine.core.constants import (
 from engine.core.errors import AssetRefError, ConfigError
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
+from engine.core.schemes import SCHEMES, scheme_ids
 
 RGB = tuple[int, int, int]
 Point = tuple[float, float]
@@ -98,6 +99,12 @@ class Bool(Validator):
 
 
 class Choice(Validator):
+    """One of ``options`` (case-sensitive). ``labels`` (option → shown name, F49) lets
+    Studio show a choice by name ("Pocket LCD") while the file keeps the option; empty
+    means the options are shown as they are."""
+
+    labels: Mapping[str, str] = MappingProxyType({})
+
     def __init__(self, *options: str) -> None:
         self.options = options
         self.expected = "one of " + ", ".join(f'"{option}"' for option in options)
@@ -106,6 +113,17 @@ class Choice(Validator):
         if type(value) is str and value in self.options:          # case-sensitive
             return value
         raise ValueProblem
+
+
+class SchemeName(Choice):
+    """F49: ``[theme] preset``, a built-in color scheme id (``engine.core.schemes``); its
+    ``labels`` are the schemes' names. An unknown id is a warning, not this error: config
+    drops it before this validator runs (``config._with_scheme``), so only a value that
+    isn't text reaches ``check`` refused."""
+
+    def __init__(self) -> None:
+        super().__init__(*scheme_ids())
+        self.labels = MappingProxyType({key: SCHEMES[key].name for key in self.options})
 
 
 class HexColor(Validator):
@@ -1307,6 +1325,9 @@ def _no_plugin_tables() -> Mapping[str, RawPluginTable]:
     return MappingProxyType({})
 
 
+SCHEME_DOC = ("a built-in color scheme for every box, menu and button; colors you set "
+              "yourself still win")
+
 UI_THEME_AREAS =("ui", "panel", "button", "toggle", "slider", "list", "title", "menu",
                   "quick_menu", "confirm")
 # F11's two areas (F11 03-ui "Theme tokens").
@@ -1315,7 +1336,9 @@ F11_THEME_AREAS = ("save", "notice")
 
 @dataclass(frozen=True)
 class ThemeConfig:
-    """``[theme.<area>]``: one ``Table`` field per area."""
+    """``[theme.<area>]``: one ``Table`` field per area, after F49's ``preset`` (the one
+    key that isn't an area: walkers look areas up by name, never by position)."""
+    preset: str | None = field(default=None, metadata=spec(SchemeName(), SCHEME_DOC))  # F49
     stage: StageTheme = field(default_factory=StageTheme, metadata=spec(Table(StageTheme)))
     textbox: TextboxTheme = field(default_factory=TextboxTheme,
                                   metadata=spec(Table(TextboxTheme)))
@@ -1908,11 +1931,14 @@ class LookTable:
     """One valid ``[style.<name>]`` or ``[playthrough.N]``: ``tokens`` maps a dotted theme
     path (``"textbox.fill_color"``, ``"title.logo.text_size"``) to its checked value, and
     ``words`` a word key to its text, set keys only (read-only mappings);
-    ``title_entries`` is a playthrough table's ``title_entries``; ``line`` the table's line."""
+    ``title_entries`` is a playthrough table's ``title_entries``; ``line`` the table's line.
+    F49: ``preset`` is a style's known color scheme id; its colors outside ``title`` are
+    already in ``tokens`` (under the style's own), so the id is only for W67 and Studio."""
     tokens: Mapping[str, object]
     words: Mapping[str, str]
     title_entries: tuple[str, ...] | None = None
     line: int | None = None
+    preset: str | None = None
 
 
 @dataclass(frozen=True)
