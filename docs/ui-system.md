@@ -640,6 +640,23 @@ the selected item's title), the buttons `items`, `back`, `use`, `combine`, and `
 ("Put away {item}"), and the captions `need_item`, `no_use`, and `no_combine`; their
 defaults are in [minigames.md](minigames.md).
 
+**Quick minigames (F53).** `code_lock`, `stay_still`, and `hand_game` draw every color from
+engine tokens (`panel.*`, `button.*`, `slider.*`), so all six color schemes apply; their own
+tokens are sizes, sounds, and pictures only. Layout and states are in
+[F53 01-design](../specs/F53-quick-minigames/01-design.md) §4; the words are in
+[minigames.md](minigames.md). Sizes are scaled by the player's text size and clamped
+silently; a missing picture shows the hand's word.
+
+| Token | Type | Default | Purpose |
+|---|---|---|---|
+| `plugin.code_lock.display.text_size` | size | 48 (32–64) | The keypad's display. |
+| `plugin.code_lock.turn_sound`, `.wrong_sound`, `.open_sound` | sound | none | A dial turn, a wrong code, the lock opening. |
+| `plugin.stay_still.line.text_size` | size | 32 (24–40) | The line; steps down by 2 (not below 24) to fit 3 lines, then "…". |
+| `plugin.stay_still.flinch_sound` | sound | none | Each flinch. |
+| `plugin.hand_game.hand.text_size` | size | 48 (32–64) | A hand's word on its card. |
+| `plugin.hand_game.hand.rock_image`, `.paper_image`, `.scissors_image` | image | none | Replaces the hand's word, shrunk (never stretched) to fit the card. |
+| `plugin.hand_game.reveal_sound` | sound | none | Both hands show. |
+
 **Flowchart (F20).** Set in `[theme.flowchart]` (sub-tables `[theme.flowchart.node]`, `.edge`,
 and the rest). Purposes, shapes, and words are in
 [F20 03-ui](../specs/F20-flowchart/03-ui.md), Theme tokens. The detail panel, Jump,

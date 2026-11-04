@@ -258,7 +258,8 @@ def still_layout(area: Sequence[float], *, speech_h: float, count_h: float, butt
     count = (cx - COUNT_PANEL[0] / 2, top + speech_h + gap, float(COUNT_PANEL[0]),
              float(count_h))
     bar = (cx - BAR[0] / 2, count[1] + count_h + gap, float(BAR[0]), float(BAR[1]))
-    ready_box = (cx - READY_W / 2, bar[1] + BAR[1] + gap, float(READY_W), float(button_h))
+    ready_box = (cx - READY_W / 2, bar[1] + BAR[1] + (gap if ready else 0), float(READY_W),
+                 float(button_h if ready else 0))
     return StillLayout(speech, count, bar, ready_box, gap)
 
 

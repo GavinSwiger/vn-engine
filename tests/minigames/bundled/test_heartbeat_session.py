@@ -243,10 +243,10 @@ def test_ac_f57_09_input_and_the_paused_clock(world):
 # --- AC-F57-10 ---------------------------------------------------------------------------------
 
 def test_ac_f57_10_docs_and_registration():
-    assert BUNDLED[-1] is Heartbeat and BUNDLED.count(Heartbeat) == 1
+    assert BUNDLED.count(Heartbeat) == 1               # later games follow it
     text = (REPO / "docs" / "minigames.md").read_text(encoding="utf-8")
-    assert ("Five names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,\n"
-            "  `puzzle_room`, and `heartbeat`.") in text
+    names = text.split("names come with the engine:", 1)[1].split("Any others", 1)[0]
+    assert "`heartbeat`" in names                     # F53 and later add their names here
     section = text.split("\n## Heartbeat\n", 1)[1].split("\n## ", 1)[0]
     for heading in ("### Arguments", "### Playing", "### When the arguments are refused",
                     "### Testing Heartbeat", "### Changing the look and the words"):

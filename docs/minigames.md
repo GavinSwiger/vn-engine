@@ -34,8 +34,9 @@ until the game ends, the game fades back to the story, and the story goes on wit
 line.
 
 - **The name** comes first: `lantern_memory`. It is the name the minigame's plugin gives
-  itself. Five names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
-  `puzzle_room`, and `heartbeat`. Any others are plugins in your game's `game/minigames/` folder.
+  itself. Eight names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
+  `puzzle_room`, `heartbeat`, `code_lock`, `stay_still`, and `hand_game`. Any others are
+  plugins in your game's `game/minigames/` folder.
 - **Arguments** come next, written `name=value`: `pairs=6`. Each minigame has its own; its
   section below (or its plugin) lists them. A value is worked out when the line runs, like
   a condition, so `hints=points.hana >= 3` works. Misspelled or missing arguments are
@@ -1107,6 +1108,308 @@ ready = "Ready…"
 hit = "Steady"
 miss = "Missed"
 result = "{hits} of {beats}"
+```
+
+## Lock
+
+The Lock (`code_lock`) comes with the engine. It shows a keypad, or a combination dial, over
+the dimmed scene. The player opens it with a code the story gave them, such as the date in a
+diary. The result is `True` when it opened, else `False`. No data is needed: in Studio, the
+Minigame form is the whole setup.
+
+```
+default safe_open = False
+
+label study:
+    minigame code_lock skippable code="0417" tries=3 hint="The date on the diary." into safe_open
+    if safe_open:
+        "The safe clicked open."
+```
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `code` | required | text in quotes. Keypad: 1 to 12 digits. Dial: 3 to 6 digits, or 3 to 6 letters A to Z | The code that opens it. Write it in quotes, so a leading 0 stays |
+| `kind` | `"keypad"` | `"keypad"`, `"dial"` | Number buttons, or wheels the player turns |
+| `tries` | `0` | a whole number from 0 (no limit) to 99 | Wrong codes allowed before the lock stays shut |
+| `hint` | `None` | text, 1 to 120 characters on one line, or `None` | Shown in the hint bar after some wrong tries |
+| `hint_after` | `3` | a whole number from 0 to 99 | Wrong tries before the hint shows; 0 shows it from the start |
+| `leave` | `True` | `True` or `False` | `True` shows a Step back button, which gives `False` |
+
+A dial with a letter code ignores capitals: `code="love"` opens with LOVE.
+
+### Playing
+
+- **Keypad.** The player types digits with the number keys (top row or number pad), or
+  presses the buttons by mouse, arrow keys and Enter, or the gamepad. Backspace deletes a
+  digit, and Clear deletes them all. Enter works once every slot is filled; typing past
+  the last slot does nothing. When the keyboard or gamepad fills the last slot, Enter gets
+  the focus.
+- **Dial.** One wheel per character. Up and Down (keys, D-pad, stick, a click on ▲ or ▼,
+  or the mouse wheel over a wheel) turn it, and 9 turns to 0, Z to A. Left and Right move
+  between wheels and then to Open. Typing a digit or letter sets the wheel and moves on.
+  Enter or A on a wheel is Open. Wheels start at 0, or at A for a letter code.
+- **A wrong code** says so in words, with the tries left: "Wrong code. 2 tries left." The
+  keypad clears; the wheels stay where they are. After the last allowed wrong try, the lock
+  says "No tries left. The lock stays shut." with one Continue button, and the result is
+  `False`.
+- **The right code** shows "Open!" and the story goes on a moment later with `True`.
+- **The hint** replaces the hint bar's words after `hint_after` wrong tries: "Hint: The date
+  on the diary."
+- **Reduce motion**: a wheel's turn and the wrong-code shake are cuts. Nothing is ever shown
+  by color alone. **Skip Game** (with `skippable`) counts as opened.
+
+A lock that can't be left (`leave=False`), with no try limit and no hint, leaves a player who
+missed the code only Skip Game or a load. A dev run says so once, with W280:
+`code_lock can't be left: leave=False, tries=0 and no hint, so a player who missed the code
+can only skip or load. Add a hint, a try limit, or leave=True.`
+
+### When the arguments are refused
+
+A problem stops the story with E272, `code_lock can't use these arguments:` and the reason.
+Only the first problem is reported, in this order:
+
+| Reason | Fix |
+|---|---|
+| `kind must be "keypad" or "dial", but it is "dail". Did you mean "dial"?` | Write one of the two, in quotes. |
+| `code must be text in quotes, such as code="0417", but it is a whole number.` | Put the code in quotes, so a leading 0 isn't lost. |
+| `a keypad code is 1 to 12 digits from 0 to 9, but code is "12a4".` | Use digits only, or `kind="dial"` for letters. |
+| `a dial code is 3 to 6 digits, or 3 to 6 letters from A to Z, but code is "12".` | Use 3 to 6 digits, or 3 to 6 letters, not both. |
+| `tries must be a whole number from 0 (no limit) to 99, but it is 100.` | Use 0 to 99. |
+| `hint must be text in quotes, or None, but it is a whole number.` (and the text rules below) | Write the hint in quotes, on one line, up to 120 characters. |
+| `hint_after must be a whole number from 0 to 99, but it is -1.` | Use 0 to 99. |
+| `leave must be True or False, but it is "yes".` | Write `True` or `False`, without quotes. |
+
+### Testing the Lock
+
+A headless run, Shift+F8 in a test run, and Skip Game open the lock: the result is `True`.
+To test a lock that stays shut, give `finish False`.
+
+### Changing the look and the words
+
+The Lock draws with the game's own `panel` and `button` colors, so every color scheme
+applies. `[theme.plugin.code_lock]` has a size and three sounds (none by default):
+
+| Token | Default |
+|---|---|
+| `display.text_size` | `48` (32 to 64) |
+| `turn_sound` | none |
+| `wrong_sound` | none |
+| `open_sound` | none |
+
+Every word can be changed in `[words.plugin.code_lock]`; `{n}` is the tries left:
+
+```toml
+[words.plugin.code_lock]
+title = "Lock"
+hint_keypad = "Enter the code."
+hint_dial = "Turn the wheels to the code, then choose Open."
+hint_prefix = "Hint: "
+clear = "Clear"
+enter = "Enter"
+open = "Open"
+leave = "Step back"
+wrong = "Wrong code."
+tries_left = "{n} tries left."
+try_left = "1 try left."
+opened = "Open!"
+locked_out = "No tries left. The lock stays shut."
+continue = "Continue"
+```
+
+## Stay still
+
+Stay still (`stay_still`) comes with the engine. A character tells the player not to touch
+anything, and a countdown runs. Each key press, click, wheel notch or gamepad button is a
+flinch. The result is the number of flinches.
+
+```
+default flinches = 0
+
+label hands_off:
+    effect window_title "Don't move."
+    minigame stay_still seconds=15 speaker="Monika" line="Don't touch anything. I'll know." into flinches
+    effect window_title off
+    if flinches == 0:
+        monika "Good. You can listen."
+```
+
+The game itself never reads the player's name, the window title or any file. Keep that kind
+of effect in the story around it, as above: a window title, `{username}` in a line after it,
+or a `file write` when the player flinched.
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `seconds` | `10` | a whole number from 3 to 120 | How long the player must not touch anything |
+| `line` | `None` ("Don't touch anything.") | text, 1 to 160 characters on one line | The line shown while the player waits |
+| `speaker` | `None` (no name) | text, 1 to 24 characters | The name above the line |
+| `flinch_line` | `None` ("Don't move.") | text, 1 to 160 characters on one line | Shown for 2 seconds after each flinch |
+| `strict` | `False` | `True` or `False` | `True`: the first flinch ends the game, with the result 1 |
+| `mouse` | `False` | `True` or `False` | `True`: moving the mouse counts as a flinch |
+| `ready` | `True` | `True` or `False` | `True` shows an "I'm ready" button first |
+
+### Playing
+
+- With `ready`, the player presses **I'm ready** (click, Enter, or A); the countdown starts
+  half a second later. With `ready=False` it starts a second after the game appears. Nothing
+  counts before that.
+- **A flinch** is any key press (a key held down counts once), a left, middle or extra
+  mouse button, a wheel notch, any gamepad button, a D-pad or stick step, and, with
+  `mouse=True`, moving the pointer 24 units. Presses within a quarter of a second of a
+  flinch are the same flinch. Each flinch shows `flinch_line` for 2 seconds.
+- **Never a flinch:** Esc, the gamepad's Start and B buttons and the right mouse button
+  (they open the game menu, and the countdown waits while it is open), F5 and F9,
+  releasing a key or button, Shift, Ctrl, Alt or the Windows key pressed on their own, and
+  leaving the window: the countdown waits until the window has focus again, and the click
+  that brings it back doesn't count.
+- At 0 the story goes on with the count. With `strict=True`, the first flinch ends it with
+  1.
+- **Timing assist** doesn't apply: the game asks the player to do nothing. A player who
+  can't keep still can use **Skip Game** (with `skippable`), which gives 0.
+- **Reduce motion**: the bar under the countdown steps once a second instead of draining.
+
+### When the arguments are refused
+
+A problem stops the story with E272, `stay_still can't use these arguments:` and the reason.
+Only the first problem is reported, in this order:
+
+| Reason | Fix |
+|---|---|
+| `seconds must be a whole number from 3 to 120, but it is 2.` | Use 3 to 120 seconds. |
+| `line must be text in quotes, or None, but it is a whole number.` (and the text rules below) | Write the line in quotes, on one line, up to 160 characters. |
+| `speaker is 30 characters long; it is 1 to 24 characters on one line.` | Use a name of 1 to 24 characters. |
+| `flinch_line is empty; it is 1 to 160 characters on one line.` | Write the line, or leave `flinch_line` out. |
+| `strict must be True or False, but it is 1.` | Write `True` or `False`. |
+| `mouse must be True or False, but it is "yes".` | Write `True` or `False`. |
+| `ready must be True or False, but it is None.` | Write `True` or `False`. |
+
+### Testing Stay still
+
+A headless run, Shift+F8 in a test run, and Skip Game give 0 flinches. To test the other
+branch, give `finish 2`.
+
+### Changing the look and the words
+
+Stay still draws with the game's `panel` and `slider` colors. `[theme.plugin.stay_still]`:
+
+| Token | Default |
+|---|---|
+| `line.text_size` | `32` (24 to 40) |
+| `flinch_sound` | none |
+
+```toml
+[words.plugin.stay_still]
+title = "Stay Still"
+hint_ready = "Press I'm ready, then don't touch anything."
+hint = "Don't press anything until the time is up."
+ready = "I'm ready"
+line = "Don't touch anything."
+flinch_line = "Don't move."
+```
+
+## Hand game
+
+The hand game (`hand_game`) comes with the engine: rock, paper, scissors against a
+character, who may play fair or cheat. The result is `"won"`, `"lost"` or `"draw"`.
+
+```
+default rps = None
+
+label recess:
+    minigame hand_game opponent="Hana" rounds=3 mode="cheat" into rps
+    if rps == "lost":
+        hana "Did you see that? ...No, you didn't."
+```
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `opponent` | required | text, 1 to 24 characters | Who the player plays against, as shown |
+| `rounds` | `3` | a whole number from 1 to 9 | How many rounds at most; draws count as rounds |
+| `mode` | `"fair"` | `"fair"`, `"kind"`, `"cheat"`, `"sly"` | How they play |
+
+- **fair**: her hand is random.
+- **kind**: she lets the player win, without showing it. The result is always `"won"`.
+- **cheat**: when her hand would lose, it switches to the winning one after a moment, and
+  the player sees it: "Hana switched hands!"
+- **sly**: when her hand would lose, she shows the winning one at once. No switch shows.
+
+Her hand is picked at the start of each round, before the player picks, so a load replays
+the same hands. The match ends early when one side can't be caught.
+
+### Playing
+
+The player picks Rock, Paper or Scissors (click, arrow keys and Enter, or the gamepad).
+Both cards show, and a caption says who won the round. **Next round** goes on; at the end, a
+second caption says "You won!", "You lost." or "It's a draw.", and **Continue** returns to
+the story. **Reduce motion** makes the cheating switch a cut (the caption still says it).
+**Skip Game** (with `skippable`) gives `"draw"`.
+
+### When the arguments are refused
+
+A problem stops the story with E272, `hand_game can't use these arguments:` and the reason.
+Only the first problem is reported, in this order:
+
+| Reason | Fix |
+|---|---|
+| `opponent must be text in quotes, but it is None.` (and the text rules below) | Write a name of 1 to 24 characters, in quotes. |
+| `rounds must be a whole number from 1 to 9, but it is 10.` | Use 1 to 9. |
+| `mode must be "fair", "kind", "cheat", or "sly", but it is "cheet". Did you mean "cheat"?` | Use one of the four, in quotes. |
+
+**The text rules** (Lock's `hint`, Stay still's `line`, `speaker` and `flinch_line`, and
+`opponent`) have these reasons, with the argument's name and its most characters:
+
+| Reason | Fix |
+|---|---|
+| `hint is empty; it is 1 to 120 characters on one line.` | Write some text, or leave the argument out. |
+| `hint is 130 characters long; it is 1 to 120 characters on one line.` | Shorten it. |
+| `hint has a line break or hidden character; it is 1 to 120 characters on one line.` | Keep it on one line, with no hidden characters. |
+| `hint starts or ends with a space. Remove the space.` | Remove the space. |
+
+### Testing the hand game
+
+A headless run and Shift+F8 in a test run give `"won"` for `fair` and `kind`, and `"lost"`
+for `cheat` and `sly`. Skip Game gives `"draw"`. Give another result with `finish "draw"`.
+
+### Changing the look and the words
+
+The hand game draws with the game's `panel` and `button` colors. `[theme.plugin.hand_game]`
+has a size, a sound, and a picture for each hand (none by default: the word shows). A
+picture is shrunk to fit the card, never stretched; a missing one shows the word.
+
+| Token | Default |
+|---|---|
+| `hand.text_size` | `48` (32 to 64) |
+| `hand.rock_image` | none |
+| `hand.paper_image` | none |
+| `hand.scissors_image` | none |
+| `reveal_sound` | none |
+
+`{name}` is the opponent, `{n}` and `{total}` the round, `{you}` and `{them}` the score:
+
+```toml
+[words.plugin.hand_game]
+title = "Rock, Paper, Scissors"
+hint = "Pick a hand."
+rock = "Rock"
+paper = "Paper"
+scissors = "Scissors"
+you = "You"
+round = "Round {n} of {total}"
+score = "You {you} – {them} {name}"
+win_round = "You win this round."
+lose_round = "{name} wins this round."
+draw_round = "A draw."
+switched = "{name} switched hands!"
+next = "Next round"
+won = "You won!"
+lost = "You lost."
+draw = "It's a draw."
+continue = "Continue"
 ```
 
 ## Writing a minigame
