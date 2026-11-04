@@ -16,6 +16,9 @@ without changing their behavior, so F24's texts are unchanged.
   ZWJ, ``Cs``, ``Co``, ``Zl``, ``Zp``).
 - ``line_problem(text, lo, hi, *, breaks=0)``: the shared text rule. It returns a form key
   (``LINE_FORMS``), never a sentence; each rules module maps the keys to its own sentences.
+- F53 §3.4's shared refusal forms, also used by F54: ``whole_problem`` (N), ``flag_problem``
+  (B), ``choice_problem`` (C, with the caller's did-you-mean), ``text_problem`` (T, from
+  ``line_problem``'s keys), and ``fill(word, **values)`` (replaces each literal ``{key}``).
 
 Pure: imports only the stdlib (AC-F25-01).
 """
@@ -136,5 +139,74 @@ def line_problem(text: object, lo: int, hi: int, *, breaks: int = 0) -> str | No
     return None
 
 
-__all__ = ["ECHO_MAX", "LINE_FORMS", "cut", "hidden", "kind_words", "line_problem", "quoted",
-           "value_echo"]
+# --- F53 §3.4's shared refusal forms (N, B, C, T), reused by F54 ----------------------------
+
+def whole_problem(arg: str, value: object, lo: int, hi: int, *,
+                  lo_words: str | None = None) -> str | None:
+    """N: ``{arg} must be a whole number from {lo} to {hi}, but it is {value}.`` when
+    ``value`` isn't exactly an ``int`` in ``lo..hi`` (``True`` is refused). ``lo_words``
+    replaces the written ``lo``, such as ``"0 (no limit)"``."""
+    if type(value) is int and lo <= value <= hi:
+        return None
+    low = str(lo) if lo_words is None else lo_words
+    return f"{arg} must be a whole number from {low} to {hi}, but it is {value_echo(value)}."
+
+
+def flag_problem(arg: str, value: object) -> str | None:
+    """B: ``{arg} must be True or False, but it is {value}.``"""
+    if type(value) is bool:
+        return None
+    return f"{arg} must be True or False, but it is {value_echo(value)}."
+
+
+def choice_words(choices: tuple[str, ...]) -> str:
+    """``"a" or "b"``; ``"a", "b", or "c"`` (each in double quotes)."""
+    quoted_all = [f'"{c}"' for c in choices]
+    if len(quoted_all) <= 2:
+        return " or ".join(quoted_all)
+    return ", ".join(quoted_all[:-1]) + ", or " + quoted_all[-1]
+
+
+def choice_problem(arg: str, value: object, choices: tuple[str, ...], *,
+                   closest: str | None = None) -> str | None:
+    """C: ``{arg} must be {choices}, but it is {value}.``, plus `` Did you mean "{x}"?``
+    when the caller's ``closest`` suggestion (``api.closest``) is given."""
+    if type(value) is str and value in choices:
+        return None
+    text = f"{arg} must be {choice_words(choices)}, but it is {value_echo(value)}."
+    return text + (f' Did you mean "{closest}"?' if closest is not None else "")
+
+
+def text_problem(arg: str, value: object, hi: int, *, required: bool = False) -> str | None:
+    """T: ``line_problem(value, 1, hi)``'s key as F53 §3.4's sentence, or None. An optional
+    argument may be None (``required`` False)."""
+    if value is None and not required:
+        return None
+    key = line_problem(value, 1, hi)
+    if key is None:
+        return None
+    if key == "not text":
+        either = "" if required else ", or None"
+        return f"{arg} must be text in quotes{either}, but it is {kind_words(value)}."
+    if key == "empty":
+        return f"{arg} is empty; it is 1 to {hi} characters on one line."
+    if key == "length":
+        size = len(value)                                    # type: ignore[arg-type]
+        return f"{arg} is {size} characters long; it is 1 to {hi} characters on one line."
+    if key in ("breaks", "hidden"):
+        return (f"{arg} has a line break or hidden character; it is 1 to {hi} characters "
+                "on one line.")
+    return f"{arg} starts or ends with a space. Remove the space."
+
+
+def fill(word: str, **values: object) -> str:
+    """``word`` with each literal ``{key}`` replaced by ``str(value)``; other braces stay
+    as written (an author's word may contain them)."""
+    for key, value in values.items():
+        word = word.replace("{" + key + "}", str(value))
+    return word
+
+
+__all__ = ["ECHO_MAX", "LINE_FORMS", "choice_problem", "choice_words", "cut", "fill",
+           "flag_problem", "hidden", "kind_words", "line_problem", "quoted", "text_problem",
+           "value_echo", "whole_problem"]
