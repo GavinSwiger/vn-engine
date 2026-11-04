@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Final, Literal
 
 from engine.minigames.api import Outcome
 from engine.minigames.bundled.rule_text import cut, kind_words, line_problem, quoted, value_echo
+from engine.render.text import missing_glyphs
 from engine.ui.layouts import Measure, pitch, wrap_text
 
 if TYPE_CHECKING:
@@ -402,7 +403,6 @@ def w176_text(ch: str, where: str) -> str:
 # --- Missing glyphs (W176; 04 §6.7) ----------------------------------------------------------
 
 GLYPH_CHARS_MAX: Final = 2_000          # the scan stops at this many distinct characters
-_NOT_A_CHAR: Final = "\uffff"           # a code point no font maps: its glyph is .notdef
 _ZWJ: Final = "\u200d"
 _SKIPPED: Final = frozenset({"Mn", "Me", "Cf"})
 
@@ -439,25 +439,8 @@ def glyph_chars(chat: Chat) -> list[tuple[str, str]]:
     return list(found.items())
 
 
-def _same_picture(a: "pygame.Surface", b: "pygame.Surface") -> bool:
-    return a.get_size() == b.get_size() and a.get_buffer().raw == b.get_buffer().raw
-
-
-def glyph_missing(font: "pygame.font.Font", chars: str) -> list[str]:
-    """The characters of ``chars`` that ``font`` draws as ``.notdef`` (04 §6.7, TR-F26-03):
-    metrics equal to U+FFFF's (one ``metrics`` call for all) **and** the same pixels.
-    pygame-ce's ``Font.metrics`` gives ``.notdef``'s metrics for a missing glyph, not None,
-    so the pixels decide. ``font`` is a ``pygame.font.Font`` (duck-typed)."""
-    if not chars:
-        return []
-    ref = font.metrics(_NOT_A_CHAR)[0]
-    white = (255, 255, 255)
-    ref_px = font.render(_NOT_A_CHAR, False, white)
-    missing = []
-    for ch, metric in zip(chars, font.metrics(chars)):
-        if metric == ref and _same_picture(font.render(ch, False, white), ref_px):
-            missing.append(ch)
-    return missing
+# F52 (04 §3, 07 I-5): the glyph test now lives in ``render.text``; F26 keeps its name.
+glyph_missing = missing_glyphs
 
 
 # --- Geometry --------------------------------------------------------------------------------

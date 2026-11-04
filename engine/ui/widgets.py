@@ -105,12 +105,19 @@ class Widget:
     ``repeatable`` widgets repeat a held direction (``RepeatClock``)."""
 
     repeatable: bool = False
+    # F52 (07 §3.1): a text widget (``ui.textfield.TextField``) gets raw text and editing
+    # keys through ``on_text`` while focused, before navigation (``ui.textrouting``).
+    takes_text: bool = False
 
     def __init__(self, *, enabled: Callable[[], bool] | None = None, box: Box = _EMPTY_BOX,
                  focusable: bool = True) -> None:
         self.enabled: Callable[[], bool] = enabled if enabled is not None else _always
         self.box = box
         self.focusable = focusable
+
+    def on_text(self, event: object) -> bool:
+        """F52: a raw ``TEXTINPUT``/``TEXTEDITING`` event for a ``takes_text`` widget."""
+        return False
 
     def on_nav(self, d: Nav) -> bool:
         return False

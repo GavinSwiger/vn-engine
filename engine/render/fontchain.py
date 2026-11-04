@@ -208,6 +208,20 @@ class ChainFont:
     def _each_font(self) -> list:
         return [font for font in self._fonts if font is not _UNLOADED and font is not _UNUSABLE]
 
+    def covers(self, grapheme: str) -> "bool | None":
+        """F52 (07 I-5): whether the font this chain picks for ``grapheme`` has every one of
+        its code points (so the keyboard never offers a key the field draws as a box);
+        None when that font's coverage is unknown (the caller's pixel test decides)."""
+        if not grapheme:
+            return True
+        index = self._memo.get(grapheme)
+        if index is None:
+            index = self._pick(grapheme)
+        coverage = self._coverages[index]
+        if coverage is None:
+            return None
+        return coverage.covers(grapheme)
+
     # --- measuring and drawing ---------------------------------------------------------------
 
     def size(self, text: str) -> tuple[int, int]:

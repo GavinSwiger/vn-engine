@@ -113,3 +113,29 @@ def _longest_fitting_prefix(font: "pygame.font.Font", text: str, max_width: floa
         else:
             high = mid - 1
     return low
+
+
+# --- Missing glyphs (F26 TR-F26-03, lifted by F52 04 §3 for F52, F55 and F56) ---------------
+
+NOT_A_CHAR = "￿"                 # a code point no font maps: its glyph is .notdef
+
+
+def _same_picture(a: "pygame.Surface", b: "pygame.Surface") -> bool:
+    return a.get_size() == b.get_size() and a.get_buffer().raw == b.get_buffer().raw
+
+
+def missing_glyphs(font: "pygame.font.Font", chars: str) -> list[str]:
+    """The characters of ``chars`` that ``font`` draws as ``.notdef``: metrics equal to
+    U+FFFF's (one ``metrics`` call for all) **and** the same pixels. pygame-ce's
+    ``Font.metrics`` gives ``.notdef``'s metrics for a missing glyph, not None, so the pixels
+    decide. ``font`` is a ``pygame.font.Font`` or F43's ``ChainFont`` (duck-typed)."""
+    if not chars:
+        return []
+    ref = font.metrics(NOT_A_CHAR)[0]
+    white = (255, 255, 255)
+    ref_px = font.render(NOT_A_CHAR, False, white)
+    missing = []
+    for ch, metric in zip(chars, font.metrics(chars)):
+        if metric == ref and _same_picture(font.render(ch, False, white), ref_px):
+            missing.append(ch)
+    return missing

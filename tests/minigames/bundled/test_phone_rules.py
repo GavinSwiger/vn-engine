@@ -140,7 +140,7 @@ def test_ac_f26_01_declarations_imports_and_codes(game, load):
     # The ast scan (PR-F26-01, C1, A7, A8).
     stdlib = set(sys.stdlib_module_names) - {"random", "time"}
     rules_ok = {"engine.minigames.api", "engine.minigames.bundled.rule_text",
-                "engine.ui.layouts"}
+                "engine.ui.layouts", "engine.render.text"}   # F52: glyph_missing's home
     kit = {"engine.minigames.bundled", "engine.minigames.bundled.phone_rules",
            "engine.ui.focus", "engine.ui.widgets", "engine.ui.paint", "engine.ui.nav",
            "engine.ui.layouts", "pygame", "engine.render.frames", "engine.render.text"}
