@@ -41,7 +41,7 @@ from typing import Final
 
 from engine.tools.editor.livemap import MARK_PROPOSED, MARK_REMOVED, GlowKey, Preview
 from engine.tools.editor.storymap import (
-    BOX_HEIGHT, BOX_WIDTH, MARK_DELETES_SAVES, MARK_ENDING, MARK_START, Box,
+    BOX_HEIGHT, BOX_WIDTH, MARK_BLOCKED, MARK_DELETES_SAVES, MARK_ENDING, MARK_START, Box,
     EdgeKey, LayoutDiff, MapLayout, chip_center, chip_text, curve_points, relayout)
 from engine.tools.editor.syntax import PLAIN_COLOR
 from engine.tools.editor.theme import THEME, blend
@@ -364,6 +364,8 @@ class MapPainter:
                 fill=START_COLOR, outline="", tags=tags))
         tag_x = x0
         tags_under = []
+        if MARK_BLOCKED in box.marks:
+            tags_under.append((f"⚠ {MARK_BLOCKED}", WARNING_COLOR))
         if MARK_DELETES_SAVES in box.marks:
             tags_under.append((f"⚠ {MARK_DELETES_SAVES}", WARNING_COLOR))
         tags_under += [(f"▶ {game}", MINIGAME_COLOR) for game in box.minigames[:2]]
@@ -381,7 +383,7 @@ class MapPainter:
         found.name = canvas.create_text(x0 + pad, y0 + 4 * s, anchor="nw", text=name,
                                         font=self.name_font, fill=PLAIN_COLOR, tags=tags)
         items.append(found.name)
-        box_marks = tuple(m for m in box.marks if m != MARK_DELETES_SAVES)
+        box_marks = tuple(m for m in box.marks if m not in (MARK_DELETES_SAVES, MARK_BLOCKED))
         name_px = self.measure(self.name_font, name)
         if box.scene is not None:
             left = x0 + 2 * pad + name_px

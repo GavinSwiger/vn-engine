@@ -54,7 +54,7 @@ class EventsView:
         self.index: int | None = None
         self.frame = ttk.Frame(parent)
         self.frame.columnconfigure(0, weight=1)
-        self.frame.rowconfigure(2, weight=1)
+        self.frame.rowconfigure(3, weight=1)
         px = self._px
         head = ttk.Frame(self.frame)
         head.grid(row=0, column=0, columnspan=2, sticky="ew",
@@ -68,7 +68,12 @@ class EventsView:
                                font=fonts.get("detail"))
         self.stale.pack(side="left", padx=(px(10), 0), pady=(px(2), 0))
         tools = self.tools = ttk.Frame(self.frame)
-        tools.grid(row=1, column=0, columnspan=2, sticky="ew",
+        # What the scene needs before the story can get here (``script/reach.py``).
+        self.reach = ReachBox(self.frame, fonts=fonts, scale=scale)
+        self.reach.frame.grid(row=1, column=0, columnspan=2, sticky="ew",
+                              padx=px(INSET_PX), pady=(0, px(6)))
+        self.reach.frame.grid_remove()
+        tools.grid(row=2, column=0, columnspan=2, sticky="ew",
                    padx=px(INSET_PX - 4), pady=(0, px(6)))
         self.buttons: dict[str, ttk.Button] = {}
         self._icons: list[object] = []          # drawn arrows (an emoji font colours ↑ ↓)
@@ -95,12 +100,12 @@ class EventsView:
             selectbackground=surface, inactiveselectbackground=surface,
             selectforeground=THEME["foreground"], exportselection=False, takefocus=1,
             undo=False)
-        self.tree.grid(row=2, column=0, sticky="nsew")
+        self.tree.grid(row=3, column=0, sticky="nsew")
         # The status line under the list: what an action did or why it didn't (a link when
         # it names a place).
         self.message = ttk.Label(self.frame, text="", foreground=THEME["muted"],
                                  font=fonts.get("small"), wraplength=1, justify="left")
-        self.message.grid(row=3, column=0, columnspan=2, sticky="ew",
+        self.message.grid(row=4, column=0, columnspan=2, sticky="ew",
                           padx=px(INSET_PX), pady=(px(6), px(8)))
         self.message.grid_remove()
         self.message.bind("<Configure>", lambda e: self.message.configure(
@@ -153,6 +158,15 @@ class EventsView:
                                 hint=NO_SCENE, scale=scale)
         self.set_rows((), title="")
 
+    def set_reach(self, rows: Sequence[object]) -> None:
+        """The scene's ``reach`` rows (``checker.ReachRow``): shown above the buttons, or
+        nothing when it has none."""
+        self.reach.show(rows)
+        if self.reach.rows:
+            self.reach.frame.grid()
+        else:
+            self.reach.frame.grid_remove()
+
     def _px(self, value: float) -> int:
         return max(1, round(value * self.scale))
 
@@ -160,7 +174,7 @@ class EventsView:
         if float(first) <= 0.0 and float(last) >= 1.0:
             self._bar.grid_remove()
         else:
-            self._bar.grid(row=2, column=1, sticky="ns")
+            self._bar.grid(row=3, column=1, sticky="ns")
         self._bar.set(first, last)
 
     # --- Content ------------------------------------------------------------------------------
@@ -391,4 +405,80 @@ class EventsView:
             self.tree.tag_add("hover", f"{index + 1}.0", f"{index + 2}.0")
 
 
-__all__ = ["EventsView", "NO_SCENE", "NO_SCENE_TITLE", "OUT_OF_DATE"]
+
+# --- To get here (``script/reach.py`` via the check child) ----------------------------------
+
+REACH_HEADING = "TO GET HERE"
+REACH_SET_HEADING = "SET BY"
+REACH_ROWS_MAX = 8
+REACH_MORE = "…and {n} more"
+
+
+class ReachBox:
+    """What a scene needs before the story can get there: a warning when no playthrough
+    can, each way in with its conditions, and the lines that set what they read. A row
+    with a place opens it (``on_place(file, line)``)."""
+
+    def __init__(self, parent: tk.Misc, *, fonts: Mapping[str, tkfont.Font],
+                 scale: float = 1.0) -> None:
+        self.scale = scale
+        self.fonts = fonts
+        self.frame = ttk.Frame(parent)
+        self.frame.columnconfigure(0, weight=1)
+        self.rows: tuple = ()
+        self.labels: list[ttk.Label] = []
+        self.on_place: Callable[[str, int], None] | None = None
+        self.frame.bind("<Configure>", lambda e: [label.configure(
+            wraplength=max(1, e.width - 4)) for label in self.labels], add="+")
+
+    def texts(self) -> list[str]:
+        """What it shows, top to bottom (tests read it)."""
+        return [str(label.cget("text")) for label in self.labels]
+
+    def show(self, rows: Sequence[object]) -> None:
+        rows = tuple(rows)
+        if rows == self.rows:
+            return
+        self.rows = rows
+        for label in self.labels:
+            label.destroy()
+        self.labels = []
+        small = self.fonts.get("small")
+        blocked = [r for r in rows if r.kind == "blocked"]
+        ways = [r for r in rows if r.kind == "way"]
+        sets = [r for r in rows if r.kind == "set"]
+        for row in blocked:
+            self._add("⚠ " + row.text, row, foreground=THEME["marker.warning"])
+        for heading, group in ((REACH_HEADING, ways), (REACH_SET_HEADING, sets)):
+            if not group:
+                continue
+            self._add(heading, None, foreground=THEME["muted"], font=small,
+                      pady=(round(4 * self.scale), 0))
+            for row in group[:REACH_ROWS_MAX]:
+                never = "(never:" in row.text
+                self._add("• " + row.text, row, font=small,
+                          foreground=THEME["marker.warning"] if never else THEME["foreground"])
+            if len(group) > REACH_ROWS_MAX:
+                self._add(REACH_MORE.format(n=len(group) - REACH_ROWS_MAX), None,
+                          foreground=THEME["muted"], font=small)
+
+    def _add(self, text: str, row: object | None, *, foreground: str, font: object = None,
+             pady: tuple[int, int] = (0, 0)) -> None:
+        label = ttk.Label(self.frame, text=text, foreground=foreground, justify="left",
+                          wraplength=max(1, self.frame.winfo_width() - 4))
+        if font is not None:
+            label.configure(font=font)
+        label.grid(row=len(self.labels), column=0, sticky="w", pady=pady)
+        place = (getattr(row, "file", None), getattr(row, "line", None)) if row else None
+        if place and place[0] and place[1]:
+            label.configure(cursor="hand2")
+            label.bind("<Button-1>", lambda _e, p=place: self._open(*p))
+        self.labels.append(label)
+
+    def _open(self, file: str, line: int) -> None:
+        if self.on_place is not None:
+            self.on_place(file, line)
+
+
+__all__ = ["EventsView", "NO_SCENE", "NO_SCENE_TITLE", "OUT_OF_DATE", "REACH_HEADING",
+           "REACH_SET_HEADING", "ReachBox"]

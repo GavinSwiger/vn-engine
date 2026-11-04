@@ -83,6 +83,7 @@ MARK_ENDING: Final = "ending"                   # the label holds an ``ending`` 
 MARK_OUT_OF_DATE: Final = "out of date"         # F46: the scene's text doesn't parse now
 MARK_DELETES_SAVES: Final = "deletes saves"     # F32: the label holds ``ui delete saves``
 MARK_REPLAY: Final = "replay"                   # F41: a scene replay starts here
+MARK_BLOCKED: Final = "can't be reached"        # script/reach.py: no playthrough gets here
 CHIP_CHARS: Final = 24                          # F46: a choice chip's characters before "…"
 LINK_KINDS: Final = ("jump", "call", "menu")
 _ENDING_LINKS = frozenset({"jump", "menu"})     # a label with none of these ends the story
@@ -130,6 +131,7 @@ class Notes:
     scene: str | None = None
     deletes_saves: bool = False                 # F32: a ``ui delete saves`` line
     replay: bool = False                        # F41: a scene replay (F36) starts here
+    blocked: bool = False                       # script/reach.py: no playthrough gets here
 
 
 @dataclass(frozen=True, slots=True)
@@ -414,6 +416,8 @@ def relayout(prev: MapLayout | None, links: Iterable[object], labels: Iterable[o
             marks.append(MARK_ENDING)
         if note.deletes_saves:
             marks.append(MARK_DELETES_SAVES)
+        if note.blocked:
+            marks.append(MARK_BLOCKED)
         if name in stale:
             marks.append(MARK_OUT_OF_DATE)
         specs.append((column, row, name, where, line, tuple(marks), note))
@@ -1328,7 +1332,7 @@ def cycle_target(layout_: MapLayout, anchor: int, current: int | None) -> int | 
 
 __all__ = ["BOX_HEIGHT", "BOX_WIDTH", "Box", "CHIP_CHARS", "CHIP_CHAR_PX", "CHIP_HEIGHT",
            "CHIP_PAD", "CHIP_SLOTS", "COLUMN_STEP", "DIRECTIONS", "Edge", "LINK_KINDS",
-           "MAP_UNDO_STEPS", "MARK_ENDING", "MARK_ENDS", "MARK_NOT_REACHED", "MARK_OUT_OF_DATE",
+           "MAP_UNDO_STEPS", "MARK_BLOCKED", "MARK_ENDING", "MARK_ENDS", "MARK_NOT_REACHED", "MARK_OUT_OF_DATE",
            "MARK_REPLAY", "MARK_START", "MAX_BOXES", "ChipSlots", "EdgeKey", "LayoutDiff",
            "MapHistory", "MapLayout", "MapStep", "MapUndo", "Notes", "PinSets",
            "PLACE_MARGIN", "PLACE_STEP", "PLACE_TRIES", "Places", "ROW_STEP", "RectHash",

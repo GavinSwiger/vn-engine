@@ -62,6 +62,18 @@ turned on Timing assist get twice as long, or no limit. The **Lines** preview sh
 `menu time 5:` and `"..." timeout:`, and OK waits while a problem line shows. In Events, the
 Choice row ends with ` · 5 seconds`, and the timed option's row says `when time runs out`.
 
+## What a scene needs
+
+Choose a scene and **Events** shows, above its lines, **TO GET HERE**: every way in, with the
+conditions it needs (an `if` around the `jump`, or the choice's own `if`), and **SET BY**: the
+`default` and the `$` lines that set what those conditions read, with the scene each is in.
+Click a line to open it.
+
+When no playthrough can meet those conditions (every way in needs `has_key`, and `has_key` is
+always `False` by the time the story gets there), the box shows **⚠ can't be reached** and
+Events says why. Studio follows plain values (`True`, `3`, `"red"`, `+= 1`) after each check;
+a condition it can't follow (a function call, `persistent`) never gets a warning.
+
 ## Undo on the map
 
 Ctrl+Z on the map undoes the last map action, in every file it touched, and puts the boxes

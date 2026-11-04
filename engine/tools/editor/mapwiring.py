@@ -38,6 +38,7 @@ from engine.tools.editor.storymap import (
     COLUMN_STEP,
     MapStep,
     place_free,
+    Notes,
     label_notes,
     layout_places,
     map_undo,
@@ -267,6 +268,8 @@ class MapWiring:
         self.side_name.pack(side="left", padx=(px(PANEL_INSET), 0))
         head.bind("<Configure>", self._fit_side_head, add="+")
         self.story = StoryEditor(self, self.events_view)
+        self.events_view.reach.on_place = lambda file, line: self.jump_to(file, line)
+        self.on_check_done.append(lambda _result: self.story.show_reach())
         tree = self.events_view.tree
         tree.bind("<Button-3>", self.events_context)
         if self.mod == "Command":
@@ -305,6 +308,11 @@ class MapWiring:
         if throttle:
             stale = stale & self.story_map.out_of_date
         notes = label_notes(labels, self._check_names)
+        result = getattr(self, "check_result", None)
+        if result is not None:                  # script/reach.py: "can't be reached"
+            for scene, rows in result.reach.items():
+                if any(row.kind == "blocked" for row in rows):
+                    notes[scene] = replace(notes.get(scene, Notes()), blocked=True)
         data = (tuple(labels), tuple(links), self._check_stale, stale, notes)
         if data == self._map_shown:
             return                              # redraw only on change (04 §6.1.6)

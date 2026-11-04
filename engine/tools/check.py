@@ -52,7 +52,7 @@ import tomllib
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, fields, is_dataclass, replace
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Final
 
 from engine.core.config import KeyLocator, load_config
 from engine.core.config_schema import Config
@@ -63,6 +63,7 @@ from engine.core.editorreport import (
     CHECK_MAX_LINKS,
     CHECK_MAX_NAMES,
     CHECK_MAX_PROBLEMS,
+    CHECK_MAX_REACH,
     OVERLAY_HEADER_MAX,
     OVERLAY_MAX_BYTES,
     OVERLAY_MAX_FILES,
@@ -1327,9 +1328,52 @@ def emit_results(emit: Emit, problems: list[dict], total: int,
                        link.conditional] for link in links[:CHECK_MAX_LINKS])
         for event in chunk_event("graph", sent_links, key="links"):
             emit(event)
+        try:
+            rows = reach_rows(program)
+        except Exception:                       # a fault here never costs the check
+            rows = []
+        for event in chunk_event("reach", ([_text(scene), kind, _text(text),
+                                             None if file is None else _text(file),
+                                             _position(line)]
+                                            for scene, kind, text, file, line
+                                            in rows[:CHECK_MAX_REACH])):
+            emit(event)
     emit({"v": REPORT_VERSION, "event": "done", "loaded": program is not None,
           "problems": total, "seconds": round(max(seconds, 0.0), 3),
           "name_totals": name_totals, "link_total": link_total})
+
+
+REACH_WAY: Final = "From {src}{choice}: {needs}"
+REACH_NO_NEEDS: Final = "no condition"
+REACH_NEVER: Final = " (never: {why})"
+REACH_SET_IN: Final = "{text}, in {scene}"
+
+
+def reach_rows(program: Program) -> list[tuple[str, str, str, str | None, int | None]]:
+    """``script/reach.py``'s findings as ``reach`` rows (scene, kind, text, file, line): for
+    each scene with a condition on a way in, every way in and the lines that set what they
+    read; and a ``blocked`` row for a scene no playthrough can reach."""
+    from engine.script import reach
+    from engine.tools.lint import starts_of
+    rows = []
+    for scene, found in reach.analyze(program, starts_of(program)).items():
+        label = program.labels.get(scene)
+        if found.blocked is not None:
+            rows.append((scene, "blocked", found.blocked,
+                         label.file.ref if label else None, label.line if label else None))
+        for way in found.ways:
+            text = REACH_WAY.format(src=way.src,
+                                    choice=f' ("{way.choice}")' if way.choice else "",
+                                    needs=("needs " + " and ".join(way.needs)) if way.needs
+                                    else REACH_NO_NEEDS)
+            if not way.possible and way.why:
+                text += REACH_NEVER.format(why=way.why)
+            rows.append((scene, "way", text, way.file, way.line))
+        for setter in found.setters:
+            text = setter.text if setter.scene is None else REACH_SET_IN.format(
+                text=setter.text, scene=setter.scene)
+            rows.append((scene, "set", text, setter.file, setter.line))
+    return rows
 
 
 def _config_item(error: ConfigError) -> dict:

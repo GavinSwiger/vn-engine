@@ -102,6 +102,7 @@ class StoryEditor:
         index = None if self.ref is None else self._index()
         if index is None or self.key not in index.starts:
             self.view.set_rows((), title="")
+            self.view.set_reach(())
             return
         assert self.ref is not None and self.key is not None
         self.start = index.starts[self.key]
@@ -119,8 +120,16 @@ class StoryEditor:
             self._cache[(self.ref, self.key)] = (read.digest, rows)
         self.read, self.rows = read, rows
         keep = self.view.index if self.view.rows == rows else None
+        self.show_reach()
         self.view.set_rows(rows, title=self.key[0], where=f"{show(self.ref)}:{self.start}",
                            stale=self.stale, select=keep)
+
+    def show_reach(self) -> None:
+        """The shown scene's ``reach`` rows from the last check (none when it hasn't one)."""
+        result = getattr(self.win, "check_result", None)
+        scene = self.key[0] if self.key else None
+        found = result.reach.get(scene, ()) if result is not None and scene else ()
+        self.view.set_reach(found)
 
     def _index(self) -> SceneIndex | None:
         """The shown file's index, with the shown scene parsed."""

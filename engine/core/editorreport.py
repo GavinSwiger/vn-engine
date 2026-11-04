@@ -23,7 +23,7 @@ PHASES = ("start", "run")               # before / after the "started" event
 # ``CheckRunner`` (``tools/editor/checker.py``) reads them; both keep to these limits. Each
 # event is split into lines of at most ``REPORT_MAX_BYTES`` and ``CHECK_EVENT_MAX_ITEMS``
 # items (``REPORT_MAX_ITEMS`` stays F44's ``error`` limit).
-CHECK_EVENTS = ("problems", "names", "graph", "done")
+CHECK_EVENTS = ("problems", "names", "graph", "reach", "done")
 CHECK_EVENT_MAX_ITEMS = 5_000           # items in one problems/names/graph line
 CHECK_MAX_PROBLEMS = 1_000              # problem items sent per run; the rest are counted
 CHECK_MAX_NAMES = 20_000                # names sent per kind
@@ -31,6 +31,9 @@ CHECK_MAX_LINKS = 50_000                # graph links sent
 CHECK_KIND_RE = r"[a-z][a-z_]{0,31}"    # a name kind, or a problem's source word
 CHECK_SEVERITIES = ("error", "warning", "info")
 CHECK_LINK_KINDS = ("jump", "call", "menu")
+# ``reach`` rows (``script/reach.py``): [scene, kind, text, file|null, line|null] per row.
+CHECK_REACH_KINDS = ("way", "set", "blocked")
+CHECK_MAX_REACH = 20_000                # reach rows sent
 CHECK_CODE_MAX_CHARS = 16               # "E43", "W12b", "TODO", "" (config texts)
 # The stdin overlay of unsaved text (``--stdin-overlay``; 04 §4.3, §7.3).
 OVERLAY_HEADER_MAX = 64 * 1024          # the header line, newline not included

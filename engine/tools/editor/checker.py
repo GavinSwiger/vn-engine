@@ -51,6 +51,8 @@ from engine.core.editorreport import (
     CHECK_EVENT_MAX_ITEMS,
     CHECK_KIND_RE,
     CHECK_LINK_KINDS,
+    CHECK_MAX_REACH,
+    CHECK_REACH_KINDS,
     CHECK_MAX_LINKS,
     CHECK_MAX_NAMES,
     CHECK_MAX_PROBLEMS,
@@ -128,6 +130,20 @@ class CheckResult:
     seconds: float
     name_totals: Mapping[str, int] = field(default_factory=dict)
     link_total: int = 0
+    reach: Mapping[str, tuple["ReachRow", ...]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ReachRow:
+    """One ``reach`` row (``script/reach.py`` via the check child): for ``scene``, a way in
+    (``way``), a line that sets what a way in needs (``set``), or the warning that no
+    playthrough can reach it (``blocked``), with its place."""
+
+    scene: str
+    kind: str
+    text: str
+    file: str | None = None
+    line: int | None = None
 
 
 # --- Argv and overlay (04 §4.3, §5, §7.2 step 2; 07 I-1, I-2) --------------------------------
@@ -229,6 +245,16 @@ def _link(item: object) -> LabelLink | None:
     return LabelLink(src, dst, kind, file, line, choice, cond)
 
 
+def _reach(item: object) -> ReachRow | None:
+    if not isinstance(item, list) or len(item) != 5:
+        return None
+    scene, kind, text, file, line = item
+    if not _text(scene) or kind not in CHECK_REACH_KINDS or not _text(text) \
+            or not _place(file) or not _position(line):
+        return None
+    return ReachRow(scene, kind, text, file, line)
+
+
 def _all(items: list, check: Callable[[object], object | None]) -> tuple | None:
     out = []
     for item in items:
@@ -294,6 +320,9 @@ def decode_check_line(body: bytes) -> tuple[str, object] | None:
     elif event == "graph":
         items = _items(data, "links")
         payload = None if items is None else _all(items, _link)
+    elif event == "reach":
+        items = _items(data, "items")
+        payload = None if items is None else _all(items, _reach)
     elif event == "done":
         payload = _done(data)
     return None if payload is None else (event, payload)
@@ -309,6 +338,7 @@ class PendingCheck:
         self.problems: list[CheckItem] = []
         self.names: dict[str, list[NameEntry]] = {}
         self.links: list[LabelLink] = []
+        self.reach: list[ReachRow] = []
         self.dropped = 0
 
     def add(self, event: str, payload: object) -> None:
@@ -321,6 +351,8 @@ class PendingCheck:
             self._keep(kept, entries, CHECK_MAX_NAMES - len(kept))
         elif event == "graph":
             self._keep(self.links, payload, CHECK_MAX_LINKS - len(self.links))  # type: ignore[arg-type]
+        elif event == "reach":
+            self._keep(self.reach, payload, CHECK_MAX_REACH - len(self.reach))  # type: ignore[arg-type]
 
     def _keep(self, kept: list, items: Sequence, room: int) -> None:
         room = max(room, 0)
@@ -336,7 +368,15 @@ class PendingCheck:
             links=tuple(self.links) if done.loaded else None,
             loaded=done.loaded, serial=serial, seconds=done.seconds,
             name_totals=done.name_totals,
-            link_total=max(done.link_total, len(self.links)))
+            link_total=max(done.link_total, len(self.links)),
+            reach=MappingProxyType(_by_scene(self.reach)))
+
+
+def _by_scene(rows: Sequence[ReachRow]) -> dict[str, tuple[ReachRow, ...]]:
+    out: dict[str, list[ReachRow]] = {}
+    for row in rows:
+        out.setdefault(row.scene, []).append(row)
+    return {scene: tuple(found) for scene, found in out.items()}
 
 
 # --- The runner (04 §7.2 steps 3-5; 07 I-2) --------------------------------------------------
