@@ -15,6 +15,8 @@ rules hold in one place.
 - ``edits``: ``propose_edit`` as a guarded ``scriptedit`` plan, checked as an overlay, and
   SEC-F48-04's code-bearing rule.
 - ``tools``: ``TOOL_SPECS`` (engine text, the same for every game) and ``ToolBox``.
+- ``diskapply``: the MCP server's only writes, ``apply_edit`` and ``undo_apply`` (SEC-F48-03).
+- ``mcp``: ``serve``, the stdio MCP server (``assist-mcp``).
 
 Imports ``engine.core``, ``engine.script``, the standard library, the pure editor modules
 named in 04 §3 and ``tools.build.procs``. Never ``tkinter``, pygame, ``runtime``, ``app``,
