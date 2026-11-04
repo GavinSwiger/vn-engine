@@ -1,6 +1,6 @@
 # ADR-0008 — Dev tools that edit author files
 
-Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3); 2026-11-03 (F40, F41, F43, Amendment 4)
+Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3); 2026-11-03 (F40, F41, F43, Amendment 4); 2026-11-04 (F48, Amendment 5)
 Proposed by: vn-feature-architect (F44 `04-technical.md` §17). Gaps raised by: vn-qa-engineer
 (F44 `06-acceptance.md` §7, G1 and G11). Decided by: vn-system-architect (F44
 `07-architecture-review.md`).
@@ -241,6 +241,95 @@ chooses.
 tool that may write outside the game folder (after Amendment 3) and is limited to one
 author-chosen file.
 
+## Amendment 5 — The Studio assistant and `assist-mcp` (F48)
+
+Proposed by: vn-feature-architect (F48 `04-technical.md` §18). Flagged by: vn-security-reviewer
+(F48 `05-security.md` §5). Decided by: vn-system-architect (F48 `07-architecture-review.md`,
+accepted with modifications).
+
+**Context.** F48 adds a second writer process outside Studio (`assist-mcp`, an MCP stdio
+server that applies model-proposed edits on the author's request), Studio's first network
+use, OS keychain access, and per-user Studio files. None is allowed by Amendments 1–4.
+
+**Decision.** Decision 1's frame still holds for everything below: dev runs only, never the
+game process or the check child, `write_atomic`'s exclusive temp, the accepted race.
+1. **`assist-mcp`.** `python -m engine assist-mcp [GAME_DIR] [--read-only] [--no-launch]`,
+   dev only: a usage error with `--release`, absent from frozen builds (their entry is
+   `main.py` and `engine.tools` is excluded). `engine/__main__.py` imports
+   `engine.tools.assistant.mcp` only inside its handler and passes it to `app.cli.main` as
+   `assist_mcp=` (the `builder=` pattern). Nothing on that path writes to stdout before
+   `serve` moves the protocol to a private non-inheritable `dup(1)` (SEC-F48-06). The
+   documented launch form keeps the CWD and the game folder off `sys.path` (`-P`,
+   `PYTHONPATH` = engine root; SEC-F48-08).
+2. **What `assist-mcp` writes.** Only through `apply_edit` and `undo_apply`, under SEC-F48-03:
+   - replace a listed regular `script/**.vns` file whose bytes still hash to the proposal's
+     base, re-running Amendment 1's (F) and (E) checks, with
+     `write_atomic(check=True, expected=<stamp>)`, keeping its mode;
+   - create a new `.vns` file in an **existing** real folder under `script/` by exclusive
+     create, after (F), (N) (`paths.is_plain_name`) and (C); never a folder;
+   - remove a file **this server process created**, only while it holds exactly the applied
+     bytes, through `safefile.remove_file`.
+   Never `config.toml`, another group folder, `.studio/`, a rename, or any other delete.
+   Proposals and undo records are memory only.
+3. **When author code runs.** Starting `assist-mcp` on a game is the author's act, as `run`
+   and `lint` are, so its checks of files on disk are full checks; `--no-launch` makes them
+   name-only. Amendment 1 §5's arming stays Studio's rule: the pane's proposal checks launch
+   only when the window is armed. In both, a code-bearing proposal (F48 `04` §7.2, failing
+   closed, SEC-F48-04) is checked with `--no-launch`, so model-written code never runs before
+   the author applies it.
+4. **The Studio pane** adds no write kind. Apply edits the open Document (unsaved). A new-file
+   card creates an empty file through Amendment 1's create (F45 New script file), and card
+   Undo deletes it, through Amendment 1's delete, only while it holds the applied text.
+   `.studio/studio.json` gains the key `assistant_open` (Amendment 2; no new file name).
+5. **Per-user Studio files** (ADR-0003 §2, §3): `core.paths.studio_user_dir(*, local=False)`
+   under `vn-engine/_studio` (`_studio` fails `APP_ID_RE`, so no game owns it). Only
+   `assistant.json` (roaming) and `key-<16 hex>.txt` (non-roaming, only when no keychain
+   exists), each with its `write_atomic` temp. Nothing in a game folder can set them.
+6. **Network.** The only network code in the engine is `engine/tools/assistant/providers/`:
+   no other module imports `socket`, `ssl`, `http` or `urllib` (any submodule). From
+   `urllib.request` it uses only `getproxies` and `proxy_bypass`, never `urlopen` or an
+   opener. Transport follows SEC-F48-16 to -19 (key bound to its origin, verified TLS, no
+   redirects, loopback never proxied, https proxies only as a CONNECT tunnel). The `assist-mcp`
+   process never imports `providers/`. The game process makes no network access.
+7. **OS access (a dev-tool exception to invariant 9(c), as Amendment 3 §7).**
+   - Keychain, only in `tools/assistant/keystore.py`: Windows `advapi32` loaded from System32
+     only (SEC-F01-18) for exactly `CredWriteW`, `CredReadW`, `CredDeleteW` and `CredFree`,
+     with declared `argtypes`/`restype`, `CRED_PERSIST_LOCAL_MACHINE`; macOS
+     `/usr/bin/security`; Linux `secret-tool` found only in `/usr/bin`, `/bin`,
+     `/usr/local/bin`. Children per SEC-F48-15 (d) and (e): argument list, no shell,
+     `cwd = engine_root()`, `LC_ALL=C`, `LANG=C`, no provider key in the environment, the key
+     only on stdin.
+   - Environment: `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are read only in `keystore.py`;
+     proxy settings (`getproxies`/`proxy_bypass`: environment, Windows registry, macOS
+     system settings) only in `providers/transport.py`. No value is logged; a proxy URL's
+     userinfo never appears in any output.
+   - `getaddrinfo` of the literal `localhost`, only in `providers/transport.py`.
+8. **Imports.** `tools/assistant` may import `core`, `script`, stdlib, the pure editor modules
+   `tools.editor.{checker, document, scenes, scriptedit, files, config_help, assist, dbmodel,
+   declarations}` and `tools.build.procs`; never `tkinter`, pygame, `runtime`, `app`, `meta`,
+   `render`, `ui`, `audio`, `persist`, `minigames` or `tools.check`. Its import closure stays
+   free of `tkinter`. `tools/editor`'s Tk modules may import `tools.assistant`; the pure
+   modules above never do, so there is no module cycle.
+9. **Secrets.** `core/redact.py` gains a secret slot (`set_secret(slot, value | None)`, shown as
+   `<key>`), which only `tools.assistant` calls, and masks PR-F48-32's key shapes
+   (`KEY_SHAPE_RE`, one constant shared with the build's key scan) in every `redact()`.
+   `tools.build.procs.child_env` and `without_keys` drop `PROVIDER_KEY_VARS` for every Studio
+   and `assist-mcp` child (check, preview, helper, build, keystore).
+10. **Packaging.** `engine.tools` stays excluded; the real build's leak scan adds the primer
+    needle; no assistant module sets the plugin flag that keeps `NETWORK_EXCLUDES` out.
+    F48's `core` additions import nothing from `NEEDS_NETWORK` (`hashlib` included).
+
+**Modifications to the draft:** creation only in an existing folder; removal limited to the
+server's own creations in its own process; the network rule names `urllib.request`'s two
+proxy helpers (the draft said "never `urllib.request`" while using them) and the proxy-settings
+read as an OS access; `assist-mcp` never imports `providers/`; the no-cycle import rule; only
+`tools.assistant` sets a secret; the `core` network-module rule.
+
+**Consequences.** Invariant 9(b) and 9(c), the import table and ADR-0003 §2–§3 name this
+amendment. `assist-mcp` is the first writer outside Studio's window; a game file open and
+unsaved in Studio meets F45's "changed on disk" question. Any later tool that sends data off
+the machine, or reads another credential, needs its own amendment.
+
 ## Status history
 
 - 2026-11-01: proposed (F44 04-technical §17).
@@ -256,3 +345,5 @@ author-chosen file.
   accepted with modifications (F42 `07` §3).
 - 2026-11-03: Amendment 4 (in-game dev tool slot, `lint`, `translations` group and Export)
   accepted in `specs/F43-localization/07` (joint M7 tools review).
+- 2026-11-04: Amendment 5 (`assist-mcp`, the assistant pane, network, keychain, per-user
+  Studio files) proposed in F48 `04` §18 and accepted with modifications (F48 `07`).

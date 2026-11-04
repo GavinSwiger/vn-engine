@@ -51,6 +51,7 @@ I/O (config, assets, logs, DPI queries) that exists before F31.
    copy, never read), and the writer's temp files `.persistent.json.<8 hex>.tmp`. Nothing else.
    | Meta files (F31): only the script's literal names (≤ 32, `META_NAME_RE`) and their temps `.<name>.<8 hex>.tmp` | a real `<game>/characters/`, through `engine/meta/` and writer owner `meta` (the dev real-folder rule in every run; no fallback; W197 when unwritable) | same |
    | Dev tool: F44 editor / F45 Studio (ADR-0008, Amendment 1) | the `.vns` files under the real `<game>/script` that the editor listed and the author opened; from F45, files created, replaced, renamed, or deleted in the real group folders (`script`, `images`, `audio`, `gui`, `fonts`, `minigames`, and F31's `files`) and their real subfolders, a missing group folder, `config.toml`, and an author-chosen new game folder; `<game>/.studio/storymap.json` (F46, ADR-0008 Am. 2); plus its own temp file beside each; never from the game process or the check child | not available |
+   | Studio per-user files (F48, ADR-0008 Am. 5): `assistant.json` in `studio_user_dir()`; `key-<16 hex>.txt` in `studio_user_dir(local=True)`, only when no OS keychain exists (mode 0600); each with its `write_atomic` temp | the folders in §3, a real directory created 0700; never from the game process or the check child | not available |
    | Settings (F16) | `<game>/settings/` (a real directory) | `user_data_dir(app_id)/settings/` |
 
    Settings files (F16): `settings.json`, `settings.bad.json` (one quarantined copy, never
@@ -65,6 +66,14 @@ I/O (config, assets, logs, DPI queries) that exists before F31.
    - `user_log_dir(app_id)`: Windows **`%LOCALAPPDATA%\vn-engine\<app_id>\logs\`** (logs
      must not roam with the profile; security R3). macOS and other:
      `user_data_dir(app_id)/logs/`.
+   - `studio_user_dir(*, local=False)` (F48, dev tools only): Windows
+     `%APPDATA%\vn-engine\_studio\` (roaming: settings, consent) or, with `local=True`,
+     `%LOCALAPPDATA%\vn-engine\_studio\` (a fallback key file must not roam); macOS
+     `~/Library/Application Support/vn-engine/_studio/` and other
+     `$XDG_DATA_HOME/vn-engine/_studio/` (or `~/.local/share/…`) for both. `_studio` fails
+     `APP_ID_RE`, so no game's folder can be it. It returns None when the folder can't be
+     made real; Studio then saves no setting. Files are read with `read_regular` (64 KiB for
+     `assistant.json`, 4 KiB for a key file) and parsed with strict types.
    - Environment-derived bases are used only when they are absolute paths
      (`XDG_DATA_HOME` per the XDG spec; `APPDATA`/`LOCALAPPDATA` as absolute drive or UNC
      paths). Otherwise the documented default is used, or the folder counts as not
@@ -195,3 +204,8 @@ buffered early log records; invariant 9 wording.
   `app/platform.py` (the three locale variables only, an OS query under 9(c)). The privacy
   AST and supply-chain tests enforce both. `translations/` is a read-only game folder (read
   through `GamePaths`), not a write root. Status remains accepted.
+- 2026-11-04: amended at F48 approval (F48 `07`): §2 gains the Studio per-user files row
+  (`assistant.json`, `key-<16 hex>.txt`; dev tools only) and §3 gains `studio_user_dir`
+  (roaming, and non-roaming with `local=True`, under `vn-engine/_studio`). §8 is unchanged:
+  the folder variables are still read only in `core/paths.py`. The provider key variables and
+  proxy settings F48 reads are ADR-0008 Amendment 5 §7, not §8. Status remains accepted.
