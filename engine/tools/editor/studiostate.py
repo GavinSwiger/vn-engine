@@ -54,9 +54,10 @@ class StudioState:
     follow_changes: bool = False    # F58 (ADR-0008 Am. 6 §4): the map scrolls to changes
     reduce_motion: bool = False     # F58: View ▸ Reduce motion (the glow is static)
     panes: dict | None = None       # docking.Layout.to_json(); None: Studio's usual layout
+    tabs: dict | None = None        # tabchoice: {"hidden": [...]}; None: the usual tabs
 
 
-KEYS: Final = tuple(f.name for f in fields(StudioState) if f.name != "panes")
+KEYS: Final = tuple(f.name for f in fields(StudioState) if f.name not in ("panes", "tabs"))
 # Written only when true (missing means false), so a game whose author never opened the
 # Assistant pane keeps its bytes.
 OPTIONAL_KEYS: Final = frozenset({"assistant_open", "follow_changes", "reduce_motion"})
@@ -141,9 +142,10 @@ def decode_state(data: bytes) -> StudioState | StateProblem:
         return StateProblem("damaged")
     if not isinstance(doc, dict):
         return StateProblem("damaged")
-    panes = doc.get("panes")
+    panes, tabs = doc.get("panes"), doc.get("tabs")
     return StudioState(**{key: doc[key] for key in KEYS if type(doc.get(key)) is bool},
-                       panes=panes if isinstance(panes, dict) else None)
+                       panes=panes if isinstance(panes, dict) else None,
+                       tabs=tabs if isinstance(tabs, dict) else None)
 
 
 # --- Encoding and writing --------------------------------------------------------------------
@@ -154,6 +156,8 @@ def encode_state(state: StudioState) -> bytes:
     if state.panes:                         # written only when the author moved a pane
         rows.append('  "panes": ' + json.dumps(state.panes, sort_keys=True,
                                                ensure_ascii=True))
+    if state.tabs:                          # written only when the author hid or showed a tab
+        rows.append('  "tabs": ' + json.dumps(state.tabs, sort_keys=True, ensure_ascii=True))
     return ("{\n" + ",\n".join(rows) + "\n}\n").encode("ascii")
 
 

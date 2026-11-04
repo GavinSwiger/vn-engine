@@ -10,14 +10,14 @@ python -m engine edit game
 
 Leave out `game` to open the game next to `main.py`. **File ▸ Open game…** (Ctrl+O)
 opens another game in its own window. Drag pane titles to a side or the
-bottom; **View** hides, locks and resets panes. **Help ▸ Guides** opens these
-guides.
+bottom; **View** hides, locks and resets panes. Right-click the tabs to hide ones you
+don't use; going to one brings it back.
 
 ## Your files
 
 The **Project** panel lists Script, Images, Audio, GUI, Fonts, Minigames, and
-`config.toml`. Click a file to open it: scripts and `config.toml` in the editor (Ctrl+S
-saves), pictures on the **Asset** tab with **Copy name**.
+`config.toml`. Click a file to open it: scripts and `config.toml` in the editor,
+pictures and sounds on the **File preview** tab with **Copy name**.
 
 **Add files…** copies files into the selected folder, checking each one as the game would. If a name is taken,
 choose **Keep both** (the copy gets `_2`), **Replace**, or **Skip**. Refused files are
@@ -27,7 +27,7 @@ Minigames are Python code that the game runs. Only add code you trust.
 
 **New script file** makes a `.vns` file and, unless you untick it, its `include` line in
 `main.vns`. **Rename** doesn't change lines that use the old
-name; the next check lists them. **Delete** is permanent: the file doesn't go to the trash.
+name; the next check lists them. **Delete** is permanent.
 `main.vns`, `config.toml`, and folders can't be renamed or deleted.
 
 **File ▸ New game…** copies the starter game into an empty or new folder and opens it.
@@ -64,7 +64,7 @@ minigames.
 
 The **Story map** tab (Ctrl+2) draws each label as a box: arrows solid for `jump`, dashed
 for `call`, dotted for a `menu` choice. Boxes are marked `start`, `not reached`, or `ends`;
-`ending` labels have a double border; boxes show chapters and minigames.
+`ending` labels have a double border.
 
 The **Outline** tab (Ctrl+6) lists chapters, endings, routes, codex entries, meters,
 minigames, and flowchart boxes; Enter opens one.
@@ -103,7 +103,7 @@ you tick **Play as a new player**.
 
 ## When a preview can't start
 
-Two errors come from the start options and have no line:
+Two errors come from the start options:
 
 - **E26b, no such label:** no label has the start name. The message suggests a close
   name or the file no `include` adds.
@@ -128,7 +128,8 @@ inside the double quotes.
 - F2, Delete: rename or delete the selected **Project** file.
 - Ctrl+Space: completion. Ctrl+G: Find scene.
 - Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5, Ctrl+6: Editor, Story map,
-  [Database](database.md), [Game settings](game-settings.md), Asset, Outline.
+  [Database](database.md), [Game settings](game-settings.md) (or **File ▸ Game settings**),
+  File preview, Outline.
 - Ctrl+=, Ctrl+-, Ctrl+0: zoom the text, or the map.
 - F5: play this scene. Shift+F5: from the start. Ctrl+F2: stop. F7: Check now.
   F12: the [console](dev-console.md).

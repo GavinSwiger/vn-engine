@@ -124,7 +124,7 @@ def test_ac16_selecting_rows_opens_the_right_tab(studio, studio_game):
     select(ed, "config.toml")
     assert tab(ed) == "Editor" and ed.body() == '[game]\ntitle = "My Game"'
     select(ed, "images/bg/room.png")
-    assert tab(ed) == "Asset" and "Image name: bg room" in ed.asset_pane.text()
+    assert tab(ed) == "File preview" and "Image name: bg room" in ed.asset_pane.text()
     (studio_game / "images" / "bg" / "new.png").write_bytes(png(1, 1))
     ed.win._last_outside_check = float("-inf")
     ed.root.event_generate("<FocusIn>")

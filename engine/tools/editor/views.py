@@ -2398,6 +2398,11 @@ class TabStrip:
         pad, gap = round(TAB_PAD_PX * scale), round(6 * scale)
         self.cells: list[tuple[tk.Frame, tk.Label, tk.Label, tk.Frame]] = []
         self.hovered: int | None = None
+        self.shown: list[bool] = []
+        # A right-click on the strip: ``on_menu(event)`` (``tabchoice``: which tabs show).
+        self.on_menu: Callable[[tk.Event], None] | None = None
+        for sequence in ("<Button-3>", "<Button-2>"):           # Button-2: macOS
+            self.frame.bind(sequence, self._menu, add="+")
         for index, (word, icon) in enumerate(tabs):
             cell = tk.Frame(self.frame, background=chrome, cursor="hand2")
             cell.pack(side="left", fill="y")
@@ -2415,12 +2420,35 @@ class TabStrip:
                 widget.bind("<Button-1>", lambda _e, i=index: self.notebook.select(i))
                 widget.bind("<Enter>", lambda _e, i=index: self._hover(i))
                 widget.bind("<Leave>", lambda _e: self._hover(None))
+                for sequence in ("<Button-3>", "<Button-2>"):
+                    widget.bind(sequence, self._menu, add="+")
             self.cells.append((cell, symbol, label, bar))
+            self.shown.append(True)
         notebook.bind("<<NotebookTabChanged>>", lambda _e: self.sync(), add="+")
         self.sync()
 
     def words(self) -> list[str]:
         return [str(label.cget("text")) for _cell, _symbol, label, _bar in self.cells]
+
+    def shown_words(self) -> list[str]:
+        """The tabs on the strip now, in order (hidden ones left out)."""
+        return [word for word, on in zip(self.words(), self.shown, strict=True) if on]
+
+    def set_shown(self, index: int, on: bool) -> None:
+        """Put the tab at ``index`` on the strip or take it off; the others keep their order."""
+        if self.shown[index] == on:
+            return
+        self.shown[index] = on
+        for cell, *_rest in self.cells:
+            cell.pack_forget()
+        for (cell, *_rest), shown in zip(self.cells, self.shown, strict=True):
+            if shown:
+                cell.pack(side="left", fill="y")
+
+    def _menu(self, event: tk.Event) -> str:
+        if self.on_menu is not None:
+            self.on_menu(event)
+        return "break"
 
     def active(self) -> int:
         try:

@@ -41,11 +41,11 @@ from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settin
 from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
 from engine.tools.editor.docking import CLOSABLE, LOCK_MENU, PANE_MENU, PANE_TITLES, RESET_MENU
 from engine.tools.editor.formdialogs import entry_title
-
-FIND_SCENE_MENU = "Find scene…"           # Edit: goes to a scene's line by name
+from engine.tools.editor.tabchoice import GAME_SETTINGS_MENU
 from engine.tools.build.texts import MENU as BUILD_MENU
 from engine.tools.editor.livemap import FOLLOW_CHANGES, REDUCE_MOTION
 
+FIND_SCENE_MENU = "Find scene…"         # Edit: goes to a scene's line by name
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
 PLAY_MENU = "Play"                      # Run menu (F47 §6.1)
 PLAY_SCENE_MENU = "Play this scene"
@@ -102,6 +102,9 @@ class StudioMenus:
                 Item(BUILD_MENU, f"{key}+Shift+B", lambda: open_build_dialog(self),
                      guarded=True),
                 SEPARATOR,
+                # The game's settings beside Studio's own, so the two are told apart.
+                Item(GAME_SETTINGS_MENU, command=lambda: self.show_tab(
+                    self.tab_index("settings"))),
                 Item(SETTINGS_MENU, f"{key}+,", self.studio_settings),     # F48 §6.2
                 SEPARATOR,
                 Item("Close", command=self.on_close),

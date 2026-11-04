@@ -365,7 +365,7 @@ def test_ac45_the_image_preview(studio, studio_game, monkeypatch):
 
     room = (bg / "room.png").stat().st_size
     text = show("images/bg/room.png")
-    assert tab(ed) == "Asset" and pane.step == 2 and pane.photo.width() == 200
+    assert tab(ed) == "File preview" and pane.step == 2 and pane.photo.width() == 200
     for fact in ("400 × 300", f"{room:,} bytes", "Image name: bg room"):
         assert fact in text
     assert any("data" in c for c in calls)
@@ -403,7 +403,7 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
     ed = studio(studio_game, mapped=True)
     assert ed.root.title() == "my_game — vn-engine Studio"
     assert [ed.notebook.tab(t, "text") for t in ed.notebook.tabs()] == [
-        "Editor", "Story map", "Database", "Game settings", "Asset",
+        "Editor", "Story map", "Database", "Game settings", "File preview",
         "Outline"]                                       # Outline: AC-F45-54; F47 W2, W4
     bar = ed.menubar
     assert [bar.entrycget(i, "label") for i in range(bar.index("end") + 1)] == [
@@ -422,7 +422,7 @@ def test_ac46_menus_keys_and_tabs(studio, studio_game, monkeypatch):
         (ed.view_menu, "Story map", ed.text, "<Control-Key-2>", ("show_tab", 1)),
         (ed.view_menu, "Database", ed.text, "<Control-Key-3>", ("show_tab", 2)),   # F47 W2
         (ed.view_menu, "Game settings", ed.text, "<Control-Key-4>", ("show_tab", 3)),  # W4
-        (ed.view_menu, "Asset", ed.text, "<Control-Key-5>", ("show_tab", 4)),
+        (ed.view_menu, "File preview", ed.text, "<Control-Key-5>", ("show_tab", 4)),
         (ed.run_menu, "Play", ed.text, "<Shift-F5>", ("play_from_start",)),   # F47
         (ed.run_menu, "Play this scene", ed.text, "<F5>", ("play_scene",)),
         (ed.run_menu, "Stop", ed.text, "<Control-F2>", ("stop_game",)),

@@ -28,7 +28,7 @@ def menu_rows(menu: tk.Menu) -> list[tuple[str, str]]:
 def test_tabs_make_the_pages_the_strip_the_view_rows_and_the_keys(studio, studio_game):
     ed = studio(studio_game)
     win = ed.win
-    titles = ["Editor", "Story map", "Database", "Game settings", "Asset",     # F47 W2, W4
+    titles = ["Editor", "Story map", "Database", "Game settings", "File preview",     # F47 W2, W4
               "Outline"]
     assert [tab.title for tab in window.TABS] == titles
     assert [win.notebook.tab(i, "text") for i in range(win.notebook.index("end"))] == titles

@@ -146,6 +146,7 @@ from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
 from engine.tools.editor.guidepane import GuideWiring
 from engine.tools.editor.assistwiring import AssistWiring
 from engine.tools.editor.docking import DockWiring
+from engine.tools.editor.tabchoice import TabChoice
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
     STATUS_NOT_RUNNING,
@@ -206,7 +207,7 @@ TITLE_SUFFIX = " — vn-engine Studio"
 PROJECT_HEADING = "Project"
 TAB_EDITOR = "Editor"
 TAB_MAP = "Story map"
-TAB_ASSET = "Asset"
+TAB_ASSET = "File preview"                # was "Asset" (2026-11-04)
 TAB_DATABASE = "Database"               # F47 W2
 TAB_SETTINGS = "Game settings"          # F47 W4
 TAB_OUTLINE = "Outline"                 # 2026-11-02, AC-F45-54
@@ -335,7 +336,7 @@ class OpenFile:
 
 
 class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring,
-                   AssistWiring, GuideWiring, DockWiring):
+                   AssistWiring, GuideWiring, DockWiring, TabChoice):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""
@@ -459,6 +460,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._build_layout()
         self._build_hot_reload()            # F39: before the Run menu's toggle row
         self._build_menus()
+        self._build_tab_choice()            # which tabs the strip shows (``tabchoice``)
         self._bind_keys()
         self.refresh_project()
         if self.refs:
@@ -673,7 +675,10 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         return self.tabs[self.notebook.index("current")].name
 
     def select_tab(self, name: str) -> None:
-        """Put the tab called ``name`` on screen (the focus stays where it is)."""
+        """Put the tab called ``name`` on screen (the focus stays where it is); a hidden tab
+        comes back."""
+        if hasattr(self, "tabs_hidden"):
+            self.reveal_tab(name)
         self.notebook.select(self.tab_index(name))
 
     def _attr(self, path: str) -> Any:
@@ -689,6 +694,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         if tab.name == "editor" and self._side_has_focus():
             self.side_to_editor()           # the Editor tab at the side editor's cursor
             return
+        if hasattr(self, "tabs_hidden"):
+            self.reveal_tab(tab.name)
         self.notebook.select(index)
         if tab.on_show is not None:
             getattr(self, tab.on_show)()
@@ -909,7 +916,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
     def show_asset(self, node: files.TreeNode | str,
                    box: tuple[int, int] | None = None) -> None:
-        """The Asset tab for a non-script file (a tree node or a ref): its facts, and a
+        """The File preview tab for a non-script file (a tree node or a ref): its facts, and a
         thumbnail for a PNG or GIF within the caps (PR-F45-20, 04 §7.7)."""
         ref = node if isinstance(node, str) else node.ref
         self.asset_pane.show(read_asset(self.paths, ref), box=box)
