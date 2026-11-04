@@ -103,6 +103,7 @@ from engine.tools.editor.storyeditor import StoryEditor, apply_edits
 from engine.tools.editor.storymap import MapHistory
 from engine.tools.editor.appicon import set_app_icon
 from engine.tools.editor.theme import (
+    PANE_DRAG,
     STATUS_BAR_PX,
     THEME,
     dark_title_bar,
@@ -512,12 +513,12 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._build_status_bar()
         self._build_play_bar()             # F47: under the menu bar, across the window
         sash, sash_width = THEME["sash"], px(SASH_WIDTH)
-        self.hpane = tk.PanedWindow(root, orient="horizontal", sashwidth=sash_width,
+        self.hpane = tk.PanedWindow(root, **PANE_DRAG, orient="horizontal", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
         self.hpane.pack(fill="both", expand=True)
         # Every pane is a child of ``root``, so any dock can hold it (``docking``).
         self.left = ttk.Frame(root, width=px(LEFT_WIDTH), style="Side.TFrame")
-        self.vpane = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=sash_width,
+        self.vpane = tk.PanedWindow(self.hpane, **PANE_DRAG, orient="vertical", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
         self.hpane.add(self.vpane, minsize=px(LEFT_MIN_WIDTH), stretch="always")
         self.hpane.bind("<Configure>", self._limit_left_column, add="+")
@@ -540,7 +541,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed, add="+")
         # Below the notebook: Problems (60 %) and Help (40 %) with a draggable divider (both
         # on the chrome tone, so their sash is the divider color).
-        self.bottom = tk.PanedWindow(self.vpane, orient="horizontal", sashwidth=sash_width,
+        self.bottom = tk.PanedWindow(self.vpane, **PANE_DRAG, orient="horizontal", sashwidth=sash_width,
                                      borderwidth=0, sashrelief="flat",
                                      background=THEME["divider"])
         self.problems_frame = ttk.Frame(root, style="Side.TFrame")

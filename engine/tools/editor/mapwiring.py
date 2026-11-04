@@ -43,7 +43,7 @@ from engine.tools.editor.storymap import (
     map_undo,
     undo_blocked_text,
 )
-from engine.tools.editor.theme import THEME
+from engine.tools.editor.theme import PANE_DRAG, THEME
 from engine.tools.editor.runwiring import JUMP_HERE, NO_GAME
 from engine.tools.editor.views import (
     DIRTY_MARK,
@@ -171,7 +171,7 @@ class MapWiring:
         px = self._px
         sash, sash_width = THEME["sash"], px(SASH_WIDTH)
         self.map_frame = ttk.Frame(self.notebook)
-        self.map_split = tk.PanedWindow(self.map_frame, orient="horizontal",
+        self.map_split = tk.PanedWindow(self.map_frame, **PANE_DRAG, orient="horizontal",
                                         sashwidth=sash_width, borderwidth=0,
                                         sashrelief="flat", background=sash)
         self.map_split.pack(fill="both", expand=True)

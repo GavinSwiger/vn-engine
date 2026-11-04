@@ -95,7 +95,7 @@ from engine.tools.editor.fieldwidgets import (
 from engine.tools.editor.helperhub import CANT_PLAY, PLAYING, ThumbLoader, hub_for
 from engine.tools.editor.preview import Report
 from engine.tools.editor.scriptedit import STALE, Refuse
-from engine.tools.editor.theme import THEME
+from engine.tools.editor.theme import PANE_DRAG, THEME
 from engine.tools.editor.views import EmptyState, panel_header
 
 # --- Texts (design §6.4; the rest are this step's, in the same voice) --------------------------
@@ -285,7 +285,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                         foreground=THEME["muted"], font=self.fonts["small"])
 
         self.frame = ttk.Frame(parent)
-        self.paned = tk.PanedWindow(self.frame, orient="horizontal",
+        self.paned = tk.PanedWindow(self.frame, **PANE_DRAG, orient="horizontal",
                                     sashwidth=px(4), borderwidth=0, sashrelief="flat",
                                     background=THEME["sash"])
         self.paned.pack(fill="both", expand=True)

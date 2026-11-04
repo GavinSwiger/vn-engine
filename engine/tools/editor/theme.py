@@ -258,6 +258,11 @@ CONTRAST_PAIRS: tuple[tuple[str, str, float], ...] = (
 
 STATUS_BAR_PX = 22                          # at 100 % scaling (96 dpi)
 MENU_BAR_PX = 28
+# Every pane divider (``tk.PanedWindow``): a drag moves a thin accent line and the panes
+# resize once on release. A live resize relays out the whole window on each mouse move
+# (80-150 ms in Tk on Windows), which lags behind the pointer.
+PANE_DRAG = {"opaqueresize": False, "proxybackground": THEME["focusBorder"],
+             "proxyborderwidth": 0}
 
 # --- Type (08 §4) ---------------------------------------------------------------------------
 
@@ -635,7 +640,7 @@ def os_reduce_motion(platform: str = sys.platform) -> bool:
     return False
 
 
-__all__ = ["CONTRAST_PAIRS", "FONT_STACKS", "GRAPHIC_MIN", "MENU_BAR_PX", "ROLES",
+__all__ = ["CONTRAST_PAIRS", "FONT_STACKS", "GRAPHIC_MIN", "MENU_BAR_PX", "PANE_DRAG", "ROLES",
            "SPI_GETCLIENTAREAANIMATION", "STATUS_BAR_PX", "TEXT_MIN", "THEME", "TYPE_SCALE",
            "blend", "contrast", "dark_title_bar", "declare_dpi_awareness", "font_families",
            "luminance", "make_fonts", "os_reduce_motion", "scale_of", "style_ttk"]

@@ -31,7 +31,7 @@ from typing import Any, Final
 from engine.tools.editor.studiolook import (
     BOTTOM_MIN_WIDTH, LEFT_MIN_WIDTH, LEFT_WIDTH, PROBLEMS_HEIGHT, PROBLEMS_MIN_HEIGHT,
     PROBLEMS_SHARE, SASH_WIDTH)
-from engine.tools.editor.theme import THEME
+from engine.tools.editor.theme import PANE_DRAG, THEME
 
 PROJECT: Final = "project"
 PROBLEMS: Final = "problems"
@@ -155,9 +155,9 @@ class DockWiring:
         """After every pane exists: the left and right docks, the saved layout, the header
         drags and ✕ buttons, then the panes in their places."""
         sash, sash_width = THEME["sash"], self._px(SASH_WIDTH)
-        self.left_dock = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=sash_width,
+        self.left_dock = tk.PanedWindow(self.hpane, **PANE_DRAG, orient="vertical", sashwidth=sash_width,
                                         borderwidth=0, sashrelief="flat", background=sash)
-        self.right_dock = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=sash_width,
+        self.right_dock = tk.PanedWindow(self.hpane, **PANE_DRAG, orient="vertical", sashwidth=sash_width,
                                          borderwidth=0, sashrelief="flat", background=sash)
         self.dock_of = {LEFT: self.left_dock, RIGHT: self.right_dock, BOTTOM: self.bottom}
         self.pane_frames = {PROJECT: self.left, PROBLEMS: self.problems_frame,
