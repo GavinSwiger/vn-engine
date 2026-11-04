@@ -336,3 +336,28 @@ def test_ac_f54_07_schemes_and_colors(game, tmp_path):
     x, y, cw, ch = g.card.panel
     assert g.mode == "card" and not w.fatal
     assert area.y <= y and y + ch <= area.bottom and area.x <= x and x + cw <= area.right
+
+
+# --- AC-F54-12 ---------------------------------------------------------------------------------
+
+def test_ac_f54_12_docs_and_registration():
+    from engine.minigames.bundled import BUNDLED, HandGame
+    assert BUNDLED.index(GiftGiving) == BUNDLED.index(HandGame) + 1   # after F53's three
+    text = (REPO / "docs" / "minigames.md").read_text(encoding="utf-8")
+    names = text.split("names come with the engine:", 1)[1].split("Any", 1)[0]
+    assert "`gift_giving`" in names
+    section = text.split("\n## Gift giving\n", 1)[1].split("\n## ", 1)[0]
+    flat = " ".join(section.split())
+    # Each G form is in the table once; these rows repeat a form shown with another value.
+    variants = ("gifts has 33", "but it has 1 parts.", "but they are", "(hana) must be text",
+                'gifts ("alpha"', "but it is a list.", "leave must be")
+    for _args, reason in REASONS + STORY_REASONS:
+        if not any(v in reason for v in variants):
+            assert " ".join(reason.split()) in flat, reason
+    for form in ("but it has 1 parts.", "but they are a list.", "but it is a list.",
+                 "(and `leave`)", " ".join(W285.split())):
+        assert form in flat, form
+    for key, value in WORDS.items():
+        assert f'{key} = "{value}"' in section, key
+    for key in gg.TOKENS:
+        assert f"| `{key}` |" in section, key

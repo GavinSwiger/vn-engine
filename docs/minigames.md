@@ -34,9 +34,9 @@ until the game ends, the game fades back to the story, and the story goes on wit
 line.
 
 - **The name** comes first: `lantern_memory`. It is the name the minigame's plugin gives
-  itself. Eight names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
-  `puzzle_room`, `heartbeat`, `code_lock`, `stay_still`, and `hand_game`. Any others are
-  plugins in your game's `game/minigames/` folder.
+  itself. Nine names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
+  `puzzle_room`, `heartbeat`, `code_lock`, `stay_still`, `hand_game`, and `gift_giving`. Any
+  others are plugins in your game's `game/minigames/` folder.
 - **Arguments** come next, written `name=value`: `pairs=6`. Each minigame has its own; its
   section below (or its plugin) lists them. A value is worked out when the line runs, like
   a condition, so `hints=points.hana >= 3` works. Misspelled or missing arguments are
@@ -1410,6 +1410,140 @@ won = "You won!"
 lost = "You lost."
 draw = "It's a draw."
 continue = "Continue"
+```
+
+## Gift giving
+
+Gift giving (`gift_giving`) comes with the engine. The player picks an item they hold and
+gives it to a character. A **gift table** says how the character takes each item: a
+reaction, points for their meter, and a line they say. Any other item uses the character's
+"any other gift" row (`"*"`). The result is the reaction (`"loved"`, `"liked"`, `"neutral"`
+or `"disliked"`), or `None` when nothing was given.
+
+```
+points hana daichi 0 to 10
+lock item red_lantern "Red Lantern" in "Gifts"
+lock item umbrella "Umbrella" in "Gifts"
+default reaction = None
+
+define birthday_gifts = {
+    "hana": {
+        "*": ["neutral", 0, "Oh. Thank you."],
+        "red_lantern": ["loved", 3, "You kept it all this time?"],
+        "umbrella": ["liked", 1],
+        },
+    "daichi": {
+        "umbrella": ["disliked", -1, "I have three of these."],
+        },
+    }
+
+label birthday:
+    minigame gift_giving skippable gifts=birthday_gifts to="hana" categories=["Gifts"] into reaction
+    if reaction == "loved":
+        hana happy "Best birthday ever."
+```
+
+### The gift table
+
+- Each key is a character, named like a meter: letters, digits and `_` (up to 32
+  characters in a table).
+- Each character maps item names (declared with `lock item` or `item`; up to 200) and
+  `"*"` (any other gift) to a list: the reaction (`"loved"`, `"liked"`, `"neutral"` or
+  `"disliked"`), the points (a whole number from -10 to 10), and, if you like, the line the
+  character says (1 to 160 characters on one line).
+- An item that isn't listed uses the `"*"` row; with no `"*"` row it is neutral, 0 points
+  and no line.
+- Points change the meter named like the character, so a character whose gifts give points
+  needs a `points` line. A character whose points are all 0 doesn't.
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `gifts` | required | a gift table | Who likes what |
+| `to` | required | a character in the table | Whose reactions to use; their meter changes |
+| `speaker` | `None` (`to` with a capital first letter) | text, 1 to 24 characters | The name on the reaction card |
+| `categories` | `None` (every item) | a list of 1 to 24 item category names | Only items in these categories can be given |
+| `use_up` | `True` | `True` or `False` | `True`: the given item leaves the inventory |
+| `leave` | `True` | `True` or `False` | `True` shows a Not now button |
+| `result` | `"reaction"` | `"reaction"` or `"item"` | The result: the reaction word, or the given item's name |
+
+### Playing
+
+The codex item list opens over the dimmed scene, showing only the items the player holds
+(in `categories`). The player reads an item, then chooses **Give**. A card shows the
+character's name, their line and how they took it ("Hana loved it."), with **Continue**.
+Then the item is taken (with `use_up`), the meter changes by the points (if they aren't 0;
+it stays inside the meter's range), and the story goes on with the result. Nothing changes
+before Continue.
+
+- **Not now** (with `leave`), Backspace, the right mouse button or the gamepad's B button
+  give `None` and change nothing.
+- When the player holds nothing the list could show, a panel says "You have nothing to
+  give." with Continue, and the result is `None`. A dev run warns once, with W285:
+  `gift_giving to "hana": the player holds no item the picker can show, so the game says "You
+  have nothing to give." and the result is None.`
+- Mouse, keyboard and gamepad all work; nothing is timed or moves. **Skip Game** (with
+  `skippable`) gives `"neutral"` (or `None` with `result="item"`), and nothing is given or
+  taken.
+
+### When the arguments are refused
+
+A problem stops the story with E272, `gift_giving can't use these arguments:` and the
+reason. Only the first problem is reported, characters and items in the order written:
+
+| Reason | Fix |
+|---|---|
+| `gifts must be a dictionary of characters and their gifts, such as {"hana": {"red_lantern": ["loved", 3]}}, but it is a list.` | Write the table in `{ }`, as above. |
+| `gifts has 0 characters; it can have 1 to 32.` | Give 1 to 32 characters. |
+| `"Hana Li" can't be a character in gifts; write it as points names a meter: letters, digits, and _.` | Use the character's meter name. |
+| `the gifts for "hana" must be a dictionary of items and reactions, but they are a list.` | Write the character's gifts in `{ }`. |
+| `"hana" has 201 gifts; a character can have up to 200.` | List fewer items; use `"*"` for the rest. |
+| `"red lantern" in the gifts for "hana" can't be an item name; write an item's name, or "*" for any other gift.` | Write the item's name as declared. |
+| `the gift "coin" for "hana" must be a list such as ["loved", 3, "Thank you!"], but it is text.` (or `…, but it has 1 parts.`) | Write a list of the reaction, the points and, if you like, a line. |
+| `the gift "coin" for "hana" has the reaction "lovd"; a reaction is "loved", "liked", "neutral", or "disliked". Did you mean "loved"?` | Use one of the four. |
+| `the gift "coin" for "hana" gives 11 points; points are a whole number from -10 to 10.` | Use -10 to 10. |
+| `the line for "coin" (hana) is empty; it is 1 to 160 characters on one line.` (and the text rules of the hand game) | Write the line in quotes, on one line, or leave it out. |
+| `to must be one of the characters in gifts ("hana", "daichi"), but it is "hanna". Did you mean "hana"?` | Use a character from the table. |
+| `speaker is empty; it is 1 to 24 characters on one line.` | Write a name, or leave `speaker` out. |
+| `categories must be a list of 1 to 24 item category names, such as ["Gifts"], or None, but it is text.` | Write a list in `[ ]`. |
+| `category 2 in categories starts or ends with a space. Remove the space.` | Write each category's name as declared. |
+| `use_up must be True or False, but it is 1.` (and `leave`) | Write `True` or `False`. |
+| `result must be "reaction" or "item", but it is "items". Did you mean "item"?` | Use one of the two. |
+| `the gifts for "hana" name the item "paper_lanter", but there is no item named "paper_lanter". Did you mean "paper_lantern"?` | Spell the item as its `item` line does, or declare it. |
+| `the gifts for "daichi" give points, but there is no meter named "daichi". Declare it with points daichi, or set its points to 0.` | Add `daichi` to a `points` line, or use 0 points. |
+| `there is no item category "codex_item". Did you mean "codex_items"?` | Spell the category as its `item` lines do. |
+
+### Testing gift giving
+
+A headless run, Shift+F8 in a test run, and Skip Game give `"neutral"` (or `None` with
+`result="item"`) and change nothing. To test a gift, give its result and changes with
+`finish`, such as `finish "loved"; points hana += 3`.
+
+### Changing the look and the words
+
+Gift giving draws with the game's `panel` and `button` colors and the codex's look.
+`[theme.plugin.gift_giving]`:
+
+| Token | Default |
+|---|---|
+| `line.text_size` | `28` (24 to 40) |
+| `give_sound` | none |
+
+`{name}` is the speaker:
+
+```toml
+[words.plugin.gift_giving]
+title = "Gift"
+hint = "Choose a gift for {name}."
+give = "Give"
+not_now = "Not now"
+nothing = "You have nothing to give."
+continue = "Continue"
+loved = "{name} loved it."
+liked = "{name} liked it."
+neutral = "{name} accepted it."
+disliked = "{name} didn't like it."
 ```
 
 ## Writing a minigame

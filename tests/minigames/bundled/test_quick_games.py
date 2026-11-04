@@ -88,7 +88,8 @@ def start(w: HostU, name: str, **args):
 
 def test_ac_f53_01_registration_and_imports():
     at = BUNDLED.index(PuzzleRoom)
-    assert BUNDLED[-3:] == (CodeLock, StayStill, HandGame) and BUNDLED.index(CodeLock) > at
+    first = BUNDLED.index(CodeLock)
+    assert BUNDLED[first:first + 3] == (CodeLock, StayStill, HandGame) and first > at
     for name, cls in GAMES.items():
         entry = api.declarations(cls, "engine")
         assert (entry.name, entry.api, entry.over_stage) == (name, "1.1", True)

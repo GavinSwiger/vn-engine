@@ -657,6 +657,16 @@ silently; a missing picture shows the hand's word.
 | `plugin.hand_game.hand.rock_image`, `.paper_image`, `.scissors_image` | image | none | Replaces the hand's word, shrunk (never stretched) to fit the card. |
 | `plugin.hand_game.reveal_sound` | sound | none | Both hands show. |
 
+**Gift giving (F54).** `gift_giving` is F21's codex view as F25's picker (Give as the pick
+word, Not now beside it) and a reaction card on `panel.*` with a `button.*` Continue; no
+color of its own, so every scheme applies. Layout and words are in
+[F54 SPEC](../specs/F54-gift-giving/SPEC.md) §4.1 and [minigames.md](minigames.md).
+
+| Token | Type | Default | Purpose |
+|---|---|---|---|
+| `plugin.gift_giving.line.text_size` | size | 28 (24–40) | The card's line, scaled by the player's text size; up to 3 lines, then "…". |
+| `plugin.gift_giving.give_sound` | sound | none | Give. |
+
 **Flowchart (F20).** Set in `[theme.flowchart]` (sub-tables `[theme.flowchart.node]`, `.edge`,
 and the rest). Purposes, shapes, and words are in
 [F20 03-ui](../specs/F20-flowchart/03-ui.md), Theme tokens. The detail panel, Jump,

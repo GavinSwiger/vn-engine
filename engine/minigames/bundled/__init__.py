@@ -16,6 +16,7 @@ from engine.minigames.bundled.heartbeat import Heartbeat               # F57
 from engine.minigames.bundled.code_lock import CodeLock                # F53
 from engine.minigames.bundled.stay_still import StayStill              # F53
 from engine.minigames.bundled.hand_game import HandGame                # F53
+from engine.minigames.bundled.gift_giving import GiftGiving            # F54
 
 BUNDLED: tuple[type, ...] = (PoemGame, PresentEvidence, PhoneChat, PuzzleRoom, Heartbeat,
-                             CodeLock, StayStill, HandGame)
+                             CodeLock, StayStill, HandGame, GiftGiving)
