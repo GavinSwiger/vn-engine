@@ -1,4 +1,4 @@
-"""Bundled minigames (F24–F27): engine modules registered with the same ``register`` as
+"""Bundled minigames (F24–F27, F57): engine modules registered with the same ``register`` as
 game plugins, before the game's own (F23 ``04`` §7.10).
 
 Each bundled feature adds one explicit import line and its class to ``BUNDLED``, in feature
@@ -12,5 +12,6 @@ from engine.minigames.bundled.poem_game import PoemGame          # F24
 from engine.minigames.bundled.present_evidence import PresentEvidence   # F25
 from engine.minigames.bundled.phone_chat import PhoneChat              # F26
 from engine.minigames.bundled.puzzle_room import PuzzleRoom            # F27
+from engine.minigames.bundled.heartbeat import Heartbeat               # F57
 
-BUNDLED: tuple[type, ...] = (PoemGame, PresentEvidence, PhoneChat, PuzzleRoom)
+BUNDLED: tuple[type, ...] = (PoemGame, PresentEvidence, PhoneChat, PuzzleRoom, Heartbeat)

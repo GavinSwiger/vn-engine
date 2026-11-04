@@ -34,8 +34,8 @@ until the game ends, the game fades back to the story, and the story goes on wit
 line.
 
 - **The name** comes first: `lantern_memory`. It is the name the minigame's plugin gives
-  itself. Four names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
-  and `puzzle_room`. Any others are plugins in your game's `game/minigames/` folder.
+  itself. Five names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
+  `puzzle_room`, and `heartbeat`. Any others are plugins in your game's `game/minigames/` folder.
 - **Arguments** come next, written `name=value`: `pairs=6`. Each minigame has its own; its
   section below (or its plugin) lists them. A value is worked out when the line runs, like
   a condition, so `hints=points.hana >= 3` works. Misspelled or missing arguments are
@@ -996,6 +996,117 @@ put_away = "Put away {item}"
 need_item = "You need something for this."
 no_use = "That doesn't work."
 no_combine = "Those don't go together."
+```
+
+## Heartbeat
+
+Heartbeat (`heartbeat`) comes with the engine. A ring closes toward a circle on a steady
+beat, and the player presses as it meets the circle, to keep their composure. The result is
+the number of beats hit. Each miss can lower a meter.
+
+```
+points composure 0 to 10 start 5
+default calm = 0
+
+label confession:
+    minigame heartbeat skippable beats=8 meter="composure" sound="sfx/heartbeat.ogg" into calm
+    if calm >= 6:
+        hana "I... I like you. I have for a long time."
+    else:
+        hana "I... never mind. It's nothing."
+```
+
+A pulse can be a sensitive image (panic, anxiety). If your game uses Heartbeat in a hard
+scene, consider a content warning (`[content_warning]`, see
+[script-language.md](script-language.md)).
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `beats` | `8` | a whole number from 4 to 20 | How many beats the player presses on |
+| `bpm` | `60` | a whole number from 40 to 120 | Beats a minute: 60 is one beat a second |
+| `window` | `"normal"` | `"tight"` (±0.15 s), `"normal"` (±0.25 s), `"wide"` (±0.40 s) | How close to the beat a press must be; never more than 40 % of the time between beats |
+| `meter` | `None` | `None`, or a meter's name | The meter a miss lowers |
+| `cost` | `1` | a whole number from 0 to 20 | How much each miss lowers `meter` |
+| `sound` | `None` | `None`, or a sound file in quotes (up to 260 characters) | Plays on each beat, with the ring |
+
+### Playing
+
+"Ready…" shows in the circle for 1 second. Then a ring closes in over one beat and meets the
+circle on the beat; the next ring starts as it lands. The player presses as the ring meets
+the circle: a click anywhere in the game, Space, Enter, or the gamepad's A button. A press
+within the window is a hit ("Steady", and the circle's border turns the hit color). A press
+up to half a beat early, or no press before the window ends, is a miss ("Missed"). Each beat
+is judged once, and other presses do nothing. The dots under the circle fill in: a filled
+dot for a hit, a dash for a miss, a ring for a beat to come.
+
+At the end, "6 of 8" shows for 1.5 seconds (a press ends it early), and the game fades back
+to the story. With `meter`, the meter goes down by `cost` for each miss, once, at the end.
+
+- **Timing assist** (the player's setting, Settings ▸ Display): **Slower** doubles the
+  lead-in, the time between beats, and the window. **No time limits** closes each ring at
+  the normal pace, then waits on the circle until the player presses; every press then
+  counts, so the result is always `beats` and the meter is unchanged. A change during the
+  game applies from the next beat.
+- **Reduce motion**: the ring doesn't move; it shows at three sizes (far, halfway, on the
+  circle). Nothing ever flashes: only the circle's border changes color, at most twice a
+  second.
+- **Sound** is never the only cue: the ring always shows the beat. Under No time limits,
+  the sound plays as each ring reaches the circle.
+- The game menu (Esc, Start) and leaving the window pause the beat.
+- **Skip Game** (with `skippable`) gives a full score, `beats`, and leaves the meter as it
+  was. Saving during the game saves its start: loading plays it again from the lead-in.
+
+### When the arguments are refused
+
+A problem stops the story with E272, `heartbeat can't use these arguments:` and the reason.
+Only the first problem is reported.
+
+| Reason | Fix |
+|---|---|
+| `beats must be a whole number from 4 to 20, but it is 3.` | Use 4 to 20 beats, written without a decimal point. |
+| `bpm must be a whole number from 40 to 120, but it is 150.` | Use 40 to 120 beats a minute. |
+| `window must be "tight", "normal" or "wide", but it is "loose".` | Pick one of the three, in quotes. |
+| `meter must be None or a meter's name, but it is 3.` | Write the meter's name in quotes, or leave `meter` out. |
+| `meter names "composre", which no points line declares. Did you mean "composure"?` | Spell the meter as its `points` line does, or declare it. |
+| `cost must be a whole number from 0 to 20, but it is 25.` | Use 0 to 20. |
+| `sound must be None or a sound file in quotes, such as "sfx/heartbeat.ogg", but it is 5.` | Write the file in quotes, on one line, up to 260 characters. |
+
+### Testing Heartbeat
+
+A headless run, Shift+F8 in a test run, and Skip Game end Heartbeat with a full score
+(`beats`) and no meter change. To test a low score, give it with `finish`, such as
+`finish 3; points composure -= 5`.
+
+### Changing the look and the words
+
+Heartbeat's colors come from `[theme.plugin.heartbeat]`. Each one follows a token of the
+game's own look by default, so every color scheme applies:
+
+| Token | Default |
+|---|---|
+| `target.fill_color` | `button.fill_color` |
+| `target.border_color` | `button.border_color` |
+| `target.text_color` | `button.text_color` |
+| `ring.line_color` | `slider.fill_color` |
+| `hit_color` | `button.focused.border_color` |
+| `miss_color` | `button.disabled.text_color` |
+| `dot.empty_color` | `button.border_color` |
+
+Every word can be changed in `[words.plugin.heartbeat]`. `title` is also the save
+description; `hint_wait` replaces `hint` under No time limits; `{hits}` and `{beats}` are the
+score:
+
+```toml
+[words.plugin.heartbeat]
+title = "Heartbeat"
+hint = "Press when the ring meets the circle: click, Space, Enter, or A."
+hint_wait = "Press when the ring reaches the circle. Take your time."
+ready = "Ready…"
+hit = "Steady"
+miss = "Missed"
+result = "{hits} of {beats}"
 ```
 
 ## Writing a minigame
