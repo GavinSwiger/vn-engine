@@ -77,6 +77,16 @@ class Viewport:
         cy = _map_axis(py - self.y, self.h, self.canvas_h)
         return (cx, cy), inside
 
+    def canvas_to_window(self, rect: tuple[float, float, float, float]) -> Rect:
+        """F52 (04 §1 OQ-2): a canvas-unit rectangle as framebuffer pixels (the viewport's
+        scale and letterbox offset), each edge rounded half up."""
+        x, y, w, h = rect
+        left = self.x + math.floor(x * self.scale_x + 0.5)
+        top = self.y + math.floor(y * self.scale_y + 0.5)
+        right = self.x + math.floor((x + w) * self.scale_x + 0.5)
+        bottom = self.y + math.floor((y + h) * self.scale_y + 0.5)
+        return left, top, right - left, bottom - top
+
     def bar_rects(self) -> list[Rect]:
         """The letterbox bars as (x, y, w, h) rects in device pixels; empty bars omitted.
 

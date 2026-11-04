@@ -12,6 +12,7 @@ from engine.core.geometry import Viewport
 from engine.render.canvas import Canvas, RenderQuality
 from engine.tools.console import panel as panel_mod
 from engine.tools.console.model import INPUT_MAX, Close, RunCode, SetValue, Tab, where_now
+from engine.app.textinput import read_clipboard
 from engine.tools.console.panel import ConsolePanel
 from engine.ui.input import UiEvent
 from tests.render.conftest import make_assets
@@ -32,7 +33,7 @@ def window():
     window = pygame.Window("console", (320, 180))
     pygame.event.clear()
     yield window
-    panel_mod.stop_typing()
+    pygame.key.stop_text_input()
     window.destroy()
     pygame.quit()
 
@@ -63,8 +64,8 @@ def test_ac25_text_input_and_paste_reach_the_field(program, window, monkeypatch)
     runner = FakeRunner(interp)
     model = model_for(program, runner)
     model.opened(where_now(interp), interp)
-    panel = ConsolePanel(model)
-    panel_mod.start_typing()                                 # SDL text input on
+    panel = ConsolePanel(model, paste=read_clipboard)        # F52: the owner's read
+    pygame.key.start_text_input()                            # SDL text input on
 
     # Variables: typing filters (case-insensitive, non-Latin kept as typed).
     typed(panel, "Co")

@@ -47,6 +47,9 @@ _log = get_logger("ui")
 _MOUSE_INPUT = frozenset({pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP,
                           pygame.MOUSEWHEEL})
 _KEY_INPUT = frozenset({pygame.KEYDOWN, pygame.CONTROLLERBUTTONDOWN})
+# F52 (04 §4.2-§4.3): ``text_target()`` of a minigame screen running a plugin below API 1.4:
+# SDL text input stays on for it (no IME rect), as before F52.
+LEGACY_TEXT = "legacy-text-input"
 
 
 class Screen:
@@ -86,6 +89,11 @@ class Screen:
 
     def draw(self, canvas: "Canvas") -> None:
         pass
+
+    def text_target(self) -> object:
+        """F52 (07 §3.1): what wants typing while this screen is top: a focused text field
+        (``ime_rect``, ``text_lost``), ``LEGACY_TEXT``, or None (``app/textinput``)."""
+        return None
 
 
 class InGameOverlay(Protocol):

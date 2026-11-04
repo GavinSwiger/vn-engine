@@ -540,6 +540,9 @@ def prepare_environment() -> None:
     XWayland under a Wayland session (PR-F01-63).
     """
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    # F52 (07 I-10): the IME draws its own candidate and composition windows; the engine
+    # places them under the caret (``app/textinput``).
+    os.environ.setdefault("SDL_IME_SHOW_UI", "1")
     if sys.platform == "win32":
         os.environ.setdefault("SDL_WINDOWS_DPI_AWARENESS", "permonitorv2")
 

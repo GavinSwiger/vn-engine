@@ -21,11 +21,13 @@ event here and the screens below get none):
 
 - Keyboard: Ctrl+1/2/3, Ctrl+Tab and Tab switch tabs; Up/Down move (Code: history);
   Page Up/Down move a page; Enter acts; Left/Right/Home/End/Backspace/Delete edit the
-  focused field; Ctrl+V pastes (``read_clipboard``: first line, controls dropped, 2,000 at
-  most; SEC-F40-12); Esc closes an open value field, else the console; F12 closes.
+  focused field; Ctrl+V pastes (``paste``: the text input owner's clipboard read, then the
+  first line, controls dropped, 2,000 at most; SEC-F40-12); Esc closes an open value field,
+  else the console; F12 closes.
 - Text: SDL text input (``TEXTINPUT``), so IME and non-Latin keyboards type normally; the
-  IME's unfinished text (``TEXTEDITING``) shows at the caret. ``start_typing`` and
-  ``stop_typing`` are W1's calls on open and close.
+  IME's unfinished text (``TEXTEDITING``) shows at the caret. F52: ``app/textinput``'s
+  owner turns text input on while the console is open and places the IME window at
+  ``ime_rect``.
 - Mouse: click a tab, a row (Variables: opens its value field; Jump: a click on the
   selected row jumps), a row's button, or ``F12 / Esc`` (closes); the wheel scrolls.
 - Gamepad: D-pad up/down move, A acts (Switch or +1, or jump), X is -1, the shoulders
@@ -43,6 +45,7 @@ from engine.render.text import FontSpec, fit_line, text_width
 from engine.tools.console import texts
 from engine.tools.console.model import (LIST_ROWS, TABS, TAB_TEXTS, Action, Close,
                                         ConsoleModel, Field, Row, Tab, clean_input)
+from engine.ui.focus import Box
 from engine.ui.input import UiEvent
 
 # --- Look (01 §6.1) --------------------------------------------------------------------------
@@ -93,28 +96,6 @@ _TAB_KEYS = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2,
 _FIT_CACHE_MAX = 1024
 
 
-def read_clipboard() -> str:
-    """Ctrl+V's text: the clipboard's text, or "" when there is none or it can't be read.
-    The field keeps only its first line, controls dropped, cut (``clean_input``)."""
-    try:
-        text = pygame.scrap.get_text()
-    except (pygame.error, AttributeError, NotImplementedError):
-        return ""
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", "replace")
-    return clean_input(text if isinstance(text, str) else "")
-
-
-def start_typing() -> None:
-    """On open (W1): SDL text input on, so typed and IME text arrive as ``TEXTINPUT``."""
-    pygame.key.start_text_input()
-
-
-def stop_typing() -> None:
-    """On close (W1)."""
-    pygame.key.stop_text_input()
-
-
 def tab_rect(index: int) -> tuple[int, int, int, int]:
     return (LEFT + index * (TAB_W + TAB_GAP), TABS_Y + 3, TAB_W, ROW_H - 6)
 
@@ -151,12 +132,13 @@ def _inside(pos: tuple[float, float], rect: tuple[int, int, int, int]) -> bool:
 
 class ConsolePanel:
     """Draws one ``ConsoleModel`` and handles the raw input meant for it (module
-    docstring). ``paste`` reads the clipboard (default ``read_clipboard``)."""
+    docstring). ``paste`` reads the clipboard (``TextInputOwner.read_clipboard``; none by
+    default)."""
 
     def __init__(self, model: ConsoleModel, *, paste: Callable[[], str] | None = None) -> None:
         self.model = model
         self.composing = ""                       # the IME's unfinished text
-        self._paste = paste or read_clipboard
+        self._paste = paste or (lambda: "")
         self._fit: dict[tuple[str, int, int], str] = {}
         self._code_lines: tuple[int, list[tuple[str, tuple[int, int, int]]]] | None = None
 
@@ -231,6 +213,17 @@ class ConsolePanel:
         elif key == pygame.K_END:
             model.cursor("end")
         return None
+
+    def ime_rect(self) -> Box:
+        """F52: the focused field's box (canvas units), for the IME window."""
+        model = self.model
+        if model.tab is Tab.CODE:
+            rect = CODE_RECT
+        elif model.editing is not None:
+            rect = VALUE_RECT
+        else:
+            rect = FILTER_RECT
+        return Box(*rect)
 
     def paste(self) -> None:
         """Ctrl+V: the clipboard's first line into the focused field (SEC-F40-12)."""
@@ -470,5 +463,4 @@ class ConsolePanel:
 
 __all__ = ["BORDER_COLOR", "CAPTION_FONT", "ConsolePanel", "ERROR_COLOR", "FONT", "PANEL",
            "PANEL_COLOR", "ROW_H", "SECONDARY_COLOR", "SELECTED_COLOR", "TEXT_COLOR",
-           "button_rects", "read_clipboard", "row_rect", "start_typing", "stop_typing",
-           "tab_rect"]
+           "button_rects", "row_rect", "tab_rect"]

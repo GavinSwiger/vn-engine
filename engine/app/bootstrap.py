@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from engine import __version__
 from engine.app.app import App
+from engine.app.textinput import TextInputOwner
 from engine.app.settings import (SettingsLaunch, install_settings, launch_settings,
                                  launch_value)
 from engine.core import logsetup
@@ -317,6 +318,7 @@ def _run_session(state: _Startup, log: LogSetup, *, release: bool,
     app.replay_label = replay                      # F36: run --replay LABEL
     if console is not None and not release and not trying:
         app.console = console(app)                 # F40: dev runs only, never Try it
+    app.text_input = TextInputOwner(app)           # F52: with the window; typing off
     if link is not None:                      # F39: Studio's messages; the failed place
         if not trying:                        # a try run's stdin held its lines
             link.listen(_editor_input(), resume=resume)

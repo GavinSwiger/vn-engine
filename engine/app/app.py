@@ -56,6 +56,7 @@ from engine.ui.screen import ScreenStack
 
 if TYPE_CHECKING:
     from engine.app.editor_link import EditorLink
+    from engine.app.textinput import TextInputOwner
     from engine.audio.service import AudioService
     from engine.runtime.guard import AuthorCodeGuard
     from engine.core.startvalues import StartOptions
@@ -196,6 +197,10 @@ class App:
         # Called only while ``dev`` and filled: ``key`` (raw input), ``frame``, ``draw``,
         # ``holds_story``, and ``studio`` (``EditorLink.update``).
         self.console: "ConsoleSlot | None" = None
+        # F52 (04 §4.3, 07 I-10): the one owner of SDL text input, the IME rect and clipboard
+        # reads (``app/textinput.py``), set by ``bootstrap.launch`` with a real window only;
+        # ``sync`` runs once per frame after the screens and the notice layer.
+        self.text_input: "TextInputOwner | None" = None
         self.time = assets.time
         self.canvas = Canvas(assets)
         self.screens = ScreenStack()
@@ -340,6 +345,8 @@ class App:
                     # F11 C9: the notice layer after the screens (never in error mode).
                     if self.shell is not None and not self.error_mode:
                         self.shell.update_layer(self.time.dt, focused=self.focused)
+                    if self.text_input is not None:
+                        self.text_input.sync()               # F52: after the screens
                     flip_done = self.present()
                 except KeyboardInterrupt:
                     if not self._watchdog_fired():

@@ -142,6 +142,9 @@ class FakeWindow:
     def points_to_pixels(self, pos: tuple[float, float]) -> tuple[float, float]:
         return pos
 
+    def pixels_to_points(self, pos: tuple[float, float]) -> tuple[float, float]:
+        return pos
+
     def note_window_event(self, event_type: int) -> None:
         self.window_events.append(event_type)
         if event_type == pygame.WINDOWMAXIMIZED:

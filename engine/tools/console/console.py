@@ -21,6 +21,8 @@ model may act, so a change always lands while the story rests, and it answers St
   the stage again at the next pump; nothing is reset when the jump is refused). On the title,
   a new game at the label (``enter_game(new_game)``, ``start`` set to the label for that
   call only), as Studio's Play from scene.
+- **Typing** (F52): ``app/textinput``'s owner turns SDL text input on while ``open`` and
+  places the IME window at ``ime_rect``; Ctrl+V reads the clipboard through the owner.
 - **Drawing**: only from ``App.present``, so the console is never in a thumbnail, a scene
   picture or a menu backdrop (those are drawn from the screen stack).
 
@@ -40,7 +42,7 @@ from engine.core.startvalues import StartOptions
 from engine.tools.console import runner
 from engine.tools.console.answer import console_event
 from engine.tools.console.model import Action, Close, ConsoleModel, Where, where_now
-from engine.tools.console.panel import ConsolePanel, start_typing, stop_typing
+from engine.tools.console.panel import ConsolePanel
 from engine.ui.builtin.content_warning import ContentWarningScreen
 from engine.ui.builtin.fake_crash import FakeCrashScreen
 from engine.ui.builtin.load_fade import LoadFadeScreen
@@ -134,6 +136,10 @@ class DevConsole:
                 break
         self._answer_studio()
 
+    def ime_rect(self):
+        """F52: the IME window's anchor while open (``app/textinput``'s console target)."""
+        return self._panel.ime_rect() if self._panel is not None else None
+
     def draw(self, canvas: Canvas) -> None:
         """``App.present``, above the screens and under notices and the F3 overlay."""
         if self.open and self._panel is not None:
@@ -145,7 +151,6 @@ class DevConsole:
         self.open = False
         if self._model is not None:
             self._model.closed()
-        stop_typing()
 
     # -- Where the story is ------------------------------------------------------------------
 
@@ -177,7 +182,9 @@ class DevConsole:
         if self._model is None or self._model.program is not program:
             self._model = ConsoleModel(program, run_code=runner.run_code, jump=self._jump,
                                        guarded=runner.guarded)
-            self._panel = ConsolePanel(self._model)
+            owner = getattr(self.app, "text_input", None)
+            self._panel = ConsolePanel(self._model, paste=owner.read_clipboard
+                                       if owner is not None else None)
         return self._model
 
     def _open(self, where: Where, interp: Interpreter) -> None:
@@ -189,7 +196,6 @@ class DevConsole:
             skip_auto.set_auto(False)
         self.open = True
         self._model.opened(where, interp)
-        start_typing()
 
     def _apply(self, action: Action) -> object:
         where = self.where()

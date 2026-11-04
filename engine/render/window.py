@@ -68,6 +68,8 @@ class WindowPort(Protocol):
 
     def points_to_pixels(self, pos: tuple[float, float]) -> tuple[float, float]: ...
 
+    def pixels_to_points(self, pos: tuple[float, float]) -> tuple[float, float]: ...
+
     def note_window_event(self, event_type: int) -> None: ...
 
     def windowed_size(self) -> tuple[int, int] | None:
@@ -193,6 +195,18 @@ class GameWindow:
         if (fw, fh) == (width, height):
             return pos
         return pos[0] * fw / width, pos[1] * fh / height
+
+    def pixels_to_points(self, pos: tuple[float, float]) -> tuple[float, float]:
+        """F52 (04 §1 OQ-2): framebuffer pixels → window units (``points_to_pixels``'s
+        inverse), where ``app/textinput`` places the IME window."""
+        framebuffer = self.framebuffer()
+        width, height = self._window.size
+        if framebuffer is None:
+            return pos
+        fw, fh = framebuffer.get_size()
+        if (fw, fh) == (width, height) or fw <= 0 or fh <= 0:
+            return pos
+        return pos[0] * width / fw, pos[1] * height / fh
 
     def note_window_event(self, event_type: int) -> None:
         """Track maximize (pygame.Window has no getter) and, on macOS, the fullscreen state
