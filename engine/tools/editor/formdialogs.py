@@ -47,7 +47,7 @@ from collections.abc import Callable, Mapping, Sequence
 from tkinter import font as tkfont
 from tkinter import ttk
 
-from engine.script.statement_docs import StatementDoc
+from engine.script.statement_docs import StatementDoc, docs_for
 from engine.tools.editor import dialogs, forms, forms_files_ui, forms_more, formtools
 from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
@@ -1131,6 +1131,93 @@ FORM_ENTRIES: Mapping[str, tuple[str, str]] = {
     "ask_name": ("Story flow", "Minigame"),                 # F52: Ask for a name…
 }
 REASON_INDENT = "      "                    # a text-only entry's reason, under it
+# Hover help for the entries with no statement doc of their own.
+FORM_HELP: Mapping[str, str] = {
+    "effect_off": "Stops an effect that is running on a character or the screen.",
+    "stop_sound": "Stops a sound or a voice line that is playing.",
+    "ask_name": "Asks the player to type a name, and keeps it in a story variable.",
+}
+TIP_DELAY_MS = 450
+TIP_WRAP_PX = 380
+
+
+def entry_help(entry: "StatementDoc | CommandForm") -> str:
+    """The hover help for an Insert… entry: what it does, then how it is written."""
+    if isinstance(entry, CommandForm):
+        if entry.key in FORM_HELP:
+            return FORM_HELP[entry.key]
+        for key, _prefix in entry.docs:
+            for doc in docs_for(key):
+                return entry_help(doc)
+        return ""
+    return f"{entry.summary}\n\n{entry.syntax}" if entry.syntax else entry.summary
+
+
+class RowTips:
+    """A help box beside the pointer for the row under it, after it rests there a moment
+    (``text_of(item)`` gives the text; "" shows nothing). It follows the rows as the
+    pointer moves and goes on leave, click or scroll."""
+
+    def __init__(self, tree: ttk.Treeview, text_of: Callable[[str], str], *,
+                 font: object = None) -> None:
+        self.tree, self.text_of, self.font = tree, text_of, font
+        self.row: str | None = None
+        self.window: tk.Toplevel | None = None
+        self._after: str | None = None
+        self._at = (0, 0)
+        tree.bind("<Motion>", self._moved, add="+")
+        for sequence in ("<Leave>", "<ButtonPress>", "<MouseWheel>", "<Destroy>",
+                         "<KeyPress>"):
+            tree.bind(sequence, lambda _e: self.hide(), add="+")
+
+    def _moved(self, event: tk.Event) -> None:
+        row = self.tree.identify_row(event.y) or None
+        self._at = (event.x_root, event.y_root)
+        if row == self.row:
+            return
+        self.hide()
+        self.row = row
+        if row is not None and self.text_of(row):
+            self._after = self.tree.after(TIP_DELAY_MS, self.show)
+
+    def show(self) -> None:
+        self._after = None
+        text = self.text_of(self.row) if self.row is not None else ""
+        if not text or self.window is not None:
+            return
+        scale = scale_of(self.tree)
+        tip = self.window = tk.Toplevel(self.tree)
+        tip.wm_overrideredirect(True)
+        try:
+            tip.attributes("-topmost", True)
+        except tk.TclError:
+            pass
+        tip.configure(background=THEME["widget.border"])
+        label = tk.Label(tip, text=text, justify="left", anchor="w",
+                         background=THEME["widget.background"],
+                         foreground=THEME["foreground"], padx=round(10 * scale),
+                         pady=round(6 * scale), borderwidth=0,
+                         wraplength=round(TIP_WRAP_PX * scale))
+        if self.font is not None:
+            label.configure(font=self.font)
+        label.pack(padx=1, pady=1)
+        x, y = self._at
+        tip.wm_geometry(f"+{x + round(16 * scale)}+{y + round(12 * scale)}")
+
+    def hide(self) -> None:
+        if self._after is not None:
+            try:
+                self.tree.after_cancel(self._after)
+            except tk.TclError:
+                pass
+            self._after = None
+        if self.window is not None:
+            try:
+                self.window.destroy()
+            except tk.TclError:
+                pass
+            self.window = None
+        self.row = None
 
 
 def _with_form_entries(menu: Sequence[tuple[str, Sequence[StatementDoc]]]
@@ -1199,6 +1286,8 @@ class InsertPicker:
         self.docs: dict[str, StatementDoc | CommandForm] = {}
         self.reasons: dict[str, str] = {}           # a reason row → the entry above it
         self.tree.bind("<<TreeviewSelect>>", lambda _e: self._off_reason())
+        # Hovering an entry (or its reason) shows what it does and how it is written.
+        self.tips = RowTips(self.tree, self.help_of, font=self.reason_font)
         self.buttons = dialogs._buttons(dialog, body, (INSERT, CANCEL), self._pick)
         self.filter.trace_add("write", lambda *_a: self._fill())
         for widget in (entry, self.tree):
@@ -1237,6 +1326,11 @@ class InsertPicker:
                         return str(self.tree.item(after, "text")).strip()
                     return None
         raise KeyError((group, title))
+
+    def help_of(self, item: str) -> str:
+        """The hover help for row ``item`` ("" for a group heading)."""
+        entry = self.docs.get(self.reasons.get(item, item))
+        return entry_help(entry) if entry is not None else ""
 
     def _off_reason(self) -> None:
         """A click on a reason chooses its entry."""
