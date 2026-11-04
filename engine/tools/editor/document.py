@@ -199,6 +199,33 @@ def _make_document(ref: str, real: Path, data: bytes, root: Path, *,
     bom = data.startswith(_BOM_BYTES)
     text = data[len(_BOM_BYTES):].decode("utf-8") if bom else data.decode("utf-8")
     del data
+    newline, final, body, lines, endings = _split_lines(text)
+    del text
+    return ScriptDocument(
+        ref=ref, real_path=real, bom=bom, newline=newline, final_newline=final,
+        old_lines=lines, old_endings=endings,
+        stamp=(st.st_mtime_ns, st.st_size), script_root=root, config=config, text=body)
+
+
+def _split_lines(text: str) -> tuple[str, bool, str, list[str] | None, list[str] | None]:
+    """``(newline, final_newline, "\\n"-joined text, old_lines, old_endings)`` for ``text``;
+    the old lists only for mixed endings. One ending kind throughout (nearly every file)
+    takes C-level string calls, so a large file never holds the GIL in a Python loop
+    (F58 P0: 2 µs a line, which stalled Tk while the map's watch thread read big files)."""
+    if "\r" not in text:
+        return "\n", text.endswith("\n"), text[:-1] if text.endswith("\n") else text, \
+            None, None
+    crlf = text.count("\r\n")
+    if crlf == text.count("\r") == text.count("\n"):
+        text = text.replace("\r\n", "\n")
+        return "\r\n", text.endswith("\n"), text[:-1] if text.endswith("\n") else text, \
+            None, None
+    return _split_lines_slow(text)
+
+
+def _split_lines_slow(text: str) -> tuple[str, bool, str, list[str] | None, list[str] | None]:
+    """The per-line read, for files that mix line endings (and the reference
+    ``_split_lines`` is tested against)."""
     lines: list[str] = []
     endings: list[str] = []
     for match in _LINE_RE.finditer(text):
@@ -206,15 +233,9 @@ def _make_document(ref: str, real: Path, data: bytes, root: Path, *,
         body = piece.rstrip("\r\n")
         lines.append(body)
         endings.append(piece[len(body):])
-    del text
-    newline = _dominant(endings)
     mixed = len({ending for ending in endings if ending}) > 1
-    return ScriptDocument(
-        ref=ref, real_path=real, bom=bom, newline=newline,
-        final_newline=bool(endings) and endings[-1] != "",
-        old_lines=lines if mixed else None, old_endings=endings if mixed else None,
-        stamp=(st.st_mtime_ns, st.st_size), script_root=root, config=config,
-        text="\n".join(lines))
+    return (_dominant(endings), bool(endings) and endings[-1] != "", "\n".join(lines),
+            lines if mixed else None, endings if mixed else None)
 
 
 def _physical_line(text: str, number: int) -> str:
