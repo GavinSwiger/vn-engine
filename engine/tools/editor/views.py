@@ -41,28 +41,27 @@ from engine.tools.editor.assist import (
     help_sections,
 )
 from engine.tools.editor.files import ProjectTree, Refusal, TreeNode
+from engine.tools.editor.livemap import Pins
+from engine.tools.editor.mapcanvas import MapPainter
 from engine.tools.editor.storymap import (
     BOX_HEIGHT,
     BOX_WIDTH,
-    CHIP_SLOTS,
     PLACE_STEP,
-    ROW_STEP,
     LINK_KINDS,
-    MARK_DELETES_SAVES,
     MARK_ENDING,
-    MARK_START,
     Box,
+    EdgeKey,
+    LayoutDiff,
     MapLayout,
     Notes,
-    chip_text,
     curve_at,
     curve_points,
     hidden_text,
     label_files,
-    layout,
     layout_places,
     neighbour,
     out_edges,
+    relayout,
 )
 from engine.tools.editor.scriptedit import snap
 from engine.tools.editor.outline import NO_OUTLINE
@@ -862,7 +861,8 @@ class StoryMapView:
         self.canvas.grid(row=2, column=0, sticky="nsew")
         vbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         hbar = ttk.Scrollbar(self.frame, orient="horizontal", command=self.canvas.xview)
-        self.canvas.configure(yscrollcommand=autohide(vbar, row=2, column=1, sticky="ns"),
+        self.canvas.configure(yscrollcommand=self._yscrolled(
+                                  autohide(vbar, row=2, column=1, sticky="ns")),
                               xscrollcommand=self._xscrolled(
                                   autohide(hbar, row=3, column=0, sticky="ew")))
 
@@ -886,11 +886,21 @@ class StoryMapView:
         self.zoom = 100
         self.focused: int | None = None
         self.anchor: int | None = None   # where a run of Tab presses started
-        self.edge_items: list[tuple[int, str]] = []    # (canvas item, link kind)
-        self.ports: dict[int, float] = {}   # edge index -> its port on the source (F46)
-        self.ends: dict[int, float] = {}    # edge index -> its end height (same-pair arrows)
         self.ring: int | None = None
         self.hovered: int | None = None  # the box under the pointer
+        self._handle: int | None = None  # the hovered box's arrow handle
+        # F58 (04 §7.6, §7.8): the canvas is drawn through MapPainter, whose registry keys
+        # items by label name and EdgeKey (no index tags, I-10); ``relayout`` against the
+        # drawn layout gives the diff it applies. ``pins`` keep every automatically placed
+        # box where it first appeared, per file-filter choice (C4, memory only).
+        self.painter = MapPainter(self.canvas, name_font=self.name_font,
+                                  detail_font=self.detail_font, chip_font=self.chip_font,
+                                  scale=scale, dpi=scale)
+        self.pins = Pins()
+        self.last_diff: LayoutDiff | None = None
+        self._note_shown: str | None = None
+        self._choices: tuple[str, ...] = ()
+        self._stuck: set[str] = set()
         # F46 places and moves (04 §6.8): the remembered corners (label → (x, y) at 100 %),
         # the message line in the banner, a box drag or Move box mode in progress, and the
         # boxes shown away from their layout place while it runs (box → corner).
@@ -899,7 +909,7 @@ class StoryMapView:
         self.drag: _Drag | None = None
         self.moving: _Drag | None = None        # Move box mode (G3)
         self._shifted: dict[int, tuple[float, float]] = {}
-        self._incident: dict[int, list[int]] = {}   # box → its edges (drawn at draw time)
+        self._incident: dict[int, list[int]] = {}   # box → its edges (found when dragged)
         self._drag_id: str | None = None
         # F46 arrows (04 §6.8): the selected box (the one opened), the selected arrow, an
         # arrow being drawn, the inline choice-text field, and the box Esc goes back to
@@ -974,38 +984,80 @@ class StoryMapView:
         self.notes = dict(notes or {})
         self.stale = stale
         self.out_of_date = frozenset(out_of_date)
-        choices = label_files(self.labels)
-        if self.file is not None and self.file not in choices:
+        choices = tuple(label_files(self.labels))
+        refilter = self.file is not None and self.file not in choices
+        if refilter:
             self.file = None
-        self.file_choice.configure(values=(ALL_FILES, *choices))
-        self.file_choice.set(self.file or ALL_FILES)
-        self._relayout()
+        if choices != self._choices:
+            self._choices = choices
+            self.file_choice.configure(values=(ALL_FILES, *choices))
+        if refilter:
+            self.file_choice.set(ALL_FILES)
+        self._relayout(full=refilter)
 
     def _on_file(self, _event: tk.Event | None = None) -> None:
         choice = self.file_choice.get()
         self.set_file(None if choice == ALL_FILES else choice)
 
     def set_file(self, file: str | None) -> None:
-        """Show one file's labels (None: all)."""
+        """Show one file's labels (None: all): a full draw (F58 PR-06)."""
         self.file = file
         self.file_choice.set(file or ALL_FILES)
-        self._relayout()
+        self._relayout(full=True)
 
-    def _relayout(self) -> None:
-        name = self.focused_name()
-        chosen = self.selected_name()
-        self.layout = layout(self.links, self.labels, file=self.file, notes=self.notes,
-                             stale=self.out_of_date, places=self.places)
-        self.anchor = None
-        self.focused = None
-        self.edge = self.back = None
-        self.selected = None if chosen is None else self.layout.index_of(chosen)
-        if name is not None:
-            self.focused = self.layout.index_of(name)
+    def _state_names(self) -> tuple:
+        """The interactive state by label name and EdgeKey (F58 PR-08: it is kept across an
+        update, whatever the boxes' new indexes)."""
+        found = self.layout
+        if found is None:
+            return (None,) * 6
+        boxes, count = found.boxes, len(found.boxes)
+
+        def name(index: int | None) -> str | None:
+            return boxes[index].name if index is not None and 0 <= index < count else None
+
+        edge = found.edge_key(self.edge) if self.edge is not None \
+            and 0 <= self.edge < len(found.edges) else None
+        return (name(self.focused), name(self.selected), name(self.hovered),
+                name(self.anchor), name(self.back), edge)
+
+    def _restore_names(self, names: tuple) -> None:
+        found = self.layout
+        assert found is not None
+        focused, selected, hovered, anchor, back, edge = names
+
+        def index(name: str | None) -> int | None:
+            return None if name is None else found.index_of(name)
+
+        self.focused = index(focused)
         if self.focused is None:
             self.focused = self._first_box()
+        self.selected, self.hovered = index(selected), index(hovered)
+        self.anchor, self.back = index(anchor), index(back)
+        self.edge = None if edge is None else (found.edge_keys or {}).get(edge)
+
+    def _relayout(self, *, full: bool = False) -> None:
+        """The layout for the current data (F58 ``04`` §7.6): ``relayout`` against the
+        drawn one, pins kept, and only its diff drawn (``MapPainter.apply``). ``full``: the
+        file filter or Tidy up changed, so everything is laid out and drawn again."""
+        names = self._state_names()
+        choice = self.file
+        found, diff = relayout(None if full else self.layout, self.links, self.labels,
+                               file=choice, notes=self.notes, stale=self.out_of_date,
+                               places=self.places, pins=self.pins.of(choice))
+        if diff.placed:
+            self.pins.add(choice, diff.placed)
+        if diff.removed:
+            self.pins.removed(diff.removed, choice)
+        self.layout, self.last_diff = found, diff
+        self._incident = {}
+        self._restore_names(names)
         self._show_note()
-        self.draw()
+        if full or not found.boxes or self.painter.layout is None or self._shifted \
+                or not self.painter.apply(found, diff):
+            self.draw()
+        else:
+            self._after_paint(diff)
 
     def _show_note(self) -> None:
         assert self.layout is not None
@@ -1014,6 +1066,9 @@ class StoryMapView:
             parts.append(MAP_OUT_OF_DATE)
         parts.append(self.message)
         note = " · ".join(p for p in parts if p)
+        if note == self._note_shown:
+            return
+        self._note_shown = note
         self.note.configure(text=note)
         if note:
             self.banner.grid(row=1, column=0, columnspan=2, sticky="ew",
@@ -1166,25 +1221,38 @@ class StoryMapView:
         x0, y0 = MAP_MARGIN * self.dpi + x * s, MAP_MARGIN * self.dpi + y * s
         return x0, y0, x0 + BOX_WIDTH * s, y0 + BOX_HEIGHT * s
 
+    def items_of(self, name: str) -> tuple[int, ...]:
+        """Box ``name``'s canvas items (F58 I-10: tests' replacement for the old index
+        tags)."""
+        return self.painter.items_of(name)
+
     def draw(self) -> None:
+        """Everything again (first draw, zoom, file filter, Tidy up, a big diff; F58
+        PR-06), through ``MapPainter.draw``."""
         canvas = self.canvas
         self._drop_field()
-        canvas.delete("all")
+        self._drop_handle()
+        if self.link is not None and self.link.line is not None:
+            canvas.delete(self.link.line)
         self._shifted = {}
         self.drag = self.moving = self.link = None
-        self.edge_items = []
-        self.ring = None
         self.hovered = None
         found = self.layout
         if found is not None and self.edge is not None and self.edge >= len(found.edges):
             self.edge = None
         self._sync_escape()
         s = self._scale()
-        line = max(1, round(self.dpi))
         self.name_font.configure(size=-max(6, round(MAP_NAME_PX * s)))
         self.detail_font.configure(size=-max(5, round(MAP_DETAIL_PX * s)))
-        margin = MAP_MARGIN * self.dpi
+        self.chip_font.configure(size=-max(6, round(CHIP_FONT_PX * s)))
+        painter = self.painter
+        painter.set_scale(s, self.dpi)
+        painter.reset_extent()
         if found is None or not found.boxes:
+            painter.clear()
+            if self.ring is not None:
+                canvas.delete(self.ring)
+                self.ring = None
             self.start_only.hide()
             self.empty.show(canvas)
             canvas.configure(scrollregion=(0, 0, 1, 1))
@@ -1199,110 +1267,34 @@ class StoryMapView:
             self.start_only.shown = True
         else:
             self.start_only.hide()
-        self.ports = {}                  # F46 (04 §6.8): out edges fan out by target y
-        for box in range(len(found.boxes)):
-            order = out_edges(found, box)
-            for k, index in enumerate(order):
-                self.ports[index] = (k + 1) / (len(order) + 1)
-        self._incident = {}
-        # Several arrows between the same two boxes enter (and, same column, leave) at
-        # their own heights, so they never lie on top of each other (step 5).
-        pairs: dict[tuple[int, int], list[int]] = {}
-        for index, edge in enumerate(found.edges):
-            if edge.src != edge.dst:
-                pairs.setdefault((edge.src, edge.dst), []).append(index)
-        self.ends = {i: (k + 1) / (len(group) + 1) for group in pairs.values()
-                     if len(group) > 1 for k, i in enumerate(group)}
-        for index, edge in enumerate(found.edges):
-            item = self.draw_edge(edge.src, edge.dst, edge.kind, self.ports.get(index, 0.5),
-                                  end=self.ends.get(index))
-            canvas.addtag_withtag(f"edge{index}", item)
-            self.edge_items.append((item, edge.kind))
-            self._incident.setdefault(edge.src, []).append(index)
-            if edge.dst != edge.src:
-                self._incident.setdefault(edge.dst, []).append(index)
-        pad = MAP_PAD * s
-        for index, box in enumerate(found.boxes):
-            x0, y0, x1, y1 = self.box_rect(index)
-            tags = (TAG_BOX, f"box{index}")
-            start = MARK_START in box.marks
-            ending = MARK_ENDING in box.marks
-            color, width = self._outline(index)
-            canvas.create_rectangle(x0, y0, x1, y1, outline=color, fill=BOX_FILL, width=width,
-                                    tags=(*tags, f"rect{index}"))
-            if ending:                   # an end box: a second border inside the first
-                inset = 3 * s
-                canvas.create_rectangle(x0 + inset, y0 + inset, x1 - inset, y1 - inset,
-                                        outline=ENDING_COLOR, width=line,
-                                        tags=(*tags, f"inner{index}"))
-            if start:                    # the start box: an accent bar inside its left edge
-                canvas.create_rectangle(x0 + line, y0 + line,
-                                        x0 + line + max(2, round(START_BAR * s)), y1,
-                                        fill=START_COLOR, outline="",
-                                        tags=(*tags, f"startbar{index}"))
-            tag_x = x0
-            box_marks = tuple(m for m in box.marks if m != MARK_DELETES_SAVES)
-            if MARK_DELETES_SAVES in box.marks:     # F32: a warning tag under the box
-                item = canvas.create_text(tag_x + 4 * s, y1 + 3 * s, anchor="nw",
-                                          text=f"⚠ {MARK_DELETES_SAVES}",
-                                          font=self.detail_font, fill=WARNING_COLOR,
-                                          tags=(*tags, f"wipe{index}"))
-                bx0, by0, bx1, by1 = canvas.bbox(item)
-                canvas.create_rectangle(bx0 - 3 * s, by0 - 1, bx1 + 3 * s, by1 + 1,
-                                        outline=WARNING_COLOR, tags=(*tags,))
-                tag_x = bx1 + 6 * s
-            for game in box.minigames[:2]:   # small tags under the box (in the row gap)
-                item = canvas.create_text(tag_x + 4 * s, y1 + 3 * s, anchor="nw",
-                                          text=f"▶ {game}", font=self.detail_font,
-                                          fill=MINIGAME_COLOR,
-                                          tags=(*tags, f"minigame{index}"))
-                bx0, by0, bx1, by1 = canvas.bbox(item)
-                canvas.create_rectangle(bx0 - 3 * s, by0 - 1, bx1 + 3 * s, by1 + 1,
-                                        outline=MINIGAME_COLOR, tags=(*tags,))
-                tag_x = bx1 + 6 * s
-            canvas.create_text(x0 + pad, y0 + 4 * s, anchor="nw", text=box.name,
-                               font=self.name_font, fill=PLAIN_COLOR,
-                               tags=(*tags, f"name{index}"))
-            if box.scene is not None:   # F20: the scene title after the name, elided
-                left = x0 + 2 * pad + self.name_font.measure(box.name)
-                marks = self.detail_font.measure(", ".join(box_marks)) + pad if box_marks else 0
-                shown = elide(f"“{box.scene}”", int(x1 - pad - marks - left),
-                              self.detail_font.measure)
-                if shown:
-                    canvas.create_text(left, y0 + 4 * s, anchor="nw", text=shown,
-                                       font=self.detail_font, fill=MUTED,
-                                       tags=(*tags, f"scene{index}"))
-            where = f"{box.file}:{box.line}" if box.file is not None else ""
-            if box.chapter is not None:  # bottom right; the place gives way (elided)
-                canvas.create_text(x1 - pad, y1 - 4 * s, anchor="se", text=box.chapter,
-                                   font=self.detail_font, fill=CHAPTER_COLOR,
-                                   tags=(*tags, f"chapter{index}"))
-                room = int(x1 - x0 - 3 * pad - self.detail_font.measure(box.chapter))
-                where = elide(where, room, self.detail_font.measure)
-            canvas.create_text(x0 + pad, y1 - 4 * s, anchor="sw", text=where,
-                               font=self.detail_font, fill=MUTED, tags=(*tags, f"where{index}"))
-            # The marks give way to the name (step 5: long scene names), cut with "…".
-            room = int(x1 - x0 - 3 * pad - self.name_font.measure(box.name))
-            marks = elide(", ".join(box_marks), room, self.detail_font.measure) \
-                if box_marks and box.scene is None else ", ".join(box_marks)
-            if marks:
-                canvas.create_text(x1 - pad, y0 + 4 * s, anchor="ne", text=marks,
-                                   font=self.detail_font, fill=MUTED,
-                                   tags=(*tags, f"marks{index}"))
-        self.chip_font.configure(size=-max(6, round(CHIP_FONT_PX * s)))
-        for index, edge in enumerate(found.edges):     # chips last, over boxes and arrows
-            if edge.choice:
-                self.draw_chip(index)
-        width = 2 * margin + found.width * s
-        height = 2 * margin + found.height * s
-        chips = canvas.bbox("chip")         # a chip may sit past the boxes
-        if chips:
-            width, height = max(width, chips[2] + margin), max(height, chips[3] + margin)
-        canvas.configure(scrollregion=(0, 0, width, height))
+        painter.draw(found)
+        self._stuck = set()
+        self._after_paint(None)
+
+    def _after_paint(self, diff: LayoutDiff | None) -> None:
+        """What a draw or an applied diff leaves to the view: the selected arrow's and
+        boxes' styles, the hover handle, the ring, names stuck to the left edge. A constant
+        number of canvas calls (AC-F58-15)."""
+        found = self.layout
+        assert found is not None
+        if diff is not None:
+            if self.start_only.shown and (len(found.boxes) != 1 or found.edges
+                                          or self.file is not None):
+                self.start_only.hide()
+            redrawn = set(diff.added) | set(diff.moved) | set(diff.restyled)
+            hovered = self.hovered
+            if hovered is not None and (self._handle is None
+                                        or found.boxes[hovered].name in redrawn):
+                self.hovered = None
+                self._hover(hovered)
+            elif hovered is None:
+                self._drop_handle()
         if self.edge is not None:
             self._paint_edge(self.edge, True)
+        for index in {self.selected, self.hovered,
+                      self.link.target if self.link is not None else None}:
+            self._paint_box(index)
         self._draw_ring()
-        self._stuck = set()
         self.stick_names()
 
     def _outline(self, index: int) -> tuple[str, int]:
@@ -1320,7 +1312,7 @@ class StoryMapView:
         if index is None or self.layout is None or index >= len(self.layout.boxes):
             return
         color, width = self._outline(index)
-        self.canvas.itemconfigure(f"rect{index}", outline=color, width=width)
+        self.painter.outline(self.layout.boxes[index].name, color, width)
 
     def select_box(self, index: int | None) -> None:
         """The box shown in the side pane (F46): a 2 px accent border."""
@@ -1330,17 +1322,9 @@ class StoryMapView:
 
     def _paint_edge(self, index: int, chosen: bool) -> None:
         """Edge ``index`` drawn selected (2 px accent, raised over the others) or plain."""
-        if not 0 <= index < len(self.edge_items):
+        if self.layout is None or not 0 <= index < len(self.layout.edges):
             return
-        item, kind = self.edge_items[index]
-        if chosen:
-            self.canvas.itemconfigure(item, fill=SELECT_COLOR,
-                                      width=max(2, round(2 * self.dpi)))
-            self.canvas.tag_raise(item)
-            self.canvas.tag_raise("chip")
-        else:
-            self.canvas.itemconfigure(item, fill=EDGE_STYLES.get(kind, ((), LINK_COLOR))[1],
-                                      width=max(1, round(self.dpi)))
+        self.painter.edge_style(self.layout.edge_key(index), chosen)
 
     def select_edge(self, index: int | None, *, notify: bool = True) -> None:
         """Select arrow ``index`` (None: no arrow); the window shows its choice text."""
@@ -1365,92 +1349,33 @@ class StoryMapView:
         """The first edge ``src → dst`` (of ``kind``), or None."""
         if self.layout is None:
             return None
-        for i, edge in enumerate(self.layout.edges):
-            boxes = self.layout.boxes
-            if boxes[edge.src].name == src and boxes[edge.dst].name == dst \
-                    and (kind is None or edge.kind == kind):
-                return i
-        return None
+        keys = self.layout.edge_keys or {}
+        if kind is not None:
+            return keys.get((src, dst, kind))
+        found = [keys[k] for k in ((src, dst, each) for each in LINK_KINDS) if k in keys]
+        return min(found) if found else None
 
-    def draw_edge(self, src: int, dst: int, kind: str, port: float = 0.5,
-                  end: float | None = None) -> int:
-        """The one place a link arrow is drawn (08 §8): a smooth curve from box ``src`` to
-        box ``dst`` in ``kind``'s line style; returns its canvas item. F46 draws an edge's
-        choice text along ``edge_points(src, dst, port)`` (``draw_chip``)."""
-        s = self._scale()
-        dash, color = EDGE_STYLES.get(kind, ((), LINK_COLOR))
-        options: dict = {"fill": color, "arrow": "last", "width": max(1, round(self.dpi)),
-                         "arrowshape": tuple(max(1, round(n * s)) for n in ARROW_SHAPE),
-                         "smooth": True}
-        if dash:
-            options["dash"] = dash
-        return self.canvas.create_line(*self.edge_points(src, dst, port, end),
-                                       tags=(TAG_EDGE, f"edge-{kind}"), **options)
+    def edge_item(self, index: int) -> int | None:
+        """Edge ``index``'s line item (from the painter's registry)."""
+        if self.layout is None or not 0 <= index < len(self.layout.edges):
+            return None
+        return self.painter.edges.get(self.layout.edge_key(index))
 
-    def edge_points(self, src: int, dst: int, port: float = 0.5,
-                    end: float | None = None) -> list[float]:
-        """An arrow's control points (``storymap.curve_points``, which also slots the
-        chips): it leaves and enters its boxes horizontally (drawn with ``smooth``, so the
-        line is a curve through the first and last points). A forward or backward arrow
-        leaves at ``port`` of the source's height (F46: the k-th of n out edges at
-        (k+1)/(n+1)), so parallel arrows stay apart."""
-        return curve_points(self.box_rect(src), self.box_rect(dst), port,
-                            bend=20 * self._scale(), loop=src == dst, end=end)
+    def chip_items(self, index: int) -> tuple[int, ...]:
+        """Edge ``index``'s chip items: its rounded box first, then its texts."""
+        if self.layout is None or not 0 <= index < len(self.layout.edges):
+            return ()
+        return self.painter.chip_items(self.layout.edge_key(index))
 
-    def draw_chip(self, index: int, *, reslot: bool = False) -> tuple[int, ...]:
-        """Edge ``index``'s choice chip (F46, 08 §8): ``chip_text`` in ``small`` muted on a
-        ``raised`` rounded box (radius 4), led by an ``if`` mark when the choice has a
-        condition, centred at its ``slot`` along the drawn curve (the measured chip takes
-        the next of ``CHIP_SLOTS`` when that covers a box or an earlier chip; ``reslot``,
-        while a box is dragged: the first free of them). Tags: ``chip``, ``chip<i>``,
-        ``chiptext<i>`` and ``chipif<i>``."""
+    def edge_points(self, index: int) -> list[float]:
+        """Edge ``index``'s control points as drawn now (``storymap.curve_points``), with
+        any box being moved where it is shown."""
         assert self.layout is not None
         edge = self.layout.edges[index]
-        canvas, font, s = self.canvas, self.chip_font, self._scale()
-        text = chip_text(edge.choice)
-        pad_x, pad_y, gap = CHIP_PAD_X * s, CHIP_PAD_Y * s, 4 * s
-        mark = font.measure(CHIP_IF_TEXT) + gap if edge.conditional else 0
-        w = 2 * pad_x + mark + font.measure(text)
-        h = font.metrics("linespace") + 2 * pad_y
-        points = self.edge_points(edge.src, edge.dst, self.ports.get(index, 0.5),
-                                  self.ends.get(index))
-        for t in (CHIP_SLOTS if reslot else (edge.slot, *CHIP_SLOTS)):
-            cx, cy = self.curve_at(points, t)
-            if not self._chip_blocked(cx, cy, w, h):
-                break
-        else:
-            cx, cy = self.curve_at(points, 0.5 if reslot else edge.slot)
-        if self._chip_blocked(cx, cy, w, h):    # too wide for the gap: the row gap below
-            a, b = self.box_rect(edge.src), self.box_rect(edge.dst)   # or above the boxes
-            gap = (ROW_STEP - BOX_HEIGHT) * s / 2
-            for y in (max(a[3], b[3]) + gap, min(a[1], b[1]) - gap):
-                if y - h / 2 >= 0 and not self._chip_blocked(cx, y, w, h):
-                    cy = y
-                    break
-        x0, y0 = cx - w / 2, cy - h / 2
-        tags = ("chip", f"chip{index}")
-        items = [canvas.create_polygon(*round_rect(x0, y0, x0 + w, y0 + h, CHIP_RADIUS * s),
-                                       smooth=True, fill=CHIP_FILL, outline=CHIP_BORDER,
-                                       width=max(1, round(self.dpi)),
-                                       tags=(*tags, f"chipbox{index}"))]
-        if edge.conditional:
-            items.append(canvas.create_text(x0 + pad_x, cy, anchor="w", text=CHIP_IF_TEXT,
-                                            font=font, fill=CHIP_IF,
-                                            tags=(*tags, f"chipif{index}")))
-        items.append(canvas.create_text(x0 + pad_x + mark, cy, anchor="w", text=text,
-                                        font=font, fill=CHIP_TEXT,
-                                        tags=(*tags, f"chiptext{index}")))
-        return tuple(items)
-
-    def _chip_blocked(self, cx: float, cy: float, w: float, h: float) -> bool:
-        """Whether a chip of ``w``×``h`` centred at (``cx``, ``cy``) would cover a box
-        (its text or tags) or an earlier chip."""
-        canvas = self.canvas
-        for item in canvas.find_overlapping(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2):
-            tags = canvas.gettags(item)
-            if TAG_BOX in tags or "chip" in tags:
-                return True
-        return False
+        k, n = self.layout.ports[index]
+        return curve_points(self.box_rect(edge.src), self.box_rect(edge.dst), (k + 1) / (n + 1),
+                            bend=20 * self._scale(), loop=edge.src == edge.dst,
+                            end=(self.layout.ends or {}).get(index))
 
     @staticmethod
     def curve_at(points: Sequence[float], t: float) -> tuple[float, float]:
@@ -1473,18 +1398,28 @@ class StoryMapView:
         if self.ring is not None:
             canvas.delete(self.ring)
             self.ring = None
-        if self.layout is None or self.focused is None:
+        if self.layout is None or self.focused is None \
+                or self.focused >= len(self.layout.boxes):
             return
         x0, y0, x1, y1 = self.box_rect(self.focused)
         gap = RING_GAP * self.dpi
         self.ring = canvas.create_rectangle(x0 - gap, y0 - gap, x1 + gap, y1 + gap,
                                             outline=RING_COLOR, width=round(2 * self.dpi),
                                             tags=(TAG_RING,))
+        if self.moving is not None:
+            canvas.itemconfigure(self.ring, dash=(4, 3))
 
     def _xscrolled(self, setter: Callable[[str, str], None]) -> Callable[[str, str], None]:
         def scrolled(first: str, last: str) -> None:
             setter(first, last)
             self.stick_names()
+            self.painter.drain_visible()        # F58 Q4: texts scrolled into view
+        return scrolled
+
+    def _yscrolled(self, setter: Callable[[str, str], None]) -> Callable[[str, str], None]:
+        def scrolled(first: str, last: str) -> None:
+            setter(first, last)
+            self.painter.drain_visible()
         return scrolled
 
     def stick_names(self) -> None:
@@ -1495,23 +1430,30 @@ class StoryMapView:
             return
         canvas, s = self.canvas, self._scale()
         left, pad = canvas.canvasx(0), MAP_PAD * s
-        cut = {i for i in range(len(self.layout.boxes))
+        if left <= MAP_MARGIN * self.dpi and not self._stuck:
+            return                              # nothing can be cut (F58: O(1) here)
+        found = self.layout
+        cut = {box.name for i, box in enumerate(found.boxes)
                if (r := self.box_rect(i))[0] < left < r[2] - pad}
-        stuck = getattr(self, "_stuck", set())
-        for index in cut | {i for i in stuck if i < len(self.layout.boxes)}:
+        for name in cut | self._stuck:
+            index = found.index_of(name)
+            items = self.painter.boxes.get(name)
+            if index is None or items is None:
+                continue
             x0, _y0, x1, _y1 = self.box_rect(index)
             shift = max(0.0, min(left - x0, x1 - x0 - 2 * pad))
-            for tag in (f"name{index}", f"where{index}"):
-                at = canvas.coords(tag)
+            for item in (items.name, items.where):
+                if item is None:
+                    continue
+                at = canvas.coords(item)
                 if at and abs(at[0] - (x0 + pad + shift)) > 0.5:
-                    canvas.coords(tag, x0 + pad + shift, at[1])
-            marks = canvas.find_withtag(f"marks{index}")
-            if marks:
-                name = canvas.bbox(f"name{index}")
-                crowded = shift > 0 and name is not None and \
-                    name[2] + pad > x1 - pad - self.detail_font.measure(
-                        str(canvas.itemcget(marks[0], "text")))
-                canvas.itemconfigure(marks[0], state="hidden" if crowded else "normal")
+                    canvas.coords(item, x0 + pad + shift, at[1])
+            if items.marks is not None and items.name is not None:
+                name_box = canvas.bbox(items.name)
+                crowded = shift > 0 and name_box is not None and \
+                    name_box[2] + pad > x1 - pad - self.detail_font.measure(
+                        str(canvas.itemcget(items.marks, "text")))
+                canvas.itemconfigure(items.marks, state="hidden" if crowded else "normal")
         self._stuck = cut
 
     def _motion(self, event: tk.Event) -> None:
@@ -1529,14 +1471,22 @@ class StoryMapView:
         old, self.hovered = self.hovered, index
         self._paint_box(old)
         self._paint_box(index)
-        self.canvas.delete("handle")
+        self._drop_handle()
         if index is not None and self.layout is not None and index < len(self.layout.boxes):
             x0, y0, x1, y1 = self.box_rect(index)
             line = max(1, round(self.dpi))
-            self.canvas.create_rectangle(x1 - self.handle_px(), y0 + line, x1 - line,
-                                         y1 - line, fill=HANDLE_COLOR, outline="",
-                                         tags=("handle", f"box{index}"))
+            self._handle = self.canvas.create_rectangle(
+                x1 - self.handle_px(), y0 + line, x1 - line, y1 - line, fill=HANDLE_COLOR,
+                outline="", tags=("handle",))
+            # The handle is part of its box for box_at (the painter's owner map).
+            self.painter.owner[self._handle] = ("box", self.layout.boxes[index].name)
         self.canvas.configure(cursor="hand2" if index is not None else "")
+
+    def _drop_handle(self) -> None:
+        handle, self._handle = self._handle, None
+        if handle is not None:
+            self.canvas.delete(handle)
+            self.painter.owner.pop(handle, None)
 
     def handle_px(self) -> int:
         """The arrow handle's width: 8 px times the screen scale (12 at 150 %)."""
@@ -1659,12 +1609,8 @@ class StoryMapView:
     def box_at(self, x: int, y: int) -> int | None:
         """The box under window point (``x``, ``y``) of the canvas, or None."""
         canvas = self.canvas
-        cx, cy = canvas.canvasx(x), canvas.canvasy(y)
-        for item in reversed(canvas.find_overlapping(cx, cy, cx, cy)):
-            for tag in canvas.gettags(item):
-                if tag.startswith("box") and tag[3:].isdigit():
-                    return int(tag[3:])
-        return None
+        name = self.painter.box_at(canvas.canvasx(x), canvas.canvasy(y))
+        return None if name is None or self.layout is None else self.layout.index_of(name)
 
     def _click(self, event: tk.Event, tab: bool = False) -> None:
         """A press on a box focuses it and may start a drag (F46); the release opens it
@@ -1730,26 +1676,34 @@ class StoryMapView:
         items and the ring move, its edges get new coordinates and their chips a new slot.
         Nothing else is touched (O(degree), UI-F46-04)."""
         assert self.layout is not None
-        canvas = self.canvas
+        canvas, found, painter = self.canvas, self.layout, self.painter
+        edges = found.edges
+        incident = self._incident.get(index)
+        if incident is None:
+            incident = self._incident[index] = [
+                e for e, edge in enumerate(edges) if index in (edge.src, edge.dst)]
+        before = {e: self.edge_points(e) for e in incident if edges[e].choice}
         old = self.box_rect(index)
         self._shifted[index] = place
         new = self.box_rect(index)
         ddx, ddy = new[0] - old[0], new[1] - old[1]
-        canvas.move(f"box{index}", ddx, ddy)
+        for item in painter.items_of(found.boxes[index].name):
+            canvas.move(item, ddx, ddy)
+        if self.hovered == index and self._handle is not None:
+            canvas.move(self._handle, ddx, ddy)
         if self.focused == index and self.ring is not None:
             canvas.move(self.ring, ddx, ddy)
-        edges = self.layout.edges
-        chips = []
-        for e in self._incident.get(index, ()):
-            edge = edges[e]
-            item = self.edge_items[e][0]
-            canvas.coords(item, *self.edge_points(edge.src, edge.dst, self.ports.get(e, 0.5),
-                                                  self.ends.get(e)))
-            if edge.choice:
-                canvas.delete(f"chip{e}")
-                chips.append(e)
-        for e in chips:
-            self.draw_chip(e, reslot=True)
+        for e in incident:
+            key = found.edge_key(e)
+            item = painter.edges.get(key)
+            points = self.edge_points(e)
+            if item is not None:
+                canvas.coords(item, *points)
+            if e in before:                     # the chip rides along its slot (I-8)
+                t = edges[e].slot
+                (ax, ay), (bx, by) = curve_at(before[e], t), curve_at(points, t)
+                for chip in painter.chips.get(key, ()):
+                    canvas.move(chip, bx - ax, by - ay)
 
     def _release(self, event: tk.Event) -> None:
         """A release ends a drag: snapped to 20 px (Shift: as dropped), never below 0, one
@@ -1823,11 +1777,25 @@ class StoryMapView:
             except tk.TclError:
                 pass
             self._drag_id = None
-        moved = bool(self._shifted) or self.moving is not None
+        moving = self.moving is not None
+        shifted, self._shifted = self._shifted, {}
         self.drag = self.moving = None
         self._sync_escape()
-        if moved:
+        found = self.layout
+        if shifted and found is not None and self.painter.layout is found:
+            # F58: only the moved box and its arrows and chips go back (no full redraw).
+            names = tuple(found.boxes[i].name for i in shifted if i < len(found.boxes))
+            keys = tuple(dict.fromkeys(found.edge_key(e) for i in shifted
+                                       for e in self._incident.get(i, ())))
+            if self.painter.apply(found, LayoutDiff(moved=names, edges_rerouted=keys,
+                                                    chips_moved=keys)):
+                self._after_paint(LayoutDiff(moved=names))
+                return
             self.draw()
+        elif shifted:
+            self.draw()
+        elif moving:
+            self._draw_ring()
 
     # --- Arrows, choice text, new scenes, context menus (F46 step 5, 04 §6.4, §6.8) ---------
 
@@ -1872,9 +1840,8 @@ class StoryMapView:
             return None
         canvas = self.canvas
         cx, cy = canvas.canvasx(x), canvas.canvasy(y)
-        for item in canvas.find_withtag(f"edge{self.edge}"):
-            if canvas.type(item) != "line":
-                continue
+        item = self.edge_item(self.edge)
+        if item is not None:
             coords = canvas.coords(item)
             if len(coords) >= 4 and math.hypot(cx - coords[-2], cy - coords[-1])                     <= HEAD_HIT_PX * self.dpi:
                 return self.edge
@@ -1883,14 +1850,10 @@ class StoryMapView:
     def edge_at(self, x: int, y: int) -> int | None:
         """The arrow (or choice chip) within 4 px of window point (``x``, ``y``), or None."""
         canvas = self.canvas
-        cx, cy = canvas.canvasx(x), canvas.canvasy(y)
-        r = EDGE_HIT_PX * self.dpi
-        for item in reversed(canvas.find_overlapping(cx - r, cy - r, cx + r, cy + r)):
-            for tag in canvas.gettags(item):
-                for head in ("chip", "edge"):
-                    if tag.startswith(head) and tag[len(head):].isdigit():
-                        return int(tag[len(head):])
-        return None
+        key = self.painter.edge_at(canvas.canvasx(x), canvas.canvasy(y), EDGE_HIT_PX * self.dpi)
+        if key is None or self.layout is None:
+            return None
+        return (self.layout.edge_keys or {}).get(key)
 
     def map_point(self, x: int, y: int) -> tuple[int, int]:
         """Window point (``x``, ``y``) as a map place at 100 % (never below 0)."""
@@ -1967,8 +1930,11 @@ class StoryMapView:
         if self.layout is None or self.on_context is None:
             return "break"
         if self.edge is not None:
-            x0, y0, x1, y1 = canvas.bbox(f"chip{self.edge}") or canvas.bbox(
-                self.edge_items[self.edge][0])
+            chips = self.chip_items(self.edge)
+            item = self.edge_item(self.edge)
+            x0, y0, x1, y1 = (canvas.bbox(*chips) if chips else None) or (
+                canvas.bbox(item) if item is not None else self.box_rect(
+                    self.layout.edges[self.edge].src))
             kind, what = "edge", self.edge
         elif self.focused is not None:
             x0, y0, x1, y1 = self.box_rect(self.focused)
@@ -1991,11 +1957,10 @@ class StoryMapView:
             return None
         self._drop_field()
         canvas = self.canvas
-        box = canvas.bbox(f"chip{index}")
+        chips = self.chip_items(index)
+        box = canvas.bbox(*chips) if chips else None
         if box is None:
-            points = self.edge_points(edge.src, edge.dst, self.ports.get(index, 0.5),
-                                      self.ends.get(index))
-            cx, cy = self.curve_at(points, 0.5)
+            cx, cy = self.curve_at(self.edge_points(index), 0.5)
             w = 0.0
         else:
             cx, cy, w = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2, box[2] - box[0]
@@ -2069,7 +2034,6 @@ class StoryMapView:
         shown = layout_places(self.layout)
         if shown.get(name) == place:
             self.cancel_move()
-            self.draw()
             self.focus_box(index)
             return
         before: dict[str, tuple[int, int] | None] = {

@@ -62,6 +62,20 @@ def boxes(view) -> dict[str, tuple]:
     return {b.name: (b.file, b.line, b.x, b.y, b.marks) for b in view.layout.boxes}
 
 
+def rect_item(view, name: str) -> int:
+    """Box ``name``'s rectangle item (F58: the painter's registry, I-10)."""
+    return view.painter.boxes[name].rect
+
+
+def chip_parts(view, index: int) -> dict[str, int]:
+    """Edge ``index``'s chip items by role: ``box``, ``text`` and (a condition) ``if``."""
+    items = view.chip_items(index)
+    parts = {"box": items[0], "text": items[-1]} if items else {}
+    if len(items) == 3:
+        parts["if"] = items[1]
+    return parts
+
+
 def wait_follow(ed, calls: list) -> None:
     """Run Tk's timers until ``follow`` ran, then let the map redraw."""
     end = time.monotonic() + 5
@@ -118,7 +132,7 @@ def test_ac_f46_04_the_map_follows_typing_and_choice_arrows_show_their_text(
     m = view.layout
     stall = m.index_of("stall")
     assert "out of date" in m.boxes[stall].marks
-    assert "out of date" in ed.map_canvas.itemcget(f"marks{stall}", "text")
+    assert "out of date" in ed.map_canvas.itemcget(view.painter.boxes["stall"].marks, "text")
     assert {("stall", "river", "menu"), ("stall", "river", "jump")} <= edges(view)
     after = boxes(view)
     assert {k: v for k, v in after.items() if k != "stall"} == {
@@ -128,15 +142,16 @@ def test_ac_f46_04_the_map_follows_typing_and_choice_arrows_show_their_text(
     canvas = ed.map_canvas
     menu = next(i for i, e in enumerate(m.edges)
                 if (m.boxes[e.src].name, e.kind) == ("stall", "menu"))
-    item, kind = view.edge_items[menu]
+    item, kind = view.edge_item(menu), m.edges[menu].kind
     assert kind == "menu" and canvas.itemcget(item, "dash") == "2 4"
-    assert canvas.itemcget(f"chiptext{menu}", "text") == "Buy the red one"
-    assert canvas.itemcget(f"chipif{menu}", "text") == "if"
-    assert canvas.itemcget(f"chipbox{menu}", "fill") == THEME["map.chip"]
-    assert canvas.itemcget(f"chiptext{menu}", "fill") == THEME["map.chipText"]
+    chip = chip_parts(view, menu)
+    assert canvas.itemcget(chip["text"], "text") == "Buy the red one"
+    assert canvas.itemcget(chip["if"], "text") == "if"
+    assert canvas.itemcget(chip["box"], "fill") == THEME["map.chip"]
+    assert canvas.itemcget(chip["text"], "fill") == THEME["map.chipText"]
     jump = next(i for i, e in enumerate(m.edges)
                 if (m.boxes[e.src].name, e.kind) == ("stall", "jump"))
-    assert not canvas.find_withtag(f"chip{jump}")        # only choice arrows have chips
+    assert not view.chip_items(jump)                     # only choice arrows have chips
 
     # A 30-character choice: the chip shows its first 24 characters, then "…".
     long = "Buy the red one for 2 coins!!"
@@ -154,7 +169,7 @@ def test_ac_f46_04_the_map_follows_typing_and_choice_arrows_show_their_text(
     assert "out of date" not in m.boxes[stall].marks
     menu = next(i for i, e in enumerate(m.edges)
                 if (m.boxes[e.src].name, e.kind) == ("stall", "menu"))
-    assert canvas.itemcget(f"chiptext{menu}", "text") == long[:24] + "…"
+    assert canvas.itemcget(chip_parts(view, menu)["text"], "text") == long[:24] + "…"
 
     assert len(ed.checks.requests) >= requests          # the fake runner answered nothing
     assert win.check_result is result
@@ -173,7 +188,7 @@ def click_box(ed, name: str) -> None:
     i = view.layout.index_of(name)
     view.see(i)
     ed.root.update()
-    x0, y0, x1, y1 = canvas.coords(f"rect{i}")
+    x0, y0, x1, y1 = canvas.coords(rect_item(view, name))
     x, y = int((x0 + x1) / 2 - canvas.canvasx(0)), int((y0 + y1) / 2 - canvas.canvasy(0))
     canvas.event_generate("<Button-1>", x=x, y=y)
     canvas.event_generate("<ButtonRelease-1>", x=x, y=y)     # F46: the release opens it
@@ -600,7 +615,7 @@ def centre(ed, name: str) -> tuple[int, int]:
     i = view.layout.index_of(name)
     view.see(i)
     ed.root.update()
-    x0, y0, x1, y1 = canvas.coords(f"rect{i}")
+    x0, y0, x1, y1 = canvas.coords(rect_item(view, name))
     return int((x0 + x1) / 2 - canvas.canvasx(0)), int((y0 + y1) / 2 - canvas.canvasy(0))
 
 
@@ -629,7 +644,9 @@ def test_ac_f46_25_moving_boxes(studio, lanterns, monkeypatch):
 
     # During a drag only river's items, its edges and their chips change (spy).
     edges_in = {i for i, e in enumerate(view.layout.edges) if river in (e.src, e.dst)}
-    items = {view.edge_items[i][0] for i in edges_in}
+    items = {view.edge_item(i) for i in edges_in}
+    chips = {c for i in edges_in for c in view.chip_items(i)}
+    own = set(view.items_of("river"))
     touched: list[object] = []
     methods = ("move", "coords", "create_polygon", "create_text")
     for method in methods:
@@ -637,16 +654,15 @@ def test_ac_f46_25_moving_boxes(studio, lanterns, monkeypatch):
 
         def spy(*args, _real=real, _method=method, **kw):
             if _method.startswith("create"):
-                touched.append(next((t for t in kw.get("tags", ()) if t.startswith("chip")
-                                     and t[4:].isdigit()), kw.get("tags")))
+                touched.append("created")       # F58 I-8: chips ride along, never re-made
             elif _method == "move" or len(args) > 1:
                 touched.append(args[0])
             return _real(*args, **kw)
         monkeypatch.setattr(canvas, method, spy)
     drag(ed, "river", (47, 13), release=False)
-    allowed = {f"box{river}", view.ring, *items, *(f"chip{i}" for i in edges_in)}
+    allowed = {*own, view.ring, view._handle, *items, *chips}
     assert touched and set(touched) <= allowed
-    assert {f"box{river}", *items} <= set(touched)
+    assert {*own, *items} <= set(touched)
     for method in methods:
         monkeypatch.delattr(canvas, method)
     x, y = centre(ed, "river")
@@ -668,15 +684,15 @@ def test_ac_f46_25_moving_boxes(studio, lanterns, monkeypatch):
     at = (at[0] + 20, at[1] + 100)
     assert view.places["river"] == at and len(history) == 5
 
-    rect = canvas.coords(f"rect{river}")
+    rect = canvas.coords(rect_item(view, "river"))
     drag(ed, "river", (100, 60), release=False)          # Esc mid-drag: back, no step
-    assert canvas.coords(f"rect{river}") != rect
+    assert canvas.coords(rect_item(view, "river")) != rect
     ed.press(canvas, "<Escape>")
-    assert canvas.coords(f"rect{river}") == rect and view.drag is None
+    assert canvas.coords(rect_item(view, "river")) == rect and view.drag is None
     assert view.places["river"] == at and len(history) == 5
     drag(ed, "river", (100, 60), release=False)          # focus lost mid-drag (G9): same
     take_focus(ed.tree)
-    assert canvas.coords(f"rect{river}") == rect and view.drag is None
+    assert canvas.coords(rect_item(view, "river")) == rect and view.drag is None
     canvas.event_generate("<ButtonRelease-1>", x=5, y=5)
     ed.root.update()
     assert view.places["river"] == at and len(history) == 5
@@ -689,12 +705,12 @@ def test_ac_f46_25_moving_boxes(studio, lanterns, monkeypatch):
     assert view.places["river"] == (at[0] + 40, at[1]) and len(history) == 6
     at = view.places["river"]
     view.start_move()
-    rect = canvas.coords(f"rect{river}")
+    rect = canvas.coords(rect_item(view, "river"))
     ed.press(canvas, "<Right>")
-    assert canvas.coords(f"rect{river}") != rect and view.places["river"] == at
+    assert canvas.coords(rect_item(view, "river")) != rect and view.places["river"] == at
     ed.press(canvas, "<Escape>")                         # Esc in that mode restores it
     assert view.places["river"] == at and len(history) == 6 and view.moving is None
-    assert places(view)["river"] == at and canvas.coords(f"rect{river}") == rect
+    assert places(view)["river"] == at and canvas.coords(rect_item(view, "river")) == rect
     assert not ed.win._side_open                         # no drag opened the side pane
 
 
@@ -841,7 +857,7 @@ def point(ed, name: str, *, handle: bool = False) -> tuple[int, int]:
     i = view.layout.index_of(name)
     view.see(i)
     ed.root.update()
-    x0, y0, x1, y1 = canvas.coords(f"rect{i}")
+    x0, y0, x1, y1 = canvas.coords(rect_item(view, name))
     x = x1 - view.handle_px() / 2 if handle else (x0 + x1) / 2
     return int(x - canvas.canvasx(0)), int((y0 + y1) / 2 - canvas.canvasy(0))
 
@@ -1125,28 +1141,25 @@ def test_ac_f46_36_visual_roles_and_cues(studio, lanterns, monkeypatch):
     accent = THEME["map.selected"]
 
     click_box(ed, "stall")                               # selected: 2 px accent
-    stall = view.layout.index_of("stall")
-    assert canvas.itemcget(f"rect{stall}", "outline") == accent
-    assert float(canvas.itemcget(f"rect{stall}", "width")) == 2
+    assert canvas.itemcget(rect_item(view, "stall"), "outline") == accent
+    assert float(canvas.itemcget(rect_item(view, "stall"), "width")) == 2
     draw_arrow(ed, "festival", "river", release=False)   # dashed accent line, accent target
-    river = view.layout.index_of("river")
     (dragline,) = canvas.find_withtag("linkline")
     assert canvas.itemcget(dragline, "fill") == accent and canvas.itemcget(dragline, "dash")
-    assert canvas.itemcget(f"rect{river}", "outline") == accent
-    assert float(canvas.itemcget(f"rect{river}", "width")) == 2
+    assert canvas.itemcget(rect_item(view, "river"), "outline") == accent
+    assert float(canvas.itemcget(rect_item(view, "river"), "width")) == 2
     ed.press(canvas, "<Escape>")
     assert not canvas.find_withtag("linkline") and view.link is None
-    assert canvas.itemcget(f"rect{river}", "outline") != accent
+    assert canvas.itemcget(rect_item(view, "river"), "outline") != accent
 
     menu = view.edge_index("stall", "river", "menu")     # a selected arrow: 2 px accent
     view.select_edge(menu)
-    item = view.edge_items[menu][0]
+    item = view.edge_item(menu)
     assert canvas.itemcget(item, "fill") == accent and float(canvas.itemcget(item, "width")) == 2
     assert ed.win.story_status.text == "Choice: Buy the red one"
-    (box,) = canvas.find_withtag(f"chipbox{menu}")       # chip: raised, small muted text
-    assert canvas.itemcget(box, "fill") == THEME["map.chip"]
-    (text,) = canvas.find_withtag(f"chiptext{menu}")
-    assert canvas.itemcget(text, "fill") == THEME["muted"]
+    chip = chip_parts(view, menu)                        # chip: raised, small muted text
+    assert canvas.itemcget(chip["box"], "fill") == THEME["map.chip"]
+    assert canvas.itemcget(chip["text"], "fill") == THEME["muted"]
     assert view.chip_font.cget("size") == -12
     view.select_edge(view.edge_index("stall", "river", "jump"))
     assert canvas.itemcget(item, "fill") != accent and ed.win.story_status.text == ""
@@ -1168,13 +1181,13 @@ def test_ac_f46_36_visual_roles_and_cues(studio, lanterns, monkeypatch):
     canvas.event_generate("<Motion>", x=x, y=y)
     (handle,) = canvas.find_withtag("handle")
     x0, _y0, x1, _y1 = canvas.coords(handle)
-    rect = canvas.coords(f"rect{i}")
+    rect = canvas.coords(rect_item(view, "river"))
     assert round(rect[2] - x0) == 12
     place = (view.layout.boxes[i].x, view.layout.boxes[i].y)
     view.focus_box(i)
     big.press(canvas, "<Alt-Right>")
     assert view.places["river"] == (place[0] + 20, place[1])
-    assert round(canvas.coords(f"rect{i}")[0] - rect[0]) == 30
+    assert round(canvas.coords(rect_item(view, "river"))[0] - rect[0]) == 30
 
 
 def test_ac_f46_37_empty_states(studio, blank, lanterns):
@@ -1279,7 +1292,7 @@ def test_ac_f46_41_change_target_in_studio(studio, lanterns, monkeypatch):
     view.select_edge(view.edge_index("stall", "river", "jump"))
     ed.root.update()
     canvas = ed.map_canvas
-    item = canvas.find_withtag(f"edge{view.edge}")[0]
+    item = view.edge_item(view.edge)
     hx, hy = canvas.coords(item)[-2:]
     x, y = int(hx - canvas.canvasx(0)), int(hy - canvas.canvasy(0))
     take_focus(canvas)

@@ -288,7 +288,7 @@ def glow_step_ms(root: tk.Tk, view, n: int, k: int) -> float:
     """04 §5's glow: 50 outlines recoloured by stored id, one fade step."""
     view.set_data(gen.labels(n), gen.links(n), False)
     root.update()
-    ids = [view.canvas.find_withtag(f"rect{j}")[0] for j in range(min(50, n))]
+    ids = [view.painter.boxes[box.name].rect for box in view.layout.boxes[:50]]
     flip = [0]
 
     def step() -> None:

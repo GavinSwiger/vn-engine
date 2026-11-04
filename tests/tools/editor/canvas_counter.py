@@ -73,4 +73,39 @@ class CountingCanvas:
         return sum(n for method, n in self.calls.items() if method not in skip)
 
 
-__all__ = ["CountingCanvas"]
+__all__ = ["CountingCanvas", "box_parts"]
+
+
+def box_parts(view, name: str) -> dict[str, int]:
+    """Box ``name``'s items by role, from the view's ``MapPainter`` registry (F58 I-10: the
+    index tags ``rect{i}``, ``name{i}``, ``startbar{i}`` ... are gone): ``rect``, ``name``,
+    ``where``, ``marks`` (the registry's own), and by look ``inner`` (an ending's second
+    border), ``startbar``, ``scene`` (the quoted title), ``chapter``, ``minigame`` and
+    ``wipe`` (the tags under the box). Missing roles are left out."""
+    from engine.tools.editor import mapcanvas as mc
+    found = view.painter.boxes[name]
+    canvas = view.canvas
+    parts = {"rect": found.rect}
+    for role in ("name", "where", "marks"):
+        if getattr(found, role) is not None:
+            parts[role] = getattr(found, role)
+    for item in found.items:
+        if item in parts.values():
+            continue
+        kind = canvas.type(item)
+        if kind == "rectangle":
+            if canvas.itemcget(item, "fill") == mc.START_COLOR:
+                parts.setdefault("startbar", item)
+            elif canvas.itemcget(item, "outline") == mc.ENDING_COLOR:
+                parts.setdefault("inner", item)
+        elif kind == "text":
+            text = str(canvas.itemcget(item, "text"))
+            if text.startswith("“"):
+                parts.setdefault("scene", item)
+            elif text.startswith("▶"):
+                parts.setdefault("minigame", item)
+            elif text.startswith("⚠"):
+                parts.setdefault("wipe", item)
+            elif canvas.itemcget(item, "fill") == mc.CHAPTER_COLOR:
+                parts.setdefault("chapter", item)
+    return parts

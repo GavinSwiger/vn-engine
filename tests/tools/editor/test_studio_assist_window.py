@@ -13,6 +13,7 @@ import zlib
 import pytest
 
 from engine.script.statement_docs import GROUPS, all_docs, docs_for
+from tests.tools.editor.canvas_counter import box_parts
 from tests.tools.editor.conftest import png
 
 tk = pytest.importorskip("tkinter")
@@ -196,27 +197,30 @@ def test_ac43_the_story_map_view(studio, studio_game):
     view, canvas = ed.story_map, ed.map_canvas
     m = view.layout
     for name, ref, number in S_LABELS:
-        i = m.index_of(name)
-        x0, y0, x1, y1 = canvas.coords(canvas.find_withtag(f"rect{i}")[0])
+        parts = box_parts(view, name)
+        x0, y0, x1, y1 = canvas.coords(parts["rect"])
         assert (x1 - x0, y1 - y0) == (160, 40)
-        assert canvas.itemcget(f"name{i}", "text") == name
-        assert canvas.itemcget(f"where{i}", "text") == f"{ref}:{number}"
+        assert canvas.itemcget(parts["name"], "text") == name
+        assert canvas.itemcget(parts["where"], "text") == f"{ref}:{number}"
     start = m.index_of("start")
+    first, club = box_parts(view, "start"), box_parts(view, "club")
     # F45 08 §8: start's accent bar inside its left edge replaces the 2 px border.
-    assert float(canvas.itemcget(f"rect{start}", "width")) == 1
-    assert float(canvas.itemcget(f"rect{m.index_of('club')}", "width")) == 1
-    assert canvas.itemcget(f"rect{start}", "fill") == "#2B2B2B"
-    assert canvas.itemcget(f"startbar{start}", "fill") == "#0078D4"
-    assert not canvas.find_withtag(f"startbar{m.index_of('club')}")
-    assert "start" in canvas.itemcget(f"marks{start}", "text").split(", ")
-    styles = {kind: (canvas.itemcget(item, "arrow"), canvas.itemcget(item, "dash"),
-                     canvas.itemcget(item, "fill")) for item, kind in view.edge_items}
+    assert float(canvas.itemcget(first["rect"], "width")) == 1
+    assert float(canvas.itemcget(club["rect"], "width")) == 1
+    assert canvas.itemcget(first["rect"], "fill") == "#2B2B2B"
+    assert canvas.itemcget(first["startbar"], "fill") == "#0078D4"
+    assert "startbar" not in club
+    assert "start" in canvas.itemcget(first["marks"], "text").split(", ")
+    styles = {e.kind: (canvas.itemcget(view.edge_item(i), "arrow"),
+                       canvas.itemcget(view.edge_item(i), "dash"),
+                       canvas.itemcget(view.edge_item(i), "fill"))
+              for i, e in enumerate(m.edges)}
     assert styles == {"jump": ("last", "", "#808080"), "call": ("last", "6 4", "#808080"),
                       "menu": ("last", "2 4", "#808080")}
     assert view.legend_words() == ["jump", "call", "menu", "ending", "chapter", "minigame"]
 
     def centre(name):
-        x0, y0, x1, y1 = canvas.coords(f"rect{m.index_of(name)}")
+        x0, y0, x1, y1 = canvas.coords(view.painter.boxes[name].rect)
         return int((x0 + x1) / 2 - canvas.canvasx(0)), int((y0 + y1) / 2 - canvas.canvasy(0))
 
     x, y = centre("river")                       # a click opens the label's line beside
@@ -239,7 +243,7 @@ def test_ac43_the_story_map_view(studio, studio_game):
     ed.press(canvas, "<Control-Right>")                  # Ctrl+Right: a column-1 box
     assert m.boxes[view.focused].column == 1
     ring = canvas.coords(view.ring)
-    x0, y0, x1, y1 = canvas.coords(f"rect{view.focused}")
+    x0, y0, x1, y1 = canvas.coords(view.painter.boxes[view.focused_name()].rect)
     assert ring == [x0 - 3, y0 - 3, x1 + 3, y1 + 3]
     assert canvas.itemcget(view.ring, "outline") == "#007FD4"
     assert float(canvas.itemcget(view.ring, "width")) == 2
@@ -255,7 +259,7 @@ def test_ac43_the_story_map_view(studio, studio_game):
     for _ in range(10):
         ed.press(canvas, "<Control-equal>")
     assert view.zoom == 200
-    x0, _, x1, _ = canvas.coords(f"rect{start}")
+    x0, _, x1, _ = canvas.coords(view.painter.boxes["start"].rect)
     assert x1 - x0 == 320
     for _ in range(10):
         ed.press(canvas, "<Control-minus>")

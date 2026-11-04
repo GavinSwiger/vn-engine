@@ -11,6 +11,7 @@ from engine.script.statement_docs import docs_for
 from engine.tools.editor.assist import candidates, completion_context, insert_menu
 from engine.tools.editor.outline import outline
 from engine.tools.editor.storymap import MARK_ENDING, label_notes, layout
+from tests.tools.editor.canvas_counter import box_parts
 from tests.tools.f45_games import check as run_check
 from tests.tools.f45_games import studio as studio_s
 
@@ -165,12 +166,12 @@ def test_ac_f45_54_outline_tab_and_map_drawing(studio, studio_game, monkeypatch)
     assert opened == [("script/ch2.vns", 9)]
     ed.press(ed.text, "<Control-Key-2>")
     m, canvas = ed.story_map.layout, ed.map_canvas
-    assert canvas.find_withtag(f"inner{m.index_of('end')}")
-    assert canvas.itemcget(f"chapter{m.index_of('river')}", "text") == "riverbank"
+    river = box_parts(ed.story_map, "river")
+    assert "inner" in box_parts(ed.story_map, "end")
+    assert canvas.itemcget(river["chapter"], "text") == "riverbank"
     # AC-F45-61: the scene title after the name, elided before the marks.
-    river = m.index_of("river")
-    shown = canvas.itemcget(f"scene{river}", "text")
+    shown = canvas.itemcget(river["scene"], "text")
     assert shown == "“By the River”" or (shown.startswith("“") and shown.endswith("…"))
-    if m.boxes[river].marks:
-        assert canvas.bbox(f"scene{river}")[2] <= canvas.bbox(f"marks{river}")[0]
-    assert "poem_game" in canvas.itemcget(f"minigame{m.index_of('river')}", "text")
+    if m.boxes[m.index_of("river")].marks:
+        assert canvas.bbox(river["scene"])[2] <= canvas.bbox(river["marks"])[0]
+    assert "poem_game" in canvas.itemcget(river["minigame"], "text")

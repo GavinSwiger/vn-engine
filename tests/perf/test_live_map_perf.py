@@ -201,7 +201,6 @@ def test_ac_f58_13_outside_edit(bench, n, focused, files):
 
 # --- AC-F58-14: one-scene layout + draw --------------------------------------------------------
 
-@pytest.mark.xfail(reason="F58 W1 (relayout + MapPainter)", strict=False)
 @pytest.mark.parametrize("n", SIZES)
 def test_ac_f58_14_one_scene_layout_and_draw(n):
     from tests.perf.map_budget import map_view
