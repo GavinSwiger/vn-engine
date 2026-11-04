@@ -1051,7 +1051,7 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - **Never captured.** Not in `scene_picture()`, save thumbnails, or menu backdrops.
 - **Reduced motion.** Appear, leave, and restack in one frame.
 
-### Text field and on-screen keyboard (proposed, F52)
+### Text field and on-screen keyboard (F52)
 
 Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
 
@@ -1075,6 +1075,10 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   `.fill_opacity`, `.border_color`, `.text_color`, `.text_size` (the `button.*` ones),
   `text_entry.placeholder_color` (`button.disabled.text_color`), `text_entry.caret_color`
   (`button.marker.fill_color`). The keyboard uses `panel.*` and `button.*`.
+- **As built** (F52 build notes): a boxed field's text starts 32 inside its left edge (F10's
+  side padding), so the focus marker never covers the first letter; keys are
+  (1008 − 9 × 8) / 10 = 93.6 wide. W67 checks the `text_entry.*` pairs once the author sets
+  one of its colors (until then the `button.*` pairs check the same colors).
 
 ## Changelog
 
@@ -1209,3 +1213,5 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   `choice.marker.fill_color` and `choice.focused.fill_color`, C1) and `tick_sound` in §3
   with the timed menu's countdown panel; the "Choice countdown" row in §5 (Timing assist,
   the fraction kept on a level change, C5) and its reduced-motion rule.
+- 2026-11-04: F52 (builder): §9 "Text field and on-screen keyboard" built (no longer
+  proposed), with the as-built text inset, key width and W67 note.
