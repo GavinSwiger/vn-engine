@@ -37,8 +37,9 @@ def leaf_keys(cls: type, prefix: str = "") -> dict[str, object]:
 
 
 def test_every_design_token_is_a_config_key():
-    """Design §6.4's 26 tokens (the paddings as two), no more."""
-    assert set(leaf_keys(ChoiceTheme)) == {
+    """Design §6.4's 26 tokens (the paddings as two), and F51's three ``timer.*``, no more."""
+    assert set(leaf_keys(ChoiceTheme)) - {"timer.fill_color", "timer.track_color",
+                                          "timer.tick_sound"} == {
         "text_font", "text_size", "text_color", "fill_color", "fill_opacity", "border_color",
         "border_width", "corner_radius", "frame_image", "frame_slice_width", "width", "gap",
         "side_padding", "top_padding", "bottom_padding", "focused.fill_color",

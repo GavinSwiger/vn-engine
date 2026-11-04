@@ -363,7 +363,7 @@ def test_ac_f07_44_ui_system_layer_5_and_choice_tokens():
     from dataclasses import fields
 
     from engine.core.config_schema import (ChoiceFocusedTheme, ChoiceLockedTheme,
-                                           ChoiceMarkerTheme, ChoiceTheme)
+                                           ChoiceMarkerTheme, ChoiceTheme, ChoiceTimerTheme)
 
     text = UI.read_text(encoding="utf-8")
     assert "proposed, F07" not in text
@@ -371,7 +371,8 @@ def test_ac_f07_44_ui_system_layer_5_and_choice_tokens():
     assert "reserved" not in layer and "| F07 |" in layer
     rows = {m.group(1): m.group(0) for m in re.finditer(r"^\| `(choice\.[\w.]+)` \|.*$", text,
                                                         re.M)}
-    tables = (ChoiceFocusedTheme, ChoiceMarkerTheme, ChoiceLockedTheme)
+    # F51's choice.timer.* rows are AC-F51-32's (tests/test_docs.py, F51 section).
+    tables = (ChoiceFocusedTheme, ChoiceMarkerTheme, ChoiceLockedTheme, ChoiceTimerTheme)
     for prefix, table in (("choice.", ChoiceTheme()), ("choice.focused.", ChoiceFocusedTheme()),
                           ("choice.marker.", ChoiceMarkerTheme()),
                           ("choice.locked.", ChoiceLockedTheme())):

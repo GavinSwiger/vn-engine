@@ -322,7 +322,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.choice", "Look"),
         Row("theme.choice.focused", "Under the mouse"),
         Row("theme.choice.marker", "Marker"),
-        Row("theme.choice.locked", "Locked choices"))),
+        Row("theme.choice.locked", "Locked choices"),
+        Row("theme.choice.timer", "Time limit bar"))),                   # F51
     PageDef("saves", "Saves & going back", (
         Row("saves", "Saves"),
         Row("chapter", "Chapter saves"),

@@ -22,7 +22,7 @@ unit-tested without pygame; ``TimerPanelView`` draws one panel per frame for a f
   alpha scratch blitted with ``set_alpha``; the scratch is freed at alpha 1.
 
 The colors (``timer_colors``: fill follows ``choice.marker.fill_color``, track follows
-``choice.focused.fill_color``, C1) are passed in by the caller.
+``choice.focused.fill_color``, C1) are passed in by the caller, which reads them per menu.
 """
 
 from collections import OrderedDict
@@ -88,6 +88,15 @@ def timer_geometry(panel: Rect, size: int, slot_width: float) -> TimerGeometry:
     track_w = max(0.0, slot_left - TIMER_INSET - track_left)
     track = (track_left, y + (h - TIMER_BAR_HEIGHT) / 2, track_w, float(TIMER_BAR_HEIGHT))
     return TimerGeometry(panel, track, (slot_left, y, slot_width, h), size)
+
+
+def timer_colors(theme: "ChoiceTheme") -> tuple[RGB, RGB]:
+    """(fill, track) of the bar: ``choice.timer.fill_color`` or ``choice.marker.fill_color``,
+    ``choice.timer.track_color`` or ``choice.focused.fill_color`` (C1, 07 I-4)."""
+    timer = theme.timer
+    fill = timer.fill_color if timer.fill_color is not None else theme.marker.fill_color
+    track = timer.track_color if timer.track_color is not None else theme.focused.fill_color
+    return fill, track
 
 
 class TimerPanelView:
@@ -191,4 +200,4 @@ class TimerPanelView:
 
 __all__ = ["TIMER_BAR_HEIGHT", "TIMER_INSET", "TIMER_NUMBER_MAX", "TIMER_NUMBER_MIN",
            "TIMER_PAD", "TimerGeometry", "TimerPanelView", "number_size", "panel_height",
-           "timer_geometry"]
+           "timer_colors", "timer_geometry"]

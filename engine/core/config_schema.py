@@ -1008,6 +1008,17 @@ class ChoiceLockedTheme:
 
 
 @dataclass(frozen=True)
+class ChoiceTimerTheme:
+    """``[theme.choice.timer]`` (F51 ``01`` §6.2, C1): a timed menu's countdown bar. Unset
+    colors follow (F49's following group): ``fill_color`` ``choice.marker.fill_color``,
+    ``track_color`` ``choice.focused.fill_color``. ``tick_sound`` (Could) plays at 3, 2 and
+    1 seconds left; None: silence."""
+    fill_color: RGB | None = _follow_color()          # choice.marker.fill_color
+    track_color: RGB | None = _follow_color()         # choice.focused.fill_color
+    tick_sound: str | None = _sound()
+
+
+@dataclass(frozen=True)
 class ChoiceTheme:
     """``[theme.choice]`` (F07 design §6.4, ``04`` §13). ``text_font``/``text_size``
     ``None``: the textbox's (bold and italic faces always come from ``[theme.textbox]``).
@@ -1035,6 +1046,7 @@ class ChoiceTheme:
     focus_sound: str | None = _sound()
     pick_sound: str | None = _sound()
     fade_in_ms: int = _length(120, 0, 1000)
+    timer: ChoiceTimerTheme = _table(ChoiceTimerTheme)   # F51
 
 
 # The ten F10 areas of ``ThemeConfig``, in 03-ui order.
