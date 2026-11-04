@@ -34,6 +34,12 @@ Glyphs: one draw list per layout and scale of each grapheme's cached raster
 re-rasters, and no shared glyph surface gets an alpha. A locked choice's text is laid out in
 the locked color (its ``{color}`` spans keep theirs). The fade-in draws one temporary
 composite with an alpha instead (``ChoiceStackView``), freed when the fade ends.
+
+**Header** (F51 ``04`` §7.4, 07 item 4): ``header`` > 0 puts a non-button item that tall
+(the timed menu's countdown panel) first in the stack. Each fit step's stack is then
+``header + gap + Σ buttons`` with the step's own gap; the header never shrinks. ``fits``
+includes it (F17's NVL area and step 3 hold); ``hit`` sees buttons only; ``header_rect`` is
+its box (``choice.width`` wide, centered). A header change is a ``relaid``.
 """
 
 import copy
@@ -144,7 +150,7 @@ class ChoiceLayout:
 
     def __init__(self, bodies: Sequence[TaggedText], *, assets: Any, faces: FaceSet,
                  theme: "ChoiceTheme", text_size: int, area: ChoiceArea,
-                 colors: Sequence[str]) -> None:
+                 colors: Sequence[str], header: float = 0.0) -> None:
         if not 1 <= len(bodies) == len(colors):
             raise AssertionError(f"{len(bodies)} choices, {len(colors)} colors")
         self.bodies = tuple(bodies)
@@ -155,12 +161,16 @@ class ChoiceLayout:
         self.s0 = max(MIN_SIZE, min(MAX_SIZE, int(text_size)))
         self.text_width = max(MIN_TEXT_WIDTH, theme.width - 2 * theme.side_padding)
         self._fits: dict[int, list[_Fit]] = {}
+        self.header = max(0.0, float(header))
         self._place(area)
 
-    def relaid(self, area: ChoiceArea) -> "ChoiceLayout":
+    def relaid(self, area: ChoiceArea, header: float | None = None) -> "ChoiceLayout":
         """A new layout of the same choices placed in ``area`` (F17's NVL area), sharing
-        this one's per-size measurements, so no choice is measured twice."""
+        this one's per-size measurements, so no choice is measured twice. ``header`` (F51):
+        a new header height (None keeps this one's)."""
         out = copy.copy(self)
+        if header is not None:
+            out.header = max(0.0, float(header))
         out._place(area)
         return out
 
@@ -178,7 +188,7 @@ class ChoiceLayout:
         self.size = size
         self.pitch = round(LINE_PITCH * size)
         heights = self._heights(size)
-        stack = sum(heights) + gap * (len(heights) - 1)
+        stack = self._stack(heights, gap)
         if align == "top":
             top = area_top
         else:
@@ -190,6 +200,10 @@ class ChoiceLayout:
         text_left = x + (width - self.text_width) / 2
         buttons: list[ChoiceButton] = []
         y = top
+        self.header_rect: tuple[float, float, float, float] | None = None
+        if self.header > 0:
+            self.header_rect = (x, top, width, self.header)
+            y += self.header + gap
         for index, height in enumerate(heights):
             fit = self._fits[size][index]
             lines = tuple(TextLine(text_left + (self.text_width - line.width) / 2,
@@ -234,10 +248,16 @@ class ChoiceLayout:
             candidates.append((2, TIGHT_GAP, size))
             size -= SIZE_STEP
         for step, gap, size in candidates:
-            heights = self._heights(size)
-            if sum(heights) + gap * (len(heights) - 1) <= bottom - top:
+            if self._stack(self._heights(size), gap) <= bottom - top:
                 return step, gap, size
         return 3, TIGHT_GAP, MIN_SIZE
+
+    def _stack(self, heights: Sequence[float], gap: float) -> float:
+        """The stack's height: the buttons, and the header (F51) with one more gap."""
+        stack = sum(heights) + gap * (len(heights) - 1)
+        if self.header > 0:
+            stack += self.header + gap
+        return stack
 
     def _heights(self, size: int) -> list[float]:
         theme = self.theme
