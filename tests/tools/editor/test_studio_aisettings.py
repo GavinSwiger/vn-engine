@@ -77,7 +77,7 @@ def test_ac_f48_32_fields_texts_defaults_and_ranges(studio, tmp_path, ai):
     assert open_page(ed) is page
     # Provider texts (§6.2) and the Anthropic defaults; no address row.
     assert list(page.provider_box.cget("values")) == [
-        "Anthropic (Claude)", "OpenAI (ChatGPT)", "OpenAI-compatible (Ollama, LM Studio, …)"]
+        "Claude Code (your Claude plan)", "Anthropic (Claude)", "OpenAI (ChatGPT)", "OpenAI-compatible (Ollama, LM Studio, …)"]
     assert page.provider_var.get() == "Anthropic (Claude)"
     assert page.model_var.get() == "claude-sonnet-5-5"
     assert list(page.model_box.cget("values"))[:2] == ["claude-sonnet-5-5", "claude-opus-5-5"]

@@ -5,14 +5,33 @@ An AI can read your game, check it and suggest changes. You can use it two ways:
 - **In an AI app**: Claude Code, Claude Desktop and other apps that support MCP can work on
   your game. They run on your plan with that app, so **a Claude Pro or Max plan is all you
   need**: no API key, no API credit. Open **Help ▸ Connect an AI app…** and click **Set up**.
-- **In Studio**: the **AI Assistant** pane, with your own API key for Anthropic (Claude),
-  OpenAI (ChatGPT), or a model server on your computer (Ollama, LM Studio and others). API
-  use is paid by use and separately from a chat plan such as Claude Pro or ChatGPT Plus.
+- **In Studio**: the **AI Assistant** pane. Pick **Claude Code (your Claude plan)** to use
+  your Claude Pro or Max plan through Claude Code on this computer, or use your own API key
+  for Anthropic (Claude), OpenAI (ChatGPT), or a model server on your computer (Ollama,
+  LM Studio and others). API use is paid by use and separately from a chat plan such as
+  Claude Pro or ChatGPT Plus.
 
 Either way, the AI never changes a file until you say so, and it never runs Python code it
 wrote before you apply the change.
 
-## Set up the pane
+## Set up the pane with your Claude plan
+
+1. Install Claude Code from claude.com/claude-code, open a terminal, run `claude` once and
+   sign in with your Claude account.
+2. In Studio, open **File ▸ Studio settings…** (Ctrl+,), pick the **AI** page and choose
+   **Claude Code (your Claude plan)** as the **Provider**. Pick a **Model** (sonnet, opus or
+   haiku).
+3. Press **Test connection**. It should say "Connected."
+4. Open the pane and ask about your game.
+
+Each Send starts Claude Code in the background with only this game's tools, served by Studio
+for that request alone. Claude Code reads and checks the game through them, and its changes
+come back as cards you apply, the same as with an API key. Studio never sees your Claude
+login. The chats also appear in Claude Code's own history for the game folder. Use this for
+your own work: Anthropic's terms don't let a product you share offer Claude plan sign-in
+without their approval.
+
+## Set up the pane with an API key
 
 1. Open **File ▸ Studio settings…** (Ctrl+,) and pick the **AI** page.
 2. Pick a **Provider** and a **Model**.

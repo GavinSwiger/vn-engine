@@ -33,7 +33,9 @@ from typing import Final
 
 from engine.core import safefile
 from engine.core.paths import is_plain_name, studio_user_dir
-from engine.tools.assistant.keystore import ANTHROPIC, OPENAI, PROVIDERS, origin_ok
+from engine.tools.assistant.keystore import ANTHROPIC, OPENAI, origin_ok
+from engine.tools.assistant.keystore import PROVIDERS as KEY_PROVIDERS
+from engine.tools.assistant.providers import CLAUDE_CODE
 
 PREFS_NAME: Final = "assistant.json"
 PREFS_VERSION: Final = 1
@@ -45,7 +47,10 @@ DEFAULT_PROVIDER: Final = ANTHROPIC
 DEFAULT_ADDRESS: Final = "http://localhost:11434/v1"
 # 01 §6.2 (Anthropic) and §8 D6 (OpenAI: named at build time; the list fills after Test
 # connection). A compatible server has no default: its list names one.
-DEFAULT_MODELS: Final = MappingProxyType({ANTHROPIC: "claude-sonnet-5-5", OPENAI: "gpt-5"})
+# The providers a setting may name: those with keys, and Claude Code (no key).
+PROVIDERS: Final = (*KEY_PROVIDERS, CLAUDE_CODE)
+DEFAULT_MODELS: Final = MappingProxyType({ANTHROPIC: "claude-sonnet-5-5", OPENAI: "gpt-5",
+                                          CLAUDE_CODE: "sonnet"})
 ANTHROPIC_MODELS: Final = ("claude-sonnet-5-5", "claude-opus-5-5")
 STEPS_DEFAULT: Final = 12
 STEPS_MIN: Final = 1

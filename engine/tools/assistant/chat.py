@@ -174,6 +174,7 @@ class Chat:
         self.usage = Usage()
         self.total = 0
         self.running = False
+        self.claude_session: str | None = None    # provider claude_code: its session id
 
     def blocked(self) -> str | None:
         """01 §6.6's token-limit text once the chat has used its limit, else None."""

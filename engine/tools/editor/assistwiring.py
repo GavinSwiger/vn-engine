@@ -65,7 +65,7 @@ from engine.tools.assistant.chat import (
 )
 from engine.tools.assistant.edits import rebase
 from engine.tools.assistant.keystore import Slot
-from engine.tools.assistant.providers import COMPATIBLE, PANE_NAMES, errors
+from engine.tools.assistant.providers import CLAUDE_CODE, COMPATIBLE, PANE_NAMES, errors
 from engine.tools.assistant.reference import build_reference
 from engine.tools.assistant.workspace import CheckService, Snapshot
 from engine.tools.editor import document, files, livemap, scenes, studiostate
@@ -283,6 +283,16 @@ class AssistWiring:
             pane.notice(blocked, settings=True)
             return False
         target = session.target()
+        if target.provider == CLAUDE_CODE:      # the author's own Claude Code: no key
+            if not ensure_consent(session, self.root, target, fonts=self.fonts):
+                return False
+            from engine.tools.assistant.providers.claudecode import ClaudeCodeRun
+            snapshot = self.assist_snapshot()
+            return self._assist_start(
+                lambda: ClaudeCodeRun(chat, model=prefs.model(CLAUDE_CODE), paths=self.paths,
+                                      snapshot=snapshot, request=request,
+                                      checks=self.assist_checks),
+                request, typed)
         if target.error is not None:
             pane.notice(target.error, settings=True)
             return False
@@ -308,13 +318,20 @@ class AssistWiring:
         except errors.AddressError as exc:
             pane.notice(exc.text, settings=True)
             return False
+        return self._assist_start(
+            lambda: ChatRun(chat, provider, paths=self.paths, snapshot=snapshot,
+                            request=request, checks=self.assist_checks),
+            request, typed)
+
+    def _assist_start(self, make_run: Any, request: str, typed: bool) -> bool:
+        """Start the run ``make_run()`` builds (after the check service exists)."""
+        pane = self.assist_pane
         if self.assist_checks is None:
             self.assist_checks = CheckService(self.paths.root)
         if typed:
             pane.clear_input()
         pane.start_exchange(request)
-        run = ChatRun(chat, provider, paths=self.paths, snapshot=snapshot, request=request,
-                      checks=self.assist_checks)
+        run = make_run()
         self.assist_run = run
         self._assist_pump = EventPump(run.events)
         pane.set_running(True)

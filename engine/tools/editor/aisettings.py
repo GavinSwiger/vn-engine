@@ -47,6 +47,8 @@ from engine.tools.assistant.keystore import BoundKey, KeyResult, KeyStore, Slot
 from engine.tools.assistant.prefs import Prefs
 from engine.tools.assistant.providers import (
     ANTHROPIC,
+    ANTHROPIC_ORIGIN,
+    CLAUDE_CODE,
     ANTHROPIC_ADDRESS,
     COMPATIBLE,
     CONNECTED,
@@ -95,6 +97,9 @@ KEY_HELP: Final = {
     OPENAI: ("Make one at platform.openai.com under API keys. API use is paid separately "
              "from a ChatGPT plan."),
 }
+CLAUDE_CODE_HELP = ("Uses Claude Code on this computer, signed in with your Claude Pro or Max "
+                    "plan: no API key needed. Install it from claude.com/claude-code and sign "
+                    "in once by running claude in a terminal. For your own use.")
 KEY_PAGES: Final = {ANTHROPIC: "https://platform.claude.com/settings/keys",
                     OPENAI: "https://platform.openai.com/api-keys"}
 KEY_ADMIN = ("This is an Admin key, which can't send messages. Make a regular key under API "
@@ -116,6 +121,9 @@ CONSENT_BODY = ("To help you, the assistant sends parts of this game to {provide
 CONSENT_BODY_LOCAL = ("To help you, the assistant sends parts of this game to the server at "
                       "{host} on this computer: " + CONSENT_PARTS
                       + " Requests use your API key and your account.")
+CONSENT_BODY_CLAUDE_CODE = ("To help you, the assistant sends parts of this game to Anthropic "
+                            "through Claude Code on this computer: " + CONSENT_PARTS
+                            + " This uses your Claude plan and counts toward its limits.")
 CONSENT_AFTER = ("Each answer lists what was sent. Studio never changes a file until you click "
                  "Apply.")
 CONSENT_BUTTONS = ("Send", "Cancel")
@@ -166,6 +174,9 @@ def target_for(prefs: Prefs) -> Target:
     """The current provider's ``Target`` (a compatible server's from the saved address)."""
     from engine.tools.assistant.providers.transport import parse_address
     provider = prefs.provider
+    if provider == CLAUDE_CODE:                 # Claude Code talks to Anthropic itself
+        return Target(provider, ANTHROPIC_ORIGIN, PROVIDER_NAMES[CLAUDE_CODE],
+                      "api.anthropic.com", False)
     address = {ANTHROPIC: ANTHROPIC_ADDRESS, OPENAI: OPENAI_ADDRESS}.get(provider,
                                                                         prefs.address)
     try:
@@ -359,6 +370,9 @@ def session_for(win: Any) -> AiSession:
 def check_connection(session: AiSession, key: BoundKey | None) -> tuple[bool, str, list[str]]:
     """Test connection (off the Tk thread): a fresh provider's ``list_models()``. Returns
     (ok, "Connected." or §6.6's text, model ids)."""
+    if session.prefs.provider == CLAUDE_CODE:
+        from engine.tools.assistant.providers import claudecode
+        return claudecode.check(session.prefs.model(CLAUDE_CODE))
     try:
         provider = session.provider(key=key)
     except provider_errors.AddressError as exc:
@@ -383,7 +397,9 @@ def consent_texts(target: Target) -> tuple[str, str]:
     """§6.4's title and message for ``target`` (a server on this computer: its own words,
     without the terms sentence)."""
     title = CONSENT_TITLE.format(provider=target.name)
-    if target.loopback:
+    if target.provider == CLAUDE_CODE:
+        body = CONSENT_BODY_CLAUDE_CODE
+    elif target.loopback:
         body = CONSENT_BODY_LOCAL.format(host=target.host)
     else:
         body = CONSENT_BODY.format(provider=target.name, host=target.host)
@@ -522,8 +538,8 @@ class AiSettingsDialog:
         self.model_hint = self._hint(form, MODEL_HINT_COMPATIBLE, wrap)
         self.model_hint.grid(row=3, column=1, columnspan=2, sticky="w")
         # API key.
-        self._label(API_KEY, 4)
-        key_row = ttk.Frame(form, style="Dialog.TFrame")
+        self.key_label = self._label(API_KEY, 4)
+        key_row = self.key_row = ttk.Frame(form, style="Dialog.TFrame")
         key_row.grid(row=4, column=1, columnspan=2, sticky="ew", pady=(px(ROW_GAP), 0))
         key_row.columnconfigure(0, weight=1)
         self.key_var = tk.StringVar(dialog)
@@ -671,11 +687,17 @@ class AiSettingsDialog:
                        self.address_hint, self.address_status):
             self._show(widget, compatible)
         self._show(self.help_row, not compatible)
-        self.key_help.configure(text=KEY_HELP.get(provider, ""))
+        claude_code = provider == CLAUDE_CODE
+        for widget in (self.key_label, self.key_row, self.key_status):
+            self._show(widget, not claude_code)
+        self.key_help.configure(text=CLAUDE_CODE_HELP if claude_code
+                                else KEY_HELP.get(provider, ""))
+        self.get_key_button.pack_forget()
+        self.plan_button.pack_forget()
+        if not claude_code:
+            self.get_key_button.pack(side="left")
         if provider == ANTHROPIC:
             self.plan_button.pack(side="left", padx=(self.px(8), 0))
-        else:
-            self.plan_button.pack_forget()
         self.address_var.set(prefs.address)
         self.address_status.configure(text="")
         self.steps_var.set(_int_text(prefs.steps))

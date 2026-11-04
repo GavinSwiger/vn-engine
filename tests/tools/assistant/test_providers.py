@@ -293,7 +293,7 @@ def test_ac54_model_lists_are_capped_and_escaped():
 
 def test_ac38_a_302_is_an_error_on_test_connection_and_on_a_chat():
     moved = FakeReply(302, {"Location": "http://other/"}, [b""])
-    for kind in PROVIDER_IDS:
+    for kind in [p for p in PROVIDER_IDS if p != "claude_code"]:   # no HTTP of its own
         made, transport = provider(kind, moved, moved, address="https://llm.example.org/v1")
         with pytest.raises(ProviderError) as caught:
             made.list_models()

@@ -28,17 +28,21 @@ from typing import Final, Protocol
 ANTHROPIC: Final = "anthropic"
 OPENAI: Final = "openai"
 COMPATIBLE: Final = "compatible"
-PROVIDER_IDS: Final = (ANTHROPIC, OPENAI, COMPATIBLE)
+# The author's own Claude Code, signed in with their Claude plan (``assistant.claudecode``):
+# no key, no address; Studio starts the installed ``claude`` program for each Send.
+CLAUDE_CODE: Final = "claude_code"
+PROVIDER_IDS: Final = (CLAUDE_CODE, ANTHROPIC, OPENAI, COMPATIBLE)
 
 # 01 §6.2's provider field.
 PROVIDER_LABELS: Final = {
+    CLAUDE_CODE: "Claude Code (your Claude plan)",
     ANTHROPIC: "Anthropic (Claude)",
     OPENAI: "OpenAI (ChatGPT)",
     COMPATIBLE: "OpenAI-compatible (Ollama, LM Studio, …)",
 }
 # The {provider} of 01 §6.6's texts and the consent title. A compatible server is named by
 # its host (``Endpoint.display_host``), which the provider object fills in.
-PROVIDER_NAMES: Final = {ANTHROPIC: "Anthropic", OPENAI: "OpenAI"}
+PROVIDER_NAMES: Final = {ANTHROPIC: "Anthropic", OPENAI: "OpenAI", CLAUDE_CODE: "Claude Code"}
 
 # The fixed origins keys are bound to (SEC-F48-16; 04 §7.5).
 ANTHROPIC_ADDRESS: Final = "https://api.anthropic.com/v1"
@@ -51,7 +55,7 @@ CONNECTED: Final = "Connected."
 
 
 # The pane's model line, "{name} · {model}" (01 §6.1); a compatible server shows its host.
-PANE_NAMES: Final = {ANTHROPIC: "Claude", OPENAI: "ChatGPT"}
+PANE_NAMES: Final = {ANTHROPIC: "Claude", OPENAI: "ChatGPT", CLAUDE_CODE: "Claude Code"}
 
 
 class KeyLike(Protocol):
@@ -99,10 +103,12 @@ def suggested_models(provider_id: str) -> tuple[str, ...]:
     if provider_id == OPENAI:
         from engine.tools.assistant.providers.openai import MODELS as OPENAI_MODELS
         return OPENAI_MODELS
+    if provider_id == CLAUDE_CODE:
+        return ("sonnet", "opus", "haiku")
     return ()
 
 
-__all__ = ["ANTHROPIC", "ANTHROPIC_ADDRESS", "ANTHROPIC_ORIGIN", "COMPATIBLE",
+__all__ = ["ANTHROPIC", "ANTHROPIC_ADDRESS", "ANTHROPIC_ORIGIN", "CLAUDE_CODE", "COMPATIBLE",
            "COMPATIBLE_DEFAULT_ADDRESS", "CONNECTED", "KeyLike", "OPENAI", "OPENAI_ADDRESS",
            "OPENAI_ORIGIN", "PANE_NAMES", "PROVIDER_IDS", "PROVIDER_LABELS", "PROVIDER_NAMES",
            "make_provider", "suggested_models"]
