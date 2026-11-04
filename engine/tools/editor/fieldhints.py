@@ -272,6 +272,15 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "mode": ("fair: random. kind: lets the player win. cheat: switches hands to win, and "
                  "it shows. sly: always wins, without showing it."),
     },
+    "gift_giving": {                                    # F54 §4.2
+        "gifts": "The gift table: who likes what.",
+        "to": "Whose reactions to use. Their meter changes by the gift's points.",
+        "speaker": "The name on the reaction card. Empty: the Gift for name.",
+        "categories": "Only items in these categories can be given. Empty: every item.",
+        "use_up": "On: the given item leaves the inventory.",
+        "leave": "On: shows a Not now button (the result is then None).",
+        "result": "reaction: loved, liked, neutral or disliked. item: the given item's name.",
+    },
     # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
     "poem_game": {
         "words": "The word list: each word and the points it gives each character.",

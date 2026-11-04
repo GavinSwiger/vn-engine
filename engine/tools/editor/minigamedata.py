@@ -68,17 +68,18 @@ TESTIMONY: Final = "testimony"
 ANSWER: Final = "answer"
 CHAT: Final = "chat"
 ROOM: Final = "room"
-KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM)
+GIFTS: Final = "gifts"                # F54
+KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM, GIFTS)
 KIND_TITLES: Final[Mapping[str, str]] = {
     POEM: "Poem words", TESTIMONY: "Evidence", ANSWER: "Evidence answer",
-    CHAT: "Phone chat", ROOM: "Puzzle room"}
+    CHAT: "Phone chat", ROOM: "Puzzle room", GIFTS: "Gift table"}
 # (minigame, argument) → the kind of data set it takes.
 USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("poem_game", "words"): POEM, ("present_evidence", "testimony"): TESTIMONY,
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
-    ("puzzle_room", "room"): ROOM}
+    ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS}
 BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
-                  "code_lock", "stay_still", "hand_game")
+                  "code_lock", "stay_still", "hand_game", "gift_giving")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -140,6 +141,14 @@ COMBINE_RULE: Final = "{made} must be made from two different items, not from it
 COMBINE_TWICE: Final = "Two recipes use {a} and {b}."
 NEEDED: Final = "{label} is needed."
 INTO_LABEL: Final = "Result goes to"
+# F54 (gift_rules' limits and G texts, mirrored: ADR-0008).
+ANY_GIFT: Final = "*"
+REACTIONS: Final = ("loved", "liked", "neutral", "disliked")
+REACTION_TITLES: Final[Mapping[str, str]] = {r: r.capitalize() for r in REACTIONS}
+CHARACTERS_MAX: Final = 32
+GIFTS_MAX: Final = 200
+GIFT_POINTS: Final = (-10, 10)
+GIFT_LINE_MAX: Final = 160
 
 
 # --- Models ------------------------------------------------------------------------------------
@@ -238,6 +247,34 @@ class Room:
     background: str
     hotspots: tuple[Hotspot, ...] = ()
     combine: tuple[tuple[str, str, str], ...] = ()     # (made, first item, second item)
+
+
+@dataclass(frozen=True, slots=True)
+class GiftRow:
+    """One gift (F54): the item's name (``ANY_GIFT``, "*": any other gift), the reaction,
+    the points, and the line (None: not written)."""
+
+    item: str
+    reaction: str
+    points: int
+    line: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GiftSection:
+    """One character's gifts, in written order."""
+
+    character: str
+    rows: tuple[GiftRow, ...] = ()
+
+    @property
+    def any_row(self) -> GiftRow | None:
+        return next((r for r in self.rows if r.item == ANY_GIFT), None)
+
+
+@dataclass(frozen=True, slots=True)
+class GiftTable:
+    sections: tuple[GiftSection, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,8 +486,34 @@ def _read_room(value: object) -> Room | None:
     return Room(value["background"], tuple(spots), tuple(combine))   # type: ignore[arg-type]
 
 
+def _gift_row(item: object, row: object) -> GiftRow | None:
+    if type(item) is not str or type(row) is not list or len(row) not in (2, 3):
+        return None
+    if type(row[0]) is not str or type(row[1]) is not int:
+        return None
+    if len(row) == 3 and type(row[2]) is not str:
+        return None
+    return GiftRow(item, row[0], row[1], row[2] if len(row) == 3 else None)
+
+
+def _read_gifts(value: object) -> GiftTable | None:
+    """F54's gift table: characters → items → ``[reaction, points]`` or ``[reaction,
+    points, line]`` (texts and a whole number); else None."""
+    if type(value) is not dict:
+        return None
+    sections = []
+    for character, rows in value.items():
+        if type(character) is not str or type(rows) is not dict:
+            return None
+        out = [_gift_row(item, row) for item, row in rows.items()]
+        if any(r is None for r in out):
+            return None
+        sections.append(GiftSection(character, tuple(out)))       # type: ignore[arg-type]
+    return GiftTable(tuple(sections))
+
+
 READERS: Final = {POEM: _read_poem, TESTIMONY: _read_testimony, ANSWER: _read_answer,
-                  CHAT: _read_chat, ROOM: _read_room}
+                  CHAT: _read_chat, ROOM: _read_room, GIFTS: _read_gifts}
 
 
 def read_value(kind: str, value: object) -> object:
@@ -515,6 +578,14 @@ def _room_value(model: Room) -> dict:
     return out
 
 
+def _gift_value(row: GiftRow) -> list:
+    return [row.reaction, row.points] + ([row.line] if row.line is not None else [])
+
+
+def _gifts_value(model: GiftTable) -> dict:
+    return {s.character: {r.item: _gift_value(r) for r in s.rows} for s in model.sections}
+
+
 def evidence_values(model: Evidence) -> tuple[dict, dict]:
     """The testimony and answer values of ``model``."""
     testimony = {s.key: s.text for s in model.statements}
@@ -535,6 +606,8 @@ def value_of(kind: str, model: object) -> object:
         return {k: (v[0] if len(v) == 1 else list(v)) for k, v in model}  # type: ignore
     if kind == CHAT:
         return _chat_value(model)                                # type: ignore[arg-type]
+    if kind == GIFTS:
+        return _gifts_value(model)                               # type: ignore[arg-type]
     return _room_value(model)                                    # type: ignore[arg-type]
 
 
@@ -610,6 +683,11 @@ def define_lines(kind: str, name: str, model: object) -> list[str]:
         items = [_ask_lines(s) if isinstance(s, AskStep) else [literal(_step_value(s))]
                  for s in model]                                     # type: ignore[union-attr]
         return _block(head + "[", items, "]")
+    if kind == GIFTS:
+        items = [_block(f"{_s(s.character)}: {{",
+                        [[f"{_s(r.item)}: {literal(_gift_value(r))}"] for r in s.rows], "}")
+                 for s in model.sections]                            # type: ignore[union-attr]
+        return _block(head + "{", items, "}")
     return _room_lines(name, model)                                  # type: ignore[arg-type]
 
 
@@ -899,6 +977,82 @@ def _room_problem(model: Room) -> str | None:
     return None
 
 
+def _gift_echo(text: str) -> str:
+    cut = text if len(text) <= 30 else text[:30] + "…"
+    return '"' + "".join(" " if _hidden(ch) else ch for ch in cut) + '"'
+
+
+def _gift_line_problem(what: str, line: str) -> str | None:
+    """``rule_text.text_problem`` (T, 160) for a gift's line."""
+    rule = f"it is 1 to {GIFT_LINE_MAX} characters on one line."
+    if line == "":
+        return f"{what} is empty; {rule}"
+    if len(line) > GIFT_LINE_MAX:
+        return f"{what} is {len(line)} characters long; {rule}"
+    if any(_hidden(ch) for ch in line):
+        return f"{what} has a line break or hidden character; {rule}"
+    if line != line.strip():
+        return f"{what} starts or ends with a space. Remove the space."
+    return None
+
+
+def _gift_row_problem(c: str, r: GiftRow) -> str | None:
+    if r.item != ANY_GIFT and METER_RE.fullmatch(r.item) is None:
+        return (f"{_gift_echo(r.item)} in the gifts for {_gift_echo(c)} can't be an item "
+                'name; write an item\'s name, or "*" for any other gift.')
+    where = f"the gift {_gift_echo(r.item)} for {_gift_echo(c)}"
+    if r.reaction not in REACTIONS:
+        return (f"{where} has the reaction {_gift_echo(r.reaction)}; a reaction is "
+                '"loved", "liked", "neutral", or "disliked".')
+    if not GIFT_POINTS[0] <= r.points <= GIFT_POINTS[1]:
+        return f"{where} gives {r.points} points; points are a whole number from -10 to 10."
+    if r.line is not None:
+        return _gift_line_problem(f"the line for {_gift_echo(r.item)} ({c})", r.line)
+    return None
+
+
+def _gifts_problem(model: GiftTable) -> str | None:
+    """``gift_rules``' data checks (G2, G3, G5, G6, G8–G10), in its words; a name written
+    twice (which a dictionary can't hold) is refused too."""
+    sections = model.sections
+    if not 1 <= len(sections) <= CHARACTERS_MAX:
+        return f"gifts has {len(sections)} characters; it can have 1 to {CHARACTERS_MAX}."
+    seen: set[str] = set()
+    for s in sections:
+        c = s.character
+        if METER_RE.fullmatch(c) is None:
+            return (f"{_gift_echo(c)} can't be a character in gifts; write it as points names "
+                    "a meter: letters, digits, and _.")
+        if c in seen:
+            return SAME_TWICE.format(what=f"The character {_gift_echo(c)}")
+        seen.add(c)
+        if len(s.rows) > GIFTS_MAX + (s.any_row is not None):
+            return (f"{_gift_echo(c)} has {len(s.rows)} gifts; a character can have up to "
+                    f"{GIFTS_MAX}.")
+        items: set[str] = set()
+        for r in s.rows:
+            found = _gift_row_problem(c, r)
+            if found is not None:
+                return found
+            if r.item in items:
+                return SAME_TWICE.format(
+                    what=f"The gift {_gift_echo(r.item)} for {_gift_echo(c)}")
+            items.add(r.item)
+    return None
+
+
+def gift_set_any(section: GiftSection, reaction: str, points: int,
+                 line: str | None) -> GiftSection:
+    """``section`` with its "Any other gift" row set: written only when it differs from
+    Neutral, 0 and no line (F54 §4.2); a new one goes first."""
+    plain = reaction == "neutral" and points == 0 and not line
+    at = next((i for i, r in enumerate(section.rows) if r.item == ANY_GIFT), 0)
+    rows = [r for r in section.rows if r.item != ANY_GIFT]
+    if not plain:
+        rows.insert(min(at, len(rows)), GiftRow(ANY_GIFT, reaction, points, line or None))
+    return GiftSection(section.character, tuple(rows))
+
+
 def problem(kind: str, model: object) -> str | None:
     """The first problem the game would refuse ``model`` for (Studio's words), or None.
     ``kind`` ``TESTIMONY`` takes an ``Evidence``. Data only: a poem's word count against
@@ -909,6 +1063,8 @@ def problem(kind: str, model: object) -> str | None:
         return _evidence_problem(model)                              # type: ignore[arg-type]
     if kind == CHAT:
         return _chat_problem(model)                                  # type: ignore[arg-type]
+    if kind == GIFTS:
+        return _gifts_problem(model)                                 # type: ignore[arg-type]
     return _room_problem(model)                                      # type: ignore[arg-type]
 
 
@@ -1048,6 +1204,10 @@ def _guess(value: object) -> str | None:
         return None
     if "hotspots" in value and _read_room(value) is not None:
         return ROOM
+    if all(type(v) is dict for v in value.values()) and any(
+            type(row) is list and row and row[0] in REACTIONS
+            for v in value.values() for row in v.values()) and _read_gifts(value) is not None:
+        return GIFTS
     values = list(value.values())
     if any(type(v) is dict for v in values) and _read_poem(value) is not None:
         return POEM
@@ -1450,6 +1610,14 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
         _f("opponent", "Opponent's name", TEXT),
         _f("rounds", "Rounds", NUMBER, 3, lo=1, hi=9),
         _f("mode", "How they play", CHOICE, "fair", choices=("fair", "kind", "cheat", "sly"))),
+    "gift_giving": (                                                    # F54 §4.2
+        _f("gifts", "Gift table", DATA, data_kind=GIFTS),
+        _f("to", "Gift for", METER),
+        _f("speaker", "Name shown", TEXT, None),
+        _f("categories", "Item categories", VALUE, None),
+        _f("use_up", "The gift is used up", TOGGLE, True),
+        _f("leave", "Player can say Not now", TOGGLE, True),
+        _f("result", "Result", CHOICE, "reaction", choices=("reaction", "item"))),
 }
 
 # F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
@@ -1621,7 +1789,8 @@ MINIGAME_FORM: Final = "minigame"
 GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
-    "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game"}
+    "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game",
+    "gift_giving": "Gift giving"}
 
 
 def game_title(game: str) -> str:
@@ -1690,7 +1859,8 @@ __all__ = [
     "Room", "STEP_TITLES", "Statement", "Step", "TESTIMONY", "TEXT", "TIME", "TOGGLE",
     "USE_KINDS", "VALUE", "VARIABLE", "answer_name", "call_from_form", "call_line", "calls",
     "clamp_rect", "code_problem", "data_choices", "define_lines", "form_problem",
-    "evidence_of", "evidence_values",
+    "evidence_of", "evidence_values", "ANY_GIFT", "GIFTS", "GiftRow", "GiftSection",
+    "GiftTable", "REACTIONS", "REACTION_TITLES", "gift_set_any",
     "FORM", "GAME_TITLES", "MINIGAME_FORM", "answer_for", "data_set", "game_title",
     "form_fields", "form_values", "games", "literal", "plan_edit", "plan_evidence",
     "plan_new", "poem_meters", "poem_points", "poem_set", "problem", "read_call",

@@ -14,7 +14,8 @@ from pathlib import Path
 import pytest
 
 from engine.minigames.api import REQUIRED
-from engine.minigames.bundled import (code_lock, hand_game, heartbeat, lock_rules,
+from engine.minigames.bundled import (code_lock, gift_giving, gift_rules, hand_game,
+                                      heartbeat, lock_rules,
                                       phone_chat, phone_rules, poem_game, poem_rules,
                                       present_evidence, present_rules, puzzle_room, room_rules,
                                       stay_still)
@@ -427,7 +428,7 @@ def test_builtin_fields_match_the_plugins():
     defaults); the mirrored limits are the rules modules'."""
     plugins = {}
     for module in (poem_game, present_evidence, phone_chat, puzzle_room, heartbeat, code_lock,
-                   stay_still, hand_game):
+                   stay_still, hand_game, gift_giving):
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if isinstance(getattr(cls, "args", None), dict) and getattr(cls, "name", None):
                 plugins[cls.name] = cls.args
@@ -482,10 +483,12 @@ def test_puzzle_room_round_trips_for_the_room_canvas():
 def test_ac_f53_28_quick_games_fields():
     """The three games' fields (§5's labels and widgets) are their plugins' args; BUNDLED and
     GAME_TITLES list them."""
-    assert md.BUNDLED[-3:] == ("code_lock", "stay_still", "hand_game")
-    assert [md.game_title(g) for g in md.BUNDLED[-3:]] == ["Lock", "Stay still", "Hand game"]
+    quick = ("code_lock", "stay_still", "hand_game")
+    at = md.BUNDLED.index("code_lock")
+    assert md.BUNDLED[at:at + 3] == quick and at > md.BUNDLED.index("heartbeat")
+    assert [md.game_title(g) for g in quick] == ["Lock", "Stay still", "Hand game"]
     shape = {g: [(f.name, f.label, f.widget, f.required, f.default_text, f.lo, f.hi, f.choices)
-                 for f in md.BUILTIN_FIELDS[g]] for g in md.BUNDLED[-3:]}
+                 for f in md.BUILTIN_FIELDS[g]] for g in quick}
     assert shape["code_lock"] == [
         ("kind", "Kind", md.CHOICE, False, '"keypad"', None, None, ("keypad", "dial")),
         ("code", "Code", md.TEXT, True, "", None, None, ()),
@@ -567,3 +570,108 @@ def test_ac_f53_32_code_check_mirrors_lock_rules(kind, code):
         assert call.text == mine
     # An expression is left to the game.
     assert md.form_problem("code_lock", {"kind": '"keypad"', "code": "secret"}) is None
+
+
+# --- F54 S2: the gift table --------------------------------------------------------------------
+
+def _gifts(**more) -> dict:
+    return md.value_of(md.GIFTS, _sets(_docs_text("birthday_gifts"))["birthday_gifts"].model) | more
+
+
+GIFT_TABLES = [
+    _gifts(),
+    {},
+    {f"c{k}": {} for k in range(33)},
+    {"Hana Li": {}},
+    {"1hana": {"coin": ["liked", 1]}},
+    {"hana": {f"i{k}": ["liked", 1] for k in range(201)}},
+    {"hana": {"*": ["neutral", 0], **{f"i{k}": ["liked", 1] for k in range(200)}}},
+    {"hana": {"red lantern": ["liked", 1]}},
+    {"hana": {"coin": ["lovd", 1]}},
+    {"hana": {"coin": ["liked", 11]}},
+    {"hana": {"coin": ["liked", -10, "Fine."]}},
+    {"hana": {"coin": ["liked", 1, ""]}},
+    {"hana": {"coin": ["liked", 1, "x" * 161]}},
+    {"hana": {"coin": ["liked", 1, "a\nb"]}},
+    {"hana": {"coin": ["liked", 1, " a"]}},
+    {"hana": {"coin": "liked"}},
+    {"hana": {"coin": ["liked"]}},
+    {"hana": {"coin": ["liked", 1, 5]}},
+    {"hana": ["liked"]},
+]
+
+
+@pytest.mark.parametrize("value", GIFT_TABLES)
+def test_ac_f54_08_gift_tables(value):
+    """The docs' table round-trips byte-identical and is found by its minigame line and by
+    its shape; ``problem`` refuses exactly what ``gift_rules`` refuses."""
+    text = _docs_text("birthday_gifts")
+    ds = _sets(text)["birthday_gifts"]
+    assert ds.kind == md.GIFTS and not ds.guessed and ("gift_giving", "gifts") in ds.used
+    assert tuple(md.define_lines(md.GIFTS, "birthday_gifts", ds.model)) == ds.lines
+    assert md.plan_edit(ds, ds.model, {REF: text}) is None
+    alone = "\n".join(ds.lines) + "\n"
+    found = _sets(alone)["birthday_gifts"]
+    assert found.kind == md.GIFTS and found.guessed and found.model == ds.model
+    # The mirror, case by case.
+    model = md.read_value(md.GIFTS, value)
+    to = next(iter(value), "hana") if isinstance(value, dict) else "hana"
+    real = gift_rules.problem({**gift_rules.DEFAULTS, "gifts": value, "to": to})
+    if model is None:
+        assert real is not None
+        return
+    mine = md.problem(md.GIFTS, model)
+    assert (mine is None) == (real is None), (mine, real)
+    if real is not None and "Did you mean" not in real:
+        assert mine == real
+    if real is None:
+        assert gift_rules.problem({**gift_rules.DEFAULTS, "to": to,
+                                   "gifts": md.value_of(md.GIFTS, model)}) is None
+
+
+def test_ac_f54_08_new_table_and_any_row():
+    """A new table writes the docs' layout; the "Any other gift" row is written only when it
+    differs from Neutral, 0 and no line."""
+    section = md.GiftSection("hana", (md.GiftRow("red_lantern", "loved", 3, "Kept it?"),))
+    plain = md.gift_set_any(section, "neutral", 0, "")
+    assert plain == section
+    said = md.gift_set_any(section, "neutral", 0, "Oh. Thank you.")
+    assert said.rows[0] == md.GiftRow("*", "neutral", 0, "Oh. Thank you.") and said.any_row
+    assert md.gift_set_any(said, "neutral", 0, None) == section
+    plan = md.plan_new(md.GIFTS, "birthday_gifts", md.GiftTable((said,)),
+                       {md.MAIN_REF: 'label start:\n    "Hi."\n'})
+    written = list(plan.plan.files[0].edits[0].lines)
+    written = written[written.index("define birthday_gifts = {"):]
+    assert written == [
+        "define birthday_gifts = {",
+        '    "hana": {',
+        '        "*": ["neutral", 0, "Oh. Thank you."],',
+        '        "red_lantern": ["loved", 3, "Kept it?"],',
+        "        },",
+        "    }"]
+    refused = md.plan_new(md.GIFTS, "x", md.GiftTable(), {md.MAIN_REF: ""})
+    assert isinstance(refused, Refuse) and "gifts has 0 characters" in refused.text
+
+
+def test_ac_f54_11_hints_and_row_summary():
+    from engine.tools.editor import fieldhints
+    assert [(f.name, f.label, f.widget, f.required) for f in md.BUILTIN_FIELDS["gift_giving"]]         == [("gifts", "Gift table", md.DATA, True), ("to", "Gift for", md.METER, True),
+            ("speaker", "Name shown", md.TEXT, False),
+            ("categories", "Item categories", md.VALUE, False),
+            ("use_up", "The gift is used up", md.TOGGLE, False),
+            ("leave", "Player can say Not now", md.TOGGLE, False),
+            ("result", "Result", md.CHOICE, False)]
+    assert md.game_title("gift_giving") == "Gift giving" and "gift_giving" in md.BUNDLED
+    hints = {"gifts": "The gift table: who likes what.",
+             "to": "Whose reactions to use. Their meter changes by the gift's points.",
+             "speaker": "The name on the reaction card. Empty: the Gift for name.",
+             "categories": "Only items in these categories can be given. Empty: every item.",
+             "use_up": "On: the given item leaves the inventory.",
+             "leave": "On: shows a Not now button (the result is then None).",
+             "result": "reaction: loved, liked, neutral or disliked. item: the given item's "
+                       "name."}
+    for name, hint in hints.items():
+        assert fieldhints.minigame_hint("gift_giving", name) == hint
+    line = ('minigame gift_giving skippable gifts=birthday_gifts to="hana" '
+            'categories=["Gifts"] into reaction')
+    assert md.FORM.summary({"line": line}) == "Gift giving · birthday_gifts → reaction"
