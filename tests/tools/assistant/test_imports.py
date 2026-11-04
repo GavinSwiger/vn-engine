@@ -8,7 +8,7 @@ PACKAGE = Path(__file__).resolve().parents[3] / "engine" / "tools" / "assistant"
 BANNED = ("tkinter", "pygame", "engine.runtime", "engine.app", "engine.meta",
           "engine.tools.check")
 NETWORK = ("socket", "ssl", "http", "urllib")
-EDITOR_ALLOWED = {"checker", "document", "scenes", "scriptedit", "files", "config_help",
+EDITOR_ALLOWED = {"checker", "document", "scenes", "scriptedit", "files", "config_help", "cleanup",
                   "assist", "dbmodel", "declarations"}
 
 

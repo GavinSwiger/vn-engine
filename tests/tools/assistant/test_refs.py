@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from engine.core.paths import GamePaths
+from engine.core.paths import GamePaths, is_plain_name
 from engine.tools.assistant import refs
 from engine.tools.assistant.reference import doc_topic_names, doc_topics
 from engine.tools.assistant.refs import (
@@ -375,7 +375,9 @@ def test_visible_escapes_the_five_categories():
     assert visible("café ☕ 日本 \u00a0") == "café ☕ 日本 \u00a0"   # Zs and letters kept
 
 
-def test_is_plain():
+def test_is_plain_is_core_paths_is_plain_name():
+    # S4 switched S2's stand-in to S1's rule; S2's cases keep their answers.
+    assert is_plain is is_plain_name
     assert is_plain("script/ch2.vns") and is_plain("café")
     for bad in ("a\u200b", "a\u202e", "a\x00", "a\u2028", "a\ud800", "a\t"):
         assert not is_plain(bad)

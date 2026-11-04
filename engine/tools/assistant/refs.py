@@ -33,7 +33,7 @@ from typing import Final
 
 from engine.core.constants import REF_MAX_CHARS
 from engine.core.errors import AssetMissing, AssetRefError
-from engine.core.paths import GamePaths, RealDir, WalkResult, check_ref
+from engine.core.paths import GamePaths, RealDir, WalkResult, check_ref, is_plain_name
 from engine.core.redact import escape_controls, redact, truncate
 from engine.script.assetgroups import ASSET_GROUPS, CONFIG_REF
 from engine.tools.editor import files
@@ -88,10 +88,9 @@ def visible(text: str) -> str:
                    for c in text)
 
 
-def is_plain(text: str) -> bool:
-    """No Cc, Cf, Cs, Zl or Zp character (S1's ``core.paths.is_plain_name`` rule)."""
-    return text.isprintable() or not any(
-        unicodedata.category(c) in _HIDDEN_CATEGORIES for c in text)
+# SEC-F48-02's name rule (no Cc, Cf, Cs, Zl or Zp character) is S1's ``core.paths`` function,
+# shared with the check child's ``read_overlay``; ``is_plain`` is its name here.
+is_plain = is_plain_name
 
 
 def one_line(text: str, limit: int = ONE_LINE_MAX_CHARS) -> str:
@@ -348,7 +347,7 @@ def new_ref_problem(paths: GamePaths, ref: object, listed: Collection[str] = ())
     if not ref.startswith(SCRIPT_DIR + "/"):
         return NOT_EDITABLE
     folder_ref, _, name = ref.rpartition("/")
-    if not is_plain(ref):
+    if not is_plain_name(ref):
         return files.BAD_REF.format(name=visible(name), reason=HIDDEN_CHARACTER)
     try:
         check_ref(ref)
