@@ -37,6 +37,7 @@ OVERLAY_HEADER_MAX = 64 * 1024          # the header line, newline not included
 OVERLAY_MAX_FILES = 64
 OVERLAY_MAX_BYTES = 64 * 1024 * 1024    # every overlaid file together
 OVERLAY_READ_CHUNK = 1 << 20            # the body is read in chunks of this size
+OVERLAY_MAX_NEW = 8                     # entries marked "new": true (F48 04 §7.3)
 # Studio's side (04 §7.2).
 CHECK_TIMEOUT_S = 30                    # a check child still running after this is stopped
 CHECK_DEBOUNCE_MS = 1_500               # a check runs this long after the last change

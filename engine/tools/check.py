@@ -15,8 +15,10 @@ one ``done``, each event split into lines of at most 1 MiB and 5,000 items.
 - **Overlay** (``--stdin-overlay``, §4.3, §7.3). Unsaved text arrives on stdin: a header
   line, then exact bytes. ``read_overlay`` checks every limit before reading the body, and
   any problem exits 2 before anything is checked. ``OverlayPaths`` serves an overlaid file
-  only where ``GamePaths`` would serve the file on disk: an overlay can't add a file, reach
-  outside, or raise a cap.
+  only where ``GamePaths`` would serve the file on disk: an overlay can't reach outside or
+  raise a cap, and adds a file only when its header entry says ``"new": true`` (F48 04
+  §7.3: at most 8 plain ``script/….vns`` names, re-checked by ``check_added`` before
+  anything is checked; served from memory, never opened or written).
 - **When author code runs** (``07`` I-1). ``--no-launch`` skips the launch phase, so no
   ``define``, ``default``, or ``module()`` code runs; Studio passes it until the author's
   first Preview, Save, or Check in that window. The names that need launch values
@@ -64,6 +66,7 @@ from engine.core.editorreport import (
     OVERLAY_HEADER_MAX,
     OVERLAY_MAX_BYTES,
     OVERLAY_MAX_FILES,
+    OVERLAY_MAX_NEW,
     OVERLAY_READ_CHUNK,
     REPORT_MARKER,
     REPORT_MAX_BYTES,
@@ -80,7 +83,7 @@ from engine.core.errors import (
     UserFacingError,
 )
 from engine.core.logsetup import ROOT_LOGGER
-from engine.core.paths import GamePaths, check_ref, is_meta_name
+from engine.core.paths import GamePaths, RealDir, check_ref, is_meta_name, is_plain_name
 from engine.core.redact import echo
 from engine.runtime.character import Character
 from engine.runtime.gamesources import audio_files, game_has, image_source
@@ -152,14 +155,27 @@ def _overlay_ref_ok(ref: object) -> bool:
                                       and ref.endswith(SCRIPT_SUFFIX))
 
 
-def read_overlay(stream: BinaryIO) -> dict[str, bytes]:
-    """The overlay on ``stream``: ``{ref: bytes}`` in header order. Raises ``OverlayError``.
+class Overlay(dict):
+    """``read_overlay``'s answer: ``{ref: bytes}`` in header order, plus ``added``, the refs
+    whose entry says ``"new": true`` (F48 04 §7.3): files the overlay adds."""
+
+    def __init__(self, files: Iterable[tuple[str, bytes]] = (),
+                 added: Iterable[str] = ()) -> None:
+        super().__init__(files)
+        self.added: frozenset[str] = frozenset(added)
+
+
+def read_overlay(stream: BinaryIO) -> Overlay:
+    """The overlay on ``stream``: ``{ref: bytes}`` in header order (``Overlay.added``: the
+    new files). Raises ``OverlayError``.
 
     The header line is read with a limit of ``OVERLAY_HEADER_MAX`` + 1 bytes and checked
     whole (``v`` 1, at most 64 files, each ref ``config.toml`` or ``script/….vns`` and
-    unique, each size an int within its file's cap, the total within 64 MiB) before any of
-    the body is read. The body is read in 1 MiB chunks, exactly the declared bytes, and must
-    end there (EOF): at most the declared bytes plus one chunk are ever read."""
+    unique, each size an int within its file's cap, the total within 64 MiB; ``"new"``, if
+    present, is ``true``, on at most ``OVERLAY_MAX_NEW`` ``script/….vns`` refs that pass
+    ``is_plain_name``) before any of the body is read. The body is read in 1 MiB chunks,
+    exactly the declared bytes, and must end there (EOF): at most the declared bytes plus
+    one chunk are ever read."""
     line = stream.readline(OVERLAY_HEADER_MAX + 1)
     if not line.endswith(b"\n"):
         raise OverlayError("the overlay header is too long or has no line end")
@@ -174,6 +190,7 @@ def read_overlay(stream: BinaryIO) -> dict[str, bytes]:
     if not isinstance(files, list) or len(files) > OVERLAY_MAX_FILES:
         raise OverlayError(f"the overlay must list at most {OVERLAY_MAX_FILES} files")
     sizes: dict[str, int] = {}
+    added: list[str] = []
     total = 0
     for entry in files:
         if not isinstance(entry, dict):
@@ -183,6 +200,14 @@ def read_overlay(stream: BinaryIO) -> dict[str, bytes]:
             raise OverlayError("an overlay ref isn't config.toml or a script/….vns file")
         if ref in sizes:
             raise OverlayError("an overlay ref is listed twice")
+        if "new" in entry:
+            if entry["new"] is not True:
+                raise OverlayError('an overlay "new" flag isn\'t true')
+            if ref == CONFIG_FILENAME or not is_plain_name(ref):
+                raise OverlayError("a new overlay file isn't a plain script/….vns name")
+            added.append(ref)
+            if len(added) > OVERLAY_MAX_NEW:
+                raise OverlayError(f"the overlay may add at most {OVERLAY_MAX_NEW} files")
         if type(size) is not int or not 0 <= size <= _overlay_cap(ref):
             raise OverlayError("an overlay size isn't a whole number within its file's cap")
         total += size
@@ -197,7 +222,7 @@ def read_overlay(stream: BinaryIO) -> dict[str, bytes]:
         body += chunk
     if stream.read(1):
         raise OverlayError("the overlay goes on past its declared size")
-    overlay: dict[str, bytes] = {}
+    overlay = Overlay(added=added)
     at = 0
     for ref, size in sizes.items():
         overlay[ref] = bytes(body[at:at + size])
@@ -212,11 +237,97 @@ class OverlayPaths(GamePaths):
     ``read_file`` resolves the ref first, with the same errors as on disk, so an overlaid
     ref must exist, be listed, contained, and in exact case, and be a regular file; the
     overlay's bytes then stand in for the file's, under the reader's ``max_bytes``. Listings
-    and every other file come from disk. Nothing is ever written."""
+    and every other file come from disk. Nothing is ever written.
+
+    ``added`` (F48 04 §7.3, SEC-F48-02): overlay refs for files that don't exist yet. Once
+    ``check_added`` has passed, each resolves to ``<parent real folder>/<name>`` (never
+    opened), ``read_file`` and ``file_size`` serve it from memory, and ``list_dir`` and
+    ``walk_files`` list it in its folder. No disk access touches it. An added ref never
+    stands in for an existing file: ``check_added`` refuses one that exists."""
 
     overlay: Mapping[str, bytes] = field(default_factory=dict, compare=False)
+    added: frozenset[str] = field(default_factory=frozenset, compare=False)
+
+    def check_added(self) -> None:
+        """SEC-F48-02 again, in the child, before anything is checked: each added ref is an
+        overlay ``script/….vns`` ref with a plain name, its parent is a real folder under
+        ``script/`` (``real_dir``), no entry of that folder (``list_real``, links and FIFOs
+        included) and no other added ref equals it up to case, and ``resolve`` finds
+        nothing there (``AssetMissing``). Raises ``OverlayError``; no file is opened."""
+        folded: set[str] = set()
+        for ref in sorted(self.added):
+            if ref not in self.overlay or ref == CONFIG_FILENAME or not _overlay_ref_ok(ref) \
+                    or not is_plain_name(ref):
+                raise OverlayError("a new overlay file isn't a plain script/….vns name")
+            if ref.casefold() in folded:
+                raise OverlayError("two new overlay files differ only in letter case")
+            folded.add(ref.casefold())
+            parent, _, name = ref.rpartition("/")
+            listing = GamePaths.list_real(self, parent) if self._added_parent(ref) else None
+            if listing is None:
+                raise OverlayError("a new overlay file's folder isn't a real folder in script/")
+            key = name.casefold()
+            if any(listed.casefold() == key
+                   for listed in (*listing.files, *listing.dirs, *listing.omitted)):
+                raise OverlayError("a new overlay file's name is taken in its folder")
+            try:
+                GamePaths.resolve(self, ref)
+            except AssetMissing:
+                continue
+            except AssetRefError:
+                raise OverlayError("a new overlay file's ref leaves the game folder") from None
+            raise OverlayError("a new overlay file already exists")
+
+    def _added_parent(self, ref: str) -> Path | None:
+        """The real folder an added ref goes in (``real_dir``), or None when there is none
+        under ``script/``."""
+        parent = ref.rpartition("/")[0]
+        if parent != SCRIPT_PREFIX.rstrip("/") and not parent.startswith(SCRIPT_PREFIX):
+            return None
+        try:
+            found = self.real_dir(parent)
+        except AssetRefError:
+            return None
+        return found.path if isinstance(found, RealDir) else None
+
+    def resolve(self, ref: str) -> Path:
+        if ref in self.added:
+            parent = self._added_parent(ref)
+            if parent is None:
+                raise AssetMissing(ref, None)
+            return parent / ref.rpartition("/")[2]
+        return super().resolve(ref)
+
+    def file_size(self, ref: str) -> int:
+        if ref in self.added:
+            self.resolve(ref)
+            return len(self.overlay[ref])
+        return super().file_size(ref)
+
+    def _contents(self, directory: Path):
+        """``GamePaths``' contents of ``directory`` (``list_dir``, ``walk_files``) with the
+        added files whose parent is that folder."""
+        contents = super()._contents(directory)
+        if contents is None or not self.added:
+            return contents
+        key = os.path.normcase(str(directory))
+        names = []
+        for ref in self.added:
+            parent = self._added_parent(ref)
+            if parent is not None and os.path.normcase(str(parent)) == key:
+                names.append(ref.rpartition("/")[2])
+        if not names:
+            return contents
+        files = tuple(sorted({*contents.listing.files, *names}))
+        return replace(contents, listing=replace(contents.listing, files=files))
 
     def read_file(self, ref: str, *, max_bytes: int, regular: bool = False) -> bytes:
+        if ref in self.added:
+            self.resolve(ref)
+            data = self.overlay[ref]
+            if len(data) > max_bytes:
+                raise AssetTooLarge(ref, max_bytes)
+            return data
         data = self.overlay.get(ref)
         if data is None:
             return super().read_file(ref, max_bytes=max_bytes, regular=regular)
@@ -1296,7 +1407,14 @@ def check_command(game_dir: Path, *, report: bool, overlay: bool, launch: bool =
         except UserFacingError as error:
             emit_results(emit, [_error_item(error, "load")], 1, {}, None, 0.0)
             return EXIT_DONE
-        paths = OverlayPaths(root, overlay=files) if files else GamePaths(root)
+        added = getattr(files, "added", frozenset())
+        paths = OverlayPaths(root, overlay=files, added=added) if files else GamePaths(root)
+        if isinstance(paths, OverlayPaths) and added:
+            try:
+                paths.check_added()                     # F48 SEC-F48-02, before any check
+            except OverlayError as error:
+                sys.stderr.write(f"check: {error}\n")
+                return EXIT_BAD_INPUT
         CheckJob(paths, emit, launch=launch).run()
         return EXIT_DONE
     finally:
@@ -1381,7 +1499,7 @@ def lint_command(game_dir: Path, *, as_json: bool, strict: bool) -> int:
     return EXIT_PROBLEMS if errors or (strict and warnings) else EXIT_DONE
 
 
-__all__ = ["CheckContext", "CheckJob", "CheckOutcome", "NAME_SOURCES", "OverlayError",
-           "OverlayPaths", "check_command", "chunk_event", "emit_results", "encode_event",
-           "lint_command", "lint_item", "lint_line", "lint_report", "lint_summary",
+__all__ = ["CheckContext", "CheckJob", "CheckOutcome", "NAME_SOURCES", "Overlay",
+           "OverlayError", "OverlayPaths", "check_command", "chunk_event", "emit_results",
+           "encode_event", "lint_command", "lint_item", "lint_line", "lint_report", "lint_summary",
            "problem_item", "read_overlay"]

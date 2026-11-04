@@ -39,7 +39,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -59,6 +59,7 @@ from engine.core.editorreport import (
     OVERLAY_HEADER_MAX,
     OVERLAY_MAX_BYTES,
     OVERLAY_MAX_FILES,
+    OVERLAY_MAX_NEW,
     REPORT_MARKER,
     REPORT_MAX_BYTES,
     REPORT_TEXT_MAX_CHARS,
@@ -138,12 +139,20 @@ def check_argv(game_dir: Path, *, overlay: bool = True, launch: bool = True) -> 
             *(["--stdin-overlay"] if overlay else []), *([] if launch else ["--no-launch"])]
 
 
-def encode_overlay(files: Sequence[tuple[str, bytes]]) -> bytes | None:
+def encode_overlay(files: Sequence[tuple[str, bytes]],
+                   added: Collection[str] = ()) -> bytes | None:
     """The overlay for ``files`` (``(ref, encoded bytes)`` of each dirty document): a header
     line, then the bytes in header order. None when it passes a cap (more than 64 files, a
     file over its reader's cap, more than 64 MiB in all, or a header over 64 KiB): Studio
-    then checks the saved files (C-4)."""
-    if len(files) > OVERLAY_MAX_FILES:
+    then checks the saved files (C-4).
+
+    ``added`` (F48 04 §7.3): refs of ``files`` that are new files, marked ``"new": true`` in
+    the header (``v`` stays 1). None past ``OVERLAY_MAX_NEW``; a ref not among ``files`` is
+    a ``ValueError``. Without ``added`` the header is exactly as before F48."""
+    refs = {ref for ref, _ in files}
+    if not set(added) <= refs:
+        raise ValueError("every added ref must be one of the overlay's files")
+    if len(files) > OVERLAY_MAX_FILES or len(set(added)) > OVERLAY_MAX_NEW:
         return None
     total = 0
     for ref, data in files:
@@ -153,8 +162,9 @@ def encode_overlay(files: Sequence[tuple[str, bytes]]) -> bytes | None:
         total += len(data)
     if total > OVERLAY_MAX_BYTES:
         return None
-    header = json.dumps({"v": REPORT_VERSION,
-                         "files": [{"ref": ref, "size": len(data)} for ref, data in files]},
+    entries = [{"ref": ref, "size": len(data), **({"new": True} if ref in added else {})}
+               for ref, data in files]
+    header = json.dumps({"v": REPORT_VERSION, "files": entries},
                         ensure_ascii=True, separators=(",", ":")).encode("ascii")
     if len(header) > OVERLAY_HEADER_MAX:
         return None
