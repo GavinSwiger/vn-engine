@@ -24,7 +24,8 @@ author controls how far with ``rollback block|off|on|fixed``. It holds:
 - ``CHAIN_STOPS`` (F23 A1): statement types a forward chain never passes; a checkpoint at one
   is the chain's last landing. Empty here; F23 s2 adds ``Minigame``.
 - ``fix_menu`` (§7.5, 07 I-7): a ``rollback fixed`` menu reached with a remembered future
-  offers only the remembered pick.
+  offers only the remembered pick. F51: any menu read again in the past loses its time
+  limit (step 0).
 - ``run_rollback`` (the executor, §6.3), ``on_step_back`` (the ``StepBack`` handler, §7.3)
   and ``on_step_forward`` (the ``StepForward`` handler, §7.4), registered by the interpreter,
   which runs the forward chain itself (``_forward_once``, ``_land_replay``).
@@ -336,9 +337,19 @@ def fix_menu(interp: "Interpreter", stmt: Menu, cmd: ShowMenu) -> ShowMenu:
     ``[choice] show_locked`` says), in the waiting ``choices``, and in ``menu_open``. Called
     at a matched checkpoint (step 4c) and at every landing (``_hold_restored``), after the
     snapshot, so ``checkpoint()`` and a save made there hold the normal menu. A menu that
-    isn't fixed, has no remembered pick, or whose pick isn't pickable now keeps ``cmd``."""
+    isn't fixed, has no remembered pick, or whose pick isn't pickable now keeps ``cmd``.
+
+    F51 step 0 (04 §2 OQ-1, 07 I-7): at any menu the player has picked at and is now reading
+    again (a remembered future with a pick at this sid), the time limit is dropped: one
+    command without ``seconds`` and ``timeout``, in ``cmd`` and ``menu_open`` alike. A load,
+    jump or replay resets the timeline, so the test is false there."""
     t = interp.timeline
-    if not stmt.fixed or t.cursor < 0 or t.cursor >= len(t.states) - 1:
+    past = 0 <= t.cursor < len(t.states) - 1
+    if past and cmd.seconds is not None and t.remembered_pick(stmt.sid) is not None:
+        cmd = replace(cmd, seconds=None, timeout=None)
+        if interp.menu_open is not None:
+            interp.menu_open = (cmd, interp.menu_open[1])
+    if not stmt.fixed or not past:
         return cmd
     key = t.remembered_pick(stmt.sid)
     waiting = interp.choices.waiting

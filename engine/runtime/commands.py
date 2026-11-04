@@ -240,12 +240,19 @@ class ShowMenu(Command):
     menu's; ``choices`` are the shown ones in script order (1–6, at least one unlocked).
     ``line`` says what the textbox holds under the choices: the menu's ``question`` (the
     ``Say`` just before), the ``kept`` last line, or ``none`` (the textbox is hidden).
-    ``restored`` as on ``Say``. Handler: F07's ``ChoiceController.show``."""
+    ``restored`` as on ``Say``. Handler: F07's ``ChoiceController.show``.
+
+    F51 (07 I-1): ``seconds`` is the script's ``menu time N`` (None: untimed, or the player
+    is reading the past, ``rollback.fix_menu``); ``timeout`` the key of the choice time
+    running out picks (None with ``seconds``). Timing assist is applied by the presentation,
+    never here."""
 
     sid: str
     choices: tuple[ShownChoice, ...]
     line: Literal["question", "kept", "none"]
     restored: bool = False
+    seconds: float | None = None
+    timeout: str | None = None
 
 
 # --- F09 transitions and effects (F09 04-technical.md §4.1) ----------------------------------

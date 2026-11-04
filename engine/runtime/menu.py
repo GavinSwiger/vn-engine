@@ -246,7 +246,8 @@ def run_menu(interp: "Interpreter", stmt: Menu) -> "Step":
     shown = _shown(interp, stmt, pickable, locked, restoring=False)  # 4.
     kept = interp.kept_line
     line = "question" if question is not None else ("kept" if kept is not None else "none")
-    cmd = ShowMenu(stmt.sid, shown, line)                           # 5.
+    cmd = ShowMenu(stmt.sid, shown, line, seconds=stmt.time,        # 5. F51
+                   timeout=_timeout_key(stmt))
     interp.choices = replace(interp.choices, waiting=MenuWait(      # 6.
         tuple(c.key for c in pickable), tuple(c.key for c in locked),
         None if question is not None else kept))
@@ -255,6 +256,15 @@ def run_menu(interp: "Interpreter", stmt: Menu) -> "Step":
     if question is not None:                                        # 8.
         interp.kept_line = stmt.sid
     return Step.WAIT
+
+
+def _timeout_key(stmt: Menu) -> str | None:
+    """F51 (04 §7.2): the key of the choice time running out picks, or None when the menu
+    has no time limit. That choice has no ``if`` (E370), so it is always shown and
+    pickable."""
+    if stmt.time is None:
+        return None
+    return next((choice.key for choice in stmt.choices if choice.timeout), None)
 
 
 def _evaluate(interp: "Interpreter", stmt: Menu) -> tuple[list[Choice], list[Choice]]:
@@ -442,7 +452,8 @@ def present_menu(interp: "Interpreter", stmt: Menu, state: "GameState") -> ShowM
             line = "kept"
         else:
             line = "none"
-    cmd = ShowMenu(stmt.sid, shown, line, restored=True)  # type: ignore[arg-type]
+    cmd = ShowMenu(stmt.sid, shown, line, restored=True,  # type: ignore[arg-type]
+                   seconds=stmt.time, timeout=_timeout_key(stmt))     # F51: full time
     interp._restore_attached = attached
     interp._restore_menu_open = (cmd, question)
     return cmd
