@@ -50,7 +50,7 @@ from engine.tools.assistant.textout import (
     PROBLEMS_MAX, TextOut, ToolText, line_width, numbered_line)
 from engine.tools.assistant.workspace import Workspace, text_sha
 from engine.tools.editor.checker import CheckItem
-from engine.tools.editor.scenes import chunks, digest
+from engine.tools.editor.scenes import SceneIndex, chunks, digest
 from engine.tools.editor.scriptedit import (
     UNSAFE, FilePlan, LineEdit, Plan, apply_lines, verify)
 
@@ -516,24 +516,40 @@ def code_bearing(ref: str, old_lines: Sequence[str], edits: Sequence[LineEdit], 
 
 # --- Rebase (§7.4, the pane's Apply) --------------------------------------------------------
 
-def rebase(file: ProposalFile, live_text: str) -> FilePlan | None:
+def rebase(file: ProposalFile, live_text: str, *,
+           index: SceneIndex | None = None) -> FilePlan | None:
     """``file``'s plan for the live text: as made when the text's SHA is the base; else each
     edit moved by its chunks' shift when every touched chunk (label, ordinal) kept its digest
-    and the preamble, if touched, is unchanged. None: stale (01 §6.3)."""
+    and the preamble, if touched, is unchanged. None: stale (01 §6.3).
+
+    F58 (P0's ``rebase`` row): ``index``, the editor's ``SceneIndex`` of exactly
+    ``live_text``, gives each chunk's first line and digest, so only the preamble (when an
+    edit touches it) is digested here; without it every chunk is joined and digested."""
     if file.base_sha is not None and text_sha(live_text) == file.base_sha:
         return file.plan
     if file.new:
         return None
-    lines = live_text.split("\n")
-    live = {key: (first, chunk_digest)
-            for key, first, _, chunk_digest in _chunk_marks(live_text, lines)}
+    lines: list[str] | None = None
+    if index is not None:
+        live = {key: (first, index.digests[key]) for key, first in index.starts.items()}
+        first_label = next(iter(index.starts.values()), None)
+    else:
+        lines = live_text.split("\n")
+        found = _chunk_marks(live_text, lines)
+        live = {key: (first, chunk_digest) for key, first, _, chunk_digest in found}
+        first_label = found[0][1] if found else None
     marks = {key: (first, chunk_digest) for key, first, chunk_digest in file.marks}
-    preamble_now = _preamble_digest(lines, _chunk_marks(live_text, lines))
+    preamble_now: bytes | None = None
     moved: list[LineEdit] = []
     for edit, keys in zip(file.plan.edits, file.touched):
         shift: int | None = None
         for key in keys:
             if key is None:
+                if preamble_now is None:
+                    if lines is None:
+                        lines = live_text.split("\n")
+                    end = first_label - 1 if first_label is not None else len(lines)
+                    preamble_now = digest("\n".join(lines[:end]))
                 if file.preamble is None or preamble_now != file.preamble:
                     return None
                 step = 0
