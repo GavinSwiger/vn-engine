@@ -51,6 +51,17 @@ Studio has no form for shows as a **Script** row with its text; `$ pass` shows a
 - Alt+Up and Alt+Down move a row; Delete removes it (asking first when lines are inside it).
 - Ctrl+Z in the Events tab undoes the scene file's last change.
 
+**The Choice form** holds a menu: the **Question** (speaker, look, text) and up to six
+**Options**, each with its text, **Only show when** (a condition, or Always) and **Goes to**
+(a scene, or "continues here"). **Add**, **Remove**, **Up** and **Down** act on the chosen
+option. Under **Time limit**, tick **Give the player [5] seconds** (1 to 60, in steps of
+0.5) to add a countdown, and pick under **When time runs out, pick** the option chosen for
+the player when it runs out; ticking the box first picks the last option with no condition.
+That option is always shown, so it can't have an "Only show when" condition. Players who
+turned on Timing assist get twice as long, or no limit. The **Lines** preview shows
+`menu time 5:` and `"..." timeout:`, and OK waits while a problem line shows. In Events, the
+Choice row ends with ` · 5 seconds`, and the timed option's row says `when time runs out`.
+
 ## Undo on the map
 
 Ctrl+Z on the map undoes the last map action, in every file it touched, and puts the boxes

@@ -2446,3 +2446,72 @@ def test_ac_f41_24_lint_warnings_command_and_vs_code_task():
     for words in (cleanup.SHOW_ON_MAP, cleanup.DELETE, cleanup.NOT_CHECKED, "Open in Pictures",
                   "Nothing to clean up", "(#clean-up)"):
         assert words in clean or words in database, words
+
+
+# --- AC-F51-32: timed choices in the script language, the UI system and Studio's guide ----------
+
+F51_MESSAGES: list[tuple[str, tuple]] = [
+    ("E368", (1,)), ("E368", (2, "five")), ("E368", (3, "5")), ("E369", (1,)), ("E369", (2,)),
+    ("E369", (3, 2)), ("E370", ()), ("W257", ("3", 112, 8))]
+
+
+def test_ac_f51_32_timed_choices_docs(tmp_path):
+    """``script-language.md``'s menu section holds the timed example (it loads and launches
+    clean), the rules (Timing assist, the fraction kept, saves, skip and auto) and every
+    E368–E370 and W257 text as ``messages.py`` words it; ``ui-system.md`` has the three
+    ``choice.timer.*`` tokens, the panel, the "Choice countdown" timing and its reduced
+    motion; the Studio guide (``story-map.md``) has the Choice form's Time limit; F45's menu
+    doc row names ``time`` and ``timeout``."""
+    import shutil
+
+    from engine.core.paths import GamePaths
+    from engine.runtime.launch import run_launch
+    from engine.script import load_story
+    from engine.script.messages import format_message
+    from engine.script.statement_docs import all_docs
+
+    text = LANGUAGE.read_text(encoding="utf-8")
+    section = _subsection(text, "menu (choices)")
+    flat = " ".join(section.split())
+    for words in ("**Timed choices.**", "menu time 5:", '"..." timeout:', "from 1 to 60",
+                  "Timing assist", "keeps the fraction of time left", "Slower leaves 2 of 10",
+                  "No time limits", "loads with the full time", "auto never picks",
+                  "[theme.choice.timer]", "tick_sound"):
+        assert words in flat, words
+    for code, args in F51_MESSAGES:
+        assert f"`{format_message(code, args)}`" in section, (code, args)
+    example = next(block for block in re.findall(r"^```\n(.*?)^```", section, re.M | re.S)
+                   if "menu time 5:" in block)
+    game = tmp_path / "game"
+    shutil.copytree(REPO / "tests" / "fixtures" / "docgame", game)
+    story = ('define hana = Character("Hana")\ndefault answered = False\nlabel start:\n'
+             + example + "    return\nlabel think_it_over:\n    return\n")
+    (game / "script" / "main.vns").write_bytes(story.encode("utf-8"))
+    (game / "script" / "chapter2.vns").unlink()
+    result = load_story(GamePaths.for_game(game))
+    assert result.errors == () and result.warnings == (), (result.errors, result.warnings)
+    assert run_launch(result.program).namespace is not None
+
+    ui = UI.read_text(encoding="utf-8")
+    rows = {m.group(1): m.group(0) for m in re.finditer(r"^\| `(choice\.timer\.\w+)` \|.*$", ui,
+                                                        re.M)}
+    assert set(rows) == {"choice.timer.fill_color", "choice.timer.track_color",
+                         "choice.timer.tick_sound"}
+    assert "choice.marker.fill_color" in rows["choice.timer.fill_color"]
+    assert "choice.focused.fill_color" in rows["choice.timer.track_color"]
+    flat_ui = " ".join(ui.split())
+    for words in ("**Timed menus (F51).**", "t + 12", "36 tall at 100 % text, 48 at 150 %",
+                  "never the only cue", "following group",
+                  "**Timed menus (F51):** the countdown bar moves once per whole second"):
+        assert words in flat_ui, words
+    timings = _section(ui, "Standard timings")
+    countdown = next(line for line in timings.splitlines()
+                     if line.startswith("| Choice countdown (F51) |"))
+    assert "fraction of time left" in countdown and "2N" in countdown
+
+    guide = " ".join((REPO / "docs" / "story-map.md").read_text(encoding="utf-8").split())
+    for words in ("**The Choice form**", "**Time limit**", "**Give the player [5] seconds**",
+                  "**When time runs out, pick**", "` · 5 seconds`", "`when time runs out`"):
+        assert words in guide, words
+    menu = next(doc for doc in all_docs() if doc.key == "menu")
+    assert "time" in menu.syntax and "timeout" in menu.syntax and "time limit" in menu.summary

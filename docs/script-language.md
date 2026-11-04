@@ -343,6 +343,45 @@ after the menu, unless they `jump`, `call`, or `return` (which work as anywhere)
 - A click or key press in the first quarter second after the choices appear doesn't pick,
   so a fast click through the question never picks by accident.
 
+**Timed choices.** A menu can have a time limit. A bar and a number count down above the
+choices; when they run out, the choice marked `timeout` is picked, exactly as if the player
+had picked it:
+
+```
+    menu time 5:
+        hana "Say something!"
+        "I love you too.":
+            $ answered = True
+        "I need to think.":
+            jump think_it_over
+        "..." timeout:
+            hana sad "...You won't even look at me."
+```
+
+- **`time N`** goes after `menu`, before the `:`. N is in seconds, from 1 to 60, like
+  `pause 1.5` and `fadein 2.0` (a number as written, never a variable).
+- **`timeout`** goes after one choice's text, before the `:`. A timed menu has exactly one
+  such choice, and it can't have an `if`. It is an ordinary, visible choice, so a player
+  with no time limit can still choose silence. Write the timeout branch as a real scene,
+  not a game over.
+- The timer starts when the choices appear, after the question has finished typing. It
+  counts only while the player can use the menu: it waits while the game menu, Settings or
+  the load page is open, while the text box is hidden, and while the window isn't focused.
+- **Timing assist** (the player's setting): Normal gives N seconds, Slower 2N seconds, and
+  No time limits shows the same menu with no bar and no timeout. Changing it mid-countdown
+  keeps the fraction of time left (at 4 of 5 seconds, Slower leaves 2 of 10).
+- **Saves and going back**: nothing new is saved. A save made at a timed menu loads with the
+  full time. Going back to a menu the player already picked at shows it without a
+  countdown; going back before a menu not yet picked and forward again restarts the full
+  time. Skip stops at a timed menu as at any menu; auto never picks, but the timeout still
+  does, and auto goes on after.
+- History, the "chosen" marks and the story treat a timeout pick like any pick.
+- `time` and `timeout` are words only in these two places; you can still use them as
+  variable names.
+- The bar's colors are `[theme.choice.timer] fill_color` and `track_color` (they follow
+  the choice marker and the focused fill, so every color scheme styles them), and
+  `tick_sound` plays at 3, 2 and 1 seconds left; see `docs/ui-system.md`.
+
 **Settings in `config.toml`.** How menus behave is under `[choice]`; how they look is under
 `[theme.choice]` (colors, text size, width, frame images, the focus marker, the locked
 look, the fade-in, and focus and pick sounds). Every `choice.*` token, with its default and
@@ -388,6 +427,14 @@ file and line:
 | `this choice needs 2 lines at text size 28. Choices are easiest to read on one line, about 50 characters.` (warning, dev runs) | Shorten the choice. |
 | `this choice needs 3 lines at text size 28, but a choice shows at most 2, so the end is cut with "…". Shorten it.` (warning, dev runs) | Shorten the choice. |
 | `config.toml: [theme.choice] pick_sound "pik.ogg" doesn't exist, so no sound plays. Did you mean "pick.ogg"?` (warning) | Fix the file name; sounds are in the `audio` folder. |
+| `menu time needs a number of seconds after it, e.g. menu time 5:` | Write the seconds. |
+| `menu time takes a number of seconds from 1 to 60, but found five. Write e.g. menu time 5:` | A number from 1 to 60, as digits. |
+| `menu time 5 takes nothing else on its line. Put the question on the first line inside the menu, e.g. hana "Where to?"` | Move the question inside the menu. |
+| `this choice is marked timeout, but its menu has no time limit. Write menu time 5: to give the player 5 seconds, or remove timeout.` | Add `time` to the menu, or remove `timeout`. |
+| `this menu has a time limit but no choice marked timeout, so nothing could happen when time runs out. Write timeout after one choice's text, e.g. "Say nothing" timeout:` | Mark one choice `timeout`. |
+| `this menu has 2 choices marked timeout, but time running out picks only one. Remove timeout from all but one.` | Keep one `timeout`. |
+| `the timeout choice can't have an if: when time runs out, it must be there to pick. Remove the if, or mark a choice without one as timeout.` | Remove the `if`, or move `timeout`. |
+| `this menu gives the player 3 seconds, but its choices are 112 characters long, about 8 seconds of reading. Raise the time, e.g. menu time 8:, or shorten the choices.` (warning, dev runs) | Raise the time or shorten the choices. |
 
 One mistake shows only while the story runs (see [Run-time errors](#22-run-time-errors)):
 `every choice in this menu is hidden, because all their conditions are false, so the player can't pick anything. Add a choice without if, such as "That's all":.`
@@ -4225,3 +4272,5 @@ story goes on after a warning.
 - 2026-11-03: "lock track (music room)" and "lock achievement (achievements)" name the
   example game's three tracks and four achievements.
 - 2026-11-04: F49 W1: Dynamic UI, Styles: a style may name a color scheme (`preset`).
+- 2026-11-04: F51: menu (choices) gains **Timed choices** (`menu time N:`, the `timeout`
+  choice, Timing assist, saves and going back) and the E368, E369, E370 and W257 rows.

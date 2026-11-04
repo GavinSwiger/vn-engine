@@ -397,6 +397,25 @@ are hidden; `true`: shown locked, never pickable).
 | `choice.focus_sound` | sound | none | Played on each focus change (never on clearing it). |
 | `choice.pick_sound` | sound | none | Played on a pick. |
 | `choice.fade_in_ms` | duration | 120 (0–1000) | Appear fade (§5). |
+| `choice.timer.fill_color` | color | follows `choice.marker.fill_color` (`#A02860`) | Timed menus (F51): the bar's time left. |
+| `choice.timer.track_color` | color | follows `choice.focused.fill_color` (`#FFD6E8`) | Timed menus (F51): the bar's time used. |
+| `choice.timer.tick_sound` | sound | none | Timed menus (F51): played at 3, 2 and 1 seconds left. |
+
+**Timed menus (F51).** A `menu time N:` shows a countdown panel as the first item of the
+choice stack: `choice.width` wide, centered, `choice.gap` above the first button, `t + 12`
+tall where `t` is the number's size, `round_half_up(24 × the player's text scale)` clamped to
+20–36 (36 tall at 100 % text, 48 at 150 %). The fit steps count it as part of the stack, and
+in full-screen text it heads the stack under the page. Its frame is `choice.fill_color` at
+`choice.fill_opacity` with `choice.border_color` `choice.border_width` and radius
+`min(choice.corner_radius, height / 2)`, never a frame image. Inside it: the whole seconds
+left (rounded up) in `choice.text_font` at size `t` and `choice.text_color`, right-aligned 16
+inside the right edge in a slot as wide as "60"; and an 8-tall bar, vertically centered, from
+16 inside the left edge to 16 left of the number slot, its track `choice.timer.track_color`
+and its fill `choice.timer.fill_color`, `track width × time left / total` wide from the left.
+The bar is never the only cue: the number always shows with it. The panel is never focused,
+takes no input, fades with the choices and hides with them. Both colors are in F49's
+following group, so every color scheme styles them; fill on track is 3.5:1 in Sakura and at
+least 3:1 in every built-in scheme.
 
 **Full-screen text (F17).** Set in `[theme.nvl]` (sub-tables `[theme.nvl.name]`,
 `[theme.nvl.indicator]`); layout and states are in
@@ -740,6 +759,7 @@ usable thumbnail shows F11's themed placeholder, never the checkerboard.
 | Double click (F20) | Second click within 400 ms, pointer moved ≤ 8 units, same item | F20 chart nodes (Jump) |
 | Choice fade-in | `choice.fade_in_ms` 120, `linear`, from the frame the buttons appear; a pick is an instant cut | F07 every menu |
 | Choice guard | 250 ms after the buttons appear, picks are ignored (focus still moves) | F07 every menu |
+| Choice countdown (F51) | `menu time N`: N s (Timing assist Slower 2N s, No time limits none), counted only while the menu is on top, drawn, not hidden and the window has focus; the bar shrinks every frame, the number shows whole seconds rounded up; at 0 the timeout choice is picked (an instant cut). A Timing assist change keeps the fraction of time left. Reduced motion: the bar moves once per whole second, with the number; never a pulse, shake or flash | F51 timed menus |
 | `cut` (proposed, F09) | New picture in the next frame; 0 ms | `with cut`, and any length 0 |
 | `dissolve` (proposed, F09) | Per-pixel blend old → new, `linear`; 500 ms (`[effects] dissolve`) | `with dissolve`, `Dissolve(…)` defines |
 | `fade` (proposed, F09) | Old → color (first half), color → new (second half), `linear` each half; 1,000 ms, `effects.fade_color` | `with fade`, `Fade(…)` defines; F18's chapter cards by default |
@@ -778,7 +798,7 @@ leaves at least 333 ms after each stage change before it acts again (≤ 3 per s
 Looping idle motion (the F05 indicator
 bob, F10's loading dots) stops at its rest look. F04 has no motion, so the setting does
 not change it. **UI screens:** every UI fade becomes an instant cut with
-no black frame between (the choice fade-in too, F07); color-only state changes (pressed, focus) stay. **Notices and the
+no black frame between (the choice fade-in too, F07); color-only state changes (pressed, focus) stay. **Timed menus (F51):** the countdown bar moves once per whole second, with its number, and the panel appears without a fade, like the choices. **Notices and the
 load fade** become cuts too: no slide, no restack movement. **Rollback:** landed steps
 are cuts and never replay shakes or flashes; the limit cue drops its bump and its mark cuts
 in and out. **Minigames:** both dissolves become cuts. Plugins are told the
@@ -1158,3 +1178,7 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   F52)": field, letter cell, bare field, typing rules, keyboard panel, `text_entry.*` tokens.
 - 2026-11-04: F52 07 (vn-system-architect): §9's F52 entry accepted with the keyboard heights
   (472/504, F52 C1), its modal host ownership, and the Backspace and focus exceptions.
+- 2026-11-04: F51 (builder, P4): `choice.timer.fill_color`, `track_color` (following
+  `choice.marker.fill_color` and `choice.focused.fill_color`, C1) and `tick_sound` in §3
+  with the timed menu's countdown panel; the "Choice countdown" row in §5 (Timing assist,
+  the fraction kept on a level change, C5) and its reduced-motion rule.
