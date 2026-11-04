@@ -13,6 +13,7 @@ holds an update while a gesture runs (PR-08, S3 on the live line).
 
 from __future__ import annotations
 
+import gc
 import threading
 import time
 import tkinter as tk
@@ -99,6 +100,7 @@ CHOICE_STATUS = "Choice: {text}"
 NO_SCRIPT_FOR_SCENE = "Add a script file first: a scene lives in one."
 CONTEXT_MENUS_POST = True               # tests set False: tk_popup would wait for a click
 OS_MOTION_POLL_MS = 50                  # F58: the OS reduce-motion read's answer
+_heap_frozen = False                    # F58: gc.freeze() once per process (see below)
 
 
 class _UndoFile:
@@ -128,6 +130,18 @@ class _UndoFile:
 
 
 # --- Helpers --------------------------------------------------------------------------------
+
+def _freeze_heap() -> None:
+    """F58 ("performance is king"): once the first map is drawn, everything alive (the
+    modules, the window, the first check's names, the full layout) moves out of the
+    collector's view. A full collection then walks only what came later, so it can't
+    land a 40 ms pause in a map update (measured under pytest's larger heap at 1,000
+    scenes). Once per process; objects are still freed by reference counting."""
+    global _heap_frozen
+    if not _heap_frozen:
+        _heap_frozen = True
+        gc.freeze()
+
 
 def _unread(read: object) -> bool:
     """No read, or a closed file's slim one (links only, F58 PR-18): the Events list needs
@@ -296,6 +310,8 @@ class MapWiring:
         self._read_layout()
         self.map_line.update_started()          # F58: S1 and S5 clear at the next update
         self.story_map.set_data(labels, links, self._check_stale, notes, out_of_date=stale)
+        if self.story_map.layout is not None and self.story_map.layout.boxes:
+            _freeze_heap()
         if not self.story_map.holding:
             self._said_from_disk()
         self._show_map_line()
