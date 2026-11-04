@@ -658,3 +658,149 @@ def test_ac_f58_38_hidden_or_minimised_the_map_waits_then_catches_up(watched):
         ed.root.update()
         time.sleep(0.01)
     assert ("box", "lake") in view.painter.glows
+
+
+# --- W5: the card preview (AC-F58-27, 28, 30, 31) ----------------------------------------------
+
+def card_for(ed, changes: list[dict], summary: str = "Add a pond ‮ and more"):
+    """A pane card (as a CardEvent brings it) for ``changes`` against the editor texts."""
+    from engine.tools.assistant.chat import CardEvent
+    from engine.tools.assistant.edits import propose
+    from tests.tools.assistant.assist_games import pane as pane_workspace
+    win = ed.win
+    texts = {ref: r.widget.get("1.0", "end-1c") for ref, r in win.files.items()
+             if r.editable and ref.endswith(".vns")}
+    proposal = propose(pane_workspace(ed.game, texts), {"summary": summary,
+                                                        "changes": changes})
+    assert not isinstance(proposal, str), proposal
+    win._assist_event(CardEvent(proposal))
+    ed.root.update()
+    return win.assist_cards[-1]
+
+
+POND = [{"file": CH2, "old_text": "    flowchart forget stall\n    return",
+         "new_text": "    flowchart forget stall\n    jump pond\n\nlabel pond:\n    return"},
+        {"file": CH2, "old_text": "    \"You walk past the stall.\"\n    jump river",
+         "new_text": "    \"You walk past the stall.\"\n    return"}]
+
+
+def preview_texts(view) -> list[str]:
+    canvas = view.canvas
+    return [str(canvas.itemcget(i, "text")) for i in view.painter.preview_items
+            if canvas.type(i) == "text"]
+
+
+def test_ac_f58_27_the_newest_open_card_previews_its_map_change(watched):
+    from engine.tools.editor.livemap import MARK_PROPOSED, MARK_REMOVED, s7
+    from engine.tools.editor.mapcanvas import PREVIEW_COLOR, PREVIEW_REMOVE
+    ed, view, win = watched, watched.story_map, watched.win
+    before = places(view)
+    card = card_for(ed, POND)
+    canvas = view.canvas
+    items = view.painter.preview_items
+    assert items and set(preview_texts(view)) >= {"pond", MARK_PROPOSED}
+    dashed = {str(canvas.itemcget(i, "outline" if canvas.type(i) == "rectangle" else "fill"))
+              for i in items if canvas.type(i) in ("rectangle", "line")
+              and canvas.itemcget(i, "dash")}
+    assert PREVIEW_COLOR in dashed and PREVIEW_REMOVE in dashed   # the removed jump arrow
+    assert view.live_text == s7(1, 0, 1, 1)
+    assert places(view) == before and "pond" not in names_of(view)  # no real box moved
+    assert MARK_REMOVED not in preview_texts(view)                # no box is removed
+    for item in items:                                            # never hit, never dragged
+        x0, y0, x1, y1 = canvas.bbox(item)
+        assert view.painter.owner.get(item) is None
+    assert card.state == "open"
+
+
+def test_ac_f58_28_the_preview_writes_nothing_and_starts_nothing(watched, monkeypatch):
+    import subprocess
+    from engine.tools.editor import studiostate
+    ed, view, win = watched, watched.story_map, watched.win
+    win.save_layout()
+    files = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in ed.game.rglob("*")
+             if p.is_file()}
+    state = studiostate.read_state(ed.game)
+    pins = view.pins.snapshot()
+    started: list[object] = []
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: started.append(a))
+    card_for(ed, POND)
+    assert view.painter.preview_items
+    win.assist_preview()
+    ed.root.update()
+    assert {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in ed.game.rglob("*")
+            if p.is_file()} == files
+    assert studiostate.read_state(ed.game) == state and view.pins.snapshot() == pins
+    assert not started
+
+
+def test_ac_f58_30_the_preview_ends_and_apply_lands_on_its_spots(watched):
+    ed, view, win = watched, watched.story_map, watched.win
+    card = card_for(ed, POND)
+    spot = win._assist_preview[2]
+    j = spot.index_of("pond")
+    proposed = (spot.boxes[j].x, spot.boxes[j].y)
+    win.assist_card_action("apply", card)                 # Apply: the boxes land there
+    ed.root.update()
+    assert not view.painter.preview_items and view.live_text == ""     # S7 goes
+    assert "pond" in names_of(view) and places(view)["pond"] == proposed
+    win.assist_card_action("undo", card)                  # open again: it previews again
+    ed.root.update()
+    assert view.painter.preview_items
+    win.assist_card_action("discard", card)               # Discard
+    assert not view.painter.preview_items and view.live_text == ""
+    card_for(ed, POND)
+    win.assist_new_chat()                                 # New chat
+    assert not view.painter.preview_items
+    card_for(ed, POND)
+    win.show_assistant(True, save=False)
+    win.show_assistant(False, save=False)                 # the pane closing
+    assert not view.painter.preview_items
+
+
+def test_ac_f58_31_typing_in_a_touched_scene_makes_the_card_stale_at_once(watched):
+    from engine.tools.editor.assistpane import STALE
+    ed, view, win = watched, watched.story_map, watched.win
+    card = card_for(ed, POND)
+    ch2 = win.record_for(CH2).widget
+    main = win.files[MAIN].widget
+    main.insert("13.end", " # elsewhere")                 # another scene: still open
+    follow(ed, "typing")
+    assert card.state == "open" and view.painter.preview_items
+    ch2.insert("1.0", "# a line above: everything moves, nothing changes\n")
+    follow(ed, "typing")
+    assert card.state == "open" and view.painter.preview_items
+    line = int(ch2.search("flowchart forget stall", "1.0").split(".")[0])
+    ch2.insert(f"{line}.end", "  # touched")              # the touched scene
+    follow(ed, "typing")
+    assert card.state == "stale" and STALE in card.texts()
+    assert not view.painter.preview_items
+
+
+def test_i12_closed_files_over_1_mib_get_no_preview(watched, monkeypatch):
+    from engine.tools.editor import assistwiring
+    ed, view = watched, watched.story_map
+    assert assistwiring.PREVIEW_READ_MAX == 1024 * 1024
+    monkeypatch.setattr(assistwiring, "PREVIEW_READ_MAX", 64)  # ch2 is closed and larger
+    assert CH2 not in ed.win.files
+    card = card_for(ed, POND)
+    assert card.state == "open" and not view.painter.preview_items
+
+
+def test_r2_a_closed_file_the_watch_read_opens_without_a_read_or_a_reindex(watched,
+                                                                           monkeypatch):
+    from engine.tools.editor import scenes, window
+    ed, win = watched, watched.win
+    head = (ed.game / CH2).read_bytes().split(b"label river:")[0]
+    write(ed, CH2, head + RIVER_TO_POND)
+    ed.tick()
+    assert CH2 in win._closed_docs and CH2 not in win.files
+    reads = []
+    monkeypatch.setattr(window, "open_document", lambda *a: reads.append(a))
+    chunked = []
+    real = scenes.reindex
+    monkeypatch.setattr(scenes, "reindex", lambda *a, **k: (chunked.append(a), real(*a, **k))[1])
+    record = win.record_for(CH2)                          # as Apply opens it
+    assert not reads and not chunked and record.editable
+    assert record.widget.get("1.0", "end-1c") == (head + RIVER_TO_POND).decode().rstrip("\n")
+    assert win.scene_indexes[CH2].changes == record.changes
+

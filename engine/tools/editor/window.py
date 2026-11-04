@@ -222,6 +222,7 @@ OUTSIDE_CHECK_INTERVAL = 1.0            # seconds between disk checks on <FocusI
 WATCH_POLL_MS = 50                      # F58 04 §7.2: the watch's mailbox, polled on Tk
 WATCH_THREAD = True                     # tests turn the thread off and tick by hand
 ASK_PAUSE_MS = 1_000                    # F58 PR-02, I-5: the question after a typing pause
+CLOSED_DOCS_CHARS = 16 * 1024 * 1024    # F58 R2: closed files' watch documents kept
 _MIN_COLORED_LINES = 60                 # lines colored per refresh when the view is unknown
 
 
@@ -439,6 +440,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._ask_id: str | None = None
         self._batch = livemap.UpdateBatch()
         self._news_docs: dict[str, ScriptDocument] = {}
+        self._closed_docs: dict[str, ScriptDocument] = {}   # R2: opened without a read
         self._closed_stamps: dict[str, tuple[int, int]] = {}
         self._disk_refs: dict[str, None] = {}
         self._capped: set[str] = set()
@@ -774,7 +776,11 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         return open_document(self.paths, ref)
 
     def _new_record(self, ref: str) -> OpenFile:
-        result = self._open_any(ref)
+        # F58 R2: a closed file the watch has just decoded opens from that document while
+        # its stamp still holds (Apply over large closed files reads nothing on Tk).
+        kept = self._closed_docs.pop(ref, None)
+        result = kept if kept is not None and self._stat(kept.real_path) == kept.stamp \
+            else self._open_any(ref)
         if isinstance(result, ScriptDocument):
             widget = self._make_text(editable=True)
             record = OpenFile(ref, widget, doc=result)
@@ -1719,6 +1725,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             if kind == watchmod.REMOVED:
                 listed = True
                 self._capped.discard(ref)
+                self._closed_docs.pop(ref, None)
                 if ref not in self.files and ref in self.scene_indexes:
                     self._drop_closed(ref)
                     self._disk_refs[ref] = None
@@ -1743,6 +1750,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
                     and self._stat(self.paths.root / ref) == item.stamp:
                 self._closed_stamps[ref] = item.stamp
                 self._batch.add(ref, item.text)
+                if item.doc is not None:
+                    self._keep_doc(item.doc)
         if listed:
             self.refresh_project()
         if not self._capped:
@@ -1828,6 +1837,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             on_show = self.tabs[self.notebook.index("current")].on_show
             if on_show is not None and on_show != "refresh_story_map":
                 self.root.after_idle(getattr(self, on_show))
+        self.assist_texts_changed()             # F58 W5: cards on these files
 
     def _big_batch(self) -> None:
         """PR-10: too much changed to parse here. Boxes stay, S4 shows, the watch only
@@ -1863,7 +1873,17 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.edit_serial += 1
         self._schedule_auto_check()
 
+    def _keep_doc(self, doc: ScriptDocument) -> None:
+        """R2: the newest watch documents of closed files, ``CLOSED_DOCS_CHARS`` at most."""
+        docs = self._closed_docs
+        docs.pop(doc.ref, None)
+        docs[doc.ref] = doc
+        total = sum(len(kept.text) for kept in docs.values())
+        while total > CLOSED_DOCS_CHARS and len(docs) > 1:
+            total -= len(docs.pop(next(iter(docs))).text)
+
     def _drop_closed(self, ref: str) -> None:
+        self._closed_docs.pop(ref, None)
         self.scene_indexes.pop(ref, None)
         self._checked.pop(ref, None)
         self._closed_stamps.pop(ref, None)

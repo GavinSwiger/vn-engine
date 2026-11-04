@@ -60,7 +60,8 @@ def test_ac_f58_06_scandir_listing_skips_links_and_reads_only_changed_files(tmp_
     watch.tick()
     assert reads.n == 3 and reads.args[-1] == ("script/ch/a.vns",)
     news = watch.mailbox.take()["script/ch/a.vns"]
-    assert news.kind == CHANGED and news.text == "label a:\n    jump start" and news.doc is None
+    assert news.kind == CHANGED and news.text == "label a:\n    jump start"
+    assert news.doc is not None and news.doc.old_lines is None    # R2: no second read
     # PR-24 (fake clock): a listing over 200 ms backs the watch off to 2 s until fast again.
     clock = FakeClock()
     took = [300]
@@ -187,7 +188,7 @@ def test_f58_p3_the_thread_posts_news_and_stops_without_waiting(tmp_path):
             got.update(watch.mailbox.take())
             time.sleep(0.02)
         assert got["script/a.vns"].doc is not None      # open: the decoded document
-        assert got["script/b.vns"].text == "label b:"   # closed: the text only
+        assert got["script/b.vns"].text == "label b:"   # closed: its text (R2: and doc)
         os.remove(game / "script" / "b.vns")
         end = time.monotonic() + 5
         while time.monotonic() < end and "script/b.vns" not in (got := watch.mailbox.take()):

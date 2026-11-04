@@ -17,6 +17,7 @@ import threading
 import time
 import tkinter as tk
 from collections.abc import Sequence
+from dataclasses import replace
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
@@ -127,6 +128,14 @@ class _UndoFile:
 
 
 # --- Helpers --------------------------------------------------------------------------------
+
+def _unread(read: object) -> bool:
+    """No read, or a closed file's slim one (links only, F58 PR-18): the Events list needs
+    the scene parsed again."""
+    return read is None or (getattr(read, "error", None) is None
+                            and not getattr(read, "blocks", ())
+                            and not getattr(read, "statements", ()))
+
 
 def _label_row(row: object) -> tuple:
     """``(name, file, line)`` of a ``NameEntry`` or a row of the name index."""
@@ -290,6 +299,7 @@ class MapWiring:
         if not self.story_map.holding:
             self._said_from_disk()
         self._show_map_line()
+        self.assist_texts_changed()             # F58 W5: a full draw drops the preview
 
     def _said_from_disk(self) -> None:
         """S1 for what came from disk, when the map changed (own writes stay quiet:
@@ -433,9 +443,18 @@ class MapWiring:
         keeps the digests it had (its scenes changed since the check parse now)."""
         if not self._is_script(record):
             return
-        index = scenes.reindex(None, record.ref, record.widget.get("1.0", "end-1c"),
-                               record.changes, checked=self._checked.get(record.ref),
-                               positions=self._positions())
+        positions = frozenset(self._positions())
+        closed = self.scene_indexes.get(record.ref)
+        stamp = self._closed_stamps.get(record.ref)
+        if closed is not None and stamp is not None and record.doc is not None \
+                and stamp == record.doc.stamp and closed.positions == positions:
+            # F58 R2: the text indexed while closed, as it was (same stamp): its starts
+            # and digests hold, so nothing is chunked or digested again here.
+            index = replace(closed, changes=record.changes)
+        else:
+            index = scenes.reindex(None, record.ref, record.widget.get("1.0", "end-1c"),
+                                   record.changes, checked=self._checked.get(record.ref),
+                                   positions=positions)
         self.scene_indexes[record.ref] = index
         self._checked[record.ref] = index.checked
         self._map_dirty = True
@@ -523,6 +542,8 @@ class MapWiring:
             on_show = self.tabs[self.notebook.index("current")].on_show
             if on_show is not None:
                 self.root.after_idle(getattr(self, on_show))
+        if changed:
+            self.assist_texts_changed()         # F58 D6: Stale as soon as a scene changes
 
     def _reindex(self) -> bool:
         """``scenes.reindex`` each open script whose ``changes`` its index hasn't seen;
@@ -537,11 +558,15 @@ class MapWiring:
                 continue
             want = self.story.want() if self.story is not None and ref == shown \
                 else frozenset()
-            missing = any((name, 0) in index.starts and (name, 0) not in index.reads
+            missing = any((name, 0) in index.starts and _unread(index.reads.get((name, 0)))
                           for name in want)
             current = index.changes == record.changes and index.positions == positions
             if current and not missing:
                 continue
+            if missing:                         # F58: a closed file's links-only reads
+                index = replace(index, reads={k: r for k, r in index.reads.items()
+                                              if not _unread(r)},
+                                good={k: r for k, r in index.good.items() if not _unread(r)})
             self.scene_indexes[ref] = scenes.reindex(
                 index, ref, record.widget.get("1.0", "end-1c"), record.changes,
                 checked=self._checked.get(ref, index.checked), want=want,

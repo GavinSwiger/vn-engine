@@ -23,8 +23,10 @@ the Tk thread polls. It never touches Tk and never writes. ``stop()`` never wait
   caps (``livemap.IndexBudget``: 16 MiB a file, 64 MiB or 2,000 files in all) post
   ``capped`` and never read. With ``lists_only`` (S4 pending) nothing is read.
 - **News**: an open file's news carries the decoded ``ScriptDocument`` (Tk reloads from it,
-  no second read); a closed file's carries only its text. One mailbox entry per file, the
-  newest winning (PR-09).
+  no second read); a closed file's carries its text, and its document too unless it has
+  mixed line endings (no ``old_lines`` ever travels for a closed file, I-3), so Studio can
+  open it later without reading it again (main-session ruling on R2). One mailbox entry per
+  file, the newest winning (PR-09).
 """
 
 import os
@@ -303,7 +305,8 @@ class ScriptWatch:
         if ref in self._open:
             self.mailbox.post(FileNews(ref, CHANGED, after, doc=result))
         else:
-            self.mailbox.post(FileNews(ref, CHANGED, after, text=result.text))
+            self.mailbox.post(FileNews(ref, CHANGED, after, text=result.text,
+                                       doc=None if result.mixed else result))
 
 
 __all__ = ["BIG_FILE_BYTES", "CAPPED", "CHANGED", "CHECK_ONLY", "FileNews", "LISTED",

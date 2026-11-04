@@ -28,6 +28,11 @@ tool layer's record), the streamed answer, activity lines, cards and the usage l
   the author saves. **Undo** follows F46's map-undo rule (every file's ``changes`` token
   unchanged; a made file is deleted through F45's Delete). **Ask again** sends §6.3's
   message with a fresh snapshot.
+- F58 (PR-14, 15; 04 §7.10): the newest open card's effect shows on the story map as a
+  dashed preview, cleared on Apply (its new boxes land where the preview put them),
+  Discard, Stale, New chat and the pane closing; a card whose touched scene changes goes
+  Stale at once. Preview reads of closed files are capped at ``PREVIEW_READ_MAX`` (I-12);
+  nothing is written before Apply (SEC-F48-04, -09, -12, -20 unchanged).
 
 Imports ``tkinter``, its own package and ``tools.assistant`` (a Tk module: the import-rule
 exception). Logs nothing about the chat (SEC-F48-14: ``chat`` logs the provider, status and
@@ -63,7 +68,7 @@ from engine.tools.assistant.keystore import Slot
 from engine.tools.assistant.providers import COMPATIBLE, PANE_NAMES, errors
 from engine.tools.assistant.reference import build_reference
 from engine.tools.assistant.workspace import CheckService, Snapshot
-from engine.tools.editor import document, files, studiostate
+from engine.tools.editor import document, files, livemap, scenes, studiostate
 from engine.tools.editor.aisettings import (
     Background,
     ensure_consent,
@@ -87,13 +92,16 @@ from engine.tools.editor.assistpane import (
 from engine.tools.editor.declarations import position_rows
 from engine.tools.editor.files import Refusal
 from engine.tools.editor.guidepane import GUIDE_MIN_WIDTH, GUIDE_WIDTH
-from engine.tools.editor.scriptedit import FilePlan, Plan, verify
+from engine.tools.editor.livemap import stale_by_index
+from engine.tools.editor.scriptedit import FilePlan, Plan, apply_lines, verify
 
 POLL_MS = 50                            # 04 §7.7
 POLL_TIMES_KEPT = 200
 MENU = "AI Assistant"                   # View ▸ AI Assistant (Ctrl+Shift+A)
 # Done kinds that offer [Open settings] (S8 notes).
 SETTINGS_KINDS = frozenset({"key", "no_key", "model", "forbidden", "token_limit"})
+PREVIEW_READ_MAX = 1024 * 1024          # F58 I-12: a closed file read on Tk for the preview
+PREVIEW_NEW_MAX = 64 * 1024             # F58: a new file's proposed text, parsed in memory
 
 
 def _script_ref(ref: str) -> bool:
@@ -114,6 +122,8 @@ class AssistWiring:
     assist_pane: AssistPane
     assist_run: ChatRun | None = None
     assist_checks: CheckService | None = None
+    _assist_preview_key: tuple | None = None       # F58: what the preview was built from
+    _assist_preview: tuple | None = None           # (card, Preview, dry-run layout)
 
     # --- Building and showing --------------------------------------------------------------
 
@@ -167,6 +177,7 @@ class AssistWiring:
             self._assist_start_session()
         else:
             self.hpane.forget(frame)
+            self.assist_clear_preview()             # F58 PR-15: the pane closed
         self.assistant_shown = shown
         self.play_bar.set_assistant(shown)
         if save:
@@ -350,6 +361,7 @@ class AssistWiring:
         self._assist_drop_run()
         self.assist_chat = Chat()
         self.assist_cards = []
+        self.assist_clear_preview()                 # F58 PR-15
         self.assist_pane.clear()
         self.assist_pane.set_total(chat_total_text(0))
         self.assist_pane.show_empty(not self._assist_configured())
@@ -401,6 +413,7 @@ class AssistWiring:
             pane.activity(event.text, event.failed)
         elif isinstance(event, CardEvent):
             self.assist_cards.append(pane.add_card(event.proposal))
+            self.assist_preview()                   # F58 PR-14: the newest open card
         elif isinstance(event, Done):
             pane.set_sent(event.sent)
             pane.finish(stopped=event.status == STATUS_STOPPED, usage=event.usage_text)
@@ -466,6 +479,7 @@ class AssistWiring:
     def assist_discard(self, card: Card) -> None:
         """**Discard**: the card collapses to "Discarded: {title}"."""
         card.discard()
+        self.assist_preview()                       # F58: its preview ends
 
     def assist_apply(self, card: Card) -> None:
         """**Apply** (PR-F48-23, SEC-F48-12; 04 §7.4): each existing file's plan is moved
@@ -516,10 +530,12 @@ class AssistWiring:
             self._assist_remove(created)
             self._assist_stale(card)
             return
+        self._assist_seed_pins(card)            # F58 PR-15: new boxes at preview spots
+        card.state = "applied"
+        self.assist_clear_preview()
         self.follow_now("pane")                 # F58 Q5: on the map at once
         card.tokens = tuple((fp.ref, self.files[fp.ref].changes) for fp in plan.files)
         card.created = tuple(created)
-        card.state = "applied"
         count = len(plan.files)
         card.show_status(APPLIED if count == 1 else APPLIED_MANY.format(n=count))
         card.show_buttons("show", "undo")
@@ -530,6 +546,8 @@ class AssistWiring:
         card.state = "stale"
         card.show_status(STALE)
         card.show_buttons("ask_again", "discard")
+        if self._assist_preview is not None and self._assist_preview[0] is card:
+            self.assist_clear_preview()             # F58 PR-15
 
     def _assist_remove(self, refs: Sequence[str]) -> Refusal | None:
         """Delete files Apply made (F45's Delete, ``files.delete_file``) and close their
@@ -594,6 +612,7 @@ class AssistWiring:
         card.show_status(UNDONE)
         card.show_buttons("apply", "show", "discard")
         self._update_marks()
+        self.assist_preview()                       # F58: open again, so it previews
 
     def assist_ask_again(self, card: Card) -> None:
         """**Ask again** (a stale card): sends §6.3's "The file changed. …" with the
@@ -602,6 +621,191 @@ class AssistWiring:
             return
         if self.assist_send(request=ASK_AGAIN_TEXT):
             card.show_buttons("discard")
+
+    # --- The map preview of the newest open card (F58 PR-14, 15; 04 §7.10; 07 I-12) -------
+
+    def _assist_newest(self) -> Card | None:
+        """The newest open card (D5: only it previews)."""
+        for card in reversed(self.assist_cards):
+            if card.state == "open":
+                return card
+        return None
+
+    def assist_texts_changed(self) -> None:
+        """After a map update (typing, an action, disk, a check): every open card whose
+        touched scene changed goes Stale at once (Apply's own test, D6), and the newest
+        open card's preview follows its files. Nothing to do without open cards."""
+        if self.closed or not getattr(self, "assist_cards", None):
+            if self._assist_preview_key is not None:
+                self.assist_clear_preview()
+            return
+        for card in list(self.assist_cards):
+            if card.state == "open" and self._assist_card_stale(card):
+                self._assist_stale(card)
+        self.assist_preview()
+
+    def _assist_card_stale(self, card: Card) -> bool:
+        """Apply's Stale test without its writes: ``stale_by_index`` in O(touched) where an
+        index of exactly the live text exists, else ``edits.rebase``. Files that aren't
+        open and have no index are tested at Apply (no read here)."""
+        for file in card.proposal.files:
+            if file.new:
+                if file.ref in self.refs or file.ref in self.files:
+                    return True                     # made since the proposal
+                continue
+            if not _script_ref(file.ref) or file.ref not in self.refs:
+                return True
+            live, index = self._assist_live(file.ref, read=False)
+            if live is None:
+                continue
+            found = None if index is None else stale_by_index(file.touched, file.marks,
+                                                              index)
+            if found is None:
+                found = rebase(file, live, index=index) is None
+            if found:
+                return True
+        return False
+
+    def _assist_live(self, ref: str, *, read: bool = True
+                     ) -> tuple[str | None, scenes.SceneIndex | None]:
+        """``ref``'s live text and, when it is exactly that text's, its scene index. A
+        closed file is read only with ``read`` and at most ``PREVIEW_READ_MAX`` (I-12),
+        from the watch's document when its stamp holds (R2)."""
+        record = self.files.get(ref)
+        index = self.scene_indexes.get(ref)
+        if record is not None:
+            if not record.editable:
+                return None, None
+            text = record.widget.get("1.0", "end-1c")
+            exact = index is not None and index.changes == record.changes
+            return text, index if exact else None
+        if not read:
+            return None, None
+        path = self.paths.root / ref
+        stamp = self._stat(path)
+        if stamp is None or stamp[1] > PREVIEW_READ_MAX:
+            return None, None
+        kept = self._closed_docs.get(ref)
+        if kept is not None and kept.stamp == stamp and kept.text:
+            text = kept.text
+        else:
+            got = document.open_document(self.paths, ref)
+            if not isinstance(got, document.ScriptDocument) or got.stamp != stamp:
+                return None, None
+            text = got.text
+            self._keep_doc(got)                 # R2: Apply opens it without a read
+        if index is None or self._closed_stamps.get(ref) != stamp:
+            # The first index of a closed file is its checked baseline (07 ruling 15);
+            # kept, so Apply's open neither chunks nor digests it again (R2).
+            index = scenes.reindex(None, ref, text, 0, checked=None,
+                                   positions=self._positions())
+            self.scene_indexes[ref] = scenes.slim(index)
+            self._checked.setdefault(ref, index.checked)
+            self._closed_stamps[ref] = stamp
+        return text, index
+
+    def assist_preview(self) -> None:
+        """Draw what the newest open card's Apply would do (PR-14): its plans applied in
+        memory to the live texts (``rebase``, ``apply_lines``), only the changed scenes
+        parsed, ``preview_rows`` against what the map shows, a dry-run layout on a copy of
+        the pins; S7 or S8. Nothing runs and nothing is written (SEC-F48-04, -12); only
+        plan rows reach the map, never the card's title or summary (SEC-F48-09, -20)."""
+        view = self.story_map
+        card = self._assist_newest()
+        shown = view._shown_rows
+        if card is None or shown is None or view.layout is None:
+            self.assist_clear_preview()
+            return
+        key = (id(card), view.painter.layout is not None, *(
+            (f.ref, id(self.scene_indexes.get(f.ref)), self._stamp_of(f.ref),
+             self.files[f.ref].changes if f.ref in self.files else -1)
+            for f in card.proposal.files))
+        if key == self._assist_preview_key and (view.painter.preview_items
+                                                or self._assist_preview is None):
+            return
+        self._assist_preview_key = key
+        model = livemap.MapModel()
+        model.files, model.order = dict(shown), list(shown)
+        after: dict[str, livemap.FileRows] = {}
+        for file in card.proposal.files:
+            rows = self._assist_rows(card, file, model)
+            if rows is None:
+                self._assist_drop_preview()
+                return
+            after[file.ref] = rows
+        found = livemap.preview_rows(model, after)
+        trial = model.copy()
+        for ref, rows in after.items():
+            trial.set_file(ref, rows)
+        layout = view.painter.preview(found, trial.links(), trial.labels(),
+                                      pins=view.pins.of(view.file), places=view.places,
+                                      file=view.file)
+        self._assist_preview = (card, found, layout)
+        self.map_line.clear("S7")
+        self.map_line.clear("S8")
+        self.map_line.say("S7" if found else "S8", found.line)
+        self._show_map_line()
+        if layout is not None and found.boxes_added and view.follow_var.get() \
+                and not view.holding:
+            j = layout.index_of(found.boxes_added[0])
+            if j is not None:                       # Follow changes: the preview too
+                view.see_rect(view.painter.rect_of(layout.boxes[j]))
+
+    def _assist_rows(self, card: Card, file: Any, model: livemap.MapModel
+                     ) -> livemap.FileRows | None:
+        """One card file's rows after Apply, or None (no preview; a stale card goes
+        Stale)."""
+        positions = self._positions()
+        if file.new:
+            text = new_text(file)
+            if len(text.encode("utf-8")) > PREVIEW_NEW_MAX:
+                return None
+            index = scenes.reindex(None, file.ref, text, 0, checked={}, positions=positions)
+            return livemap.rows_from_index(index)
+        live, index = self._assist_live(file.ref)
+        if live is None:
+            return None                             # I-12: too large to read here
+        stale = None if index is None else stale_by_index(file.touched, file.marks, index)
+        moved = None if stale else rebase(file, live, index=index)
+        if moved is None:
+            self._assist_stale(card)
+            return None
+        try:
+            lines = apply_lines(live.split("\n"), moved.edits)
+        except ValueError:
+            return None
+        base = index if index is not None else scenes.reindex(
+            None, file.ref, live, 0, checked=None, positions=positions)
+        result = scenes.reindex(base, file.ref, "\n".join(lines), 0, checked=base.digests,
+                                positions=positions)
+        return livemap.rows_from_index(result, model.check_links(file.ref))
+
+    def _assist_drop_preview(self) -> None:
+        self.story_map.painter.clear_preview()
+        self._assist_preview = None
+        self.map_line.clear("S7")
+        self.map_line.clear("S8")
+        self._show_map_line()
+
+    def assist_clear_preview(self) -> None:
+        """The preview ends (Apply, Discard, Stale, New chat, the pane closing)."""
+        self._assist_preview_key = None
+        self._assist_drop_preview()
+
+    def _assist_seed_pins(self, card: Card) -> None:
+        """Apply: the new boxes land where the preview showed them (PR-15)."""
+        held = self._assist_preview
+        if held is None or held[0] is not card or held[2] is None:
+            return
+        _card, found, layout = held
+        view = self.story_map
+        spots = {}
+        for name in found.boxes_added:
+            j = layout.index_of(name)
+            if j is not None and name not in view.places:
+                spots[name] = (layout.boxes[j].x, layout.boxes[j].y)
+        if spots:
+            view.pins.add(view.file, spots)
 
     # --- Focus and closing -----------------------------------------------------------------
 

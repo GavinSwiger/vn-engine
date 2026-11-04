@@ -1636,13 +1636,18 @@ class StoryMapView:
 
     def see(self, index: int) -> None:
         """Scroll box ``index`` into view."""
+        self.see_rect(self.box_rect(index))
+
+    def see_rect(self, rect: tuple[float, float, float, float]) -> None:
+        """Scroll the least amount to show canvas rectangle ``rect`` (a box, or a preview
+        box: F58 Follow changes)."""
         canvas = self.canvas
         width, height = canvas.winfo_width(), canvas.winfo_height()
         region = canvas.cget("scrollregion").split()
         if width <= 1 or height <= 1 or len(region) != 4:
             return
         total_w, total_h = float(region[2]) or 1.0, float(region[3]) or 1.0
-        x0, y0, x1, y1 = self.box_rect(index)
+        x0, y0, x1, y1 = rect
         left, top = canvas.canvasx(0), canvas.canvasy(0)
         gap, margin = RING_GAP * self.dpi, MAP_MARGIN * self.dpi
         # The least scroll that shows it (F46: so the side pane opening keeps the map's
