@@ -53,6 +53,7 @@ def install_rollback(app: "App") -> RollbackKeys | None:
     textbox.add_overlay(keys)                 # after F10's and F11's, before F15's (A6)
     textbox.add_say_listener(keys.on_say)
     shell.set_cue_layer(cue)                  # layer 6 (A3)
+    shell.add_look_listener(cue.restyle)      # F49 (07 I-1): a style's scheme colors
     view = story.rollback_view
     shell.menus.add("quick", MenuEntry("back", action=lambda ctx: keys.request_back(),
                                        enabled=lambda: view().can_back,

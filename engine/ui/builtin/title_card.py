@@ -100,6 +100,13 @@ class CardPainter:
         self._layouts: OrderedDict[tuple, CardLayout] = OrderedDict()
         self._warned: set[tuple[str, str]] = set()
 
+    def restyle(self, style: CardStyle) -> None:
+        """F49 (07 I-1): the current look's card style from now on (``app/chapters.py``'s
+        look listener, once per look change); the cached layouts hold colors, so they go."""
+        if style != self.style:
+            self.style = style
+            self._layouts.clear()
+
     @property
     def opaque(self) -> bool:
         """The fill hides the stage, so ``StageView`` does not draw it."""

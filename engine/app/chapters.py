@@ -7,7 +7,9 @@ config, so the app joins them here, once per launch, after ``install_saves``:
 
 - The painter: a ``CardPainter`` built from ``[theme.chapter]`` (fonts: the token's own
   ``text_font``, else ``ui.text_font`` for the heading and ``ui.bold_font`` for the title,
-  through F10's ``UiTheme`` faces) goes on ``app.stage_screen.view.card_painter``.
+  through F10's ``UiTheme`` faces) goes on ``app.stage_screen.view.card_painter``. F49
+  (07 I-1): its style follows the shell's current look (a style's color scheme sets
+  ``chapter.*``), re-derived once per look change with the same checked fonts.
 - ``ChapterStarted`` → F11's ``request_autosave()`` with ``[chapter] autosave`` (true): one
   Auto save at the next new checkpoint (I-6). The handler is always registered (the router
   raises on a command with none).
@@ -146,9 +148,12 @@ def install_chapters(app: "App", *, log=_log) -> CardPainter | None:
         return None
     shell = getattr(app, "shell", None)
     theme = shell.theme if shell is not None else plain_theme(config.theme)
-    painter = CardPainter(card_style(cfg, theme, fonts=_usable_fonts(app, cfg, log)),
-                          dev=app.dev)
+    fonts = _usable_fonts(app, cfg, log)
+    painter = CardPainter(card_style(cfg, theme, fonts=fonts), dev=app.dev)
     stage.view.card_painter = painter
+    if shell is not None:
+        shell.add_look_listener(
+            lambda look: painter.restyle(card_style(look.cfg.chapter, look, fonts=fonts)))
     return painter
 
 

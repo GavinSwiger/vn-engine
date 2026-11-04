@@ -61,7 +61,11 @@ launch (``set_looks``), a title opening, a new game (before ``new_game()``), and
 until then. The title's pictures and music are the current look's; a picture a new look
 names is never read in the frame that chose it (the title draws its fill colors there,
 under the fade-in's black, 07 G3), and the launch look's pictures are read in ``set_looks``,
-during the load screen. Notices (F11 C2): ``notify`` hands a message to the one ``NoticeLayer``
+during the load screen. F49 (07 I-1): the long-lived holders of theme colors follow
+``Looks.revision``, re-derived once per change and never per frame (``sync_look``): the
+painter's styles (then ``Painter.invalidate()``), the notice style, and every
+``add_look_listener`` callback (F14's ``LimitCue``, F18's card painter). With no layer the
+base ``UiTheme`` object is used again. Notices (F11 C2): ``notify`` hands a message to the one ``NoticeLayer``
 (``ui/notice.py``); ``App`` calls ``update_layer`` after the screens' update and
 ``draw_layer`` after the screens are drawn and before the dev overlay, and
 ``show_fatal_error`` calls ``clear_notices``. ``forward_notices`` drains a service's
@@ -121,7 +125,7 @@ from engine.ui.builtin.load_fade import LoadFadeScreen
 from engine.ui.menu_screen import CursorKeeper, MenuScreen
 from engine.ui.menus import DEFAULT_ORDER, MENU_NOUNS, MenuRegistry, UiOverrides, join_names
 from engine.ui.nav import InputKind
-from engine.ui.notice import Kind, NoticeLayer, notice_style
+from engine.ui.notice import Kind, NoticeLayer, NoticeStyle, notice_style
 from engine.ui.paint import Painter
 from engine.ui.screen import Screen, ScreenStack
 from engine.ui.theme import F10_ENTRY_WORDS, UiTheme, Words, measure_with, warn_label_cuts
@@ -283,7 +287,9 @@ class GameShell:
         self.menus = MenuRegistry(entries={"title": self.config.title.entries,
                                            "quick": self.config.quick_menu.entries},
                                   overrides=self.overrides)
-        self.painter = Painter(theme)
+        self._painter = Painter(theme)
+        self._look_rev = 0                          # F49: the revision the holders follow
+        self._look_listeners: list[Callable[[UiTheme], None]] = []
         self.cursor = cursor if cursor is not None else CursorKeeper()
         self.reduce_motion = reduce_motion_of(self.config)
         self.mode = Mode.TITLE
@@ -313,10 +319,10 @@ class GameShell:
         self._cue: CueLayer | None = None                          # F14 A3: layer 6
         # F23 I-8: the one thumbnail source (a running minigame's opening picture).
         self._thumbnail_source: "Callable[[], pygame.Surface | None] | None" = None
-        style = notice_style(theme)
+        style = self._notice_style = notice_style(theme)
         self.notices = NoticeLayer(
-            style, measure_with(ports.assets, style.font),
-            text_scale=self.painter.text_scale, reduce_motion=lambda: self.reduce_motion,
+            self._current_notice_style, measure_with(ports.assets, style.font),
+            text_scale=self._painter.text_scale, reduce_motion=lambda: self.reduce_motion,
             play=self.play_ui)
 
     # -- MenuShell --
@@ -326,6 +332,41 @@ class GameShell:
         """The current look's ``UiTheme`` (F32), else the launch's base theme."""
         looks = self.looks
         return looks.current().theme if looks is not None else self.base_theme
+
+    @property
+    def painter(self) -> Painter:
+        """The one ``Painter`` of every menu, confirm, and notice, drawing the current
+        look's styles (F49 07 I-1)."""
+        self.sync_look()
+        return self._painter
+
+    def sync_look(self) -> None:
+        """F49 (07 I-1): when ``Looks.revision`` moved, re-derive every long-lived holder of
+        theme colors from the current look, once: the painter's styles (its shapes and fits
+        forgotten), the notice style, and the ``add_look_listener`` callbacks. One integer
+        compare otherwise; ``painter``, the notices, ``update_layer`` and ``draw_layer`` call
+        it, so a ``ui style`` shows from the frame it runs in."""
+        looks = self.looks
+        if looks is None or looks.revision == self._look_rev:
+            return
+        self._look_rev = looks.revision
+        theme = looks.current().theme
+        painter = self._painter
+        if painter.styles is not theme:
+            painter.styles = theme
+            painter.invalidate()
+            self._notice_style = notice_style(theme)
+            for listener in self._look_listeners:
+                listener(theme)
+
+    def add_look_listener(self, fn: Callable[[UiTheme], None]) -> None:
+        """F49 (07 I-1): ``fn(theme)`` runs once each time the current look's ``UiTheme``
+        changes (a holder built from the theme at launch re-derives its colors)."""
+        self._look_listeners.append(fn)
+
+    def _current_notice_style(self) -> "NoticeStyle":
+        self.sync_look()
+        return self._notice_style
 
     @property
     def stack(self) -> ScreenStack:
@@ -358,6 +399,7 @@ class GameShell:
         """``App``, after ``ScreenStack.update``: notice times run while ``focused`` and the
         pointer is not over the notice; waiting ones show once the top screen lets them.
         Then the cue layer (F14 A3) with ``covered`` and ``reduce_motion``."""
+        self.sync_look()
         self.notices.update(dt, focused=focused, pointer=self.stack.pointer,
                             hold=self._holds_notices())
         if self.kept_thumbnail is not None and not self._menu_open():
@@ -373,6 +415,7 @@ class GameShell:
         picture, or backdrop). A look chosen this frame may read its title pictures from the
         next frame on (F32 07 G3)."""
         self._defer_pictures = False
+        self.sync_look()
         if self._captures:
             self._serve_captures(canvas)
         self._clean = None                          # F30: this frame's only
@@ -522,6 +565,7 @@ class GameShell:
         and the launch's playthrough look is chosen now (before ``initial_screens``, so F33's
         warning has it) with its title pictures read here, during the load screen."""
         self.looks = looks
+        self._look_rev = looks.revision             # the base look: the holders' theme
         self._playthrough = playthrough
         self.words.override = looks.word
         self.menus.title_entries = looks.title_entries

@@ -175,6 +175,12 @@ class LimitCue:
     def _cfg(self) -> "ThemeConfig":
         return self.theme.cfg if self.theme is not None else _DEFAULT_THEME
 
+    def restyle(self, theme: "UiTheme") -> None:
+        """F49 (07 I-1): the current look's theme from now on (``GameShell``'s look
+        listener, once per look change); the drawn mark is built again on its next draw."""
+        self.theme = theme
+        self._surface = None
+
     def _reduced(self) -> bool:
         textbox = self.textbox
         return self._reduce or (textbox is not None and bool(textbox.reduce_motion()))
