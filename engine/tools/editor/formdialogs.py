@@ -1183,6 +1183,28 @@ FORM_HELP: Mapping[str, str] = {
     "stop_sound": "Stops a sound or a voice line that is playing.",
     "ask_name": "Asks the player to type a name, and keeps it in a story variable.",
 }
+# Hover help for each group heading (``statement_docs.GROUPS``): what its entries are for.
+GROUP_HELP: Mapping[str, str] = {
+    "Text": "What the player reads: a character's line, narration, or a full page of text.",
+    "Story flow": "Where the story goes next: scenes, jumps, endings, chapters, and what the "
+                  "player has unlocked or collected along the way.",
+    "Choices": "A menu of options for the player, and how it shows on the flowchart.",
+    "Logic": "Remember things and react to them: set a variable, check it with If, or "
+             "change a meter such as affection.",
+    "Stage": "What's on screen: the background, and characters coming, going or moving.",
+    "Audio": "Music, sound effects and voice lines.",
+    "Effects": "Screen effects and tricks: transitions, shakes, flashes, glitches, pauses, "
+               "and changes to the game's own menus.",
+    "Minigames": "A small game inside the story, such as a poem game or a puzzle room. The "
+                 "story waits until the player finishes it.",
+    "Declarations": "Things you set up once for the whole game, not lines the player sees: "
+                    "characters, story variables, image names, meters, and the extras "
+                    "players can unlock (routes, codex entries, gallery pictures, music "
+                    "room tracks, scene replays, achievements). They go outside any scene; "
+                    "the Database tab writes most of them for you.",
+    "Files": "Files outside the story: other script files to include, and meta files the "
+             "game writes, reads or deletes on the player's computer.",
+}
 TIP_DELAY_MS = 450
 TIP_WRAP_PX = 380
 
@@ -1374,9 +1396,12 @@ class InsertPicker:
         raise KeyError((group, title))
 
     def help_of(self, item: str) -> str:
-        """The hover help for row ``item`` ("" for a group heading)."""
+        """The hover help for row ``item``: an entry's (or its reason's), or what a group
+        heading's entries are for ("What's a declaration?")."""
         entry = self.docs.get(self.reasons.get(item, item))
-        return entry_help(entry) if entry is not None else ""
+        if entry is not None:
+            return entry_help(entry)
+        return GROUP_HELP.get(str(self.tree.item(item, "text")), "")
 
     def _off_reason(self) -> None:
         """A click on a reason chooses its entry."""
@@ -1686,5 +1711,5 @@ def pick_scene(parent: tk.Misc, names: Sequence[str], *, title: str = PICK_SCENE
 
 
 __all__ = ["ChoiceDialog", "FormAssets", "FormDialog", "InsertPicker", "NOT_FOUND", "NewSceneDialog",
-           "ScenePicker", "ask_new_scene", "edit_choice", "edit_form", "entry_title",
+           "GROUP_HELP", "ScenePicker", "ask_new_scene", "edit_choice", "edit_form", "entry_title",
            "new_values", "pick_insert", "pick_scene", "scene_name"]

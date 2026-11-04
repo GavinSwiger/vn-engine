@@ -3,6 +3,7 @@ written; a group heading shows nothing."""
 
 import pytest
 
+from engine.script.statement_docs import GROUPS
 from engine.tools.editor import formdialogs as fd
 import engine.tools.editor.window  # noqa: F401  (registers every statement doc)
 from engine.tools.editor.assist import insert_menu
@@ -20,7 +21,9 @@ def test_every_entry_has_hover_help():
         picker = fd.InsertPicker(root, insert_menu())
         tree = picker.tree
         groups = tree.get_children("")
-        assert picker.help_of(groups[0]) == ""
+        for group in groups:                    # "What's a declaration?"
+            assert picker.help_of(group) == fd.GROUP_HELP[tree.item(group, "text")]
+        assert set(fd.GROUP_HELP) == set(GROUPS)
         for item, entry in picker.docs.items():
             assert picker.help_of(item), tree.item(item, "text")
         for reason, item in picker.reasons.items():

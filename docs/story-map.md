@@ -46,7 +46,8 @@ Click a box to open the scene beside the map. The side pane has two tabs, **Even
 scene, one row per line: *Say*, *Show character*, *Background*, *Choice* and so on. A line
 Studio has no form for shows as a **Script** row with its text; `$ pass` shows as `(nothing)`.
 
-- **Insert…** (or the Insert key) adds a command after the chosen row.
+- **Insert…** (or the Insert key) adds a command after the chosen row. Rest the pointer on
+  a command or a group (such as Declarations) to see what it is for.
 - Enter or a double-click opens the row's form.
 - Alt+Up and Alt+Down move a row; Delete removes it (asking first when lines are inside it).
 - Ctrl+Z in the Events tab undoes the scene file's last change.
