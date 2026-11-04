@@ -72,6 +72,7 @@ THUMB = (16, 28)          # slider thumb, radius 6, 2-unit border
 THUMB_RADIUS = 6
 THUMB_BORDER = 2
 VALUE_INSET = 32          # the value's right edge from the row's right edge
+VALUE_GAP = 24            # F50: between the bar's end and a wide value slot
 DIVIDER = 1               # list divider below each row
 SCROLL_TRACK = 8          # scrollbar track and thumb width, radius 4, centred in the lane
 SCROLL_RADIUS = 4
@@ -288,7 +289,9 @@ class Slider(Widget):
     F16 conflict 3 (``04`` OQ-4): ``step`` given replaces F10's ``(hi − lo) / 20`` rule, and
     a press or drag then snaps to ``lo + k·step`` (clamped to ``hi``), so a drag can't give
     137 %; keys still step from wherever the value is. ``value_text(v)`` is the value drawn
-    at the row's right (``str`` when None: F10's)."""
+    at the row's right (``str`` when None: F10's). F50: ``value_width`` (canvas units) gives
+    a word-valued slider ("No time limits") a wider value slot: the bar then ends
+    ``VALUE_GAP`` left of it, and the value is fitted to it (``fitted_text``)."""
 
     repeatable = True
 
@@ -296,7 +299,8 @@ class Slider(Widget):
                  set: Callable[[int], None], *,
                  enabled: Callable[[], bool] | None = None, box: Box = _EMPTY_BOX,
                  focusable: bool = True, step: int | None = None,
-                 value_text: Callable[[int], str] | None = None) -> None:
+                 value_text: Callable[[int], str] | None = None,
+                 value_width: float | None = None) -> None:
         super().__init__(enabled=enabled, box=box, focusable=focusable)
         if hi < lo:
             raise ValueError(f"Slider range is empty: {lo} > {hi}")
@@ -310,6 +314,7 @@ class Slider(Widget):
         self.snap = step is not None
         self.step = step if step is not None else max(1, round_half_up((hi - lo) / SLIDER_STEPS))
         self.value_text = value_text
+        self.value_width = value_width
         self.dragging = False
 
     @property
@@ -317,8 +322,11 @@ class Slider(Widget):
         return min(self.hi, max(self.lo, int(self.get())))
 
     def bar_span(self) -> tuple[float, float]:
-        """The bar's x range: ``[box.x + 32, box.right − 104]``."""
-        return self.box.x + SLIDER_BAR_LEFT, self.box.right - SLIDER_BAR_RIGHT
+        """The bar's x range: ``[box.x + 32, box.right − 104]`` (with ``value_width``,
+        ``box.right − 32 − value_width − VALUE_GAP``)."""
+        right = (SLIDER_BAR_RIGHT if self.value_width is None
+                 else VALUE_INSET + self.value_width + VALUE_GAP)
+        return self.box.x + SLIDER_BAR_LEFT, self.box.right - right
 
     def value_at(self, x: float) -> int:
         """The value under the pointer at ``x``: the nearest whole value, or with ``step``
@@ -408,8 +416,12 @@ class Slider(Widget):
                               THUMB_BORDER, THUMB_RADIUS))
         value = self.value
         text = self.value_text(value) if self.value_text is not None else str(value)
-        p.text(text, (self.box.right - VALUE_INSET, by), area="slider", state=state,
-               anchor="midright")
+        if self.value_width is not None:
+            fitted_text(p, text, (self.box.right - VALUE_INSET, by), area="slider",
+                        state=state, width=self.value_width, anchor="midright")
+        else:
+            p.text(text, (self.box.right - VALUE_INSET, by), area="slider", state=state,
+                   anchor="midright")
 
 
 @dataclass(frozen=True)

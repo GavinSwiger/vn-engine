@@ -52,6 +52,7 @@ from engine.core.errors import AssetRefError, ConfigError
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
 from engine.core.schemes import SCHEMES, scheme_ids
+from engine.core.settings_schema import TIMING_LEVELS
 
 RGB = tuple[int, int, int]
 Point = tuple[float, float]
@@ -105,9 +106,11 @@ class Choice(Validator):
 
     labels: Mapping[str, str] = MappingProxyType({})
 
-    def __init__(self, *options: str) -> None:
+    def __init__(self, *options: str, labels: Mapping[str, str] | None = None) -> None:
         self.options = options
         self.expected = "one of " + ", ".join(f'"{option}"' for option in options)
+        if labels is not None:                                    # F50: shown names
+            self.labels = MappingProxyType(dict(labels))
 
     def check(self, value: object) -> object:
         if type(value) is str and value in self.options:          # case-sensitive
@@ -1464,6 +1467,10 @@ class WordsConfig:
     reduce_motion: str = _word("Reduce motion and flashing")
     text_speed: str = _word("Text speed")
     text_instant: str = _word("Instant")
+    timing_assist: str = _word("Timing assist")                    # F50 (Display row)
+    timing_normal: str = _word("Normal")
+    timing_slower: str = _word("Slower")
+    timing_off: str = _word("No time limits")
     text_size: str = _word("Text size")
     auto_wait: str = _word("Auto-advance wait")
     auto_voice: str = _word("Auto-advance waits for voices")
@@ -1740,6 +1747,14 @@ class EffectsConfig:
         doc="how many seconds a glitch lasts, when its line in the story doesn't say")  # F28
     glitch_size: str = field(default="medium", metadata=spec(Choice(*GLITCH_SIZES),
         "how strong a glitch is, when its line in the story doesn't say"))
+    # F50 (PR-F50-02, 07 I-2): the Timing assist a new player starts with; a starting value
+    # only, never a lock (unlike ``reduce``). Settings stores it as TIMING_LEVELS' index.
+    timing_assist: str = field(default="normal", metadata=spec(
+        Choice(*TIMING_LEVELS, labels={"normal": "Normal",
+                                       "slower": "Slower (twice the time)",
+                                       "off": "No time limits"}),
+        "the Timing assist a new player starts with (normal, slower, off); players change "
+        "it; it never locks the setting"))
 
 
 @dataclass(frozen=True)
@@ -2230,6 +2245,10 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
     "reduce_motion": "a row on the player's Settings page",
     "text_speed": "a row on the player's Settings page",
     "text_instant": "what the fastest text speed is called",
+    "timing_assist": "a row on the player's Settings page",
+    "timing_normal": "what Timing assist's normal level is called",
+    "timing_slower": "what Timing assist's level with twice the time is called",
+    "timing_off": "what Timing assist's level with no time limits is called",
     "text_size": "a row on the player's Settings page",
     "auto_wait": "a row on the player's Settings page",
     "auto_voice": "a row on the player's Settings page",

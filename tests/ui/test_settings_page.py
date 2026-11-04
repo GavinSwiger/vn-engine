@@ -39,7 +39,7 @@ DEFAULTS = {"text_cps": 40, "text_size_pct": 100, "auto_scale_pct": 100,
             "music_volume": 70, "sound_volume": 70, "voice_volume": 100, "text_blips": True,
             "voice_sustain": False, "audio_unfocused": False, "audio_minimized": False,
             "mono": False, "fullscreen": False, "reduce_motion": False,
-            "window_size": (1280, 720)}
+            "window_size": (1280, 720), "timing_assist": 0}
 
 
 class Port:
@@ -212,15 +212,15 @@ def test_ac21_layout_at_100_percent(monkeypatch):
     page = rig.open()
     at = ys(page)
     assert (at["settings_display"], at["reduce_motion"], at["settings_text"], at["text_speed"],
-            at["text_size"], at["auto_wait"]) == (112, 240, 320, 384, 483, 582)
+            at["text_size"], at["auto_wait"]) == (112, 240, 419, 483, 582, 681)   # F50: +99
     box = rig.row("fullscreen").box
     assert (box.x, box.y, box.w, box.h) == (416, 176, 788, 56) and page.column.scroll == 0
     assert page.column.lane_box() == Box(1204, 112, 20, 552)
     reset = rig.row("reset_settings").box
     assert (reset.x, reset.w, reset.h) == (448, 400, 56)
-    assert page.column.content == 1629 and "delete_progress" not in page.widgets
+    assert page.column.content == 1728 and "delete_progress" not in page.widgets
     focusable = rig.menu.scope.tab_order()
-    assert len([w for w in focusable if w in page.widgets.values()]) == 17   # no heading
+    assert len([w for w in focusable if w in page.widgets.values()]) == 18   # no heading
     assert rig.row("music_volume").label() == "Musique"
     page.on_mouse("wheel", (800, 400), notches=-10)                   # Musique into view
     with spy_draw_text(monkeypatch) as calls:
@@ -231,7 +231,7 @@ def test_ac21_layout_at_100_percent(monkeypatch):
     assert rig.shell.stack.top.message == "Tout remettre ?"
 
     title = Rig().open(title=True)
-    assert title.column.content == 1693
+    assert title.column.content == 1792
     assert title.column.items[-1].word == "delete_progress"
     items = [_Item("h", None), _Item("a", Toggle(lambda: "a", lambda: False, lambda v: None))]
     small = SettingsColumn(items, Box(0, 0, 0, 0))
@@ -349,7 +349,7 @@ def test_ac26_locked_reduce_progress_and_fullscreen_states():
     assert reduce.on_state() is True and not reduce.enabled()
     assert reduce.look(focused=False).state == "disabled"
     rig.frame(H.key(pygame.K_DOWN))
-    assert rig.focused is rig.row("text_speed")                       # skipped by Down
+    assert rig.focused is rig.row("timing_assist")                    # skipped by Down
     rig.page.column.scroll_to(0)
     rig.h.click(reduce.box.center)
     assert rig.port.calls == []
@@ -374,18 +374,19 @@ def test_ac27_keys_scroll_the_focused_row_into_view():
     rig = Rig()
     rig.open()
     assert rig.focused is rig.row("fullscreen") and rig.scroll() == 0
-    steps = [("reduce_motion", 0), ("text_speed", 0), ("text_size", 0), ("auto_wait", 9),
-             ("auto_voice", 73), ("skip_unread", 137), ("master_volume", 316)]
+    steps = [("reduce_motion", 0), ("timing_assist", 0), ("text_speed", 0), ("text_size", 9),
+             ("auto_wait", 108), ("auto_voice", 172), ("skip_unread", 236),
+             ("master_volume", 415)]                                   # F50: Timing assist
     for word, scroll in steps:
         rig.frame(H.key(pygame.K_DOWN))
         assert (rig.focused, rig.scroll()) == (rig.row(word), scroll), word
-    # Up to Text speed shows its heading too (design §6.3: 208, 07 note in the report).
+    # Up to Text speed shows its heading too (design §6.3: 307, 07 note in the report).
     rig.keys(*[pygame.K_UP] * 5)
-    assert (rig.focused, rig.scroll()) == (rig.row("text_speed"), 208)
-    rig.keys(pygame.K_UP, pygame.K_UP)
+    assert (rig.focused, rig.scroll()) == (rig.row("text_speed"), 307)
+    rig.keys(pygame.K_UP, pygame.K_UP, pygame.K_UP)
     assert (rig.focused, rig.scroll()) == (rig.row("fullscreen"), 0)
     rig.frame(H.key(pygame.K_PAGEDOWN))
-    assert (rig.focused, rig.scroll()) == (rig.row("auto_voice"), 496)
+    assert (rig.focused, rig.scroll()) == (rig.row("auto_wait"), 496)
     rig.frame(H.key(pygame.K_PAGEUP))
     assert (rig.focused, rig.scroll()) == (rig.row("fullscreen"), 0)
     rig.menu.scope.focus(rig.row("auto_wait"), InputKind.KEYS)
@@ -397,7 +398,7 @@ def test_ac27_keys_scroll_the_focused_row_into_view():
     assert rig.port.values["auto_scale_pct"] == 25 and rig.scroll() == before
     rig.menu.scope.focus(rig.row("reset_settings"), InputKind.KEYS)
     rig.frame()
-    assert rig.scroll() == 1077
+    assert rig.scroll() == 1176
     rig.frame(H.key(pygame.K_DOWN))
     assert rig.focused is rig.row("reset_settings")                   # the last row stays
 
@@ -406,9 +407,9 @@ def test_ac27_keys_scroll_the_focused_row_into_view():
     pad.frame(H.pad(pygame.CONTROLLER_BUTTON_DPAD_DOWN))
     for _ in range(3):
         pad.frame(H.pad(pygame.CONTROLLER_BUTTON_DPAD_DOWN))
-    assert (pad.focused, pad.scroll()) == (pad.row("auto_wait"), 9)
+    assert (pad.focused, pad.scroll()) == (pad.row("text_size"), 9)
     pad.page.column.scroll_to(0)
-    auto = pad.row("auto_wait")                                       # partly below the slot
+    auto = pad.row("text_size")                                       # partly below the slot
     pad.frame(H.motion((800, 600)))
     assert pad.focused is auto and pad.scroll() == 0                  # hover never scrolls
 
@@ -426,26 +427,26 @@ def test_ac28_wheel_lane_and_clipping():
     rig.frame(H.wheel((800, 300), 1))
     assert rig.scroll() == 0
     column.scroll_to(5000)
-    assert rig.scroll() == 1077
+    assert rig.scroll() == 1176
     rig.frame(H.wheel((800, 300), -1))
-    assert rig.scroll() == 1077
+    assert rig.scroll() == 1176
     column.scroll_to(0)
     thumb = column.thumb_box()
-    assert thumb.h == pytest.approx(max(32, 552 * 552 / 1629))
+    assert thumb.h == pytest.approx(max(32, 552 * 552 / 1728))
     rig.frame(H.down((1214, thumb.bottom + 50)), H.up((1214, thumb.bottom + 50)))
     assert rig.scroll() == 496
     column.scroll_to(0)
     rig.frame(H.down((1214, 150)))
     rig.frame(H.motion((1214, 200)))
     rig.frame(H.up((1214, 200)))
-    assert rig.scroll() == pytest.approx(50 * 1629 / 552, abs=1)
-    column.scroll_to(100)                       # Fullscreen at y 76–132, Skip at 645–701
+    assert rig.scroll() == pytest.approx(50 * 1728 / 552, abs=1)
+    column.scroll_to(100)                       # Fullscreen at y 76–132, Auto wait 581–672
     rig.frame()
     for point in ((800, 100), (800, 670)):
         assert rig.menu.scope.widget_at(point) is None
         rig.h.click(point)
     assert rig.port.calls == []
-    assert rig.row("skip_unread").box.contains((800, 670))
+    assert rig.row("auto_wait").box.contains((800, 670))
 
     big = Rig(text_size_pct=150)
     big.open()

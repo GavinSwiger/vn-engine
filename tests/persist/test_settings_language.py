@@ -28,13 +28,13 @@ def test_ac_f43_10_language_setting():
     """AC-F43-10: valid codes kept (ASCII, the code pattern, at most 12 characters); every
     other value refused as W71 with a fixed found word; ``FORMAT`` 4 writes and reads it;
     a format-3 file reads as current with ``language`` absent (not chosen)."""
-    assert FORMAT == 4 and LANGUAGE_CODE_MAX == 12
+    assert FORMAT >= 4 and LANGUAGE_CODE_MAX == 12
     for code in VALID:
         assert check("language", code) is None and is_language_code(code), code
         assert len(code) <= LANGUAGE_CODE_MAX
         data = encode_settings({"language": code, "music_volume": 40})
         data.decode("ascii")
-        assert json.loads(data) == {"format": 4,
+        assert json.loads(data) == {"format": FORMAT,
                                     "values": {"language": code, "music_volume": 40}}
         assert parse_settings(data).values == {"music_volume": 40, "language": code}
     for value in REFUSED:
@@ -61,8 +61,8 @@ def test_ac_f43_10_language_setting():
     # ... and a format-3 file holding a code (a downgrade-then-upgrade) keeps it.
     assert parse_settings(b'{"format": 3, "values": {"language": "ja"}}').values == {
         "language": "ja"}
-    # Format 5 is newer: W73, known keys used, never written.
-    newer = parse_settings(b'{"format": 5, "values": {"language": "ko"}}')
+    # A format after FORMAT is newer: W73, known keys used, never written.
+    newer = parse_settings(b'{"format": 6, "values": {"language": "ko"}}')
     assert newer.outcome is Outcome.NEWER and newer.values == {"language": "ko"}
 
     # The effective default is "not chosen", so Reset clears a stored language (W4 then

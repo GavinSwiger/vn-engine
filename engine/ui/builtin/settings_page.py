@@ -8,7 +8,7 @@ Apply step (PR-F16-01, 02). The page reaches the settings only through ``Setting
 ``engine.app`` or ``engine.persist`` (TR-F16-05).
 
 - **Rows** (design §6.1), in four groups under headings that are never focused: Display
-  (Fullscreen, Reduce motion), Text (Text speed, Text size, Auto-advance wait and its voice
+  (Fullscreen, Reduce motion, F50's Timing assist: three stops named by words), Text (Text speed, Text size, Auto-advance wait and its voice
   toggle, Skip unread text), Sound (four volumes, Text blips, Let voices finish, the two
   background toggles, Mono audio), Data (Reset settings; Delete progress on the title only).
   Each widget is built once per page; a layout only moves its box, so the focus scope keeps
@@ -67,6 +67,10 @@ CPS_RANGE: Final = (10, 200)
 SLIDER_STEPS: Final = {"text_size_pct": 10, "auto_scale_pct": 25, "master_volume": 5,
                        "music_volume": 5, "sound_volume": 5, "voice_volume": 5}
 PERCENT_KEYS: Final = frozenset({"text_size_pct", "auto_scale_pct"})
+# F50: Timing assist's value words by stored value, and its value slot (fits "No time
+# limits" at 150 % text; UI-F50-01).
+TIMING_WORDS: Final = ("timing_normal", "timing_slower", "timing_off")
+TIMING_VALUE_WIDTH: Final = 240
 
 Progress = Literal["hidden", "disabled", "enabled"]
 
@@ -93,7 +97,8 @@ class SettingsPort(Protocol):
 RowKind = Literal["toggle", "slider", "button"]
 GROUPS: Final[tuple[tuple[str, tuple[tuple[str, str, RowKind], ...]], ...]] = (
     ("settings_display", (("fullscreen", "fullscreen", "toggle"),
-                          ("reduce_motion", "reduce_motion", "toggle"))),
+                          ("reduce_motion", "reduce_motion", "toggle"),
+                          ("timing_assist", "timing_assist", "slider"))),        # F50
     ("settings_text", (("text_speed", "text_cps", "slider"),
                        ("text_size", "text_size_pct", "slider"),
                        ("auto_wait", "auto_scale_pct", "slider"),
@@ -321,6 +326,12 @@ class SettingsPage(MenuPageBase):
         if word == "text_speed":
             return Slider(label, CPS_RANGE[0], INSTANT, self._speed, self._set_speed,
                           step=10, value_text=self._speed_text)
+        if word == "timing_assist":             # F50 (PR-F50-03): three stops, words
+            spec = KEYS[key]
+            assert isinstance(spec, IntKey)
+            return Slider(label, spec.lo, spec.hi, lambda: int(port.value(key)),  # type: ignore
+                          lambda v: port.set(key, v), step=1, value_text=self._timing_text,
+                          value_width=TIMING_VALUE_WIDTH)
         if kind == "slider":
             spec = KEYS[key]
             assert isinstance(spec, IntKey)
@@ -347,6 +358,9 @@ class SettingsPage(MenuPageBase):
 
     def _speed_text(self, v: int) -> str:
         return self.host.shell.words.get("text_instant") if v > CPS_RANGE[1] else str(v)
+
+    def _timing_text(self, v: int) -> str:
+        return self.host.shell.words.get(TIMING_WORDS[min(max(v, 0), len(TIMING_WORDS) - 1)])
 
     def _ask(self, message: str, on_yes: Callable[[], None]) -> None:
         """F10's Yes/No dialog, No focused; focus returns to the button after."""

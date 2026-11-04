@@ -52,6 +52,8 @@ from engine.core.settings_schema import (
     CRASH_LABEL_DEFAULT,
     KEYS,
     LANGUAGE_NOT_CHOSEN,
+    TIMING_LEVELS,
+    TIMING_NORMAL,
     USERNAME_USE_DEFAULT,
     SizeKey,
     Value,
@@ -224,7 +226,17 @@ def config_defaults(config: "Config") -> dict[str, Value]:
         # F43: "" = not chosen; the language service (W4) runs the first-launch rule and
         # stores its result; Reset clears it, so the rule runs again. No apply group.
         "language": LANGUAGE_NOT_CHOSEN,
+        # F50 (07 I-2): [effects] timing_assist's id as its stored int; a starting value
+        # only (never locked). No apply group: readers poll it each frame.
+        "timing_assist": timing_start(config),
     }
+
+
+def timing_start(config: "Config") -> int:
+    """``[effects] timing_assist`` as the stored int (``TIMING_LEVELS.index``); a config
+    stand-in without the key (or the section) starts at Normal."""
+    level = getattr(getattr(config, "effects", None), "timing_assist", "normal")
+    return TIMING_LEVELS.index(level) if level in TIMING_LEVELS else TIMING_NORMAL
 
 
 def effects_reduce(config: "Config") -> bool:
@@ -734,5 +746,5 @@ __all__ = ["NOTICE_TEXT", "NO_ID_TEXT",
            "WRITE_QUIET_S", "bad_file_text", "bad_value_text", "config_defaults",
            "effects_reduce", "install_settings", "install_settings_ui", "launch_settings",
            "launch_value",
-           "log_launch", "newer_file_text", "requested_size", "save_failed_text",
+           "log_launch", "newer_file_text", "requested_size", "save_failed_text", "timing_start",
            "unknown_keys_text"]

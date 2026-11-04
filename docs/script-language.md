@@ -2679,6 +2679,7 @@ shake = 0.5               # seconds, 0.1 to 10
 shake_size = "medium"     # small, medium, or large
 flash = 0.3               # seconds, 0.1 to 2
 reduce = false            # true: reduced effects for every player
+timing_assist = "normal"  # the Timing assist a new player starts with: normal, slower, or off
 
 [theme.effects]
 flash_color = "#FFFFFF"

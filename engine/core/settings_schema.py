@@ -5,7 +5,8 @@ both need the one table, and neither may import the other, so it lives in ``core
 
 ``KEYS`` holds the stored keys in the design's order (W71 lines follow it); F33's
 ``warning_seen`` (the content warning ``version`` the player continued past, 0 = none) is
-not on the Settings page; F30's two keys and F43's ``language`` follow it. Each key is an
+not on the Settings page; F30's two keys, F43's ``language`` and F50's ``timing_assist``
+follow it. Each key is an
 ``IntKey`` (whole numbers in a fixed range; ``text_cps`` also allows 0), a ``BoolKey``, the
 one ``SizeKey`` (``window_size``, two whole numbers), or the one ``LanguageKey``
 (``language``, a language code: F43, format 4, the first text value). Types are exact:
@@ -27,7 +28,8 @@ from typing import Final
 
 Value = int | bool | tuple[int, int] | str
 
-FORMAT: Final = 4                       # 2: F33's warning_seen; 3: F30's two; 4: F43's language
+FORMAT: Final = 5                       # 2: F33's warning_seen; 3: F30's two; 4: F43's language
+#                                         5: F50's timing_assist
 MAX_FILE_BYTES: Final = 65_536          # 64 KiB read cap (PR-F16-22)
 MAX_INT_DIGITS: Final = 20              # longer integers parse as "a long number"
 MAX_FOUND_CHARS: Final = 7              # TR-F16-03: no file text longer than 7 characters
@@ -41,6 +43,12 @@ CRASH_LABEL_DEFAULT: Final = False      # "Label fake error screens" off
 LANGUAGE_CODE_RE: Final = re.compile(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?", re.ASCII)
 LANGUAGE_CODE_MAX: Final = 12
 LANGUAGE_NOT_CHOSEN: Final = ""         # the default: no language stored (first launch rule)
+# F50 (PR-F50-01, 04): Timing assist, stored as 0/1/2; the ids are what config.toml and
+# minigame plugins see (07 I-3: the file encoding stays private).
+TIMING_NORMAL: Final = 0
+TIMING_SLOWER: Final = 1
+TIMING_OFF: Final = 2
+TIMING_LEVELS: Final = ("normal", "slower", "off")    # index = the stored value
 
 LONG_NUMBER: Final = "a long number"
 
@@ -141,6 +149,7 @@ KEYS: Final[Mapping[str, KeySpec]] = MappingProxyType({
     "username_use": IntKey(0, 2),                     # F30 (format 3): 2 = allowed
     "crash_label": BoolKey(),                         # F30 (format 3)
     "language": LanguageKey(),                        # F43 (format 4): absent = not chosen
+    "timing_assist": IntKey(0, 2),                    # F50 (format 5): TIMING_LEVELS
 })
 
 
@@ -208,8 +217,23 @@ def effective_text_size(base: int, pct: int) -> int:
     return min(TEXT_SIZE_MAX, (2 * base * pct + 100) // 200)
 
 
+def timing_limit(seconds: float, level: int | str) -> float | None:
+    """F50's one rule (PR-F50-04, 07 I-6) for every timed part of a game: Normal gives
+    ``seconds``, Slower ``seconds × 2``, No time limits ``None`` (wait for the player).
+    ``level`` is the stored int (``TIMING_*``) or its id (``TIMING_LEVELS``); anything else
+    counts as Normal. Nothing else in the engine multiplies a time limit by 2."""
+    if type(level) is str:
+        level = TIMING_LEVELS.index(level) if level in TIMING_LEVELS else TIMING_NORMAL
+    if type(level) is not int:
+        level = TIMING_NORMAL
+    if level == TIMING_OFF:
+        return None
+    return float(seconds) * 2 if level == TIMING_SLOWER else float(seconds)
+
+
 __all__ = ["BoolKey", "CRASH_LABEL_DEFAULT", "FORMAT", "IntKey", "KEYS", "KeySpec",
            "LANGUAGE_CODE_MAX", "LANGUAGE_CODE_RE", "LANGUAGE_NOT_CHOSEN", "LONG_NUMBER",
            "LanguageKey", "LongNumber", "MAX_FILE_BYTES", "MAX_FOUND_CHARS", "MAX_INT_DIGITS",
-           "Problem", "SizeKey", "TEXT_SIZE_MAX", "USERNAME_USE_DEFAULT", "Value", "check",
-           "effective_text_size", "found_word", "is_language_code"]
+           "Problem", "SizeKey", "TEXT_SIZE_MAX", "TIMING_LEVELS", "TIMING_NORMAL", "TIMING_OFF",
+           "TIMING_SLOWER", "USERNAME_USE_DEFAULT", "Value", "check", "effective_text_size",
+           "found_word", "is_language_code", "timing_limit"]
