@@ -40,6 +40,8 @@ NOTE_BODY_ONE: Final = "1 color you set yourself still shows over the scheme."
 CLEAR: Final = "Clear my colors"
 CONFIRM: Final = ("Remove the {n} colors you set yourself, so the scheme shows everywhere? "
                   "Ctrl+Z in config.toml brings them back.")
+CONFIRM_ONE: Final = ("Remove the 1 color you set yourself, so the scheme shows everywhere? "
+                      "Ctrl+Z in config.toml brings it back.")
 CONFIRM_BUTTONS: Final = ("Remove", "Cancel")
 UNKNOWN: Final = ("config.toml asks for a color scheme this version doesn't have (\"{id}\"), "
                   "so the default colors show. Pick one and press Apply.")
@@ -103,6 +105,11 @@ def note_body(count: int) -> str:
     return NOTE_BODY_ONE if count == 1 else NOTE_BODY.format(n=count)
 
 
+def confirm_text(count: int) -> str:
+    """Clear my colors' question for ``count`` colors."""
+    return CONFIRM_ONE if count == 1 else CONFIRM.format(n=count)
+
+
 def clear_changes(found: Mapping[str, object]) -> tuple[tuple[str, str, None], ...]:
     """The ``tomlpatch.plan_changes`` changes that remove every ``custom_colors`` key."""
     out = []
@@ -126,7 +133,8 @@ def preview_text(text: str, id_: str) -> str:
     return "\n".join(apply_lines(text.split("\n"), plan.edits))
 
 
-__all__ = ["APPLY", "CLEAR", "CONFIRM", "CONFIRM_BUTTONS", "Card", "INTRO", "IN_USE", "KEY",
-           "NOTE_BODY", "NOTE_BODY_ONE", "NOTE_HEADING", "PATH", "PREVIEW_NOTE", "SECTION",
-           "TITLE", "UNKNOWN", "apply_change", "cards", "clear_changes", "custom_colors",
-           "in_use", "note_body", "preview_text", "unknown_text"]
+__all__ = ["APPLY", "CLEAR", "CONFIRM", "CONFIRM_BUTTONS", "CONFIRM_ONE", "Card", "INTRO",
+           "IN_USE", "KEY", "NOTE_BODY", "NOTE_BODY_ONE", "NOTE_HEADING", "PATH", "PREVIEW_NOTE",
+           "SECTION", "TITLE", "UNKNOWN", "apply_change", "cards", "clear_changes",
+           "confirm_text", "custom_colors", "in_use", "note_body", "preview_text",
+           "unknown_text"]

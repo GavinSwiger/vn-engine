@@ -42,6 +42,8 @@ def test_ac_f49_09_cards_in_use_custom_colors_clear_and_preview_text():
     assert scm.custom_colors(found) == ("theme.textbox.fill_color", "theme.nvl.text_color")
     assert scm.note_body(2) == "2 colors you set yourself still show over the scheme."
     assert scm.note_body(1) == "1 color you set yourself still shows over the scheme."
+    assert scm.confirm_text(2).startswith("Remove the 2 colors you set yourself, so")
+    assert scm.confirm_text(1).startswith("Remove the 1 color you set yourself, so")
     assert scm.custom_colors(sm.values('[theme.textbox]\nfill_opacity = 0.5\n')) == ()
     changes = scm.clear_changes(found)
     assert changes == (("theme.textbox", "fill_color", None), ("theme.nvl", "text_color", None))

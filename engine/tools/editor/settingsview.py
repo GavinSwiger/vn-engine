@@ -24,6 +24,11 @@ change.
   ``[playthrough.N]`` tables, **+ New style** and **+ New playthrough look** (a name, then
   one key written so the table exists), and the shown look's fields (``settingsmodel``'s
   ``look_page``; a key not set keeps the main look).
+- **Color scheme** (F49 §4): the built-in schemes as swatch cards (``schemecards``); a
+  picked card's text box still comes 500 ms later from the open text with ``preset``
+  planned (``schememodel.preview_text``); **Apply** writes the one ``[theme] preset`` line
+  as one undo step. A "Custom colors kept" note offers **Clear my colors** when ``[theme]``
+  sets colors a scheme would, and an id this version lacks gets its own note.
 
 The tab reads ``config.toml`` again when it shows, after each check (``win.on_check_done``),
 after each of its writes and when the document's text changed since it last looked.
@@ -36,7 +41,9 @@ from dataclasses import dataclass
 from tkinter import ttk
 from typing import Any
 
+from engine.core.schemes import DEFAULT_SCHEME, SCHEMES
 from engine.script.assetgroups import CONFIG_REF
+from engine.tools.editor import schememodel as scm
 from engine.tools.editor import settingsmodel as sm
 from engine.tools.editor import tomlpatch
 from engine.tools.editor.dbmodel import EDIT_AS_SCRIPT
@@ -55,6 +62,7 @@ from engine.tools.editor.fieldwidgets import (
     _Field,
 )
 from engine.tools.editor.helperhub import CANT_PLAY, ThumbLoader, hub_for
+from engine.tools.editor.schemecards import SchemeCards
 from engine.tools.editor.scriptedit import STALE, Refuse
 from engine.tools.editor.theme import ROLES, THEME
 from engine.tools.editor.views import EmptyState, panel_header
@@ -93,6 +101,7 @@ INTRO: Mapping[str, str] = {
     "words": "Every word the game shows. Change one to rename or translate it.",
     "extras": "The Extras screen players open from the title: the gallery of pictures "
               "they've seen, the music room's songs, and more.",
+    sm.SCHEMES: scm.INTRO,
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
     sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
                "the story says so (a Game UI line). A playthrough look changes the title "
@@ -245,6 +254,8 @@ class SettingsPane:
         self._image: tk.PhotoImage | None = None
         self.compact = False
         self.look: tuple[str, str] | None = None    # W9: the look the Looks page shows
+        self.scheme_pick: str | None = None         # F49: the card picked, not yet applied
+        self.scheme_cards: SchemeCards | None = None
 
         style = ttk.Style(self.root)
         style.configure("Caption.TLabel", background=THEME["editor.background"],
@@ -352,6 +363,9 @@ class SettingsPane:
         if self.page.key == sm.ALL_SETTINGS:
             self.search.focus_set()
             return
+        if self.page.key == sm.SCHEMES and self.scheme_cards is not None:
+            self.scheme_cards.widget.focus_set()
+            return
         for item in self.shown_fields.values():
             if item.widget is not None:
                 widget = getattr(item.widget, "entry", None) or getattr(
@@ -392,8 +406,11 @@ class SettingsPane:
         self._previewed = None          # each page asks for its own still
         self._serial = None
         self._image = None
+        self.scheme_pick = None         # F49: leaving the page without Apply writes nothing
         self.picture.configure(image="", text="")
         self._set_status("")
+        self.card_note.configure(text=scm.PREVIEW_NOTE if page.key == sm.SCHEMES
+                                 else PREVIEW_NOTE)
         if page.key != sm.ALL_SETTINGS:
             self._search_placeholder(True)
         self._layout(force=True)
@@ -515,6 +532,8 @@ class SettingsPane:
         else:
             for item in self.shown_fields.values():
                 self._show_value(item)
+        if self.page.key == sm.SCHEMES:
+            self._show_schemes()
         if self.page.preview and self.shown:
             self._schedule_preview()
 
@@ -582,6 +601,9 @@ class SettingsPane:
             return
         if self.page.key == sm.LOOKS:
             self._build_looks(body)
+            return
+        if self.page.key == sm.SCHEMES:
+            self._build_schemes(body)
             return
         for section in self.page.sections:
             self._build_section(body, section)
@@ -686,6 +708,111 @@ class SettingsPane:
         self.form_key = None
         return self._apply(tomlpatch.plan_set(text, section, key, value), field)
 
+    # --- Color scheme (F49 §4) ----------------------------------------------------------------
+
+    def _note_box(self, parent: tk.Misc, bar: str) -> tuple[tk.Frame, tk.Frame]:
+        """A note with a 3 px ``bar`` color down its left edge: (outer, inner)."""
+        outer = tk.Frame(parent, background=THEME["editor.background"])
+        tk.Frame(outer, background=bar, width=self._px(3)).pack(side="left", fill="y")
+        inner = tk.Frame(outer, background=THEME["editor.background"])
+        inner.pack(side="left", fill="x", expand=True, padx=(self._px(10), 0))
+        return outer, inner
+
+    def _note_label(self, parent: tk.Misc, text: str = "", *, strong: bool = False
+                    ) -> tk.Label:
+        label = tk.Label(parent, text=text, background=THEME["editor.background"],
+                         foreground=THEME["foreground"], justify="left", anchor="w",
+                         wraplength=self._px(520),
+                         font=self.win.fonts["bodyStrong" if strong else "body"])
+        label.pack(anchor="w", fill="x")
+        return label
+
+    def _build_schemes(self, body: ttk.Frame) -> None:
+        """The unknown-id note (when ``preset`` names no scheme), the cards, Apply, and the
+        Custom colors kept note (when ``[theme]`` sets colors a scheme would)."""
+        px = self._px
+        use = scm.in_use(self.found)
+        if self.scheme_pick is None:
+            self.scheme_pick = use or DEFAULT_SCHEME
+        self.scheme_unknown, inner = self._note_box(body, ROLES["warning"])
+        self.scheme_unknown_label = self._note_label(inner)
+        self.scheme_cards = SchemeCards(
+            body, scm.cards(), scale=self.scale, fonts=self.win.fonts,
+            selected=self.scheme_pick, in_use=use, on_select=self.select_scheme,
+            on_apply=self.apply_scheme)
+        self.scheme_cards.widget.pack(fill="x", pady=(px(8), 0))
+        self.scheme_apply = ttk.Button(body, text="",
+                                       command=lambda: self.apply_scheme(self.scheme_pick))
+        self.scheme_apply.pack(anchor="w", pady=(px(12), 0))
+        self.scheme_note, inner = self._note_box(body, THEME["info"])
+        self._note_label(inner, scm.NOTE_HEADING, strong=True)
+        self.scheme_note_body = self._note_label(inner)
+        self.scheme_clear = ttk.Button(inner, text=scm.CLEAR, style="Secondary.TButton",
+                                       command=self.clear_my_colors)
+        self.scheme_clear.pack(anchor="w", pady=(px(6), px(2)))
+        self._show_schemes()
+
+    def _show_schemes(self) -> None:
+        """The page's state from the open text: "In use", Apply, and the two notes."""
+        cards = self.scheme_cards
+        if cards is None or not cards.widget.winfo_exists():
+            return
+        use = scm.in_use(self.found)
+        if self.scheme_pick is None:
+            self.scheme_pick = use or DEFAULT_SCHEME
+        cards.set_state(self.scheme_pick, use)
+        self.scheme_apply.configure(
+            text=scm.APPLY.format(name=SCHEMES[self.scheme_pick].name),
+            state="disabled" if self.scheme_pick == use else "normal")
+        unknown = scm.unknown_text(self.found)
+        if unknown is not None:
+            self.scheme_unknown_label.configure(text=unknown)
+            self.scheme_unknown.pack(fill="x", pady=(0, self._px(8)), before=cards.widget)
+        else:
+            self.scheme_unknown.pack_forget()
+        custom = scm.custom_colors(self.found)
+        if custom:
+            self.scheme_note_body.configure(text=scm.note_body(len(custom)))
+            self.scheme_note.pack(fill="x", pady=(self._px(16), 0))
+        else:
+            self.scheme_note.pack_forget()
+
+    def select_scheme(self, id_: str) -> None:
+        """A card was picked: show it and ask for its still (nothing is written)."""
+        self.scheme_pick = id_
+        self._show_schemes()
+        if self.shown:
+            self._schedule_preview()
+
+    def apply_scheme(self, id_: str | None) -> bool:
+        """Apply (Enter, a double-click): write ``[theme] preset`` as one undo step; the
+        scheme in use writes nothing."""
+        text = self.config_text()
+        if text is None or id_ is None:
+            self.refresh()
+            return False
+        self.scheme_pick = id_
+        if id_ == scm.in_use(self.found):
+            self.refresh()
+            return True
+        field = sm.fields_by_path()[scm.PATH]
+        return self._apply(tomlpatch.plan_set(text, *scm.apply_change(id_)), field)
+
+    def clear_my_colors(self) -> bool:
+        """Clear my colors: ask, then remove every color the note counts as one undo
+        step."""
+        custom = scm.custom_colors(self.found)
+        text = self.config_text()
+        if not custom or text is None:
+            self.refresh()
+            return False
+        if ask(self.root, scm.confirm_text(len(custom)), scm.CONFIRM_BUTTONS,
+               escape=1) != 0:
+            return False
+        field = sm.fields_by_path()[custom[0]]
+        return self._apply(tomlpatch.plan_changes(text, scm.clear_changes(self.found)),
+                           field)
+
     def _build_more(self) -> None:
         """All settings: the next few sections, then the rest on later idle steps (each
         section is its own grid, so adding one doesn't lay the others out again)."""
@@ -754,8 +881,8 @@ class SettingsPane:
         if spec.kind == "toggle":
             return ToggleField(parent, "", bool(value), on_change=change)
         if spec.kind == "choice":
-            return ChoiceField(parent, [(o, o.replace("_", " ").capitalize())
-                                        for o in spec.options], value, on_change=change)
+            return ChoiceField(parent, [(o, spec.option_text(o)) for o in spec.options],
+                               value, on_change=change)
         if spec.kind == "color":
             return ColorField(parent, value if isinstance(value, str) else None,
                               on_change=change, allow_none=found.default is None,
@@ -935,11 +1062,19 @@ class SettingsPane:
         """Ask for a still ``PREVIEW_DELAY_MS`` after the last change (only when the text
         or the page changed since the last still)."""
         kind = self.page.preview
-        if not kind or self.text is None or self._previewed == (kind, self.text):
+        if not kind or self.text is None or \
+                self._previewed == (kind, self._still_text(self.text)):
             return
         self._cancel_preview()
         self._set_status(UPDATING)
         self._preview_id = self.root.after(PREVIEW_DELAY_MS, self._ask_still)
+
+    def _still_text(self, text: str) -> str:
+        """The config text a still is drawn from: on Color scheme, ``text`` with the picked
+        scheme planned but not applied (F49 §4), else ``text``."""
+        if self.page.key == sm.SCHEMES and self.scheme_pick is not None:
+            return scm.preview_text(text, self.scheme_pick)
+        return text
 
     def _cancel_preview(self) -> None:
         if self._preview_id is not None:
@@ -952,7 +1087,7 @@ class SettingsPane:
         record = self._record()
         if not kind or not record.editable or self.win.closed:
             return
-        text = record.widget.get("1.0", "end-1c")
+        text = self._still_text(record.widget.get("1.0", "end-1c"))
         try:
             data = encode(record.doc, text)
         except SaveError:

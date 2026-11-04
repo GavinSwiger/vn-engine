@@ -3933,7 +3933,10 @@ A `[style.<name>]` table (at most 32) is a look the story turns on with
 with a letter, and not `off` or a reserved word. A style may hold `theme` keys of the
 `textbox`, `choice`, `nvl`, and `quick_menu` areas (with their sub-tables, such as
 `[style.ashes.theme.choice.focused]`) and `[style.<name>.words]`. Values follow the same
-rules as `[theme]`. A key the style doesn't set keeps the usual look.
+rules as `[theme]`. A key the style doesn't set keeps the usual look. A style may also
+name a built-in color scheme, `preset = "amber"` under `[style.<name>.theme]`, which
+recolors every box, menu and button except the title screen while the style is on, with
+the style's own keys still winning over it (ui-system.md §3, "Color schemes").
 
 ```toml
 [playthrough.2]
@@ -4214,3 +4217,4 @@ story goes on after a warning.
   words, E339, E340, W223, W224).
 - 2026-11-03: "lock track (music room)" and "lock achievement (achievements)" name the
   example game's three tracks and four achievements.
+- 2026-11-04: F49 W1: Dynamic UI, Styles: a style may name a color scheme (`preset`).

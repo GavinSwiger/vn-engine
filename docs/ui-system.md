@@ -259,9 +259,10 @@ a separate table (F10 OQ-2).
 
 **Looks that change at run time (F32).** A `[playthrough.N]` table (title tokens, words,
 `title_entries`) and a `[style.<name>]` table (`textbox`, `choice`, `nvl`, `quick_menu`
-tokens and words) are layers over `[theme]`: a token is looked up in the current style,
-then the chosen playthrough look, then `[theme]`, then the default
-(script-language.md, "Dynamic UI"). `GameShell.theme` is a property that follows the
+tokens and words, and a color scheme `preset`) are layers over `[theme]`. Lookup order
+for a token: style (own tokens, then its scheme) → playthrough table → `[theme]` tokens →
+`[theme] preset`'s scheme → engine default. See script-language.md, "Dynamic UI", and
+the color schemes below. `GameShell.theme` is a property that follows the
 current look, so screens read their tokens through it each time and never keep an old
 theme; a look is built once per combination and never changed in place. Player settings
 win over every layer: F16's text size scales the looked-up size (a style's 40 at 150 % is
@@ -269,6 +270,42 @@ capped at 48), and reduce motion turns every fade into a cut. On a `ui style` sw
 text box's colors and frame change on the shown box at once and its text with the next
 line; the quick menu takes the whole style at once. Error screens and F30's fake crash
 never use a look.
+
+**Color schemes (F49).** `[theme] preset = "<id>"` picks one of six built-in schemes,
+which sets every mapped color token to its role's color (Studio: Game settings > Color
+scheme). Colors you set under `[theme]` still win: the scheme layer sits under the
+`[theme]` tokens in the lookup order above. A scheme sets colors only, never fonts, sizes,
+opacities, frame images or sounds. A style may name its own scheme
+(`[style.<name>.theme] preset`), which sets every mapped color except `title.*` while the
+style is on, under the style's own tokens; `ui style off` returns to the main look.
+`preset = "sakura"` is the same as no preset. An unknown id gives one config warning
+(with a did-you-mean) and the engine colors show.
+
+| id | Name | fill | text | border | accent | accent2 | soft | focus | pressed | muted | track | toggle |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `sakura` | Sakura | #FFF4F8 | #3D2B36 | #F0A0C0 | #A02860 | #A02860 | #FFE6F0 | #FFD6E8 | #FFC2DC | #6E5E68 | #C8B8C2 | #7E5C74 |
+| `pocket` | Pocket LCD | #9BBC0F | #0F380F | #306230 | #0F380F | #0F380F | #8BAC0F | #C4D96A | #8BAC0F | #244A24 | #8BAC0F | #306230 |
+| `amber` | Amber Terminal | #140C02 | #FFB000 | #9A6800 | #FFCC00 | #FFCC00 | #2A1A04 | #3A2604 | #4A3006 | #B07A14 | #3A2604 | #9A6800 |
+| `synthwave` | Synthwave Sunset | #262335 | #F2E9FF | #CA7CD8 | #FF68A8 | #64CFF7 | #34294F | #3D2E5C | #4A3570 | #9A90B4 | #4A3F66 | #5A4A7A |
+| `vaporwave` | Vaporwave Dream | #FBE6F8 | #3A2B5C | #9F63C4 | #674AB3 | #137566 | #C6F5F2 | #C6F5F2 | #A8EDE6 | #6E5E82 | #D8C8E8 | #9F63C4 |
+| `groovy` | Groovy '70s | #F3E6C8 | #3B2416 | #D08A1E | #9E3A12 | #2F6F6A | #F2D49B | #F2D49B | #E8C07A | #6E5848 | #D9C9A8 | #8A6A4A |
+
+- **Mapped tokens** (64) take a role's color, for example `fill` sets every area's
+  `fill_color`, `accent` the markers, headings and slider fill. The full role → token map
+  is `engine/core/schemes.py` (`ROLE_TOKENS`). Sakura also sets a few single tokens to
+  today's defaults, so it equals the engine colors exactly.
+- **Following tokens** (18) are left unset and keep following another token: `nvl.*`,
+  `notice.*`, `codex.*`, the flowchart's text, gate, unknown, path and "here" colors, and
+  `minigame.fill_*`.
+- **Neutral tokens** (6) are never set: `stage.empty_color`, `effects.flash_color`,
+  `effects.fade_color`, `gallery.viewer.fill_color`, `menu.dim_color` and
+  `title.loading.text_color`.
+- Every new color token joins one of these groups.
+- **Contrast warnings.** The non-Sakura schemes give some dev-run W67 contrast warnings
+  (accepted, F49 D1). When both colors of a W67 pair come from the scheme, the warning
+  ends with one more sentence: ` Both colors come from the {name} color scheme.` (a style's
+  warnings name the style's scheme, else the main one). If either color is yours, it is
+  left out.
 
 ### Token list
 
@@ -1088,3 +1125,7 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
   look, player settings winning, what changes at once on a style switch).
 - 2026-11-03: F36 W5: the Extras paragraph gains the Endings and Scenes pages (no new
   tokens) and the game menu during a replay.
+- 2026-11-04: F49 W1: color schemes under "Where authors set them": `[theme] preset` and a
+  style's `preset`, the lookup order with the scheme layer (as architecture "Looks"), the
+  six-scheme table, the mapped, following and neutral token groups, and W67's scheme
+  sentence.
