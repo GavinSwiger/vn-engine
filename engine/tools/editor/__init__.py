@@ -7,6 +7,7 @@ inside ``run_editor``, so ``document`` and ``syntax`` stay importable without Tk
 
 import sys
 from pathlib import Path
+from typing import Any
 
 NO_DISPLAY = "The editor needs a desktop session; no display was found."
 _NO_TK_LINUX = ("The editor needs Tkinter. Install your system's python3-tk package "
@@ -59,6 +60,43 @@ def edit_command(game_dir: Path | str) -> int:
     return run_editor(game_dir)
 
 
+TK_CALLBACK_HEAD = "Exception in Tkinter callback\n"
+
+
+def report_exception(exc_type: type[BaseException], exc: BaseException, tb: Any, *,
+                     head: str = "") -> None:
+    """Print an uncaught exception's traceback to stderr through ``redact()`` (F48
+    SEC-F48-14, AB-11: a Studio traceback never shows a saved API key, the user's name or
+    their home folder). Studio has no log file, so stderr is where these go."""
+    import traceback
+
+    from engine.core.redact import redact
+    try:
+        text = head + "".join(traceback.format_exception(exc_type, exc, tb))
+        sys.stderr.write(redact(text))
+        sys.stderr.flush()
+    except Exception:                       # noqa: BLE001  (no stderr: nothing to do)
+        pass
+
+
+def install_error_hooks(root: Any) -> None:
+    """Studio's three places an uncaught exception is printed (a Tk callback, the main
+    thread, another thread) all go through ``report_exception``."""
+    import threading
+
+    root.report_callback_exception = (
+        lambda exc_type, exc, tb: report_exception(exc_type, exc, tb, head=TK_CALLBACK_HEAD))
+    sys.excepthook = report_exception
+
+    def thread_hook(args: threading.ExceptHookArgs) -> None:
+        if args.exc_type is not SystemExit and args.exc_value is not None:
+            name = args.thread.name if args.thread is not None else "?"
+            report_exception(args.exc_type, args.exc_value, args.exc_traceback,
+                             head=f"Exception in thread {name}:\n")
+
+    threading.excepthook = thread_hook
+
+
 def run_editor(game_dir: Path | str) -> int:
     """Open the editor on ``game_dir`` and run it until the window closes. Returns the
     process exit code: 0, or 1 after printing one line to stderr when Tk, the display, or
@@ -87,6 +125,7 @@ def run_editor(game_dir: Path | str) -> int:
         return 1
     from engine.tools.editor.window import EditorWindow
 
+    install_error_hooks(root)
     try:
         EditorWindow(root, paths)
         root.mainloop()
