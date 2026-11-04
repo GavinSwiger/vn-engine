@@ -51,12 +51,14 @@ class StudioState:
     played: bool = False
     sample: bool = False
     assistant_open: bool = False    # F48 (04 §10): the Assistant pane is shown
+    follow_changes: bool = False    # F58 (ADR-0008 Am. 6 §4): the map scrolls to changes
+    reduce_motion: bool = False     # F58: View ▸ Reduce motion (the glow is static)
 
 
 KEYS: Final = tuple(f.name for f in fields(StudioState))
 # Written only when true (missing means false), so a game whose author never opened the
 # Assistant pane keeps its bytes.
-OPTIONAL_KEYS: Final = frozenset({"assistant_open"})
+OPTIONAL_KEYS: Final = frozenset({"assistant_open", "follow_changes", "reduce_motion"})
 
 
 @dataclass(frozen=True, slots=True)

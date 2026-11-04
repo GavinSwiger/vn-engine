@@ -158,6 +158,10 @@ THEME: dict[str, str] = {
     "map.chipIf": "#569CD6",                # F46: a conditional choice's "if" (syntax.keyword)
     "map.selected": _R["accent"],           # F46: a selected box or arrow, a drop target and
     "map.handle": _R["muted"],              # the arrow-drag line; the arrow handle (01 §6.1)
+    # F58 (01 §6.2): what changed glows; a pending card's preview adds and removes.
+    "map.changed": _R["success"],           # glow outline and ghosts (fades to the border)
+    "map.preview": "#4FC1FF",               # a card's proposed boxes and arrows (dashed)
+    "map.previewRemove": "#F48771",         # what the card would remove (dashed, struck)
 }
 
 TEXT_MIN = 4.5                              # WCAG AA for text
@@ -243,6 +247,13 @@ CONTRAST_PAIRS: tuple[tuple[str, str, float], ...] = (
     ("map.chipText", "map.chip", TEXT_MIN),                         # F46 choice chips
     ("map.chipIf", "map.chip", TEXT_MIN),
     ("map.link", "map.chip", GRAPHIC_MIN),
+    # F58 (AC-F58-37): the glow and the preview on the surface and on a box.
+    ("map.changed", "editor.background", GRAPHIC_MIN),
+    ("map.changed", "map.box", GRAPHIC_MIN),
+    ("map.preview", "editor.background", GRAPHIC_MIN),
+    ("map.preview", "map.box", GRAPHIC_MIN),
+    ("map.previewRemove", "editor.background", GRAPHIC_MIN),
+    ("map.previewRemove", "map.box", GRAPHIC_MIN),
 )
 
 STATUS_BAR_PX = 22                          # at 100 % scaling (96 dpi)
@@ -575,7 +586,56 @@ def dark_title_bar(window: object) -> None:
         return
 
 
+def blend(color: str, toward: str, share: float) -> str:
+    """``#RRGGBB`` that is ``share`` of ``color`` and the rest ``toward`` (F58's glow fade
+    steps: ``map.changed`` into the box's own border)."""
+    a, b = color.lstrip("#"), toward.lstrip("#")
+    mixed = (round(int(a[i:i + 2], 16) * share + int(b[i:i + 2], 16) * (1 - share))
+             for i in (0, 2, 4))
+    return "#" + "".join(f"{max(0, min(255, v)):02X}" for v in mixed)
+
+
+SPI_GETCLIENTAREAANIMATION = 0x1042
+_DEFAULTS = "/usr/bin/defaults"
+_LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+
+
+def os_reduce_motion(platform: str = sys.platform) -> bool:
+    """Whether the OS asks for less animation (F58 PR-12; ADR-0008 Amendment 6 §1). The only
+    caller of the two OS reads: Windows ``SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION)``
+    (``user32`` from System32, declared argument and return types; animation off means
+    reduce); macOS ``/usr/bin/defaults read com.apple.universalaccess reduceMotion`` (an
+    argument list, no shell, stdin closed, ``LC_ALL``/``LANG`` C, ``procs.child_env``, 1 s).
+    Elsewhere, on any error or timeout: False. Imports happen here, so importing ``theme``
+    stays side-effect free; read once per window, off the Tk thread, never logged."""
+    try:
+        if platform == "win32":
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.WinDLL("user32",          # type: ignore[attr-defined]
+                                   winmode=_LOAD_LIBRARY_SEARCH_SYSTEM32)
+            spi = user32.SystemParametersInfoW
+            spi.argtypes = [wintypes.UINT, wintypes.UINT, ctypes.c_void_p, wintypes.UINT]
+            spi.restype = wintypes.BOOL
+            animate = wintypes.BOOL(1)
+            if not spi(SPI_GETCLIENTAREAANIMATION, 0, ctypes.byref(animate), 0):
+                return False
+            return not animate.value
+        if platform == "darwin":
+            import subprocess
+            from engine.tools.build import procs
+            env = {**procs.child_env(), "LC_ALL": "C", "LANG": "C"}
+            done = subprocess.run([_DEFAULTS, "read", "com.apple.universalaccess",
+                                   "reduceMotion"], stdin=subprocess.DEVNULL,
+                                  capture_output=True, env=env, timeout=1, shell=False,
+                                  check=False)
+            return done.returncode == 0 and done.stdout.strip() in (b"1", b"true")
+    except Exception:                       # noqa: BLE001 (an OS read never stops Studio)
+        return False
+    return False
+
+
 __all__ = ["CONTRAST_PAIRS", "FONT_STACKS", "GRAPHIC_MIN", "MENU_BAR_PX", "ROLES",
-           "STATUS_BAR_PX", "TEXT_MIN", "THEME", "TYPE_SCALE", "contrast",
-           "dark_title_bar", "declare_dpi_awareness", "font_families", "luminance",
-           "make_fonts", "scale_of", "style_ttk"]
+           "SPI_GETCLIENTAREAANIMATION", "STATUS_BAR_PX", "TEXT_MIN", "THEME", "TYPE_SCALE",
+           "blend", "contrast", "dark_title_bar", "declare_dpi_awareness", "font_families",
+           "luminance", "make_fonts", "os_reduce_motion", "scale_of", "style_ttk"]
