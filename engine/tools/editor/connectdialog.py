@@ -125,8 +125,12 @@ def snippets(python: Path | str, engine: Path | str, game: Path | str, *,
     python, engine, game = str(python), str(engine), Path(game)
     name = server_name(game)
     flag = "" if write else f" {READ_ONLY}"
-    claude_code = (f"claude mcp add {name} -e PYTHONPATH={quoted(engine, windows=windows)} -- "
-                   f"{quoted(python, windows=windows)} -P -m engine assist-mcp "
+    # PowerShell drops a bare -- before claude sees it, and claude then reads -P as its own
+    # option; a quoted "--" reaches claude from PowerShell and cmd alike.
+    dashes = quoted("--", windows=True) if (os.name == "nt" if windows is None else windows) \
+        else "--"
+    claude_code = (f"claude mcp add {name} -e PYTHONPATH={quoted(engine, windows=windows)} "
+                   f"{dashes} {quoted(python, windows=windows)} -P -m engine assist-mcp "
                    f"{quoted(str(game), windows=windows)}{flag}")
     desktop = desktop_config(name, python, server_args(game, write=write), engine)
     other = (f"Command: {python}\n"

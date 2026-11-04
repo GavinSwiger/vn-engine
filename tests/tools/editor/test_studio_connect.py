@@ -29,7 +29,7 @@ def test_snippets_follow_01_section_6_5():
     shown = cd.snippets(PYTHON, ENGINE, GAME, windows=True)
     assert shown.server == "vn-lantern-night"
     assert shown.claude_code == (
-        f'claude mcp add vn-lantern-night -e PYTHONPATH="{ENGINE}" -- "{PYTHON}" -P -m engine '
+        f'claude mcp add vn-lantern-night -e PYTHONPATH="{ENGINE}" "--" "{PYTHON}" -P -m engine '
         f'assist-mcp "{GAME}"')
     assert json.loads(shown.claude_desktop) == {"mcpServers": {"vn-lantern-night": {
         "command": str(PYTHON), "args": ["-P", "-m", "engine", "assist-mcp", str(GAME)],
