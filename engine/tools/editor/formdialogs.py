@@ -78,6 +78,12 @@ OPTIONS = "Options"
 OPTION_TEXT = "Text"
 OPTION_WHEN = "Only show when"
 OPTION_GOES = "Goes to"
+# F51 (01 §7.1): the Choice form's Time limit section.
+TIME_LIMIT = "Time limit"
+GIVE_THE_PLAYER = "Give the player"
+SECONDS = "seconds"
+TIMEOUT_PICK = "When time runs out, pick"
+TIMEOUT_TEXT_CHARS = 30                        # an option's text in the pick-list, then "…"
 ADD = "Add"
 REMOVE = "Remove"
 UP = "Up"
@@ -831,6 +837,7 @@ class ChoiceDialog:
             button = ttk.Button(tools, text=label, command=command, style="Secondary.TButton")
             button.pack(side="left", padx=(0, gap))
             self.tool_buttons[label] = button
+        self._time_section(body, values)
         self.problem = ttk.Label(body, text="", style="Dialog.TLabel")
         self.lines_caption = ttk.Label(body, text=LINES_CAPTION, style="Dialog.Hint.TLabel")
         self.lines_caption.pack(anchor="w", pady=(round(16 * scale), round(4 * scale)))
@@ -839,9 +846,104 @@ class ChoiceDialog:
         self.buttons = dialogs._buttons(dialog, body, (ok, CANCEL), self._pick)
         dialog.bind("<Escape>", lambda _e: self._pick(1))
         dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
-        for var in (self.speaker, self.look, self.question):
+        for var in (self.speaker, self.look, self.question, self.seconds):
             var.trace_add("write", lambda *_a: self._changed())
+        self.timed.trace_add("write", lambda *_a: self._timed_changed())
+        self.timeout_var.trace_add("write", lambda *_a: self._timeout_picked())
         self._changed()
+
+    # -- F51: the time limit (01 §7.1) --
+
+    def _time_section(self, body: ttk.Frame, values: ChoiceValues) -> None:
+        """Time limit: Give the player [N] seconds, and When time runs out, pick [n. "…"].
+        Unticked, the seconds field and the pick-list are disabled. The pick follows its
+        option (a row), so reordering keeps it and removing it clears it."""
+        dialog, scale, gap = self.dialog, self.scale, self.gap
+        self.time_text = values.time               # as read: an unchanged form writes it back
+        self.timed = tk.BooleanVar(dialog, value=bool(values.time))
+        self.seconds = tk.StringVar(dialog, value=values.time or forms.TIME_DEFAULT)
+        self.timeout_row: dict | None = next(
+            (row for row in self.items if row["item"].timeout), None) if values.time else None
+        self.timeout_var = tk.StringVar(dialog)
+        self._timeout_quiet = False
+        heading = ttk.Label(body, text=TIME_LIMIT, style="Dialog.TLabel", font=_strong(dialog))
+        heading.pack(anchor="w", pady=(round(16 * scale), 0))
+        line = ttk.Frame(body, style="Dialog.TFrame")
+        line.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
+        self.timed_box = ttk.Checkbutton(line, text=GIVE_THE_PLAYER, variable=self.timed,
+                                         style="Dialog.TCheckbutton")
+        self.timed_box.pack(side="left")
+        self.tips["time"] = field_tip(self.timed_box, forms.CHOICE_FORM, "time")
+        self.seconds_box = ttk.Spinbox(line, textvariable=self.seconds, from_=1, to=60,
+                                       increment=0.5, width=6)
+        self.seconds_box.pack(side="left", padx=(gap, gap))
+        ttk.Label(line, text=SECONDS, style="Dialog.TLabel").pack(side="left")
+        pick = ttk.Frame(body, style="Dialog.TFrame")
+        pick.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
+        label = ttk.Label(pick, text=TIMEOUT_PICK, style="Dialog.TLabel")
+        label.pack(side="left", padx=(round(24 * scale), gap))
+        self.tips["timeout"] = field_tip(label, forms.CHOICE_FORM, "timeout")
+        self.timeout_box = ttk.Combobox(pick, textvariable=self.timeout_var, width=36,
+                                        state="readonly")
+        self.timeout_box.pack(side="left")
+
+    def timeout_names(self) -> list[str]:
+        """The pick-list: every option as ``n. "text"`` (text cut to 30 characters)."""
+        out = []
+        for n, row in enumerate(self.items, 1):
+            text = row["text"].get()
+            if len(text) > TIMEOUT_TEXT_CHARS:
+                text = text[:TIMEOUT_TEXT_CHARS - 1] + "…"
+            out.append(f'{n}. "{text}"')
+        return out
+
+    def _timed_changed(self) -> None:
+        if self.timed.get() and self.timeout_row is None:
+            index = forms.default_timeout(self.values())
+            self.timeout_row = None if index is None else self.items[index]
+        self._changed()
+
+    def _timeout_picked(self) -> None:
+        if self._timeout_quiet:
+            return
+        names = self.timeout_names()
+        picked = self.timeout_var.get()
+        self.timeout_row = self.items[names.index(picked)] if picked in names else None
+        self._changed()
+
+    def _sync_time(self) -> None:
+        """The Time limit widgets from the state: enabled, the list and its selection."""
+        on = bool(self.timed.get())
+        self.seconds_box.state(["!disabled"] if on else ["disabled"])
+        self.timeout_box.state(["!disabled", "readonly"] if on else ["disabled"])
+        names = self.timeout_names()
+        self.timeout_box.configure(values=names)
+        row = self.timeout_row
+        shown = names[self.items.index(row)] if row in self.items else ""
+        if self.timeout_var.get() != shown:
+            self._timeout_quiet = True
+            try:
+                self.timeout_var.set(shown)
+            finally:
+                self._timeout_quiet = False
+
+    def _time_value(self) -> str:
+        """The seconds as the script will read them: as read when the number is the same,
+        else ``f"{v:g}"``; text that isn't a number is kept (the problem line names it)."""
+        if not self.timed.get():
+            return ""
+        text = self.seconds.get().strip()
+        try:
+            value = float(text)
+        except ValueError:
+            return text
+        if self.time_text:
+            try:
+                if float(self.time_text) == value:
+                    return self.time_text
+            except ValueError:
+                pass
+        return f"{value:g}"
 
     def _add_row(self, item: ChoiceItem) -> None:
         dialog = self.dialog
@@ -903,6 +1005,8 @@ class ChoiceDialog:
                 other["widgets"][0].configure(text="▸" if n == self.chosen else "")
 
     def values(self) -> ChoiceValues:
+        timed = bool(getattr(self, "timed", None) is not None and self.timed.get())
+        timeout_row = getattr(self, "timeout_row", None)
         out = []
         for row in self.items:
             item: ChoiceItem = row["item"]
@@ -913,9 +1017,10 @@ class ChoiceDialog:
                 goes = None if goes_text in ("", forms.CONTINUES) else goes_text
                 in_text = False
             out.append(ChoiceItem(row["text"].get(), row["when"].get().strip(), goes,
-                                  in_text, item.old))
+                                  in_text, item.old, timeout=timed and row is timeout_row))
         return ChoiceValues(self.speaker.get().strip(), self.look.get().strip(),
-                            self.question.get(), tuple(out))
+                            self.question.get(), tuple(out),
+                            self._time_value() if timed else "")
 
     def preview(self) -> str:
         try:
@@ -932,6 +1037,17 @@ class ChoiceDialog:
         full = len(self.items) >= forms.MENU_MAX_CHOICES
         self.tool_buttons[ADD].state(["disabled"] if full else ["!disabled"])
         self.tool_buttons[REMOVE].state(["!disabled"] if self.items else ["disabled"])
+        self._sync_time()
+        # F51: the time limit's problem shows in the problem line; OK waits while it does.
+        problem = forms.choice_problems(self.values())
+        self.time_problem = problem
+        if problem is not None:
+            self._problem(problem)
+        elif self.problem.cget("text") in (forms.TIMEOUT_PICK_TEXT,
+                                           forms.TIMEOUT_CONDITION_TEXT,
+                                           forms.TIME_RANGE_TEXT):
+            self._problem("")
+        self.buttons[0].state(["disabled"] if problem is not None else ["!disabled"])
 
     def add(self) -> None:
         if len(self.items) >= forms.MENU_MAX_CHOICES:
@@ -957,6 +1073,8 @@ class ChoiceDialog:
         if not self.items:
             return
         row = self.items.pop(self.chosen)
+        if row is self.timeout_row:                # F51: removing it clears the pick
+            self.timeout_row = None
         for widget in row["widgets"]:
             widget.destroy()
         self._problem("")
@@ -977,7 +1095,10 @@ class ChoiceDialog:
             if not self.items:
                 self._problem(forms.CHOICE_EMPTY_TEXT)
                 return
-            self.result = self.values()
+            values = self.values()
+            if forms.choice_problems(values) is not None:   # F51: OK is disabled meanwhile
+                return
+            self.result = values
         self.dialog.destroy()
 
     def run(self, parent: tk.Misc) -> ChoiceValues | None:
