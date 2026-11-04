@@ -62,7 +62,7 @@ def small_bench(root: Path) -> Path:
 
 def copy_example(dest: Path) -> Path:
     """``game/`` without its logs, with the title skipped so the story starts at once."""
-    shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     with (dest / "config.toml").open("a", encoding="utf-8") as f:
         f.write("\n[title]\nenabled = false\n")
     answer_name_question(dest)               # F30 s6: no first-launch name question

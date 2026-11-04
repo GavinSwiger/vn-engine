@@ -481,7 +481,7 @@ def test_ac33_the_check_runs_in_slices_while_loading(tmp_path, caplog):
 
 def test_ac47_the_example_game_launches_without_warnings(tmp_path, caplog):
     root = tmp_path / "game"
-    shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     assert launch_warnings(root, caplog) == []
     caplog.clear()
     program = load_story(GamePaths.for_game(root)).program

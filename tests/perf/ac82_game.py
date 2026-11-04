@@ -54,7 +54,7 @@ def make(dest: Path) -> tuple[Path, int]:
     """Copy ``game/`` to ``dest`` and add the stuck line; returns (file, line number)."""
     if dest.exists():
         raise SystemExit(f"{dest} already exists; give a new folder")
-    shutil.copytree(ROOT / "game", dest, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(ROOT / "game", dest, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     result = _load(dest)
     if result.program is None:
         raise SystemExit("the example game doesn't load: " + "; ".join(

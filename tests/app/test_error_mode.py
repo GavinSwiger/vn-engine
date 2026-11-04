@@ -462,7 +462,7 @@ def test_release_run_falls_back_to_the_game_folder_then_console(tmp_path, user_r
 @pytest.mark.parametrize("where", ["update", "draw"])
 def test_engine_exception_in_the_example_game(tmp_path, user_roots, session, channels, where):
     game = tmp_path / "game"
-    shutil.copytree(REPO / "game", game, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(REPO / "game", game, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     # The load screen slices by wall-clock time (SCRIPT_LOAD_SLICE_S on time.perf_counter,
     # not the fake clock), so the hand-over to the title (``replace_all``, which drops any
     # screen pushed above the load screen) lands on frame 2 or 3 depending on machine speed.

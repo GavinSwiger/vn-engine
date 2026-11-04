@@ -236,7 +236,7 @@ def test_ac43_the_story_map_view(studio, studio_game):
 
     ed.press(ed.text, "<Control-Key-2>")
     view.focus_box(start)
-    ed.press(canvas, "<Right>")                          # Right: a column-1 box
+    ed.press(canvas, "<Control-Right>")                  # Ctrl+Right: a column-1 box
     assert m.boxes[view.focused].column == 1
     ring = canvas.coords(view.ring)
     x0, y0, x1, y1 = canvas.coords(f"rect{view.focused}")

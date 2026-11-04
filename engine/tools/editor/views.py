@@ -672,6 +672,10 @@ CHIP_PAD_Y = 1                          # 18 high: it fits the 20 px row gap
 CHIP_FONT_PX = 12                       # ``small`` at 100 % zoom
 DRAG_START_PX = 4                       # F46: a press moves this far before it drags a box
 BIG_STEP = 5                            # F46: Shift+Alt+arrows move PLACE_STEP × this
+# Ctrl, plus Alt (Windows 0x20000, X11 Mod1) or Cmd/Option (macOS Mod1/Mod2): a W A S D
+# press with one of these held is a shortcut, not a map scroll. NumLock (Windows Mod1,
+# X11 Mod2) is left out.
+CHORD_STATE = 0x4 | {"win32": 0x20000, "darwin": 0x8 | 0x10}.get(sys.platform, 0x8)
 TIDY_UP = "Tidy up"                     # F46 design §6.2 toolbar; one map step
 MOVE_TITLE = "Move box"
 NEW_SCENE_BUTTON = "+ New scene"        # F46 design §6.1 toolbar
@@ -907,13 +911,19 @@ class StoryMapView:
         self.back: int | None = None
 
         canvas = self.canvas
+        # Arrows and W A S D scroll the map (Shift: further); Ctrl+arrows go from box to
+        # box (the keyboard way to reach a box); in Move box mode the arrows move the box.
         for key, way in (("<Left>", "left"), ("<Right>", "right"), ("<Up>", "up"),
                          ("<Down>", "down")):
             canvas.bind(key, lambda _e, w=way: self._arrow(w))
             canvas.bind(f"<Shift-{key[1:]}", lambda _e, w=way: self._arrow(w, big=True))
+            canvas.bind(f"<{mod}-{key[1:]}", lambda _e, w=way: self._hop(w))
             # Alt+arrows move the box; no "break", so the menu bar sees Alt wasn't alone.
             canvas.bind(f"<Alt-{key[1:]}", lambda _e, w=way: self.nudge(w))
             canvas.bind(f"<Shift-Alt-{key[1:]}", lambda _e, w=way: self.nudge(w, big=True))
+        for letter, way in (("w", "up"), ("a", "left"), ("s", "down"), ("d", "right")):
+            canvas.bind(f"<Key-{letter}>", lambda e, w=way: self._pan_key(e, w))
+            canvas.bind(f"<Key-{letter.upper()}>", lambda e, w=way: self._pan_key(e, w, True))
         canvas.bind("<Tab>", self._tab)
         for key in ("<Shift-Tab>", "<ISO_Left_Tab>"):
             try:
@@ -1584,10 +1594,33 @@ class StoryMapView:
             x, y = self._shifted.get(self.moving.box, self.moving.origin)
             self._show_at(self.moving.box, (max(0, x + dx * step), max(0, y + dy * step)))
             return "break"
-        if self.layout is not None and self.focused is not None:
-            found = neighbour(self.layout, self.focused, way)
-            if found is not None:
-                self.focus_box(found)
+        return self.pan(way, big)
+
+    def pan(self, way: str, big: bool = False) -> str:
+        """Scroll the map a tenth of the view that way (``BIG_STEP`` tenths with Shift)."""
+        dx, dy = _STEPS[way]
+        units = BIG_STEP if big else 1
+        if dx:
+            self.canvas.xview_scroll(dx * units, "units")
+        if dy:
+            self.canvas.yview_scroll(dy * units, "units")
+        return "break"
+
+    def _pan_key(self, event: tk.Event, way: str, big: bool = False) -> str | None:
+        """W A S D; a Ctrl, Alt or Cmd chord (Ctrl+S saves) goes on to its own binding."""
+        if int(event.state) & CHORD_STATE:
+            return None
+        return self.pan(way, big)
+
+    def _hop(self, way: str) -> str:
+        """Ctrl+arrows: focus the next box that way (the first box if none is focused)."""
+        if self.layout is not None:
+            if self.focused is None:
+                self._ensure_focus()
+            else:
+                found = neighbour(self.layout, self.focused, way)
+                if found is not None:
+                    self.focus_box(found)
         return "break"
 
     def _tab(self, _event: tk.Event | None = None, step: int = 1) -> str:

@@ -17,8 +17,9 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def _editor_text(data: bytes) -> str:
-    """The editor's text for LF file bytes: no final break."""
-    text = data.decode("utf-8")
+    """The editor's text for file bytes: LF breaks (a Windows checkout has CRLF), no final
+    break."""
+    text = data.decode("utf-8").replace("\r\n", "\n")
     return text[:-1] if text.endswith("\n") else text
 
 

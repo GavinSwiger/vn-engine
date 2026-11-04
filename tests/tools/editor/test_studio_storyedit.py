@@ -1345,3 +1345,44 @@ def test_ac_f46_43_play_from_this_scene(studio, lanterns, monkeypatch):
     assert len(started) == 1
     argv = started[0]
     assert argv[argv.index("--start") + 1] == "river"
+
+
+def test_arrows_and_wasd_scroll_the_map(studio, lanterns):
+    """User feedback 2026-11-03: arrows and W A S D scroll the map (Shift: further);
+    Ctrl+arrows go from box to box; Ctrl+S still saves with the map focused."""
+    ed = studio_l(studio, lanterns)
+    view, canvas = ed.story_map, ed.map_canvas
+    canvas.configure(width=120, height=80)
+    for _ in range(4):
+        view.zoom_by(1)
+    ed.root.update()
+    take_focus(canvas)
+    x0, y0 = canvas.xview()[0], canvas.yview()[0]
+    ed.press(canvas, "<Right>")
+    x1 = canvas.xview()[0]
+    assert x1 > x0
+    ed.press(canvas, "<Key-a>")
+    assert canvas.xview()[0] < x1
+    region = canvas.cget("scrollregion").split()
+    canvas.configure(scrollregion=(0, 0, region[2], 4000))   # L is one row: make it tall
+    ed.root.update()
+    ed.press(canvas, "<Key-s>")
+    y1 = canvas.yview()[0]
+    assert y1 > y0
+    ed.press(canvas, "<Key-S>")                          # Shift: five steps
+    assert canvas.yview()[0] - y1 > 4 * (y1 - y0) - 1e-6
+    ed.press(canvas, "<Key-w>")
+    assert canvas.yview()[0] < canvas.yview()[1] and canvas.yview()[0] > y1
+
+    saved: list[str] = []
+    ed.win.save_current = lambda: saved.append("save")
+    y2 = canvas.yview()[0]
+    ed.press(canvas, "<Control-s>")
+    assert saved == ["save"] and canvas.yview()[0] == y2
+
+    view.focus_box(None)
+    ed.press(canvas, "<Control-Right>")                  # the first box gets the focus
+    first = view.focused
+    assert first is not None
+    ed.press(canvas, "<Control-Right>")
+    assert view.focused is not None and view.focused != first

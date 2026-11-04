@@ -1989,7 +1989,7 @@ def test_ac_f29_20_the_example_game_uses_each_text_effect(tmp_path, caplog):
     assert advice
 
     root = tmp_path / "game"
-    shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     result = load_story(GamePaths.for_game(root), LoadOptions(
         position_names=position_names(root), minigames=example_minigames()))  # dev load
     assert result.errors == () and result.warnings == (), (result.errors, result.warnings)

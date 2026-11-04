@@ -8,6 +8,8 @@ The basics of the map (box marks, arrow styles, the Outline) are in
 
 ## Boxes
 
+- **Scroll the map:** the arrow keys or W A S D (Shift: further), the mouse wheel, or the
+  scroll bars. Ctrl+arrows go from box to box.
 - **Move a box:** drag it. It snaps to a 20 px grid; hold Shift for no snap. With a box
   chosen, Alt+arrows move it (Shift+Alt: five steps). **Move box** in the **Story** menu moves
   it with the arrow keys; Enter keeps the place and Esc puts it back.

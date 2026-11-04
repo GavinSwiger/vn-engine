@@ -50,7 +50,7 @@ def launch(game: Path, *, bench: float | None = None, log_level: str | None = No
 
 
 def copy_example(dest: Path) -> Path:
-    shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters"))
+    shutil.copytree(REPO / "game", dest, ignore=shutil.ignore_patterns("logs", "characters", "persistent", "saves", "settings"))
     answer_name_question(dest)               # F30 s6: no first-launch name question
     return dest
 
@@ -175,12 +175,12 @@ def test_example_game_without_a_subfolder(tmp_path, user_roots, missing):
             "audio/voice/hana_001.wav", "audio/voice/daichi_001.wav", "audio/voice/hana_002.wav"]
         problems = [r for r in problems if r not in missing_audio and r not in launch_check]
     if missing == "gui":
-        # Without gui/ the title picture, logo, and button frame the example's config.toml
-        # names don't exist: one W64 each (area ui), and the drawn looks are used (F10 step 9,
-        # the example's menus).
+        # Without gui/ the title picture, logo, button frame, and the story map's chapter and
+        # scene box frames the example's config.toml names don't exist: one W64 each (area
+        # ui), and the drawn looks are used (F10 step 9, the example's menus; F47 flowchart).
         missing_gui = [r for r in problems if r[:2] == ("WARNING", "ui")
                        and r[2].startswith("config.toml: [theme.") and "doesn't exist" in r[2]]
-        assert len(missing_gui) == 3
+        assert len(missing_gui) == 5
         problems = [r for r in problems if r not in missing_gui]
     assert problems == ([("WARNING", "script", W01)] if missing == "script" else [])
 
