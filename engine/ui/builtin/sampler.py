@@ -11,7 +11,9 @@ Layout (canvas units, at 100% text): header at y 24; column A x 40–360 (six st
 the state they name, then "Live button" and "Open confirm"); column B x 400–880 (static
 toggles off, on, and disabled, the live toggles "Text 150%" and "Black backdrop", a live
 slider 0–100 at 50, a disabled slider); column C x 920–1240 (a 100-row list at y 80–400, a
-3×2 grid of 96×80 cells, gap 16, cell 5 disabled). The body (y 72–712) scrolls to keep the
+3×2 grid of 96×80 cells, gap 16, cell 5 disabled). F52: column A then holds a live text
+field ("Type here"), a row of three letter cells (live, focused, disabled) and a live bare
+field; column C a disabled field under the grid. The body (y 72–712) scrolls to keep the
 focused widget in view when it is taller (at 150%). The backdrop is white, or black while
 "Black backdrop" is on: the contrast worst cases.
 """
@@ -23,6 +25,8 @@ from engine.ui.input import UiEvent
 from engine.ui.menu_screen import MenuScreen, MenuShell
 from engine.ui.nav import InputKind
 from engine.ui.paint import Painter
+from engine.ui.textfield import TextField
+from engine.ui.textgeom import cell_side, field_height
 from engine.ui.widgets import (
     Button,
     Grid,
@@ -113,8 +117,16 @@ class SamplerScreen(MenuScreen):
         self.cells = tuple(GridCell(str(i), enabled=i != 5) for i in range(1, 7))
         self.grid = Grid(lambda: self.cells, GRID_COLUMNS, GRID_CELL, GRID_GAP,
                          self.grid_picks.append)
+        # F52 (AC-F52-39): a field, letter cells and a bare field in each state.
+        self.field = TextField(placeholder="Type here", max_length=20)
+        self.field_disabled = TextField(text="Disabled field", enabled=_never)
+        self.cell_live = TextField(cell=True, allowed="ABCDE", case="upper")
+        self.cell_focused = TextField(cell=True, allowed="ABCDE", text="B", focusable=False)
+        self.cell_disabled = TextField(cell=True, allowed="ABCDE", text="C", enabled=_never)
+        self.bare = TextField(bare=True, placeholder="bare field")
         self.static_looks = {self.static_focused: Look("focused"),
-                             self.static_pressed: Look("pressed")}
+                             self.static_pressed: Look("pressed"),
+                             self.cell_focused: Look("focused")}
         super().__init__(shell, by=by, fade=False)
 
     @property
@@ -165,6 +177,16 @@ class SamplerScreen(MenuScreen):
         for w in (self.live_button, self.open_confirm):
             base[w] = Box(ax, y, aw, h)
             y += h + gap
+        size = round(cfg.button.text_size * s)
+        fh = field_height(size)
+        base[self.field] = Box(ax, y, aw, fh)
+        y += fh + gap
+        side = cell_side(size)
+        x = ax
+        for w in (self.cell_live, self.cell_focused, self.cell_disabled):
+            base[w] = Box(x, y, side, side)
+            x += side + gap
+        base[self.bare] = Box(x, y, ax + aw - x, side)
 
         bx, bw = COLUMN_B
         y = FIRST_ROW
@@ -183,11 +205,14 @@ class SamplerScreen(MenuScreen):
         grid_w = GRID_COLUMNS * GRID_CELL[0] + (GRID_COLUMNS - 1) * GRID_GAP
         grid_h = 2 * GRID_CELL[1] + GRID_GAP
         base[self.grid] = Box(cx, GRID_TOP, grid_w, grid_h)
+        base[self.field_disabled] = Box(cx, GRID_TOP + grid_h + gap, cw, fh)
 
         self.base = base
         self.content_bottom = max(b.bottom for b in base.values())
         self.scope.set_groups([
             FocusGroup([self.live_button, self.open_confirm], column=True),
+            FocusGroup([self.field, self.cell_live, self.bare, self.cell_focused,
+                        self.cell_disabled, self.field_disabled]),
             FocusGroup([self.text_toggle, self.black_toggle, self.slider, self.slider_disabled,
                         self.toggle_disabled]),
             FocusGroup([self.list, self.grid]),

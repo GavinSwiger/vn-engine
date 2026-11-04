@@ -30,6 +30,13 @@ inputs the same way (F10 ``04`` §7.3, ui-system §9) and open and close with th
   it is focused again, drawn focused only if the closing input was a key or button.
 - **Cursor** (PR-F10-13, I-13): hidden on a navigation input, shown on mouse motion and when
   the last ``MenuScreen`` leaves the stack.
+- **Text** (F52 W3, ui-system §9): a focused ``TextField`` gets raw events first, through
+  ``ui.textrouting.TextRouter`` (typing, IME, paste, editing keys; Backspace never Back),
+  then ``NavReader``. South on a field, or a click on its keyboard icon, opens the screen's
+  ``OnScreenKeyboard``, which is modal: Back closes it first, then the page. A text default
+  is focused visibly at open whatever input opened the screen (the one exception to the
+  mouse-open rule). ``text_target`` tells ``app/textinput`` what wants typing. The shell's
+  ``text`` (``TextServices``: clipboard, language, warnings) is optional (test shells).
 
 The shell (``GameShell``, F10 step 6; a test shell before it) supplies the stack, assets,
 theme, words, painter, dev flag, reduced motion, cursor, and ``play_ui`` (``MenuShell``).
@@ -47,7 +54,9 @@ from engine.ui.backdrop import CapturedBackdrop
 from engine.ui.focus import Box, FocusScope
 from engine.ui.input import UiEvent
 from engine.ui.nav import DIRECTIONS, PAGE_KEYS, InputKind, Nav, NavReader, RepeatClock
+from engine.ui.osk import KeyboardServices, OnScreenKeyboard, glyph_test
 from engine.ui.screen import Screen, ScreenStack
+from engine.ui.textrouting import Routed, TextRouter, TextServices
 from engine.ui.widgets import Look, Widget, clipped
 
 if TYPE_CHECKING:
@@ -62,6 +71,7 @@ _MOUSE_EVENTS = frozenset({pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MO
 # Events that count as input for finishing a fade (motion does not).
 _INPUT_EVENTS = frozenset({pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP,
                            pygame.MOUSEWHEEL, pygame.CONTROLLERBUTTONDOWN})
+_NO_TEXT_SERVICES: Final = TextServices()
 
 
 class Phase(Enum):
@@ -96,6 +106,45 @@ class MenuShell(Protocol):
     cursor: CursorKeeper
 
     def play_ui(self, token: str | None) -> None: ...
+
+    # F52: ``text: TextServices`` (clipboard, language, warnings); optional, read with
+    # ``getattr`` so test shells without it keep working.
+
+
+def text_field_of(scope: FocusScope) -> Widget | None:
+    """The focused, enabled text widget of ``scope`` (F52), or None."""
+    w = scope.focused
+    if w is not None and getattr(w, "takes_text", False) and w.enabled():
+        return w
+    return None
+
+
+def keyboard_services(shell: MenuShell, services: TextServices) -> KeyboardServices:
+    """F52: the keyboard's services from a menu shell (the minigame host uses it too): the
+    language, a glyph test over the UI font at the keys' size, the measure and scale of the
+    page row, the words, and W267 in dev runs."""
+    from engine.ui.theme import measure_with        # theme imports nothing of this module
+
+    theme = shell.theme
+    cfg = theme.cfg
+    size = cfg.button.text_size
+    font = theme.font(size)
+    cache: dict[int, Callable[[str], bool]] = {}
+
+    def can_draw(ch: str) -> bool:
+        px = max(1, round(size * shell.painter.text_scale()))
+        test = cache.get(px)
+        if test is None:
+            handle = shell.assets.font(font.ref, px, bundled=font.bundled, synth=font.synth)
+            test = cache[px] = glyph_test(handle.font)
+        return test(ch)
+
+    warn = services.warn if shell.dev else None
+    return KeyboardServices(
+        language=services.language, can_draw=can_draw,
+        measure=measure_with(shell.assets, font), scale=shell.painter.text_scale,
+        word=shell.words.get, text_size=size, height=cfg.button.height,
+        warn=(lambda text: warn("W267", text)) if warn is not None else None)
 
 
 class _LayerCanvas(Canvas):
@@ -153,14 +202,16 @@ class MenuScreen(Screen):
         self._layer: pygame.Surface | None = None
         self._layer_key: tuple | None = None
         self._page_press = False                      # unused_mouse took the button-1 press
+        self._router: TextRouter | None = None        # F52, made on the first text event
+        self._keyboard: OnScreenKeyboard | None = None
         self.built = False
         self.build()
         self.built = True
         self._built_scale = self.painter.text_scale()
-        if by is InputKind.KEYS:
-            target = self.scope.default()
-            if target is not None:
-                self.scope.focus(target, InputKind.KEYS, sound=False)
+        target = self.scope.default()
+        if target is not None and (by is InputKind.KEYS or target.takes_text):
+            # F52 (07 §3.1): a text default is focused visibly whatever opened the screen.
+            self.scope.focus(target, InputKind.KEYS, sound=False)
 
     # -- for subclasses --
 
@@ -235,6 +286,39 @@ class MenuScreen(Screen):
     def is_top(self) -> bool:
         return self.shell.stack.top is self
 
+    # -- F52 text --
+
+    def text_services(self) -> TextServices:
+        found = getattr(self.shell, "text", None)
+        return found if isinstance(found, TextServices) else _NO_TEXT_SERVICES
+
+    def text_router(self) -> TextRouter:
+        if self._router is None:
+            self._router = TextRouter(
+                read_clipboard=lambda: self.text_services().read_clipboard(),
+                open_keyboard=self.open_keyboard)
+        return self._router
+
+    def keyboard(self) -> OnScreenKeyboard:
+        if self._keyboard is None:
+            self._keyboard = OnScreenKeyboard(keyboard_services(self.shell,
+                                                                self.text_services()))
+        return self._keyboard
+
+    def open_keyboard(self, field: Widget) -> None:
+        self.keyboard().open_for(field)                       # type: ignore[arg-type]
+
+    def keyboard_open(self) -> bool:
+        return self._keyboard is not None and self._keyboard.is_open
+
+    def text_target(self) -> object:
+        """F52: the field that wants typing (the keyboard's, or the focused one)."""
+        if self.phase is Phase.CLOSING or self._removed:
+            return None
+        if self.keyboard_open():
+            return self._keyboard.field                       # type: ignore[union-attr]
+        return text_field_of(self.scope)
+
     def look_for(self, w: Widget) -> Look:
         """How ``w`` looks this frame: focused while it has visible focus; pressed while a
         mouse press on it is held over it, or for 100 ms after a key activation (top only)."""
@@ -308,6 +392,10 @@ class MenuScreen(Screen):
 
     def on_exit(self) -> None:
         self.repeat.stop()
+        if self._keyboard is not None:
+            self._keyboard.close()
+        if self._router is not None:
+            self._router.repeat.stop()
         self.reader.reset()
         self.pressed = None
         self._page_press = False
@@ -350,6 +438,15 @@ class MenuScreen(Screen):
             self.repeat.stop()
         if kind in (pygame.WINDOWFOCUSLOST, pygame.CONTROLLERDEVICEREMOVED):
             self.repeat.stop()                        # AC-F10-08, AC-F10-61
+        field = self.text_target()
+        if field is not None:                         # F52: the router before NavReader
+            field.word_for = self.shell.words.get     # type: ignore[attr-defined]
+            routed = self.text_router().route(event, nav, field,         # type: ignore[arg-type]
+                                              self._keyboard, minigame=False, released=released)
+            if routed is not Routed.PASS:
+                if not mouse and nav is not None:
+                    self.shell.cursor.show(False)
+                return True
         if nav is not None:
             if not mouse:
                 self.shell.cursor.show(False)
@@ -359,6 +456,9 @@ class MenuScreen(Screen):
         elif kind == pygame.MOUSEBUTTONDOWN and getattr(event.raw, "button", 0) == 1:
             if event.in_canvas and event.canvas_pos is not None:
                 self._on_down(event.canvas_pos)
+                clicked = text_field_of(self.scope)
+                if clicked is not None and clicked.take_keyboard_request():  # type: ignore
+                    self.open_keyboard(clicked)
         elif kind == pygame.MOUSEBUTTONUP and getattr(event.raw, "button", 0) == 1:
             self._on_up(event.canvas_pos if event.in_canvas else None)
         elif kind == pygame.MOUSEWHEEL:
@@ -502,6 +602,14 @@ class MenuScreen(Screen):
                     self.repeat.stop()
                     break
         self.scope.refresh()
+        if self._router is not None:                  # F52: edit repeats, carets, notes
+            self._router.tick(dt)
+        reduce = bool(self.shell.reduce_motion)
+        for w in self.scope.widgets():
+            if w.takes_text:
+                w.tick(dt, reduce)                    # type: ignore[attr-defined]
+        if self.keyboard_open() and not self.scope.contains(self._keyboard.field):  # type: ignore
+            self._keyboard.close()                    # type: ignore[union-attr]
         self.on_update(dt)
 
     def draw(self, canvas: Canvas) -> None:
@@ -515,6 +623,8 @@ class MenuScreen(Screen):
             if bd is not None and (bd.capture(canvas, need_scene=False) or bd.live):
                 bd.draw(canvas, 1.0)
             self.draw_content(p)
+            if self.keyboard_open():
+                self._keyboard.draw(p)                # type: ignore[union-attr]
             return
         surface = canvas.surface
         assert surface is not None

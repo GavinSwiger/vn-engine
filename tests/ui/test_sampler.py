@@ -18,6 +18,7 @@ from engine.ui.builtin.confirm import ConfirmScreen
 from engine.ui.builtin.sampler import SamplerScreen
 from engine.ui.focus import Box
 from engine.ui.nav import InputKind
+from engine.ui.textfield import TextField
 from engine.ui.widgets import Button, Grid, GridCell, ListRow, ScrollList, Slider, Toggle
 from tests.fakes.draw_spy import spy_draw_text
 from tests.fakes.ui_shell import ColumnMenu, TestShell, UiHarness
@@ -72,12 +73,12 @@ def focus(h, s, widget):
 def test_ac09_tab_order_classes_header_first_input_and_back(sampler, monkeypatch):
     shell, h, s = sampler
     order = s.scope.tab_order()
-    assert order == [s.live_button, s.open_confirm, s.text_toggle, s.black_toggle, s.slider,
-                     s.list, s.grid]
-    assert [w.label() for w in order[:5]] == ["Live button", "Open confirm", "Text 150%",
-                                              "Black backdrop", "Live slider"]
+    assert order == [s.live_button, s.open_confirm, s.field, s.cell_live, s.bare,  # F52
+                     s.text_toggle, s.black_toggle, s.slider, s.list, s.grid]
+    assert [w.label() for w in order[:2] + order[5:8]] == [
+        "Live button", "Open confirm", "Text 150%", "Black backdrop", "Live slider"]
     for w in s.scope.widgets():
-        assert type(w) in (Button, Toggle, Slider, ScrollList, Grid)
+        assert type(w) in (Button, Toggle, Slider, ScrollList, Grid, TextField)
     with spy_draw_text(monkeypatch) as calls:
         h.frame()
     by_text = {c.text: c for c in calls}
@@ -337,13 +338,17 @@ def test_ac14_grid_moves_and_activation(sampler):
     focus(h, s, s.grid)
     for start, key, end in (
         (1, pygame.K_RIGHT, 2), (2, pygame.K_RIGHT, 3), (3, pygame.K_RIGHT, 3),
-        (1, pygame.K_DOWN, 4), (4, pygame.K_UP, 1), (4, pygame.K_DOWN, 4),
+        (1, pygame.K_DOWN, 4), (4, pygame.K_UP, 1),
         (3, pygame.K_HOME, 1), (1, pygame.K_END, 6),
         (2, pygame.K_DOWN, 4), (4, pygame.K_RIGHT, 6), (6, pygame.K_LEFT, 4),  # I-17 / I-22
     ):
         s.grid.focus_index(start - 1)
         h.frame(H.key(key))
         assert s.scope.focused is s.grid and s.grid.focus_cell + 1 == end, (start, key)
+    s.grid.focus_index(3)                       # F52: Down from the last row leaves the grid
+    h.frame(H.key(pygame.K_DOWN))               # for the sampler's text widgets below it
+    assert s.scope.focused is not s.grid and getattr(s.scope.focused, "takes_text", False)
+    focus(h, s, s.grid)
     s.grid.focus_index(1)
     h.frame(H.key(pygame.K_RETURN))
     assert s.grid_picks == [1]

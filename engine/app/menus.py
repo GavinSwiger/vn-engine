@@ -37,13 +37,42 @@ from engine.app.ui_contrast import warn_contrast
 from engine.ui.builtin.game_menu import GameMenuKeys
 from engine.ui.builtin.quick_menu import QuickMenu
 from engine.ui.menus import EntryContext, MenuEntry
+from engine.core.logsetup import get_logger
 from engine.ui.shell import GameShell, ShellPorts
+from engine.ui.textrouting import TextServices
 from engine.ui.theme import resolve_theme, resolve_words
 
 if TYPE_CHECKING:
     from engine.app.app import App
     from engine.ui.builtin.textbox_screen import TextboxScreen
     from engine.ui.screen import Screen
+
+
+def current_language(app: "App") -> str:
+    """F52 (04 §4.4): the language the keyboard's pages follow: the player's chosen language
+    (F43's setting), else ``"en"`` until F43's ``[language] source`` lands (the seam)."""
+    settings = getattr(app, "settings", None)
+    try:
+        chosen = settings.value("language") if settings is not None else ""
+    except (KeyError, AttributeError):
+        chosen = ""
+    return chosen if isinstance(chosen, str) and chosen else "en"
+
+
+def text_services(app: "App") -> TextServices:
+    """F52: the shell's ``TextServices``: the text input owner's clipboard read (none
+    headless), the language, and dev warnings (W267) to log area ``ui``."""
+    log = get_logger("ui")
+
+    def read_clipboard() -> str:
+        owner = getattr(app, "text_input", None)
+        return owner.read_clipboard() if owner is not None else ""
+
+    def warn(code: str, text: str) -> None:
+        log.warning("%s", text, extra={"code": code})
+
+    return TextServices(read_clipboard=read_clipboard, language=lambda: current_language(app),
+                        warn=warn if app.dev else None)
 
 
 def install_ui(app: "App") -> GameShell:
@@ -73,6 +102,7 @@ def install_ui(app: "App") -> GameShell:
         content_warning=WarningGate(config.content_warning,         # F33 (I-1)
                                     lambda: getattr(app, "settings", None), skip=skip_title))
     shell = GameShell(ports, theme=theme, words=words)
+    shell.text = text_services(app)                                 # F52
     shell.menus.add("title", MenuEntry("new_game", action=_new_game))
     shell.menus.add("title", MenuEntry("quit", action=_quit))
     shell.menus.add("game", MenuEntry("return", action=_return))

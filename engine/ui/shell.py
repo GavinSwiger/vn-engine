@@ -128,6 +128,7 @@ from engine.ui.nav import InputKind
 from engine.ui.notice import Kind, NoticeLayer, NoticeStyle, notice_style
 from engine.ui.paint import Painter
 from engine.ui.screen import Screen, ScreenStack
+from engine.ui.textrouting import TextServices
 from engine.ui.theme import F10_ENTRY_WORDS, UiTheme, Words, measure_with, warn_label_cuts
 
 if TYPE_CHECKING:
@@ -291,6 +292,9 @@ class GameShell:
         self._look_rev = 0                          # F49: the revision the holders follow
         self._look_listeners: list[Callable[[UiTheme], None]] = []
         self.cursor = cursor if cursor is not None else CursorKeeper()
+        # F52 (07 §3.1): text fields' clipboard, language and warnings; ``install_ui``
+        # fills it from the App (the text input owner, the settings, the log).
+        self.text = TextServices()
         self.reduce_motion = reduce_motion_of(self.config)
         self.mode = Mode.TITLE
         self.entries_checked = False
