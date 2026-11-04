@@ -15,6 +15,7 @@ import pytest
 
 from engine.minigames.api import REQUIRED
 from engine.minigames.bundled import (ask_text, cipher_note, code_lock, gift_giving,
+                                      terminal,
                                       gift_rules,
                                       hand_game,
                                       heartbeat, lock_rules,
@@ -430,7 +431,7 @@ def test_builtin_fields_match_the_plugins():
     defaults); the mirrored limits are the rules modules'."""
     plugins = {}
     for module in (poem_game, present_evidence, phone_chat, puzzle_room, heartbeat, code_lock,
-                   stay_still, hand_game, gift_giving, ask_text, cipher_note):
+                   stay_still, hand_game, gift_giving, ask_text, cipher_note, terminal):
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if isinstance(getattr(cls, "args", None), dict) and getattr(cls, "name", None):
                 plugins[cls.name] = cls.args

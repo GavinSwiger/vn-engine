@@ -300,6 +300,12 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "hints": "The tips of this category the player holds show under Hints.",
         "tip": "A tip the player gets when the note is solved.",
     },
+    "terminal": {                                       # F56 §9
+        "data": "The terminal: its commands and replies. Set up… edits it.",
+        "result": "True or False for reaching the goal, or the details of what was typed.",
+        "screen": "The game's colors, or a dark amber screen in any color scheme.",
+        "hide_passwords": "On: a typed password shows as dots.",
+    },
     # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
     "poem_game": {
         "words": "The word list: each word and the points it gives each character.",

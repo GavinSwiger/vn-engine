@@ -59,6 +59,7 @@ from engine.tools.editor.declplan import (BAD_NAME, DATABASE_HEADER, DATABASE_RE
                                           NO_MAIN, includes_database, problems)
 from engine.tools.editor.files import MAIN_REF, include_line, include_position
 from engine.tools.editor.forms import code_of
+from engine.tools.editor import terminaldata          # F56
 from engine.tools.editor.scriptedit import STALE, FilePlan, LineEdit, Plan, Refuse, apply_lines
 
 # --- Kinds and tables --------------------------------------------------------------------------
@@ -69,18 +70,20 @@ ANSWER: Final = "answer"
 CHAT: Final = "chat"
 ROOM: Final = "room"
 GIFTS: Final = "gifts"                # F54
-KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM, GIFTS)
+TERMINAL: Final = "terminal"          # F56
+KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM, GIFTS, TERMINAL)
 KIND_TITLES: Final[Mapping[str, str]] = {
     POEM: "Poem words", TESTIMONY: "Evidence", ANSWER: "Evidence answer",
-    CHAT: "Phone chat", ROOM: "Puzzle room", GIFTS: "Gift table"}
+    CHAT: "Phone chat", ROOM: "Puzzle room", GIFTS: "Gift table", TERMINAL: "Terminal"}
 # (minigame, argument) → the kind of data set it takes.
 USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("poem_game", "words"): POEM, ("present_evidence", "testimony"): TESTIMONY,
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
-    ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS}
+    ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS,
+    ("terminal", "data"): TERMINAL}
 BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
                   "code_lock", "stay_still", "hand_game", "gift_giving", "ask_text",
-                  "cipher_note")
+                  "cipher_note", "terminal")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -514,7 +517,8 @@ def _read_gifts(value: object) -> GiftTable | None:
 
 
 READERS: Final = {POEM: _read_poem, TESTIMONY: _read_testimony, ANSWER: _read_answer,
-                  CHAT: _read_chat, ROOM: _read_room, GIFTS: _read_gifts}
+                  CHAT: _read_chat, ROOM: _read_room, GIFTS: _read_gifts,
+                  TERMINAL: terminaldata.read}                       # F56
 
 
 def read_value(kind: str, value: object) -> object:
@@ -609,6 +613,8 @@ def value_of(kind: str, model: object) -> object:
         return _chat_value(model)                                # type: ignore[arg-type]
     if kind == GIFTS:
         return _gifts_value(model)                               # type: ignore[arg-type]
+    if kind == TERMINAL:
+        return terminaldata.value_of(model)                      # type: ignore[arg-type]
     return _room_value(model)                                    # type: ignore[arg-type]
 
 
@@ -684,6 +690,8 @@ def define_lines(kind: str, name: str, model: object) -> list[str]:
         items = [_ask_lines(s) if isinstance(s, AskStep) else [literal(_step_value(s))]
                  for s in model]                                     # type: ignore[union-attr]
         return _block(head + "[", items, "]")
+    if kind == TERMINAL:
+        return terminaldata.define_lines(name, model)                # type: ignore[arg-type]
     if kind == GIFTS:
         items = [_block(f"{_s(s.character)}: {{",
                         [[f"{_s(r.item)}: {literal(_gift_value(r))}"] for r in s.rows], "}")
@@ -1066,6 +1074,8 @@ def problem(kind: str, model: object) -> str | None:
         return _chat_problem(model)                                  # type: ignore[arg-type]
     if kind == GIFTS:
         return _gifts_problem(model)                                 # type: ignore[arg-type]
+    if kind == TERMINAL:
+        return terminaldata.problem(model)                           # type: ignore[arg-type]
     return _room_problem(model)                                      # type: ignore[arg-type]
 
 
@@ -1203,6 +1213,8 @@ def _guess(value: object) -> str | None:
         return None
     if type(value) is not dict or not value:
         return None
+    if type(value.get("commands")) is list and terminaldata.read(value) is not None:
+        return TERMINAL                                              # F56
     if "hotspots" in value and _read_room(value) is not None:
         return ROOM
     if all(type(v) is dict for v in value.values()) and any(
@@ -1657,6 +1669,13 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
         _f("revealed", "Letters shown from the start", TEXT, ""),
         _f("hints", "Hints from tip category", TIP_CATEGORY, None),
         _f("tip", "Tip unlocked when solved", TIP, None)),
+    "terminal": (                                                       # F56 §9
+        _f("data", "Terminal", DATA, data_kind=TERMINAL),
+        _f("result", "Result", CHOICE, "reached", choices=("reached", "details"),
+           labels=("Reached the goal (True or False)", "Details")),
+        _f("screen", "Screen", CHOICE, "game", choices=("game", "dark"),
+           labels=("Game colors", "Dark screen")),
+        _f("hide_passwords", "Hide passwords", TOGGLE, True)),
 }
 
 # F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
@@ -1886,7 +1905,8 @@ GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
     "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game",
-    "gift_giving": "Gift giving", "ask_text": "Ask for text", "cipher_note": "Coded note"}
+    "gift_giving": "Gift giving", "ask_text": "Ask for text", "cipher_note": "Coded note",
+    "terminal": "Computer terminal"}
 
 
 def game_title(game: str) -> str:
@@ -1966,7 +1986,7 @@ ASK_NAME: Final = _ask_name_form()
 
 
 __all__ = [
-    "ADDED", "ANSWER", "ASK", "ASK_NAME", "LONG_TEXT", "QUOTED", "TIP", "TIP_CATEGORY",
+    "ADDED", "ANSWER", "ASK", "ASK_NAME", "LONG_TEXT", "TERMINAL", "QUOTED", "TIP", "TIP_CATEGORY",
     "cipher_problem", "ASK_NAME_FORM", "ASK_NAME_LINE",
     "ASK_NAME_VARIABLE", "AskStep", "ArgField", "BUILTIN_FIELDS", "BUNDLED", "CANVAS",
     "CHANGED", "CHAT", "CHOICE", "Call", "ChatStep", "DATA", "DONT_REPLY", "DataPlan",

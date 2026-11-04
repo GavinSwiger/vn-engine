@@ -50,10 +50,10 @@ CATEGORY_TITLE = "Minigame data"
 CATEGORY_AFTER = db.CATEGORY_META   # Minigame data goes before Character files
 GROUP_TITLES: Mapping[str, str] = {
     mg.POEM: "Poem word lists", mg.TESTIMONY: "Evidence", mg.CHAT: "Phone chats",
-    mg.ROOM: "Puzzle rooms", mg.GIFTS: "Gift tables"}
+    mg.ROOM: "Puzzle rooms", mg.GIFTS: "Gift tables", mg.TERMINAL: "Terminals"}
 THING: Mapping[str, str] = {
     mg.POEM: "poem word list", mg.TESTIMONY: "evidence", mg.CHAT: "phone chat",
-    mg.ROOM: "puzzle room", mg.GIFTS: "gift table"}
+    mg.ROOM: "puzzle room", mg.GIFTS: "gift table", mg.TERMINAL: "terminal"}
 NEW_BUTTON = "+ New"
 NEW_ITEM = "New {thing}…"
 NEW_ASK = "Name of the new {thing}:"
@@ -379,6 +379,9 @@ def starter(kind: str, lookups: Lookups) -> object | None:
     if kind == mg.CHAT:
         return (mg.Step(mg.FROM_CONTACT, "hi!"), mg.Step(mg.FROM_ME, "hey"))  # a {"me": …}:
         #                                         so the scan knows it is a chat by its shape
+    if kind == mg.TERMINAL:                                          # F56 (Q2)
+        from engine.tools.editor import terminaldata
+        return terminaldata.starter()
     if kind == mg.GIFTS:
         items = lookups.item_names
         rows = (mg.GiftRow(items[0], *NEW_GIFT),) if items else ()
@@ -1958,6 +1961,8 @@ class GiftsEditor(Editor):
 EDITORS: Mapping[str, type[Editor]] = {
     mg.POEM: PoemEditor, mg.TESTIMONY: EvidenceEditor, mg.CHAT: ChatEditor,
     mg.ROOM: RoomEditor, mg.GIFTS: GiftsEditor}
+# F56: the Terminal editor lives in ``terminalview`` (imported where it is made).
+EDITABLE_KINDS: tuple[str, ...] = (*EDITORS, mg.TERMINAL)
 
 
 # --- The host (Database category, or a dialog) -------------------------------------------------
@@ -1988,7 +1993,12 @@ class EditorHost:
 def editor_for(host: EditorHost, parent: tk.Misc, ds: mg.DataSet) -> Editor | None:
     """The editor of ``ds``, or None when the panel can't hold how it is written."""
     model = host.store.model_of(ds)
-    if ds.model is None or model is None or ds.kind not in EDITORS:
+    if ds.model is None or model is None:
+        return None
+    if ds.kind == mg.TERMINAL:                       # F56: here, so no import cycle
+        from engine.tools.editor.terminalview import TerminalEditor
+        return TerminalEditor(host, parent, ds, model)
+    if ds.kind not in EDITORS:
         return None
     return EDITORS[ds.kind](host, parent, ds, model)
 
@@ -2152,7 +2162,7 @@ class MinigamePane:
         uses = self.store.uses()
         tree = self.tree
         tree.delete(*tree.get_children())
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL):
             members = [ds for ds in sets if ds.kind == kind or
                        (kind == mg.TESTIMONY and ds.kind == mg.ANSWER)]
             if not members:
@@ -2248,7 +2258,7 @@ class MinigamePane:
     # New and delete.
     def new_menu(self) -> None:
         menu = tk.Menu(self.root, tearoff=False)
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL):
             menu.add_command(label=NEW_ITEM.format(thing=THING[kind]),
                              command=lambda k=kind: self.new(k))
         self.last_menu = menu
@@ -2500,7 +2510,7 @@ class MinigameDialog:
             var = tk.StringVar(master=self.dialog, value=value)
             widget = ttk.Entry(holder, textvariable=var, width=28)
         widget.pack(side="left")
-        if field.widget == mg.DATA and field.data_kind in EDITORS:
+        if field.widget == mg.DATA and field.data_kind in EDITABLE_KINDS:
             ttk.Button(holder, text=SET_UP, style="Secondary.TButton",
                        command=lambda f=field: self.set_up(f)).pack(side="left",
                                                                     padx=(self.px(8), 0))
@@ -2672,7 +2682,7 @@ class MinigameDialog:
         self._refresh_sets(field)
 
     def new_set(self, field: mg.ArgField) -> None:
-        if field.data_kind not in EDITORS:
+        if field.data_kind not in EDITABLE_KINDS:
             return
         name = new_data(self.win, self.store, field.data_kind)
         if name is not None:
