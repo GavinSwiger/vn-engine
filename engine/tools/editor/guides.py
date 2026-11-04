@@ -29,6 +29,7 @@ GUIDES: tuple[tuple[str, str], ...] = (
     ("Update the running game", "hot-reload.md"),
     ("Developer console", "dev-console.md"),
     ("Build game", "build-game.md"),
+    ("AI assistant", "assistant.md"),                    # F48 PR-F48-31
 )
 
 

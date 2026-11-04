@@ -1,0 +1,100 @@
+# AI assistant
+
+An AI can read your game, check it and suggest changes. You can use it two ways:
+
+- **In Studio**: the **AI Assistant** pane, with your own API key for Anthropic (Claude),
+  OpenAI (ChatGPT), or a model server on your computer (Ollama, LM Studio and others).
+- **In an AI app**: Claude Code, Claude Desktop and other apps that support MCP can work on
+  your game through **Help ▸ Connect an AI app…**. They use your account with that app, and
+  Studio sends nothing itself.
+
+Either way, the AI never changes a file until you say so, and it never runs Python code it
+wrote before you apply the change.
+
+## Set up the pane
+
+1. Open **File ▸ Studio settings…** (Ctrl+,) and pick the **AI** page.
+2. Pick a **Provider** and a **Model**.
+3. Copy your API key from the provider's website and press **Paste**. Studio shows only its
+   last 4 characters after that. **Remove** deletes the saved key.
+4. Press **Test connection**. It should say "Connected."
+5. Open the pane with **AI Assistant** on the Play bar or **View ▸ AI Assistant**
+   (Ctrl+Shift+A), and ask about your game.
+
+If `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set and no key is saved, settings offer
+**Use the key from …** for that provider only.
+
+**Steps** limits how many times the assistant may look something up or check a change before
+it stops (send "continue" to let it go on). **Chat token limit** stops a chat that has used
+that many tokens; each answer shows the tokens it used. A new chat starts from zero.
+
+## How a change reaches your game
+
+The assistant reads your script files and `config.toml`, runs the check, and proposes
+changes. Each change shows as a card with the files, the lines it adds and removes, and what
+the check found. Nothing changes until you press **Apply**. Apply puts the change in the open
+script files, unsaved, as one undo step per file; saving stays yours. If the file changed
+since the assistant wrote the change, Apply refuses and offers **Ask again**.
+
+A change that adds or changes Python code (a `$` line, `define`, `default`, a condition)
+shows a warning. Its check runs without the game's code, which runs only after you apply.
+
+## What is sent
+
+The first time you use a provider, Studio asks before it sends anything. What it sends: the
+open script file around the cursor, the lines you select, the current problems, and any
+script file or `config.toml` the assistant asks to read. Pictures and sounds are never sent,
+but their file names may be. Each answer lists what was sent ("Sent: …"). The provider
+handles it under its own terms, and requests use your API key and your account.
+
+**With a local server, nothing leaves your computer.** Pick **OpenAI-compatible** and an
+address such as `http://localhost:11434/v1` (Ollama) or `http://localhost:1234/v1`
+(LM Studio). Plain `http://` is allowed only for a server on this computer; anything else
+needs `https://`.
+
+## Where the key is kept
+
+Studio keeps each key in your system's keychain: Windows Credential Manager, the macOS
+Keychain, or the Secret Service keyring on Linux. Only on a computer with no keyring does it
+use a file in your user folder that only you can read. A key goes only to the provider (or
+the exact server address) it was saved for, and never into your game folder, `.studio/`,
+logs or error messages.
+
+**Programs you run can read the key's store.** That includes games you run, so be careful
+with games and tools from people you don't know, and remove a key you no longer use.
+
+Studio's settings and your consent answers are kept per user in `assistant.json` in
+Studio's user folder (on Windows, `%APPDATA%\vn-engine\_studio`), never in a game folder.
+
+**Preview, Check and Build don't pass `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` on** to the
+game or tools they start. If your game or a plugin needs a variable like that, it won't get
+it from Studio.
+
+**Build game** warns when a file it ships looks like it holds an API key, naming the file
+and line: "script/main.vns, line 4: this looks like an API key. Remove it before you share
+the game." Remove the key and build again.
+
+## Use an AI app (MCP)
+
+**Help ▸ Connect an AI app…** shows what to paste into Claude Code, Claude Desktop or another
+MCP app. The app can then list and read your script files, read the story map and the
+language reference, run the check, and propose changes. With **Let the app change script
+files** ticked, the app shows each change first and applies it only through `apply_edit`.
+Studio can't undo changes an app makes, so save your work first; if a file is open in Studio,
+Studio asks whether to reload it.
+
+From a terminal: `python -P -m engine assist-mcp game` (add `--read-only` to refuse every
+change, `--no-launch` to check without running the game's code).
+
+## Be careful with games you didn't write
+
+- **Game files can carry instructions to the AI.** A comment or line of dialogue in a
+  template, a mod or a downloaded game can tell the AI to do something you didn't ask for.
+  Read every change before you apply it.
+- **In an MCP app, the app's own tools can act on those instructions.** Claude Code and
+  others can run commands and fetch web pages. Don't auto-approve those tools, or
+  `apply_edit`, while the AI works on a game you didn't write.
+- **MCP checks run the game's code**, just as `python -m engine lint` and Studio's check do.
+  For a game you didn't write, start the server with `--no-launch`.
+- **The key's store is readable by programs you run** (see above).
+- **A local server keeps everything on your computer.**
