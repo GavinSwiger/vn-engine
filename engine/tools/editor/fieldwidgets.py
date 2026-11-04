@@ -30,6 +30,7 @@ from collections.abc import Callable, Mapping, Sequence
 from tkinter import colorchooser, ttk
 from tkinter import font as tkfont
 
+from engine.tools.editor import wheel
 from engine.tools.editor.theme import ROLES, THEME
 
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
@@ -44,6 +45,7 @@ STOP_TIP = "Stop"
 CHANGED_BAR_PX = 2
 SWATCH_PX = 20
 THUMB_PX = 96
+WHEEL_STEP_PX = 16                      # a scrolled form moves this far per wheel line
 GALLERY_GAP_PX = 12
 GALLERY_LABEL_PX = 18
 
@@ -453,7 +455,7 @@ class ScrollFrame:
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(0, weight=1)
         self.canvas = tk.Canvas(self.frame, background=back, highlightthickness=0,
-                                borderwidth=0, takefocus=0)
+                                borderwidth=0, takefocus=0, yscrollincrement=WHEEL_STEP_PX)
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.bar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.inner = ttk.Frame(self.canvas)
@@ -462,9 +464,7 @@ class ScrollFrame:
         self.inner.bind("<Configure>", lambda _e: self._fit(), add="+")
         self.canvas.bind("<Configure>", lambda e: (self.canvas.itemconfigure(
             self._window, width=e.width), self._fit()), add="+")
-        for widget in (self.canvas, self.inner):
-            widget.bind("<Enter>", lambda _e: self._wheel(True), add="+")
-            widget.bind("<Leave>", lambda _e: self._wheel(False), add="+")
+        wheel.register(self.canvas, self._scroll)       # over any field in it too
 
     def _fit(self) -> None:
         self.canvas.configure(scrollregion=(0, 0, self.inner.winfo_reqwidth(),
@@ -477,15 +477,12 @@ class ScrollFrame:
             self.bar.grid(row=0, column=1, sticky="ns")
         self.bar.set(first, last)
 
-    def _wheel(self, on: bool) -> None:
-        if on:
-            self.canvas.bind_all("<MouseWheel>", self._on_wheel)
-        else:
-            self.canvas.unbind_all("<MouseWheel>")
-
-    def _on_wheel(self, event: tk.Event) -> None:
-        if self.inner.winfo_reqheight() > self.canvas.winfo_height():
-            self.canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+    def _scroll(self, units: int) -> bool:
+        """A wheel turn (``wheel``): False when the form fits or is at that end."""
+        if self.inner.winfo_reqheight() <= self.canvas.winfo_height() or                 not wheel.can_scroll(self.canvas, units):
+            return False
+        self.canvas.yview_scroll(units, "units")
+        return True
 
     def top(self) -> None:
         self.canvas.yview_moveto(0)

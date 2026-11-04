@@ -39,6 +39,7 @@ from typing import Any
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import guide, icons, studiostate
 from engine.tools.editor.checker import CheckResult
+from engine.tools.editor.fieldwidgets import ScrollFrame
 from engine.tools.editor.guide import GuideFacts, GuideStep, ShowMe
 from engine.tools.editor.theme import THEME
 from engine.tools.editor.views import panel_header
@@ -89,8 +90,14 @@ class GuidePane:
         self.close_button.pack(side="right", padx=(0, px(4)))
         from engine.tools.editor.playbar import Tooltip
         Tooltip(self.close_button, TIP_CLOSE, fonts.get("small"))
-        body = self.body = ttk.Frame(self.frame, style="Side.TFrame", padding=(px(INSET), 0))
-        body.grid(row=1, column=0, sticky="nsew")
+        # The steps scroll (with the wheel too) when the pane is short, e.g. docked below.
+        self.scroll = ScrollFrame(self.frame, background=side)
+        self.scroll.frame.grid(row=1, column=0, sticky="nsew")
+        self.scroll.inner.configure(style="Side.TFrame")
+        self.frame.rowconfigure(1, weight=1)
+        body = self.body = ttk.Frame(self.scroll.inner, style="Side.TFrame",
+                                     padding=(px(INSET), 0))
+        body.pack(fill="both", expand=True)
         body.columnconfigure(0, weight=1)
         top = ttk.Frame(body, style="Side.TFrame")
         top.grid(row=0, column=0, sticky="ew", pady=(px(4), 0))

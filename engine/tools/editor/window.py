@@ -57,7 +57,7 @@ from engine.script.assetgroups import CONFIG_REF
 from engine.script.diagnostics import ScriptError
 from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import files, livemap, scenes
+from engine.tools.editor import files, livemap, scenes, wheel
 from engine.tools.editor import mapwatch as watchmod
 from engine.tools.editor.mapwatch import FileNews, ScriptWatch, scan as scan_scripts
 from engine.tools.editor.assist import (
@@ -506,6 +506,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         root.minsize(*(px(size) for size in WINDOW_MIN_SIZE))
         root.configure(background=BACKGROUND)
         self._theme_fonts = style_ttk(root, self.fonts, self.scale)
+        wheel.install(root)                 # the wheel scrolls whatever is under the pointer
 
         # The status bar is packed first, so it keeps its line at the minimum size.
         self._build_status_bar()
@@ -653,6 +654,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.gutter = tk.Canvas(frame, width=self._gutter_width(1), background=GUTTER_BACKGROUND,
                                 highlightthickness=0, borderwidth=0, takefocus=0)
         self.gutter.grid(row=0, column=0, sticky="ns")
+        wheel.register(self.gutter, lambda units: self.text.yview_scroll(units, "units")
+                       if getattr(self, "text", None) is not None else False)
         self.vbar = ttk.Scrollbar(frame, orient="vertical")
         self._vbar_set = autohide(self.vbar, row=0, column=2, sticky="ns")
         self.hbar = ttk.Scrollbar(frame, orient="horizontal")

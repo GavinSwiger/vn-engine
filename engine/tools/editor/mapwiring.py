@@ -26,7 +26,7 @@ from engine.script.labelgraph import LabelLink
 from engine.script.menu import Menu
 from engine.script.messages import show
 from engine.tools.editor import (
-    files, formdialogs, layoutfile, livemap, scenes, scriptedit, studiostate, theme)
+    files, formdialogs, layoutfile, livemap, scenes, scriptedit, studiostate, theme, wheel)
 from engine.tools.editor.checker import NameEntry
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
@@ -285,6 +285,8 @@ class MapWiring:
                                      background=GUTTER_BACKGROUND, highlightthickness=0,
                                      borderwidth=0, takefocus=0)
         self.side_gutter.grid(row=0, column=0, sticky="ns")
+        wheel.register(self.side_gutter, lambda units: self.side_text.yview_scroll(
+            units, "units") if getattr(self, "side_text", None) is not None else False)
         self.side_vbar = ttk.Scrollbar(script, orient="vertical")
         self._side_vbar_set = autohide(self.side_vbar, row=0, column=2, sticky="ns")
         self.side_hbar = ttk.Scrollbar(script, orient="horizontal")
