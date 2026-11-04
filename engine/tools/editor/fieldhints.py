@@ -246,6 +246,63 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "cost": "How much each missed beat lowers the meter, 0 to 20.",
         "sound": "Plays on each beat, with the ring. Empty: no sound.",
     },
+    # F53 §5 (its ARG_HINTS live here, the one Minigame-form table).
+    "code_lock": {
+        "kind": "Keypad: number buttons. Dial: wheels the player turns, with numbers or letters.",
+        "code": ("The code that opens it. Keypad: up to 12 digits. Dial: 3 to 6 digits or "
+                 "letters."),
+        "tries": "Wrong codes allowed before the lock stays shut. 0: no limit.",
+        "hint": "Shown under the lock after some wrong tries. Leave empty for no hint.",
+        "hint_after": "How many wrong tries before the hint shows. 0: from the start.",
+        "leave": "Shows a Step back button. Stepping back gives False.",
+    },
+    "stay_still": {
+        "seconds": "How long the player must not touch anything.",
+        "line": "The line shown while the player waits.",
+        "speaker": "The name shown above the line. Leave empty for none.",
+        "flinch_line": "Shown for 2 seconds each time the player touches something.",
+        "strict": "On: the game ends at the first touch, with the result 1.",
+        "mouse": "On: moving the mouse counts as a touch.",
+        "ready": ("On: the countdown starts when the player presses it. Off: it starts at "
+                  "once."),
+    },
+    "hand_game": {
+        "opponent": "Who the player plays against, as shown on screen.",
+        "rounds": "How many rounds at most. Draws count as rounds.",
+        "mode": ("fair: random. kind: lets the player win. cheat: switches hands to win, and "
+                 "it shows. sly: always wins, without showing it."),
+    },
+    # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
+    "poem_game": {
+        "words": "The word list: each word and the points it gives each character.",
+        "rounds": "How many words the player picks for the poem, 1 to 50.",
+        "page_words": ("How many words each page shows, 2 to 12. The list needs rounds plus "
+                       "this, minus 1, words."),
+        "to_points": "On: each character's total is added to their meter when the poem is done.",
+        "result": ("winner: the character with the highest total. totals: every character's "
+                   "total. words: the picked words."),
+    },
+    "present_evidence": {
+        "testimony": "The witness's statements, in the order the player reads them.",
+        "answer": "Which items contradict which statements.",
+        "at": "The statement shown first. Empty: the first one.",
+        "speaker": "The name shown over the statements. Empty: none.",
+        "press": "On: shows Press, which ends the questioning. Off: every run ends with an item.",
+        "evidence": "The codex item categories the player can present from. Empty: all of them.",
+        "penalty": "The meter shown as a bar, which a wrong item lowers. Empty: no bar.",
+        "penalty_max": "The value at which the bar is full. Set it to the meter's top.",
+        "cost": "How much a wrong item takes from the meter.",
+    },
+    "phone_chat": {
+        "chat": "The conversation: messages, times and reply points, in order.",
+        "contact": "The name at the top of the phone. Plain messages come from this person.",
+        "time": "The first time shown, such as 11:42 PM. Empty: no clock until a time step.",
+    },
+    "puzzle_room": {
+        "room": "The room: its picture, its hotspots and its recipes.",
+        "state": ("A variable holding the room's last result, so a return visit continues "
+                  "where the player left off. Empty: a fresh room."),
+    },
 })
 
 

@@ -35,7 +35,9 @@ plan, like the Database's (``declplan``). Pure: no Tk, no pygame, never runs aut
   plugins by the tests; a game's own plugin: read from its source). Required args pick a
   data set (``data_choices``), optional ones show their default, ``into`` picks a variable.
   ``read_call`` / ``call_line`` read and write the line; ``call_from_form`` builds it from
-  the form's values, leaving out arguments still at their default.
+  the form's values, leaving out arguments still at their default, and refuses what
+  ``form_problem`` sees (F53: a Lock code that doesn't fit its kind). The fields' hints are
+  ``fieldhints.MINIGAME_HINTS`` (one table for every game).
 """
 
 import ast
@@ -75,7 +77,8 @@ USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("poem_game", "words"): POEM, ("present_evidence", "testimony"): TESTIMONY,
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
     ("puzzle_room", "room"): ROOM}
-BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat")
+BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
+                  "code_lock", "stay_still", "hand_game")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -1428,7 +1431,74 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
         _f("meter", "Meter a miss lowers", METER, None),
         _f("cost", "A miss costs", NUMBER, 1, lo=0, hi=20),
         _f("sound", "Beat sound", SOUND, None)),
+    "code_lock": (                                                      # F53 §5
+        _f("kind", "Kind", CHOICE, "keypad", choices=("keypad", "dial")),
+        _f("code", "Code", TEXT),
+        _f("tries", "Tries allowed", NUMBER, 0, lo=0, hi=99),
+        _f("hint", "Hint", TEXT, None),
+        _f("hint_after", "Show the hint after", NUMBER, 3, lo=0, hi=99),
+        _f("leave", "Player can step back", TOGGLE, True)),
+    "stay_still": (
+        _f("seconds", "Seconds", NUMBER, 10, lo=3, hi=120),
+        _f("line", "What they say", TEXT, None),
+        _f("speaker", "Who says it", TEXT, None),
+        _f("flinch_line", "What they say when you move", TEXT, None),
+        _f("strict", "The first touch ends it", TOGGLE, False),
+        _f("mouse", "Moving the mouse counts", TOGGLE, False),
+        _f("ready", "Show an \"I'm ready\" button", TOGGLE, True)),
+    "hand_game": (
+        _f("opponent", "Opponent's name", TEXT),
+        _f("rounds", "Rounds", NUMBER, 3, lo=1, hi=9),
+        _f("mode", "How they play", CHOICE, "fair", choices=("fair", "kind", "cheat", "sly"))),
 }
+
+# F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
+# ADR-0008; ``test_minigamedata`` compares them). ASCII sets, as the rules use.
+_DIGITS: Final = frozenset("0123456789")
+_LETTERS: Final = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+ECHO_MAX: Final = 30
+
+
+def _echo(text: str) -> str:
+    """``rule_text.quoted``'s echo: cut to 30 code points and "…", in double quotes."""
+    cut = text if len(text) <= ECHO_MAX else text[:ECHO_MAX] + "…"
+    return '"' + "".join(" " if _hidden(ch) else ch for ch in cut) + '"'
+
+
+def _literal_text(text: str) -> str | None:
+    """A field's script text as the text it writes, or None (empty, None, an expression)."""
+    try:
+        value = ast.literal_eval(text.strip()) if text.strip() else None
+    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+        return None
+    return value if isinstance(value, str) else None
+
+
+def code_problem(kind: str, code: str) -> str | None:
+    """L3/L4 as the Minigame form shows them (the first letter capitalised), or None."""
+    if kind == "keypad":
+        if 1 <= len(code) <= 12 and set(code) <= _DIGITS:
+            return None
+        return f"A keypad code is 1 to 12 digits from 0 to 9, but code is {_echo(code)}."
+    if kind == "dial":
+        if 3 <= len(code) <= 6 and (set(code) <= _DIGITS or set(code) <= _LETTERS):
+            return None
+        return ("A dial code is 3 to 6 digits, or 3 to 6 letters from A to Z, but code is "
+                f"{_echo(code)}.")
+    return None
+
+
+def form_problem(game: str, values: Mapping[str, str]) -> str | None:
+    """A problem the Minigame form can see before OK (F53 §5's form check): Lock's code that
+    doesn't fit its kind. Expressions and empty values are left to the game."""
+    if game != "code_lock":
+        return None
+    code = _literal_text(values.get("code", ""))
+    kind_text = values.get("kind", "").strip()
+    kind = _literal_text(kind_text) if kind_text else "keypad"
+    if code is None or kind is None:
+        return None
+    return code_problem(kind, code)
 
 
 def _label(name: str) -> str:
@@ -1535,6 +1605,9 @@ def call_from_form(form: GameForm, values: Mapping[str, str], *, skippable: bool
         args.append((f.name, text))
     known = {f.name for f in form.fields}
     args.extend((k, v) for k, v in old_args.items() if k not in known)
+    found = form_problem(form.game, values)
+    if found is not None:
+        return Refuse(found)
     into = values.get(form.into.name, "").strip() or None
     if into is not None and _NAME_VALUE.fullmatch(into) is None:
         return Refuse(NAME_RULE.format(what=INTO_LABEL))
@@ -1547,7 +1620,8 @@ def call_from_form(form: GameForm, values: Mapping[str, str], *, skippable: bool
 MINIGAME_FORM: Final = "minigame"
 GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
-    "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat"}
+    "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
+    "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game"}
 
 
 def game_title(game: str) -> str:
@@ -1562,11 +1636,34 @@ def _row_read(node: object, code: str) -> dict[str, str] | None:
     return {"line": code.strip()}
 
 
+def _shown(text: str | None) -> str:
+    """An argument's script text as a row shows it: a text unquoted, else as written."""
+    if text is None:
+        return ""
+    found = _literal_text(text)
+    return found if found is not None else text.strip()
+
+
+def _arg_summary(game: str, args: Mapping[str, str]) -> str | None:
+    """F53 §5: the key setting of a game with no data (Lock's code, Stay still's seconds,
+    Hand game's opponent and mode), or None for the others."""
+    if game == "code_lock":
+        return _shown(args.get("code"))
+    if game == "stay_still":
+        return f"{_shown(args.get('seconds', '10'))} s"
+    if game == "hand_game":
+        return f"{_shown(args.get('opponent'))}, {_shown(args.get('mode', repr('fair')))}"
+    return None
+
+
 def _row_summary(values: Mapping[str, str]) -> str:
     call = read_call(values.get("line", ""))
     if call is None:
         return values.get("line", "")
     data = [v for k, v in call.args if (call.game, k) in USE_KINDS or k == "words"]
+    own = _arg_summary(call.game, dict(call.args))
+    if own is not None:
+        data = [own]
     parts = [game_title(call.game), *dict.fromkeys(data)]
     text = " · ".join(parts)
     return f"{text} → {call.into}" if call.into else text
@@ -1592,7 +1689,8 @@ __all__ = [
     "NUMBER", "POEM", "SOUND", "POINTS_PICK", "PoemWord", "PoemWords", "RECT_MIN", "ROOM", "Reply",
     "Room", "STEP_TITLES", "Statement", "Step", "TESTIMONY", "TEXT", "TIME", "TOGGLE",
     "USE_KINDS", "VALUE", "VARIABLE", "answer_name", "call_from_form", "call_line", "calls",
-    "clamp_rect", "data_choices", "define_lines", "evidence_of", "evidence_values",
+    "clamp_rect", "code_problem", "data_choices", "define_lines", "form_problem",
+    "evidence_of", "evidence_values",
     "FORM", "GAME_TITLES", "MINIGAME_FORM", "answer_for", "data_set", "game_title",
     "form_fields", "form_values", "games", "literal", "plan_edit", "plan_evidence",
     "plan_new", "poem_meters", "poem_points", "poem_set", "problem", "read_call",

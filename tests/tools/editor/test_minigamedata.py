@@ -14,9 +14,10 @@ from pathlib import Path
 import pytest
 
 from engine.minigames.api import REQUIRED
-from engine.minigames.bundled import (heartbeat, phone_chat, phone_rules, poem_game,
-                                      poem_rules, present_evidence, present_rules,
-                                      puzzle_room, room_rules)
+from engine.minigames.bundled import (code_lock, hand_game, heartbeat, lock_rules,
+                                      phone_chat, phone_rules, poem_game, poem_rules,
+                                      present_evidence, present_rules, puzzle_room, room_rules,
+                                      stay_still)
 from engine.tools.editor import declplan
 from engine.tools.editor import minigamedata as md
 from engine.tools.editor.scriptedit import Refuse, apply_lines
@@ -425,7 +426,8 @@ def test_builtin_fields_match_the_plugins():
     """``BUILTIN_FIELDS`` is the bundled plugins' ``args`` (names, order, required,
     defaults); the mirrored limits are the rules modules'."""
     plugins = {}
-    for module in (poem_game, present_evidence, phone_chat, puzzle_room, heartbeat):
+    for module in (poem_game, present_evidence, phone_chat, puzzle_room, heartbeat, code_lock,
+                   stay_still, hand_game):
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if isinstance(getattr(cls, "args", None), dict) and getattr(cls, "name", None):
                 plugins[cls.name] = cls.args
@@ -473,3 +475,95 @@ def test_puzzle_room_round_trips_for_the_room_canvas():
     again = _sets(after)["attic"]
     assert again.model == new and again.lines[4].startswith('        "hook":      {')
     assert room_rules.problem({"room": md.value_of(md.ROOM, new)}) is None
+
+
+# --- F53 W2: the quick games in the Minigame form ------------------------------------------------
+
+def test_ac_f53_28_quick_games_fields():
+    """The three games' fields (§5's labels and widgets) are their plugins' args; BUNDLED and
+    GAME_TITLES list them."""
+    assert md.BUNDLED[-3:] == ("code_lock", "stay_still", "hand_game")
+    assert [md.game_title(g) for g in md.BUNDLED[-3:]] == ["Lock", "Stay still", "Hand game"]
+    shape = {g: [(f.name, f.label, f.widget, f.required, f.default_text, f.lo, f.hi, f.choices)
+                 for f in md.BUILTIN_FIELDS[g]] for g in md.BUNDLED[-3:]}
+    assert shape["code_lock"] == [
+        ("kind", "Kind", md.CHOICE, False, '"keypad"', None, None, ("keypad", "dial")),
+        ("code", "Code", md.TEXT, True, "", None, None, ()),
+        ("tries", "Tries allowed", md.NUMBER, False, "0", 0, 99, ()),
+        ("hint", "Hint", md.TEXT, False, "None", None, None, ()),
+        ("hint_after", "Show the hint after", md.NUMBER, False, "3", 0, 99, ()),
+        ("leave", "Player can step back", md.TOGGLE, False, "True", None, None, ())]
+    assert shape["stay_still"] == [
+        ("seconds", "Seconds", md.NUMBER, False, "10", 3, 120, ()),
+        ("line", "What they say", md.TEXT, False, "None", None, None, ()),
+        ("speaker", "Who says it", md.TEXT, False, "None", None, None, ()),
+        ("flinch_line", "What they say when you move", md.TEXT, False, "None", None, None, ()),
+        ("strict", "The first touch ends it", md.TOGGLE, False, "False", None, None, ()),
+        ("mouse", "Moving the mouse counts", md.TOGGLE, False, "False", None, None, ()),
+        ("ready", "Show an \"I'm ready\" button", md.TOGGLE, False, "True", None, None, ())]
+    assert shape["hand_game"] == [
+        ("opponent", "Opponent's name", md.TEXT, True, "", None, None, ()),
+        ("rounds", "Rounds", md.NUMBER, False, "3", 1, 9, ()),
+        ("mode", "How they play", md.CHOICE, False, '"fair"', None, None,
+         ("fair", "kind", "cheat", "sly"))]
+    # The limits are the rules modules'.
+    assert (shape["code_lock"][2][5:7], shape["stay_still"][0][5:7]) == ((0, 99), (3, 120))
+    form = md.form_fields("code_lock")
+    values = {**md.form_values(form, None), "code": '"0417"', "tries": "3",
+              "hint": '"The date on the diary."', "into": "safe_open"}
+    call = md.call_from_form(form, values)
+    assert md.call_line(dataclasses.replace(call, indent="")) == (
+        'minigame code_lock code="0417" tries=3 hint="The date on the diary." into safe_open')
+
+
+def test_ac_f53_30_every_field_has_a_hint():
+    """``fieldhints.MINIGAME_HINTS`` (F57's one table, F53's ARG_HINTS) has a sentence for
+    every bundled field, and §5's texts for the quick games."""
+    from engine.tools.editor import fieldhints
+    for game, fields in md.BUILTIN_FIELDS.items():
+        for f in fields:
+            hint = fieldhints.minigame_hint(game, f.name)
+            assert hint and hint.endswith(".") and len(hint) <= 140, (game, f.name)
+        assert set(fieldhints.MINIGAME_HINTS[game]) == {f.name for f in fields}, game
+    assert fieldhints.minigame_hint("code_lock", "tries") == (
+        "Wrong codes allowed before the lock stays shut. 0: no limit.")
+    assert fieldhints.minigame_hint("stay_still", "flinch_line") == (
+        "Shown for 2 seconds each time the player touches something.")
+    assert fieldhints.minigame_hint("hand_game", "mode") == (
+        "fair: random. kind: lets the player win. cheat: switches hands to win, and it shows. "
+        "sly: always wins, without showing it.")
+
+
+def test_ac_f53_31_row_summaries():
+    summary = md.FORM.summary
+    assert summary({"line": 'minigame code_lock code="0417" tries=3 into safe_open'}) == (
+        "Lock · 0417 → safe_open")
+    assert summary({"line": "minigame stay_still seconds=15 into flinches"}) == (
+        "Stay still · 15 s → flinches")
+    assert summary({"line": "minigame stay_still"}) == "Stay still · 10 s"
+    assert summary({"line": 'minigame hand_game opponent="Hana" rounds=3 mode="cheat" '
+                            "into rps"}) == "Hand game · Hana, cheat → rps"
+    assert summary({"line": 'minigame hand_game opponent="Hana"'}) == "Hand game · Hana, fair"
+    assert summary({"line": "minigame code_lock code=secret_code"}) == "Lock · secret_code"
+
+
+@pytest.mark.parametrize("kind,code", [
+    ("keypad", "0417"), ("keypad", "0" * 12), ("keypad", "0" * 13), ("keypad", ""),
+    ("keypad", "12a4"), ("keypad", "12²"), ("dial", "123"), ("dial", "12"), ("dial", "love"),
+    ("dial", "LoVe"), ("dial", "ab12"), ("dial", "café"), ("dial", "abcdefg"),
+    ("dial", "x" * 40)])
+def test_ac_f53_32_code_check_mirrors_lock_rules(kind, code):
+    """The form's L3/L4 is ``lock_rules``' with a capital first letter; OK is refused."""
+    real = lock_rules.problem({**lock_rules.DEFAULTS, "kind": kind, "code": code})
+    mine = md.code_problem(kind, code)
+    assert (mine is None) == (real is None)
+    if real is not None:
+        assert mine == real[0].upper() + real[1:]
+    form = md.form_fields("code_lock")
+    values = {**md.form_values(form, None), "kind": md.literal(kind), "code": md.literal(code)}
+    call = md.call_from_form(form, values)
+    assert isinstance(call, Refuse) == (real is not None)
+    if real is not None:
+        assert call.text == mine
+    # An expression is left to the game.
+    assert md.form_problem("code_lock", {"kind": '"keypad"', "code": "secret"}) is None
