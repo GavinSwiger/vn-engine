@@ -123,6 +123,7 @@ class TextField(Widget):
         self.word_for: Callable[[str], str] = _default_word
         self.last_edit: str | None = None
         self.note: Note | None = None
+        self.note_text: str | None = None          # show_note's own words
         self.note_left = 0.0
         self._latch = False
         self._blink = 0.0
@@ -229,9 +230,15 @@ class TextField(Widget):
         self.model.drop_composition()
         self._latch = False
 
+    def show_note(self, text: str) -> None:
+        """Show the caller's own note under the field for 2 seconds (``ask_text``'s
+        "Type something first.")."""
+        self.note, self.note_text = None, str(text)
+        self.note_left = NOTE_MS / 1000.0
+
     def _show(self, note: Note | None) -> None:
         if note is not None:
-            self.note = note
+            self.note, self.note_text = note, None
             self.note_left = NOTE_MS / 1000.0
 
     def _edited(self, kind: str | None, before: str | None = None) -> None:
@@ -302,10 +309,10 @@ class TextField(Widget):
         self._latch = False
         self._steady = bool(reduce_motion)
         self._blink += max(0.0, dt)
-        if self.note is not None:
+        if self.note is not None or self.note_text is not None:
             self.note_left -= max(0.0, dt)
             if self.note_left <= 1e-9:
-                self.note = None
+                self.note = self.note_text = None
 
     def caret_on(self) -> bool:
         """The blink: on for 500 ms, off for 500 ms, from the last edit; always under reduce
@@ -397,9 +404,11 @@ class TextField(Widget):
                          (lo, hi))
 
     def _note_text(self, echo: bool) -> str | None:
-        if echo or self.note is None:
+        if echo:
             return None
-        return self.word_for(self.note.value)
+        if self.note_text is not None:
+            return self.note_text
+        return None if self.note is None else self.word_for(self.note.value)
 
     def _boundaries(self, measure: Callable[[str], float], x0: float) -> list[float]:
         """The x of each committed grapheme boundary (for a click)."""
