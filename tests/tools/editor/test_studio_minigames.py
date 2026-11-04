@@ -287,7 +287,7 @@ def test_ac_f47_46_minigame_form_in_events(studio, tmp_path, helper, monkeypatch
     assert form.games == [*mg.BUNDLED, "lantern_memory"]
     assert list(form.game_box.cget("values")) == [
         "Poem", "Present evidence", "Phone chat", "Puzzle room", "Heartbeat", "Lock",
-        "Stay still", "Hand game", "Gift giving", "lantern_memory"]
+        "Stay still", "Hand game", "Gift giving", "Ask for text", "lantern_memory"]
     form.set_game("poem_game")
     assert list(form.widgets) == ["words", "rounds", "page_words", "to_points", "result", "into"]
     assert list(form.widgets["words"].cget("values")) == ["day1_words"]

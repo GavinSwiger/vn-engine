@@ -1128,6 +1128,7 @@ def edit_choice(parent: tk.Misc, values: ChoiceValues, *,
 FORM_ENTRIES: Mapping[str, tuple[str, str]] = {
     "effect_off": ("Effects", "Jitter character"),
     "stop_sound": ("Audio", STOP_MUSIC),
+    "ask_name": ("Story flow", "Minigame"),                 # F52: Ask for a name…
 }
 REASON_INDENT = "      "                    # a text-only entry's reason, under it
 

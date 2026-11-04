@@ -79,7 +79,7 @@ USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
     ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS}
 BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
-                  "code_lock", "stay_still", "hand_game", "gift_giving")
+                  "code_lock", "stay_still", "hand_game", "gift_giving", "ask_text")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -1539,6 +1539,20 @@ class ArgField:
     lo: int | None = None
     hi: int | None = None
     choices: tuple[str, ...] = ()
+    labels: tuple[str, ...] = ()       # F52: a CHOICE's shown names, one per choice
+
+    def label_of(self, choice: str) -> str:
+        """F52: the name a pick-list shows for ``choice`` (the choice itself without
+        ``labels``)."""
+        if self.labels and choice in self.choices:
+            return self.labels[self.choices.index(choice)]
+        return choice
+
+    def choice_of(self, shown: str) -> str:
+        """F52: ``label_of``'s inverse (a shown name back to its choice)."""
+        if self.labels and shown in self.labels:
+            return self.choices[self.labels.index(shown)]
+        return shown
 
     @property
     def default_text(self) -> str:
@@ -1618,6 +1632,15 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
         _f("use_up", "The gift is used up", TOGGLE, True),
         _f("leave", "Player can say Not now", TOGGLE, True),
         _f("result", "Result", CHOICE, "reaction", choices=("reaction", "item"))),
+    "ask_text": (                                                       # F52 §7
+        _f("prompt", "Question", TEXT, None),
+        _f("default", "Starts with", TEXT, None),
+        _f("max_length", "Longest answer", NUMBER, 20, lo=1, hi=200),
+        _f("allowed", "Characters allowed", CHOICE, "any",
+           choices=("any", "name", "letters", "digits", "letters_digits"),
+           labels=("Anything", "Names", "Letters", "Digits", "Letters and digits")),
+        _f("hide", "Show dots instead of letters", TOGGLE, False),
+        _f("can_be_empty", "Can be left empty", TOGGLE, False)),
 }
 
 # F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
@@ -1790,7 +1813,7 @@ GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
     "code_lock": "Lock", "stay_still": "Stay still", "hand_game": "Hand game",
-    "gift_giving": "Gift giving"}
+    "gift_giving": "Gift giving", "ask_text": "Ask for text"}
 
 
 def game_title(game: str) -> str:
@@ -1849,9 +1872,29 @@ def _row_form() -> object:
 
 FORM: Final = _row_form()
 
+# F52 (01 §7, 04 §11 W6): Events ▸ Insert ▸ Ask for a name… opens the Minigame form with this
+# line (and offers ``default player_name = ""`` first when the variable doesn't exist).
+ASK_NAME_FORM: Final = "ask_name"
+ASK_NAME_VARIABLE: Final = "player_name"
+ASK_NAME_LINE: Final = ('minigame ask_text prompt="What\'s your name?" max_length=12 '
+                        'allowed="name" into player_name')
+
+
+def _ask_name_form() -> object:
+    """The Insert picker's "Ask for a name…" entry: a form with no doc of its own that never
+    reads a row (rows are the Minigame form's)."""
+    from engine.script.minigame import Minigame
+    from engine.tools.editor.forms import CommandForm
+    return CommandForm(ASK_NAME_FORM, "Ask for a name…", "Minigame", (), Minigame, (),
+                       lambda node, code: None, lambda v: v["line"], _row_summary)
+
+
+ASK_NAME: Final = _ask_name_form()
+
 
 __all__ = [
-    "ADDED", "ANSWER", "ASK", "AskStep", "ArgField", "BUILTIN_FIELDS", "BUNDLED", "CANVAS",
+    "ADDED", "ANSWER", "ASK", "ASK_NAME", "ASK_NAME_FORM", "ASK_NAME_LINE",
+    "ASK_NAME_VARIABLE", "AskStep", "ArgField", "BUILTIN_FIELDS", "BUNDLED", "CANVAS",
     "CHANGED", "CHAT", "CHOICE", "Call", "ChatStep", "DATA", "DONT_REPLY", "DataPlan",
     "DataSet", "Evidence", "FIELDS", "FROM_CONTACT", "FROM_ME", "FROM_OTHER", "GameForm",
     "Hotspot", "INTO_LABEL", "KINDS", "KIND_TITLES", "METER", "NEEDED", "NO_DEFAULT",

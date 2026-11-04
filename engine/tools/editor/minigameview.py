@@ -2321,7 +2321,7 @@ def shown_value(field: mg.ArgField, written: str) -> str:
         except (ValueError, SyntaxError):
             return text
         if isinstance(value, str):
-            return value
+            return field.label_of(value) if field.widget == mg.CHOICE else value
     return text
 
 
@@ -2342,6 +2342,8 @@ def written_value(field: mg.ArgField, shown: str, *, raw: bool = False) -> str:
     text = shown.strip()
     if not text:
         return ""
+    if field.widget == mg.CHOICE and not raw:
+        return mg.literal(field.choice_of(text))                     # F52: shown names
     if field.widget in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND) and not raw:
         return mg.literal(text)
     if field.widget == mg.TOGGLE:
@@ -2458,7 +2460,7 @@ class MinigameDialog:
         elif field.widget in (mg.CHOICE, mg.DATA, mg.METER, mg.VARIABLE):
             var = tk.StringVar(master=self.dialog, value=value)
             if field.widget == mg.CHOICE:
-                values = list(field.choices)
+                values = [field.label_of(c) for c in field.choices]
             elif field.widget == mg.DATA:
                 values = self._choices(field)
             elif field.widget == mg.METER:

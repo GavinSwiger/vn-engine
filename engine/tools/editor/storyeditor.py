@@ -32,7 +32,7 @@ from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
 from engine.tools.editor import assist, formdialogs, forms, minigameview, scenes, scriptedit
 from engine.tools.editor.eventsview import EventsView
-from engine.tools.editor.minigamedata import MINIGAME_FORM
+from engine.tools.editor.minigamedata import ASK_NAME_FORM, MINIGAME_FORM
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, Row
 from engine.tools.editor.scenes import Key, SceneIndex, SceneRead, Span
 from engine.tools.editor.scriptedit import Ask, LineEdit, Plan, Refuse
@@ -40,6 +40,11 @@ from engine.tools.editor.syntax import indent_unit
 
 Planner = Callable[..., scriptedit.Result]
 Place = tuple[str, int]
+
+# F52 (01 §7): Ask for a name…'s question when ``player_name`` doesn't exist yet.
+ASK_NAME_ADD = "{name} doesn't exist yet. Add it?"
+ASK_NAME_YES = "Add"
+ASK_NAME_NO = "Cancel"
 
 
 class StoryEditor:
@@ -412,6 +417,8 @@ class StoryEditor:
             form, doc = doc, None
         else:
             form = forms.form_for_doc(doc)
+        if form is not None and form.key == ASK_NAME_FORM:   # F52: Ask for a name…
+            return self.ask_name(row, unit)
         if form is None:
             code, field = assist.insert_text(doc, "", unit)
             plan = self.act(lambda read, lines, start: scriptedit.plan_insert(
@@ -432,6 +439,46 @@ class StoryEditor:
         if values is None:
             return None
         new = forms.insert_lines(form, values, "", unit)
+        return self.act(lambda read, lines, start: scriptedit.plan_insert(
+            read, lines, start, row, new))
+
+    def ask_name(self, row: Row, unit: str) -> Plan | None:
+        """F52 (01 §7, I-11): Ask for a name…: when ``player_name`` isn't declared, "Add it?"
+        (Add writes ``default player_name = ""`` as its own undo step; Cancel stops here,
+        with nothing added and no form); then the Minigame form with the ``ask_text`` line,
+        and its line goes above the row."""
+        from engine.tools.editor import declarations as dec
+        from engine.tools.editor import declplan, dialogs, files
+        from engine.tools.editor import minigamedata as mg
+        from engine.tools.editor.database import script_texts
+        store = minigameview.Store(self.win)
+        store.read()
+        if mg.ASK_NAME_VARIABLE not in store.lookups.variables:
+            answer = dialogs.ask(self.win.root, ASK_NAME_ADD.format(name=mg.ASK_NAME_VARIABLE),
+                                 (ASK_NAME_YES, ASK_NAME_NO), escape=1)
+            if answer != 0:
+                return None
+            plan = declplan.plan_new(dec.VARIABLE, mg.ASK_NAME_VARIABLE,
+                                     {"kind": dec.TEXT, "value": ""}, script_texts(self.win))
+            if isinstance(plan, Refuse):
+                self.say(plan.text)
+                return None
+            if plan.create is not None:
+                folder, name = plan.create.rsplit("/", 1)
+                made = files.new_script(self.win.paths, folder, name,
+                                        text=declplan.DATABASE_TEXT)
+                if isinstance(made, files.Refusal):
+                    self.say(made.text)
+                    return None
+                self.win.refresh_project()
+            if not self.win.apply_plan(plan.plan,
+                                       lambda texts: declplan.verify_decl(plan, texts)):
+                self.say(scriptedit.STALE)
+                return None
+        values = minigameview.edit_minigame(self.win, {"line": mg.ASK_NAME_LINE})
+        if values is None:
+            return None
+        new = forms.insert_lines(mg.FORM, values, "", unit)          # type: ignore[arg-type]
         return self.act(lambda read, lines, start: scriptedit.plan_insert(
             read, lines, start, row, new))
 

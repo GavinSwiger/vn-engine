@@ -281,6 +281,14 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "leave": "On: shows a Not now button (the result is then None).",
         "result": "reaction: loved, liked, neutral or disliked. item: the given item's name.",
     },
+    "ask_text": {                                       # F52 §7
+        "prompt": 'The question above the field. When empty, the words "Type your answer." show.',
+        "default": "Text already in the field when it opens. Tests answer with it too.",
+        "max_length": "The most characters the player can type, from 1 to 200.",
+        "allowed": "Which characters the player can type: anything, names, letters or digits.",
+        "hide": "On: a dot shows for each letter, as for a password.",
+        "can_be_empty": "On: OK takes an empty answer. Off: the player must type something.",
+    },
     # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
     "poem_game": {
         "words": "The word list: each word and the points it gives each character.",

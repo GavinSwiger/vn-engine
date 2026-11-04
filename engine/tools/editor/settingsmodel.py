@@ -432,6 +432,9 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("words", "Fake crash and user name", (
             "fake_crash_message", "fake_crash_hint", "fake_crash_label", "ask_username",
             "ask_username_yes", "ask_username_no")),
+        Row("words", "Typing", (                                         # F52 §8
+            "text_entry_space", "text_entry_delete", "text_entry_done", "text_entry_full",
+            "text_entry_refused")),
         Row("words", "Other words", rest=True))),
     PageDef(LOOKS, "Styles & playthrough looks", ()),   # generated: looks(), look_page()
     PageDef(ALL_SETTINGS, "All settings", ()),          # generated: all_settings()
