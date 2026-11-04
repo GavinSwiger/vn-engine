@@ -5,8 +5,8 @@ disabled entry does nothing), ``Check(label, variable, command)``, or ``SEPARATO
 and Story are built from the doc registry and ``story_actions``. View's tab rows come from
 ``window.TABS``. F47 adds Run and Help rows; Help ▸ Guides opens the docs pages; F42 a File row after Save all; F39 the Run
 menu's "Update the running game" (Ctrl+R, on while a game runs) and "Update the game on
-save"; F48 Help ▸ Connect an AI app… (``connectdialog``) and File ▸ Studio settings… (Ctrl+,,
-``aisettings``).
+save"; F48 Help ▸ Connect an AI app… (``connectdialog``), File ▸ Studio settings…
+(Ctrl+,, ``aisettings``) and View ▸ AI Assistant (Ctrl+Shift+A, ``assistwiring``).
 
 macOS shows ``menubar`` as the native bar; elsewhere ``views.MenuBar`` posts the same menus
 from a dark bar inside the window (``08`` D5).
@@ -38,6 +38,7 @@ from engine.tools.editor.dialogs import show_error
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
+from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
 from engine.tools.build.texts import MENU as BUILD_MENU
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
@@ -121,6 +122,8 @@ class StudioMenus:
                 Item("Actual size", f"{key}+0", lambda: self.zoom_view(0)),
                 SEPARATOR,
                 Check(SHOW_WARNINGS, self.show_warnings, self.render_panel),
+                SEPARATOR,
+                Item(ASSISTANT_MENU, f"{key}+Shift+A", self.toggle_assistant),   # F48 §6.1
             ]),
             ("Run", "run_menu", [
                 Item(PLAY_MENU, "Shift+F5", self.play_from_start),

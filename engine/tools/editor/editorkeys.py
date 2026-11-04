@@ -57,6 +57,9 @@ class EditorKeys:
             (both("z"), lambda e: self._undo_or_redo(e), EDITOR),
             (both("y"), lambda e: self._redo(e.widget), EDITOR),
             (both("a"), lambda e: self._select_all(e.widget), EDITOR),
+            # F48: Ctrl+Shift+A toggles the Assistant pane; more specific than the editor's
+            # Ctrl+A (keysym A) on the same tag, so it wins there (and stops the MAIN row).
+            ((f"<{mod}-Shift-A>",), lambda _e: brk(self.toggle_assistant), EDITOR),
             *((both(letter), lambda e, ev=event: self._clipboard(e.widget, ev), EDITOR)
               for letter, event in (("x", "<<Cut>>"), ("c", "<<Copy>>"), ("v", "<<Paste>>"))),
 
@@ -87,6 +90,7 @@ class EditorKeys:
             (both("r"), lambda _e: brk(self.update_game), MAIN),
             # F40: F12 opens the console in the running game (Play first when none runs).
             (("<F12>",), lambda _e: brk(self.open_console), MAIN),
+            ((f"<{mod}-Shift-A>",), lambda _e: brk(self.toggle_assistant), MAIN),   # F48
             (("<F6>",), lambda _e: brk(self.cycle_focus, 1), MAIN),
             (("<Shift-F6>",), lambda _e: brk(self.cycle_focus, -1), MAIN),
         ]
@@ -171,15 +175,19 @@ class EditorKeys:
         return "break"
 
     def cycle_focus(self, step: int) -> None:
-        """F6 / Shift+F6: Project → Editor area → Play bar → Problems → Help → Project
-        (UI-F45-02, amended AC-F44-32 and by F47; the editor area is the current tab's
-        widget, then the Story map's side pane's shown page while it is open)."""
+        """F6 / Shift+F6: Project → Editor area → Play bar → Problems → Help → (F48: the
+        Assistant pane's input while it is shown) → Project (UI-F45-02, amended AC-F44-32
+        and by F47; the editor area is the current tab's widget, then the Story map's side
+        pane's shown page while it is open)."""
         areas: list[tk.Widget] = [self.tree, self._tab_widget()]
         side = self._side_active()
         page = self._side_page_widget()
         if side is not None and page is not None:
             areas.append(page)              # F46: the side pane's shown page
         areas += [self.play_button, self.problems, self.help_text]
+        assistant = self.assist_focus_widget()
+        if assistant is not None:
+            areas.append(assistant)
         try:
             focus = self.root.focus_get()
         except (KeyError, tk.TclError):
@@ -193,6 +201,8 @@ class EditorKeys:
                 position = 1
             elif focus in areas:
                 position = areas.index(focus)
+            elif assistant is not None and self.assist_has_focus(focus):
+                position = areas.index(assistant)
             else:
                 position = 0 if step > 0 else 2     # unknown focus: land in the editor
             target = areas[(position + step) % len(areas)]

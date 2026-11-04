@@ -1076,6 +1076,9 @@ def test_no_key_binding_in_the_main_window_reacts_to_escape(make_editor, route_g
     # The editor's own bindings: each widget, the editor tag, the window, and "all".
     widgets = list(walk(root)) + ed.win._editor_widgets()
     tags = {str(widget) for widget in widgets} | {window.EditorWindow._editor_bindtag, "all"}
+    # F48 01 §6.1 amends this for the Assistant pane only: there Esc stops a request.
+    pane = str(ed.win.assist_pane.frame)
+    tags = {tag for tag in tags if tag != pane and not tag.startswith(pane + ".")}
     for tag in tags:
         sequences = root.tk.splitlist(root.tk.call("bind", tag))
         assert not [s for s in sequences if "Escape" in s], tag

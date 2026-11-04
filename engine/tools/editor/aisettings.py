@@ -98,7 +98,8 @@ CONSENT_BODY = ("To help you, the assistant sends parts of this game to {provide
 CONSENT_BODY_LOCAL = ("To help you, the assistant sends parts of this game to the server at "
                       "{host} on this computer: " + CONSENT_PARTS
                       + " Requests use your API key and your account.")
-CONSENT_AFTER = "Each answer lists what was sent. Studio never changes a file until you click Apply."
+CONSENT_AFTER = ("Each answer lists what was sent. Studio never changes a file until you click "
+                 "Apply.")
 CONSENT_BUTTONS = ("Send", "Cancel")
 
 # --- Look (px at 100 %) ------------------------------------------------------------------------

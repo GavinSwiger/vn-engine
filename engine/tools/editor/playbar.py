@@ -5,13 +5,14 @@ Why this module exists: playing the game is the one thing every author does all 
 it gets a 36 px toolbar on ``chrome`` under the menu bar, across the window, instead of F44's
 small button at the bottom of the left column::
 
-    [▶ Play] [▶ Play this scene] club_poem  [■ Stop]  Play options…            [? Guide]
+    [▶ Play] [▶ Play this scene] club_poem  [■ Stop]  Play options…  [AI Assistant] [? Guide]
 
 **▶ Play** is the window's one primary button (from the start, Shift+F5). **▶ Play this
 scene** is secondary (F5) and the muted name after it says which scene that is. **■ Stop**
 (Ctrl+F2) is a ghost button, enabled only while the game runs. **Play options…** opens the
 dialog that holds the start values and "Play as a new player"; **? Guide** toggles the
-Guide pane. Each button has a tooltip; Left and Right move between the bar's buttons.
+Guide pane and F48's **AI Assistant**, left of it, the Assistant pane (they share the
+column). Each button has a tooltip; Left and Right move between the bar's buttons.
 
 ``PlayBar`` only draws and calls back: ``runwiring.RunWiring`` owns what Play does.
 ``ask_play_options`` is the modal dialog; the window calls it through ``runwiring``'s own
@@ -51,6 +52,7 @@ PLAY_SCENE = "▶ Play this scene"
 STOP = "■ Stop"
 PLAY_OPTIONS = "Play options…"
 GUIDE = "? Guide"
+ASSISTANT = "AI Assistant"              # F48 01 §6.1
 BEGINNING = "the beginning"             # what Play this scene plays with no scene chosen
 
 TIP_PLAY = "Play from the start (Shift+F5)"
@@ -58,6 +60,7 @@ TIP_SCENE = "Play from the selected scene (F5)"
 TIP_STOP = "Stop the game (Ctrl+F2)"
 TIP_OPTIONS = "Start values, and playing as a new player"
 TIP_GUIDE = "Show or hide the Guide"
+TIP_ASSISTANT = "Show or hide the AI Assistant (Ctrl+Shift+A)"
 
 OPTIONS_TITLE = "Play options"
 START_VALUES_HEADING = "Start values"
@@ -125,7 +128,8 @@ class PlayBar:
     def __init__(self, parent: tk.Misc, *, scale: float, font: object, tip_font: object,
                  on_play: Callable[[], object], on_scene: Callable[[], object],
                  on_stop: Callable[[], object], on_options: Callable[[], object],
-                 on_guide: Callable[[], object]) -> None:
+                 on_guide: Callable[[], object],
+                 on_assistant: Callable[[], object] | None = None) -> None:
         px = lambda value: round(value * scale)       # noqa: E731
         chrome = THEME["sideBar.background"]
         linespace = font.metrics("linespace") if hasattr(font, "metrics") else px(16)
@@ -155,8 +159,14 @@ class PlayBar:
                                      TIP_OPTIONS)
         self.guide_button = button(GUIDE, "Chrome.Ghost.TButton", on_guide, TIP_GUIDE,
                                    side="right", pad=(gap, inset))
+        self.assistant_button: ttk.Button | None = None
+        if on_assistant is not None:                    # F48: left of ? Guide
+            self.assistant_button = button(ASSISTANT, "Chrome.Ghost.TButton", on_assistant,
+                                           TIP_ASSISTANT, side="right", pad=(0, 0))
         self.buttons = (self.play_button, self.scene_button, self.stop_button,
-                        self.options_button, self.guide_button)
+                        self.options_button,
+                        *((self.assistant_button,) if self.assistant_button else ()),
+                        self.guide_button)
         for widget in self.buttons:                       # a toolbar: arrows move along it
             widget.bind("<Left>", lambda _e, w=widget: self._step(w, -1))
             widget.bind("<Right>", lambda _e, w=widget: self._step(w, 1))
@@ -179,6 +189,12 @@ class PlayBar:
         """The Guide button looks pressed (secondary fill) while the Guide is shown."""
         self.guide_button.configure(style="Secondary.TButton" if shown
                                     else "Chrome.Ghost.TButton")
+
+    def set_assistant(self, shown: bool) -> None:
+        """AI Assistant looks pressed while the Assistant pane is shown (as ? Guide)."""
+        if self.assistant_button is not None:
+            self.assistant_button.configure(style="Secondary.TButton" if shown
+                                            else "Chrome.Ghost.TButton")
 
 
 def _press(widget: ttk.Button) -> str:
@@ -228,6 +244,6 @@ def ask_play_options(parent: tk.Misc, values: str, fresh: bool, *,
     return result[0]
 
 
-__all__ = ["BEGINNING", "FRESH", "GUIDE", "OPTIONS_TITLE", "PLAY", "PLAY_OPTIONS",
+__all__ = ["ASSISTANT", "BEGINNING", "FRESH", "GUIDE", "OPTIONS_TITLE", "PLAY", "PLAY_OPTIONS",
            "PLAY_SCENE", "START_VALUES_HEADING", "START_VALUES_HINT", "STOP", "TIP_PLAY",
            "TIP_SCENE", "TIP_STOP", "PlayBar", "Tooltip", "ask_play_options"]

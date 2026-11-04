@@ -1,10 +1,11 @@
 """Studio's own per-game state, ``<game>/.studio/studio.json`` (F47 ``04-technical.md`` §3.1,
 §8.4, §10; ADR-0008 Amendment 2 as widened for F47: "files Studio names in ``.studio/``").
 
-Why this module exists: whether the Guide pane is open, whether the author has played the
-game from Studio yet ("Play it", Guide step 7), and whether the game was made from the sample
-story are Studio's data, not the story's. They live beside ``storymap.json`` and follow
-``layoutfile``'s read and write safety rules. Pure Python, no Tk.
+Why this module exists: whether the Guide pane (and F48's Assistant pane) is open, whether
+the author has played the game from Studio yet ("Play it", Guide step 7), and whether the
+game was made from the sample story are Studio's data, not the story's. They live beside
+``storymap.json`` and follow ``layoutfile``'s read and write safety rules. Pure Python, no
+Tk.
 
 - ``read_state`` returns a ``StudioState``: the defaults when the folder or the file is
   missing (04 §10), else the stored values. A damaged file (not strict UTF-8 JSON, ``NaN``,
@@ -13,7 +14,8 @@ story are Studio's data, not the story's. They live beside ``storymap.json`` and
   junction or reparse point); otherwise the ``StateProblem`` has ``link`` set and the caller
   stops writing. Known keys must be JSON booleans; a key that isn't keeps its default.
   Unknown keys are ignored. Never raises.
-- ``encode_state`` is pure and deterministic: one key per line, in ``KEYS`` order, LF.
+- ``encode_state`` is pure and deterministic: one key per line, in ``KEYS`` order, LF
+  (``OPTIONAL_KEYS`` only when true).
 - ``write_state`` writes those bytes as ``layoutfile.write_layout`` does: ``.studio`` made by
   ``safefile.ensure_real_dir``, the target missing or regular, unchanged bytes skipped, then
   ``safefile.write_atomic`` with the stamp re-checked. Never raises; nothing but the file and
@@ -48,9 +50,13 @@ class StudioState:
     guide_open: bool = False
     played: bool = False
     sample: bool = False
+    assistant_open: bool = False    # F48 (04 §10): the Assistant pane is shown
 
 
 KEYS: Final = tuple(f.name for f in fields(StudioState))
+# Written only when true (missing means false), so a game whose author never opened the
+# Assistant pane keeps its bytes.
+OPTIONAL_KEYS: Final = frozenset({"assistant_open"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +145,8 @@ def decode_state(data: bytes) -> StudioState | StateProblem:
 
 def encode_state(state: StudioState) -> bytes:
     body = ",\n".join(f'  "{key}": {"true" if getattr(state, key) else "false"}'
-                      for key in KEYS)
+                      for key in KEYS
+                      if key not in OPTIONAL_KEYS or getattr(state, key))
     return ("{\n" + body + "\n}\n").encode("ascii")
 
 
@@ -194,5 +201,6 @@ def with_change(root: Path, **changes: bool) -> StateProblem | None:
     return write_state(root, replace(current, **changes))
 
 
-__all__ = ["KEYS", "STATE_DIR", "STATE_NAME", "StateProblem", "StudioState", "decode_state",
-           "encode_state", "read_state", "state_path", "with_change", "write_state"]
+__all__ = ["KEYS", "OPTIONAL_KEYS", "STATE_DIR", "STATE_NAME", "StateProblem", "StudioState",
+           "decode_state", "encode_state", "read_state", "state_path", "with_change",
+           "write_state"]

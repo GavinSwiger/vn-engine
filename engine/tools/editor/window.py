@@ -33,6 +33,8 @@ applies a ``scriptedit.Plan`` (F46's story edits, F47's Database and Game settin
   (``join_runner``).
 - ``mapwiring.MapWiring``: the Story map tab, its side pane, the layout file, map undo.
 - ``guidepane.GuideWiring``: the Guide column at the right edge (F47 "Your first game").
+- ``assistwiring.AssistWiring``: F48's Assistant pane, sharing the Guide's column (one at a
+  time), its chat runs and their 50 ms poll.
 
 Imports only ``engine.core``, ``engine.script`` (through ``document`` and ``syntax``), and
 the standard library; never pygame (TR-F44-01).
@@ -139,6 +141,7 @@ from engine.tools.editor.fileactions import (  # re-exported: tests read window.
 )
 from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
 from engine.tools.editor.guidepane import GuideWiring
+from engine.tools.editor.assistwiring import AssistWiring
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
     STATUS_NOT_RUNNING,
@@ -323,7 +326,7 @@ class OpenFile:
 
 
 class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring,
-                   GuideWiring):
+                   AssistWiring, GuideWiring):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""
@@ -525,6 +528,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._build_side_pane()
         self._build_problems_panel()
         self._build_guide()                 # F47: the Guide column, right of the tabs
+        self._build_assistant()             # F48: the Assistant pane shares that column
 
     def _build_left_column(self) -> None:
         """The chrome-toned left column (08 §7): PROJECT's header with "+ Add files…" as a
@@ -1531,6 +1535,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.save_layout()                      # F46: whatever happens to the scripts
         self.runner.stop()
         self.check_runner.stop()
+        self.close_assistant()                  # F48 07 I-7: the pane's run and check child
         for runner, _on_events in self.runners:     # joined runners (runwiring)
             runner.stop()
         self.root.destroy()

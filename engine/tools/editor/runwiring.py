@@ -135,7 +135,8 @@ class RunWiring:
         self.play_bar = PlayBar(self.root, scale=self.scale, font=self.ui_font,
                                 tip_font=self.fonts["small"], on_play=self.play_from_start,
                                 on_scene=self.play_scene, on_stop=self.stop_game,
-                                on_options=self.play_options, on_guide=self.toggle_guide)
+                                on_options=self.play_options, on_guide=self.toggle_guide,
+                                on_assistant=getattr(self, "toggle_assistant", None))
         self.play_bar.frame.pack(side="top", fill="x")
         self.play_bar.divider.pack(side="top", fill="x")
         self.play_button = self.play_bar.play_button

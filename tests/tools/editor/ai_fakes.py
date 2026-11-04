@@ -47,12 +47,14 @@ class Transports:
     def __init__(self) -> None:
         self.made: list[FakeTransport] = []
         self._queued: list[tuple] = []
+        self.on_read = None                 # installed on each new transport
 
     def queue(self, *replies) -> None:
         self._queued.append(replies)
 
     def __call__(self) -> FakeTransport:
         transport = FakeTransport(*(self._queued.pop(0) if self._queued else ()))
+        transport.on_read = self.on_read
         self.made.append(transport)
         return transport
 

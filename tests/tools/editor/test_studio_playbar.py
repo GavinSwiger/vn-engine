@@ -62,7 +62,8 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     game = fake_game(win)
     bar = win.play_bar
     assert [b.cget("text") for b in bar.buttons] == [
-        "▶ Play", "▶ Play this scene", "■ Stop", "Play options…", "? Guide"]
+        "▶ Play", "▶ Play this scene", "■ Stop", "Play options…", "AI Assistant",  # F48
+        "? Guide"]
     assert str(bar.play_button.cget("style")) == "TButton"          # the one primary
     assert [b.tooltip.text for b in bar.buttons[:3]] == [
         "Play from the start (Shift+F5)", "Play from the selected scene (F5)",
