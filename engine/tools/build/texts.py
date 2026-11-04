@@ -55,6 +55,9 @@ LEFT_OUT_ONE = "1 file was left out."
 LEFT_OUT_MANY = "{n} files were left out."
 LONG_PATHS = ("{n} file paths are very long and may not unzip on some PCs. "
               "Shorten folder or file names, like {ref}.")
+# F48 PR-F48-32 (01 §6.6): the key scan's warning names the place only, never the text.
+KEY_FOUND = ("{ref}, line {line}: this looks like an API key. "
+             "Remove it before you share the game.")
 CANCELLED = "Build stopped. Nothing in {save_to} was changed."
 CANCEL_ASK = "Stop the build? Nothing will be saved."
 REPLACE_ASK = 'Replace the earlier build "{folder}"? The old folder will be deleted.'
@@ -106,6 +109,10 @@ def cli_step_line(i: int, m: int, key: str, **counts: int | None) -> str:
 def warnings_text(n: int) -> str:
     head = WARNINGS_ONE if n == 1 else WARNINGS_MANY.format(n=format_count(n))
     return head + WARNINGS_WHERE
+
+
+def key_found_text(ref: str, line: int) -> str:
+    return KEY_FOUND.format(ref=ref, line=line)
 
 
 def left_out_text(n: int) -> str:

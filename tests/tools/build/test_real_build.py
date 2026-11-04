@@ -33,6 +33,7 @@ from pathlib import Path
 import pytest
 
 from engine.core.paths import engine_root
+from engine.tools.assistant.reference import PRIMER_NEEDLE
 from engine.tools.build import licenses, names, procs
 from tests.tools.build.leakscan import LeakScanner, needle_forms
 
@@ -246,7 +247,9 @@ def test_ac_f42_12_no_author_path_or_name_anywhere_in_the_build(example_build):
     canary_code = "run the game in the game folder next to"      # cli.py, inside the PYZ
     # AC-F40-35: the developer console's Code hint (tools/console/texts.py) is nowhere.
     console_needle = "one line of python, like a $ line"
-    scanner = LeakScanner([*_needles(built), canary_code, TITLE.casefold(), console_needle])
+    # AC-F48-02 (AB-20): the assistant's primer (tools/assistant/reference.py) is nowhere.
+    scanner = LeakScanner([*_needles(built), canary_code, TITLE.casefold(), console_needle,
+                           PRIMER_NEEDLE.casefold()])
     result = scanner.folder(built.folder)
     leaks = [(where, needle) for where, needle in result.hits
              if needle not in (canary_code, TITLE.casefold())]

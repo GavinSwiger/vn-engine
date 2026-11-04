@@ -537,3 +537,31 @@ def test_ac_f42_34_closing_studio_during_a_build_asks_and_stops_it(
     ed.answers.append(0)                                 # Stop and close
     ed.win.on_close()
     assert ed.win.closed and child.killed
+
+
+# --- AC-F48-59 (F48 S9): key-shaped text found by the build --------------------------------------
+
+def test_ac_f48_59_the_finished_view_lists_each_key_place(studio, route_game, builds, asked):
+    ed = studio(route_game)
+    dialog = open_dialog(ed)
+    child = start_build(ed, dialog)
+    child.send("build_done", **done_fields(keys=[["script/main.vns", 4], ["config.toml", 2]]))
+    child.end(0)
+    pump(ed, lambda: dialog.view == builddialog.FINISHED)
+    shown = [texts.key_found_text("script/main.vns", 4), texts.key_found_text("config.toml", 2)]
+    assert shown[0] == ("script/main.vns, line 4: this looks like an API key. "
+                        "Remove it before you share the game.")
+    assert all(line in labels(dialog.page) for line in shown)
+    assert dialog.finished_lines[-2:] == shown and dialog.keys_box is None
+    dialog.close()
+
+    dialog = open_dialog(ed)
+    child = start_build(ed, dialog)
+    many = [[f"script/s{i}.vns", i + 1] for i in range(5)]
+    child.send("build_done", **done_fields(keys=many))
+    child.end(0)
+    pump(ed, lambda: dialog.view == builddialog.FINISHED)
+    assert texts.key_found_text("script/s0.vns", 1) in labels(dialog.page)
+    assert texts.key_found_text("script/s4.vns", 5) not in labels(dialog.page)
+    assert dialog.keys_box.text.get("1.0", "end-1c").splitlines() == [
+        texts.key_found_text(ref, line) for ref, line in many]

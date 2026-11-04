@@ -265,6 +265,7 @@ class FinishedTexts:
     left_out: str | None
     left_out_lines: tuple[str, ...]
     long_paths: str | None
+    keys: tuple[str, ...] = ()           # F48 PR-F48-32: one warning per key-shaped place
 
 
 def finished_texts(done) -> FinishedTexts:
@@ -284,7 +285,8 @@ def finished_texts(done) -> FinishedTexts:
         left_out_lines=tuple(texts.left_out_line(ref, reason) for ref, reason in done.left_out),
         long_paths=texts.LONG_PATHS.format(n=texts.format_count(done.long_paths),
                                            ref=done.long_path_example)
-        if done.long_paths else None)
+        if done.long_paths else None,
+        keys=tuple(texts.key_found_text(ref, line) for ref, line in done.keys))
 
 
 def failed_texts(failure) -> tuple[str, str, tuple[str, ...]]:

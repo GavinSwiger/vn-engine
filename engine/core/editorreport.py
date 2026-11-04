@@ -65,10 +65,13 @@ HELPER_REPLY_TIMEOUT_S = 10             # no answer after this: Studio restarts 
 # or the game folder, never a full path.
 #   build_step   {i, m, key, files, bytes, staging}   at each step's start
 #   build_done   {folder, exe, files, bytes, zip, zip_bytes, warnings, left_out,
-#                 left_out_total, long_paths, long_path_example}
+#                 left_out_total, long_paths, long_path_example, keys}
+#                (F48 ``keys``: [[ref, line], …], at most 100 key-shaped places, never the
+#                text; an older Studio ignores it, a missing one is none)
 #   build_failed {code, values, details}
 BUILD_EVENTS = ("build_step", "build_done", "build_failed")
 BUILD_MAX_LEFT_OUT = 1_000              # [ref, reason] rows sent; the rest are counted
+BUILD_MAX_KEYS = 100                    # F48: build_done.keys [ref, line] rows (keyscan)
 BUILD_MAX_DETAILS = 200                 # build_failed detail lines (the packer's last 200)
 BUILD_MAX_VALUES = 16                   # build_failed values (key → string or int)
 BUILD_NAME_MAX_CHARS = 1_024            # a folder, zip, exe or staging name; a value

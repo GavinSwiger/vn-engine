@@ -47,6 +47,7 @@ from typing import Final
 from engine.core import safefile
 from engine.core.editorreport import (
     BUILD_MAX_DETAILS,
+    BUILD_MAX_KEYS,
     BUILD_MAX_LEFT_OUT,
     BUILD_MAX_VALUES,
     BUILD_NAME_MAX_CHARS,
@@ -93,6 +94,7 @@ class BuildDone:
     left_out_total: int
     long_paths: int
     long_path_example: str | None
+    keys: tuple[tuple[str, int], ...] = ()      # F48: key-shaped text at (ref, line)
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,8 +134,22 @@ def _step(data: dict) -> StepInfo | None:
     return StepInfo(i, m, key, files, size, staging)
 
 
+def _keys(value: object) -> tuple[tuple[str, int], ...] | None:
+    """``build_done.keys`` (F48 PR-F48-32): missing is none; anything malformed is None."""
+    if value is None:
+        return ()
+    if not isinstance(value, list) or len(value) > BUILD_MAX_KEYS or not all(
+            isinstance(row, list) and len(row) == 2 and _text(row[0]) and row[0]
+            and type(row[1]) is int and row[1] >= 1 for row in value):
+        return None
+    return tuple((ref, line) for ref, line in value)
+
+
 def _done(data: dict) -> BuildDone | None:
     left = data.get("left_out")
+    keys = _keys(data.get("keys"))
+    if keys is None:
+        return None
     if not isinstance(left, list) or len(left) > BUILD_MAX_LEFT_OUT or not all(
             isinstance(row, list) and len(row) == 2 and _text(row[0]) and _text(row[1])
             for row in left):
@@ -148,7 +164,7 @@ def _done(data: dict) -> BuildDone | None:
                      data["zip_bytes"], data["warnings"],
                      tuple((ref, reason) for ref, reason in left),
                      max(data["left_out_total"], len(left)), data["long_paths"],
-                     data["long_path_example"])
+                     data["long_path_example"], keys)
 
 
 def _failed(data: dict) -> BuildFailure | None:

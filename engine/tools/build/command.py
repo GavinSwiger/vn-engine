@@ -19,7 +19,7 @@ refused: ``B_CANT_WRITE``).
 
 **Steps** (``build_step`` at each start; ``texts.steps``): check (``checkstep``; errors
 ``B_ERRORS``) → copy (``sweep_stale``, ``make_staging``, ``copy_game`` into
-``<staging>/b/<folder>/game``) → pack (icon, version file and spec in ``<staging>/spec``;
+``<staging>/b/<folder>/game``, then F48's key scan, ``keyscan.scan``) → pack (icon, version file and spec in ``<staging>/spec``;
 PyInstaller as a child, its output in a 200-line ring; non-zero → ``B_PACK_FAILED`` with the
 redacted tail; ``dist/app/*`` moved into the folder) → notices (``licenses/``, ``README.txt``,
 ``_internal/vn-build.json``; a bundled DLL without a notice is ``B_PACK_FAILED``) → zip (only
@@ -62,7 +62,7 @@ from engine.core.errors import UserFacingError
 from engine.core.logsetup import redaction_roots
 from engine.core.paths import GamePaths, engine_root
 from engine.core.redact import RedactRoot
-from engine.tools.build import checkstep, names, plugins, procs, spec, texts, tree
+from engine.tools.build import checkstep, keyscan, names, plugins, procs, spec, texts, tree
 from engine.tools.build.texts import BuildStopped
 
 EXIT_BUILT: Final = 0
@@ -195,7 +195,8 @@ class Reporter:
                        zip_bytes=result.zip_bytes, warnings=result.warnings,
                        left_out=[[item.ref, item.reason] for item in left[:BUILD_MAX_LEFT_OUT]],
                        left_out_total=len(left), long_paths=result.long_paths,
-                       long_path_example=result.long_path_example)
+                       long_path_example=result.long_path_example,
+                       keys=[[hit.ref, hit.line] for hit in result.keys])
             return
         self.print(texts.DONE)
         self.print(texts.CLI_DONE_FOLDER.format(path=result.folder_path,
@@ -216,6 +217,8 @@ class Reporter:
         if result.long_paths:
             self.print(texts.LONG_PATHS.format(n=texts.format_count(result.long_paths),
                                                ref=result.long_path_example))
+        for hit in result.keys:
+            self.print(texts.key_found_text(hit.ref, hit.line))
 
 
 @dataclass
@@ -231,6 +234,7 @@ class BuildResult:
     left_out: list = field(default_factory=list)
     long_paths: int = 0
     long_path_example: str | None = None
+    keys: list = field(default_factory=list)        # keyscan.KeyHit, ref and line only
 
 
 # --- The step machine -------------------------------------------------------------------------
@@ -365,6 +369,7 @@ class BuildJob:
         build_folder = build_dir / folder
         os.mkdir(build_folder)
         copied = tree.copy_game(root, build_folder / GAME_DIR, long_prefix=f"{folder}/game/")
+        keys = keyscan.scan(build_folder / GAME_DIR)       # F48 SEC-F48-24: ref:line only
 
         # 3. Pack
         self.reporter.step(3, m, texts.STEP_PACK)
@@ -396,7 +401,7 @@ class BuildJob:
             folder=folder, exe=exe, folder_path=installed.folder, files=files, bytes=size,
             zip_path=installed.zip, zip_bytes=zip_bytes, warnings=warnings,
             left_out=copied.left_out, long_paths=copied.long_paths,
-            long_path_example=copied.long_path_example))
+            long_path_example=copied.long_path_example, keys=keys))
 
     # Preflight -------------------------------------------------------------------------
     @dataclass

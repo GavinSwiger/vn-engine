@@ -112,6 +112,7 @@ PADDING = 20
 LABEL_PX = 72                   # the field labels' column
 THUMB_PX = 24
 LIST_LINES = 8                  # Show list / Show details
+KEY_LINES = 3                   # F48: key warnings shown as lines; more go in a list
 INSTALL_LINES = 6
 TICK_MS = 1000                  # the elapsed time changes once a second
 FIELD_ORDER = ("name", "version", "id", buildmodel.FIELD_ICON, buildmodel.FIELD_SAVE_TO)
@@ -979,7 +980,16 @@ class BuildDialog:
         if words.long_paths:
             self._line(page, words.long_paths, icon=warn)
             self.finished_lines.append(words.long_paths)
-        self.targets = buildmodel.open_targets(save_to, folder, buildmodel.exe_of(fields))
+        # F48 PR-F48-32: key-shaped text in a shipped file, by ref and line only. A few are
+        # warning lines; more go in a list box under the first.
+        self.keys_box: ttk.Frame | None = None
+        for line in words.keys[:1 if len(words.keys) > KEY_LINES else KEY_LINES]:
+            self._line(page, line, icon=warn)
+        if len(words.keys) > KEY_LINES:
+            box = self.keys_box = self._list_box(page, words.keys)
+            box.pack(anchor="w", fill="x", pady=(self.px(8), 0))
+        self.finished_lines += list(words.keys)
+        self.targets =buildmodel.open_targets(save_to, folder, buildmodel.exe_of(fields))
         self.open_button, self.run_button, self.close_button = self._button_row(page, (
             (OPEN_FOLDER, self.open_folder, False), (RUN_GAME, self.run_game, True),
             (CLOSE, self.close, False)))
