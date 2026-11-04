@@ -183,6 +183,7 @@ class StudioMenus:
                                            font.metrics("linespace") + self._px(8)),
                                 scale=self.scale)
         self.menu_bar.frame.pack(side="top", fill="x", before=self.play_bar.frame)
+        self.play_bar.merge_into(self.menu_bar.frame)   # one row: menus, then Play's buttons
 
     def _build_insert_menu(self, bar: tk.Menu) -> tk.Menu:
         """Insert: one submenu per GROUPS entry with docs, built once from the registry."""

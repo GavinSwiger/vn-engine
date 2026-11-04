@@ -14,6 +14,10 @@ dialog that holds the start values and "Play as a new player"; **? Guide** toggl
 Guide pane and F48's **AI Assistant**, left of it, the Assistant pane (they share the
 column). Each button has a tooltip; Left and Right move between the bar's buttons.
 
+On Windows and Linux the bar shares the in-window menu bar's row (``merge_into``: the menu
+titles, then these buttons), so the window has no separate toolbar row; macOS, whose menu bar
+is the system's, keeps it as its own row under the title bar.
+
 ``PlayBar`` only draws and calls back: ``runwiring.RunWiring`` owns what Play does.
 ``ask_play_options`` is the modal dialog; the window calls it through ``runwiring``'s own
 name, so tests answer it by patching that module.
@@ -136,6 +140,7 @@ class PlayBar:
         self.frame = tk.Frame(parent, background=chrome,
                               height=max(px(BAR_PX), linespace + px(16)))
         self.frame.pack_propagate(False)
+        self.merged = False                 # True once it shares the menu bar's row
         self.divider = tk.Frame(parent, background=THEME["divider"], height=1)
         inset, gap = px(BAR_INSET), px(BAR_GAP)
 
@@ -170,6 +175,30 @@ class PlayBar:
         for widget in self.buttons:                       # a toolbar: arrows move along it
             widget.bind("<Left>", lambda _e, w=widget: self._step(w, -1))
             widget.bind("<Right>", lambda _e, w=widget: self._step(w, 1))
+
+    def merge_into(self, row: tk.Frame) -> None:
+        """Share the in-window menu bar's row (Windows, Linux): the buttons sit right of the
+        menu titles, the row grows to the bar's height, and the divider stays under it."""
+        height = max(int(row.cget("height")), int(self.frame.cget("height")))
+        row.configure(height=height)
+        self.frame.pack_forget()
+        self.frame.configure(background=str(row.cget("background")))
+        self.frame.pack(in_=row, side="left", fill="both", expand=True,
+                        padx=(round(BAR_GAP * scale_of(row)), 0))
+        self.frame.lift(row)
+        # Pack order is who keeps room in a narrow window: Play, Play this scene, then the
+        # pane toggles; the scene name, Stop and Play options give way first (all of them
+        # are in the Run menu too). The left-to-right order on screen stays the same.
+        keep = [self.play_button, self.scene_button, self.guide_button,
+                *((self.assistant_button,) if self.assistant_button else ()),
+                self.scene_label, self.stop_button, self.options_button]
+        packed = {str(w): w.pack_info() for w in keep}
+        for widget in keep:
+            widget.pack_forget()
+        for widget in keep:
+            info = {k: v for k, v in packed[str(widget)].items() if k != "in"}
+            widget.pack(**info)
+        self.merged = True
 
     def _step(self, widget: ttk.Button, step: int) -> str:
         enabled = [b for b in self.buttons if b is widget or not b.instate(["disabled"])]
