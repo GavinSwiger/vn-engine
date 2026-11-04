@@ -5,7 +5,7 @@ disabled entry does nothing), ``Check(label, variable, command)``, or ``SEPARATO
 and Story are built from the doc registry and ``story_actions``. View's tab rows come from
 ``window.TABS``. F47 adds Run and Help rows; Help ▸ Guides opens the docs pages; F42 a File row after Save all; F39 the Run
 menu's "Update the running game" (Ctrl+R, on while a game runs) and "Update the game on
-save".
+save"; F48 Help ▸ Connect an AI app… (``connectdialog``).
 
 macOS shows ``menubar`` as the native bar; elsewhere ``views.MenuBar`` posts the same menus
 from a dark bar inside the window (``08`` D5).
@@ -35,6 +35,7 @@ from engine.tools.editor.guide import GUIDE_TITLE
 from engine.tools.editor.guides import GUIDES, GUIDES_MENU, open_guide
 from engine.tools.editor.dialogs import show_error
 from engine.tools.editor.builddialog import open_build_dialog
+from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.build.texts import MENU as BUILD_MENU
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
@@ -182,8 +183,8 @@ class StudioMenus:
         return menu
 
     def _build_help_menu(self, bar: tk.Menu) -> tk.Menu:
-        """Help: help for the line, the Guide pane (F47: shows or hides it), and **Guides**,
-        the engine's docs pages (``guides.GUIDES``)."""
+        """Help: help for the line, the Guide pane (F47: shows or hides it), **Guides**,
+        the engine's docs pages (``guides.GUIDES``), and F48's Connect an AI app…."""
         menu = tk.Menu(bar, tearoff=0)
         for row in (Item("Help for this line", command=self.focus_help),
                     Item(GUIDE_TITLE, command=self.toggle_guide)):
@@ -193,7 +194,13 @@ class StudioMenus:
             sub.add_command(label=title, command=lambda t=title, n=name: self.open_guide(t, n))
         menu.add_cascade(label=GUIDES_MENU, menu=sub)
         self.guides_menu = sub
+        _add_row(menu, SEPARATOR)
+        _add_row(menu, Item(CONNECT_MENU, command=self.connect_ai_app))
         return menu
+
+    def connect_ai_app(self) -> None:
+        """Help ▸ Connect an AI app… (F48 01 §6.5)."""
+        open_connect_dialog(self)
 
     def open_guide(self, title: str, name: str) -> None:
         problem = open_guide(title, name)
