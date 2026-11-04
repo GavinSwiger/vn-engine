@@ -1,6 +1,6 @@
 # ADR-0008 — Dev tools that edit author files
 
-Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3); 2026-11-03 (F40, F41, F43, Amendment 4); 2026-11-04 (F48, Amendment 5)
+Status: **accepted** — 2026-11-01 (with modifications); **amended** 2026-11-02 (F45, Amendment 1; F31, Amendment 1 §1; F46, Amendment 2; F42, Amendment 3); 2026-11-03 (F40, F41, F43, Amendment 4); 2026-11-04 (F48, Amendment 5; F58, Amendment 6)
 Proposed by: vn-feature-architect (F44 `04-technical.md` §17). Gaps raised by: vn-qa-engineer
 (F44 `06-acceptance.md` §7, G1 and G11). Decided by: vn-system-architect (F44
 `07-architecture-review.md`).
@@ -330,6 +330,42 @@ amendment. `assist-mcp` is the first writer outside Studio's window; a game file
 unsaved in Studio meets F45's "changed on disk" question. Any later tool that sends data off
 the machine, or reads another credential, needs its own amendment.
 
+## Amendment 6 — Studio's motion preference and script watch (F58)
+
+Proposed by: vn-feature-architect (F58 `04-technical.md` §9, ruling 13). Decided by:
+vn-system-architect (F58 `07-architecture-review.md`, accepted with modifications).
+
+**Context.** F58 adds Studio's first animation (a glow fade) and View ▸ Reduce motion, which
+also follows the OS's "less animation" setting. It also adds a background thread that lists
+and reads `script/**` while Studio isn't focused.
+
+**Decision.** Dev runs only; never the game process or the check child.
+1. **OS read (a dev-tool exception to invariant 9(c), as Amendment 3 §7 and Amendment 5 §7).**
+   One function, `theme.os_reduce_motion()`, returns one boolean and is the only caller of:
+   Windows `SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION)` from `user32` (System32 only,
+   SEC-F01-18; declared `argtypes`/`restype`); macOS `/usr/bin/defaults read
+   com.apple.universalaccess reduceMotion` (absolute path, argument list, no shell, stdin
+   closed, `LC_ALL=C`, `LANG=C`, the `procs.child_env` environment, 1 s timeout). Elsewhere, or on any
+   error or timeout, it returns False. `ctypes` and `subprocess` are imported inside the
+   function, so importing `theme` stays side-effect free. It is read once per window, off the Tk
+   thread, and the value is never logged.
+2. **Watch thread.** One daemon thread per Studio window (`mapwatch.ScriptWatch`) lists the
+   real `script/` folder with `os.scandir` and reads changed `.vns` files through its **own**
+   `GamePaths` and `document.open_document`. It never writes, never calls Tk, never starts a
+   process, and skips links and junctions. Closing a window never waits on it.
+3. **Motion rule.** Studio's rule stays "no animation", with one exception class: a transient
+   state cue (F58's glow fade). Every such cue honours Reduce motion (`studio.json`
+   `reduce_motion` or the OS read) by cutting to static on and off steps.
+4. `studio.json` (Amendment 2) gains optional booleans `follow_changes` and `reduce_motion`;
+   no new file name.
+
+**Modifications to the draft:** the macOS child's environment and stdin; the read confined
+to one function with function-level imports; one watch per window with a private `GamePaths`.
+
+**Consequences.** Invariant 9(c) and architecture.md's thread paragraph name this amendment.
+A per-user Studio preference page, if added later, takes over Reduce motion without a new
+OS read.
+
 ## Status history
 
 - 2026-11-01: proposed (F44 04-technical §17).
@@ -347,3 +383,5 @@ the machine, or reads another credential, needs its own amendment.
   accepted in `specs/F43-localization/07` (joint M7 tools review).
 - 2026-11-04: Amendment 5 (`assist-mcp`, the assistant pane, network, keychain, per-user
   Studio files) proposed in F48 `04` §18 and accepted with modifications (F48 `07`).
+- 2026-11-04: Amendment 6 (Studio's OS reduce-motion read, the script watch thread, the
+  motion rule, two `studio.json` keys) accepted with modifications (F58 `07`).
