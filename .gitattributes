@@ -2,3 +2,5 @@ tests/fixtures/** -text
 # Engine data is copied byte for byte into new games and builds, so its line endings must
 # not depend on the checkout (core.autocrlf). Text files stay LF everywhere.
 engine/data/** text=auto eol=lf
+# The example game is the engine's sample and its tests read its bytes, so its text files stay LF too.
+game/** text=auto eol=lf
