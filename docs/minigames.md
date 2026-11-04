@@ -1630,6 +1630,76 @@ hint = "Type, then press Enter. With a controller, press A for the keyboard."
 The on-screen keyboard's keys and the field's notes are in `[words]`: `text_entry_space`,
 `text_entry_delete`, `text_entry_done`, `text_entry_full`, `text_entry_refused`.
 
+## Coded note
+
+Coded note (`cipher_note`) comes with the engine. A letter is written in a code: under each
+coded sign is a letter square, and the player types (or turns) the letter they think it
+stands for. Every copy of that sign changes together. When the whole note reads right, it is
+solved. Hints are tips the player learned in the story.
+
+```
+lock tip hana_code "Hana's notebook" in "Hana's code":
+    "She always swapped letters, never shifted them. 'E is the commonest,' she wrote."
+lock tip hana_letter "Hana's last letter"
+default letter_read = False
+
+label attic:
+    minigame cipher_note message="MEET ME AT THE OLD LANTERN STALL." hints="Hana's code" tip="hana_letter" into letter_read
+```
+
+The result is `True` when the player solves the note and presses Done, `False` when they put
+it away.
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `message` | (required) | text of 1 to 300 characters | The note, in plain words; `\n` starts a line |
+| `kind` | `"letters"` | `"letters"`, `"shift"`, `"symbols"` | Letter swap, shift along the alphabet, or one symbol per letter |
+| `alphabet` | `"ABCDEFGHIJKLMNOPQRSTUVWXYZ"` | 2 to 60 different characters, no spaces | The letters that are coded; anything else shows as written |
+| `shift` | `3` | 1 to the alphabet's length − 1 | Shift: how many places each letter moves |
+| `key` | `None` | the alphabet in another order | Letter swap: the coded letter for each alphabet letter. `None`: made from the message (the same every time) |
+| `symbols` | Greek and Cyrillic letters | at least one per alphabet letter | Symbols: the sign for each alphabet letter, in order |
+| `revealed` | `""` | letters of the alphabet | Letters that start solved (letter swap and symbols) |
+| `hints` | `None` | a tip category | The Hints button shows the tips of this category the player holds |
+| `tip` | `None` | a tip | Unlocked when the note is solved |
+
+### Playing
+
+- **Type** the letter under a sign, or **turn** it with Up and Down. Typing moves to the next
+  sign with no letter. Backspace or Delete clears a sign. A letter can be on one sign only:
+  typing it elsewhere takes it off the first.
+- **Left and Right** move through the squares in reading order (past the last, to the
+  buttons); **Page Up and Page Down** (or the bumpers) jump a line. Long notes scroll.
+- **Shift:** the squares show the decoded note; turn the one square at the side ("A is
+  written as …") until the note makes sense.
+- **Hints** opens the codex with the tips of `hints`; with none held it reads "No hints yet".
+- **Done** appears once the note is solved. **Put away** asks first, then ends with `False`.
+
+### When the arguments are refused
+
+The story stops at the line (E272), for example:
+
+- `message has no letter of the alphabet, so there is nothing to decode.`
+- `kind must be "letters", "shift" or "symbols", not "shfit". Did you mean "shift"?`
+- `key must use each letter of the alphabet once, but Q is missing.`
+- `hints names the tip category "Hanas code", but no tip is in it. Did you mean "Hana's code"?`
+- `tip "hana_leter" isn't a declared tip. Did you mean "hana_letter"?`
+
+In dev runs, W270 warns once when the game's fonts can't draw a character of the note.
+
+### Testing the note
+
+Headless runs, Shift+F8 and Skip Game solve it: `True`, with `tip` unlocked.
+
+### Changing the look and the words
+
+`[theme.plugin.cipher_note]`: `code.text_color` (the signs; default the panel text color),
+`code.text_size`, `code_font`, `guess.text_color` (the typed letters; default the panel
+heading color). The squares use `[theme.text_entry]`. `[words.plugin.cipher_note]`:
+`title`, `hint`, `hint_shift`, `shift_label`, `hints`, `no_hints`, `put_away`, `confirm`,
+`solved`, `done`.
+
 ## Writing a minigame
 
 A minigame of your own is a **plugin**: a Python file in your game's `game/minigames/`
