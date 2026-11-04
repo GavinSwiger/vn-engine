@@ -347,7 +347,7 @@ def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lante
     menu = win.view_menu
     labels = [str(menu.entrycget(i, "label")) for i in range(menu.index("end") + 1)
               if menu.type(i) == "checkbutton"]
-    assert labels == ["Show warnings", REDUCE_MOTION]       # after Show warnings (UI-04)
+    assert labels[:2] == ["Show warnings", REDUCE_MOTION]   # after Show warnings (UI-04)
     assert not win.reduce_motion.get() and entry_enabled(menu, REDUCE_MOTION)
     menu.invoke(REDUCE_MOTION)
     assert win.reduce_motion.get() and view.reduce_motion

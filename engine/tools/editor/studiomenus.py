@@ -39,6 +39,7 @@ from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
 from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
+from engine.tools.editor.docking import CLOSABLE, LOCK_MENU, PANE_TITLES, RESET_MENU
 from engine.tools.build.texts import MENU as BUILD_MENU
 from engine.tools.editor.livemap import FOLLOW_CHANGES, REDUCE_MOTION
 
@@ -126,6 +127,10 @@ class StudioMenus:
                 Check(REDUCE_MOTION, self.reduce_motion, self.toggle_reduce_motion),   # F58
                 SEPARATOR,
                 Item(ASSISTANT_MENU, f"{key}+Shift+A", self.toggle_assistant),   # F48 §6.1
+                *(Check(PANE_TITLES[pane], self.dock_vars[pane],
+                        lambda p=pane: self.toggle_pane(p)) for pane in CLOSABLE),
+                Check(LOCK_MENU, self.lock_var, self.toggle_lock),
+                Item(RESET_MENU, command=self.reset_layout),
             ]),
             ("Run", "run_menu", [
                 Item(PLAY_MENU, "Shift+F5", self.play_from_start),

@@ -131,7 +131,7 @@ class AssistWiring:
         """Made after the Guide; shown when this game's pane was left open (and the Guide
         wasn't: they share the column)."""
         self.assist_pane = AssistPane(
-            self.hpane, fonts=self.fonts, scale=self.scale, on_send=self.assist_send,
+            self.hpane.master, fonts=self.fonts, scale=self.scale, on_send=self.assist_send,
             on_stop=self.assist_stop, on_new_chat=self.assist_new_chat,
             on_close=self.toggle_assistant, on_settings=self.assist_settings,
             on_connect=self.connect_ai_app, on_link=self.assist_link,
@@ -148,7 +148,7 @@ class AssistWiring:
         self._assist_listening = False
         state = studiostate.read_state(self.paths.root)
         if isinstance(state, studiostate.StudioState) and state.assistant_open \
-                and not self.guide_shown:
+                and not (self.guide_shown and self.same_dock("guide", "assistant")):
             self.show_assistant(True, save=False)
 
     def assistant_open(self) -> bool:
@@ -168,24 +168,21 @@ class AssistWiring:
         """Show or hide the pane in the Guide's column (the Guide closes first)."""
         if shown == self.assistant_shown:
             return
-        frame = self.assist_pane.frame
+        if shown and self.guide_shown and self.same_dock("guide", "assistant"):
+            self.toggle_guide()                     # hides the Guide and remembers that
+        self.assistant_shown = shown
+        self.dock_apply()
         if shown:
-            if self.guide_shown:
-                self.toggle_guide()                 # hides the Guide and remembers that
-            self.hpane.add(frame, after=self.vpane, width=self._px(GUIDE_WIDTH),
-                           minsize=self._px(GUIDE_MIN_WIDTH), stretch="never")
             self._assist_start_session()
         else:
-            self.hpane.forget(frame)
             self.assist_clear_preview()             # F58 PR-15: the pane closed
-        self.assistant_shown = shown
         self.play_bar.set_assistant(shown)
         if save:
             self.save_studio_state(assistant_open=shown)
 
     def show_guide(self, shown: bool) -> None:
         """The Guide and the pane share the column: showing the Guide hides the pane."""
-        if shown and self.assistant_shown:
+        if shown and self.assistant_shown and self.same_dock("guide", "assistant"):
             self.show_assistant(False)
         super().show_guide(shown)                   # type: ignore[misc]
 

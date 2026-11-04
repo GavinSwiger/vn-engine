@@ -13,6 +13,15 @@ opens another game in its own window. The window holds the Play bar, the
 **Project** panel, the tabs, **Problems**, and **Help**. **Help ▸ Guides** opens these
 guides.
 
+### Arrange the panes
+
+Drag a pane by its title (PROJECT, PROBLEMS, HELP, GUIDE, AI ASSISTANT) to the left,
+right or bottom edge of the window; an outline shows where it will go. Panes on the left
+or right stack top to bottom, and panes along the bottom sit side by side. **✕** hides
+Project, Problems or Help, and the **View** menu brings them back. **View ▸ Lock pane
+layout** stops panes from moving, and **View ▸ Reset pane layout** puts everything back.
+Studio remembers the layout for each game.
+
 ## Your files
 
 The **Project** panel lists Script, Images, Audio, GUI, Fonts, Minigames, and

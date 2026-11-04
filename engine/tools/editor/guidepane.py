@@ -233,7 +233,7 @@ class GuideWiring:
 
     def _build_guide(self) -> None:
         """Made after the panes; shown when this game's Guide was left open."""
-        self.guide_pane = GuidePane(self.hpane, fonts=self.fonts, scale=self.scale,
+        self.guide_pane = GuidePane(self.hpane.master, fonts=self.fonts, scale=self.scale,
                                     on_show_me=self.guide_show_me, on_close=self.toggle_guide)
         state = studiostate.read_state(self.paths.root)
         self._guide_sample = isinstance(state, studiostate.StudioState) and state.sample
@@ -248,14 +248,8 @@ class GuideWiring:
 
     def show_guide(self, shown: bool) -> None:
         """Show or hide the Guide column (the Play bar's ? Guide calls this)."""
-        frame = self.guide_pane.frame
-        if shown == self.guide_open():
-            return
-        if shown:
-            self.hpane.add(frame, after=self.vpane, width=self._px(GUIDE_WIDTH),
-                           minsize=self._px(GUIDE_MIN_WIDTH), stretch="never")
-        else:
-            self.hpane.forget(frame)
+        self._guide_wanted = shown
+        self.dock_apply()
 
     def _guide_played(self) -> bool:
         return bool(getattr(self, "_played_marked", False))

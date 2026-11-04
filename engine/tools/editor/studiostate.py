@@ -53,9 +53,10 @@ class StudioState:
     assistant_open: bool = False    # F48 (04 §10): the Assistant pane is shown
     follow_changes: bool = False    # F58 (ADR-0008 Am. 6 §4): the map scrolls to changes
     reduce_motion: bool = False     # F58: View ▸ Reduce motion (the glow is static)
+    panes: dict | None = None       # docking.Layout.to_json(); None: Studio's usual layout
 
 
-KEYS: Final = tuple(f.name for f in fields(StudioState))
+KEYS: Final = tuple(f.name for f in fields(StudioState) if f.name != "panes")
 # Written only when true (missing means false), so a game whose author never opened the
 # Assistant pane keeps its bytes.
 OPTIONAL_KEYS: Final = frozenset({"assistant_open", "follow_changes", "reduce_motion"})
@@ -140,16 +141,20 @@ def decode_state(data: bytes) -> StudioState | StateProblem:
         return StateProblem("damaged")
     if not isinstance(doc, dict):
         return StateProblem("damaged")
-    return StudioState(**{key: doc[key] for key in KEYS if type(doc.get(key)) is bool})
+    panes = doc.get("panes")
+    return StudioState(**{key: doc[key] for key in KEYS if type(doc.get(key)) is bool},
+                       panes=panes if isinstance(panes, dict) else None)
 
 
 # --- Encoding and writing --------------------------------------------------------------------
 
 def encode_state(state: StudioState) -> bytes:
-    body = ",\n".join(f'  "{key}": {"true" if getattr(state, key) else "false"}'
-                      for key in KEYS
-                      if key not in OPTIONAL_KEYS or getattr(state, key))
-    return ("{\n" + body + "\n}\n").encode("ascii")
+    rows = [f'  "{key}": {"true" if getattr(state, key) else "false"}'
+            for key in KEYS if key not in OPTIONAL_KEYS or getattr(state, key)]
+    if state.panes:                         # written only when the author moved a pane
+        rows.append('  "panes": ' + json.dumps(state.panes, sort_keys=True,
+                                               ensure_ascii=True))
+    return ("{\n" + ",\n".join(rows) + "\n}\n").encode("ascii")
 
 
 def write_state(root: Path, state: StudioState) -> StateProblem | None:
@@ -192,7 +197,7 @@ def _write(root: Path, data: bytes) -> StateProblem | None:
     return None
 
 
-def with_change(root: Path, **changes: bool) -> StateProblem | None:
+def with_change(root: Path, **changes: object) -> StateProblem | None:
     """Read, change ``changes`` (e.g. ``guide_open=False`` or ``played=True``) and write
     back. A damaged file is replaced from the defaults; a link stops the write."""
     current = read_state(root)

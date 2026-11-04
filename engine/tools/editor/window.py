@@ -144,6 +144,7 @@ from engine.tools.editor.fileactions import (  # re-exported: tests read window.
 from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
 from engine.tools.editor.guidepane import GuideWiring
 from engine.tools.editor.assistwiring import AssistWiring
+from engine.tools.editor.docking import DockWiring
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
     STATUS_NOT_RUNNING,
@@ -333,7 +334,7 @@ class OpenFile:
 
 
 class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring,
-                   AssistWiring, GuideWiring):
+                   AssistWiring, GuideWiring, DockWiring):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""
@@ -513,9 +514,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.hpane = tk.PanedWindow(root, orient="horizontal", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
         self.hpane.pack(fill="both", expand=True)
-        self.left = ttk.Frame(self.hpane, width=px(LEFT_WIDTH), style="Side.TFrame")
-        self.hpane.add(self.left, width=px(LEFT_WIDTH), minsize=px(LEFT_MIN_WIDTH),
-                       stretch="never")
+        # Every pane is a child of ``root``, so any dock can hold it (``docking``).
+        self.left = ttk.Frame(root, width=px(LEFT_WIDTH), style="Side.TFrame")
         self.vpane = tk.PanedWindow(self.hpane, orient="vertical", sashwidth=sash_width,
                                     borderwidth=0, sashrelief="flat", background=sash)
         self.hpane.add(self.vpane, minsize=px(LEFT_MIN_WIDTH), stretch="always")
@@ -542,16 +542,12 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.bottom = tk.PanedWindow(self.vpane, orient="horizontal", sashwidth=sash_width,
                                      borderwidth=0, sashrelief="flat",
                                      background=THEME["divider"])
-        self.vpane.add(self.bottom, height=px(PROBLEMS_HEIGHT),
-                       minsize=px(PROBLEMS_MIN_HEIGHT), stretch="never")
-        self.problems_frame = ttk.Frame(self.bottom, style="Side.TFrame")
-        self.bottom.add(self.problems_frame, minsize=px(BOTTOM_MIN_WIDTH), stretch="always")
-        self.help_pane = HelpPane(self.bottom, font=self.ui_font,
+        self.problems_frame = ttk.Frame(root, style="Side.TFrame")
+        self.help_pane = HelpPane(root, font=self.ui_font,
                                   code_font=self.start_values_font,
                                   title_font=self.fonts["bodyStrong"],
                                   background=PANEL_BACKGROUND, scale=self.scale)
         self.help_text = self.help_pane.text
-        self.bottom.add(self.help_pane.frame, minsize=px(BOTTOM_MIN_WIDTH), stretch="always")
         self.bottom.bind("<Configure>", self._place_help_sash, add="+")
         self.help_pane.show(None)
         self.popup = CompletionPopup(self.root, font=self.font)
@@ -561,6 +557,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._build_problems_panel()
         self._build_guide()                 # F47: the Guide column, right of the tabs
         self._build_assistant()             # F48: the Assistant pane shares that column
+        self._build_docks()                 # every pane in its dock (``docking``)
 
     def _build_left_column(self) -> None:
         """The chrome-toned left column (08 §7): PROJECT's header with "+ Add files…" as a
@@ -703,10 +700,9 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
     def _place_help_sash(self, event: tk.Event) -> None:
         """Problems 60 %, Help 40 % at first; the author's drag is kept after that."""
-        if self._help_sash_placed or event.width <= 1:
+        if self._help_sash_placed or event.width <= 1 or not hasattr(self, "dock_of"):
             return
-        self._help_sash_placed = True
-        self.bottom.sash_place(0, int(event.width * PROBLEMS_SHARE), 0)
+        self._even_docks()
 
     def zoom_view(self, step: int) -> None:
         """Ctrl+= / Ctrl+- / Ctrl+0: the story map's zoom on the Story map tab, else the
@@ -719,7 +715,9 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
     def _limit_left_column(self, _event: tk.Event | None = None) -> None:
         """The left column stays between 160 px and half the window (03 §1.1)."""
         total = self.hpane.winfo_width()
-        if total <= 1:
+        dock = getattr(self, "left_dock", None)
+        if total <= 1 or dock is None or not self.hpane.panes() or \
+                str(self.hpane.panes()[0]) != str(dock):
             return
         x, y = self.hpane.sash_coord(0)
         limit = max(self._px(LEFT_MIN_WIDTH), total // 2)
