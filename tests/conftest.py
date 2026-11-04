@@ -83,9 +83,11 @@ def _restore_installed_redactor():
     """Tests may install a redactor; put the previous one back afterwards."""
     from engine.core import redact
 
-    saved = redact._installed, redact._session_term
+    saved = redact._installed, redact._session_term, dict(redact._secrets), redact._secret_re
     yield
-    redact._installed, redact._session_term = saved
+    redact._installed, redact._session_term, secrets, redact._secret_re = saved
+    redact._secrets.clear()
+    redact._secrets.update(secrets)
 
 
 class UserRoots:

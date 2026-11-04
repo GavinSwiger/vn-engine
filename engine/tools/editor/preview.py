@@ -66,6 +66,7 @@ from engine.core.editorreport import (
 from engine.core.paths import engine_root
 from engine.core.redact import echo
 from engine.core.startvalues import parse_set_list
+from engine.tools.build.procs import without_keys
 from engine.tools.editor.consoleclient import ConsoleEvent, decode_console
 
 # --- Protocol (04 §3 "Report line", §6 item 3; I-4) -----------------------------------------
@@ -699,7 +700,7 @@ class PreviewRunner:
         if _IS_WINDOWS and len(subprocess.list2cmdline(argv)) > WINDOWS_COMMAND_MAX_CHARS:
             self._emit(PreviewState.DIDNT_START, editor_report(TOO_LONG))
             return
-        env = dict(os.environ)
+        env = without_keys()             # F48 SEC-F48-22
         env["PYTHONIOENCODING"] = CHILD_ENCODING
         try:
             proc = self._popen(argv, cwd=str(engine_root()), stdin=subprocess.PIPE,

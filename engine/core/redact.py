@@ -156,13 +156,55 @@ def set_session_term(term: str | None) -> None:
                      if term else None)
 
 
+# F48 (SEC-F48-14, 07 I-3): API keys. ``KEY_SHAPE_RE`` is the one definition of an
+# API-key-shaped text (PR-F48-32: ``sk-ant-…``, ``sk-proj-…``, or ``sk-`` and 20 key
+# characters, from a word boundary), masked in every ``redact()`` and used by the build's
+# key scan. Each key Studio loads is also registered in a named slot (``set_secret``) and
+# replaced exactly, whatever its shape. Both become ``KEY_TOKEN``. Masking can only hide
+# text, and these run off the frame path.
+KEY_TOKEN = "<key>"
+KEY_SHAPE_RE = re.compile(r"\bsk-(?:(?:ant|proj)-[A-Za-z0-9_-]+|[A-Za-z0-9_-]{20,})", re.ASCII)
+SECRET_MIN_CHARS = 8                # SEC-F48-13 (a)'s shortest key
+
+_secrets: dict[str, str] = {}       # slot → key; memory only
+_secret_re: "re.Pattern[str] | None" = None
+
+
+def set_secret(slot: str, value: str | None) -> None:
+    """Replace ``value`` (exact, case-sensitive) with ``<key>`` in every ``redact()`` from now
+    on, under the name ``slot`` (``anthropic``, ``openai``, ``compatible <origin>``); None
+    or ``""`` clears that slot. Only ``tools.assistant`` calls this (a test checks), before
+    the key's first use, keystore children included (05 §10). A value shorter than
+    ``SECRET_MIN_CHARS`` raises ``ValueError``, so a stray short value can't blank common
+    words."""
+    global _secret_re
+    if type(slot) is not str or not slot:
+        raise ValueError("a secret slot is a non-empty str")
+    if value is not None and type(value) is not str:
+        raise ValueError("a secret is a str or None")
+    if value:
+        if len(value) < SECRET_MIN_CHARS:
+            raise ValueError("a secret is at least 8 characters long")
+        _secrets[slot] = value
+    else:
+        _secrets.pop(slot, None)
+    values = sorted(set(_secrets.values()), key=lambda v: (-len(v), v))
+    _secret_re = (re.compile("|".join(re.escape(v) for v in values)) if values else None)
+
+
 def redact(text: str) -> str:
-    """The installed redactor; before install(), a redactor with no roots that still
-    applies the profile-segment rule. Then the session term, if one is set."""
+    """The registered secrets and key shapes (``<key>``); then the installed redactor (before
+    install(), a redactor with no roots that still applies the profile-segment rule); then
+    the session term, if one is set."""
     global _installed
     if _installed is None:
         _installed = Redactor((), home_name=None,
                               case_insensitive=sys.platform in ("win32", "darwin"))
+    if text:
+        secret = _secret_re             # one read: the log writer thread may call this
+        if secret is not None:
+            text = secret.sub(KEY_TOKEN, text)
+        text = KEY_SHAPE_RE.sub(KEY_TOKEN, text)
     text = _installed(text)
     term = _session_term                # one read: the log writer thread may call this
     if term is not None and text:

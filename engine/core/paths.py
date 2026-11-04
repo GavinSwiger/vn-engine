@@ -196,6 +196,22 @@ def _require_app_id(app_id: str) -> None:
         raise ValueError(f"not a valid app id: {app_id!r}")
 
 
+def _data_base(*, windows_var: str = "APPDATA") -> Path | None:
+    """The per-user data base the ``vn-engine`` folder lives in: Windows ``%<windows_var>%``;
+    macOS ``~/Library/Application Support``; other ``$XDG_DATA_HOME`` (only if absolute)
+    else ``~/.local/share``. None when no absolute base exists."""
+    if sys.platform == "win32":
+        return _windows_env_dir(windows_var)
+    if sys.platform == "darwin":
+        home = home_dir()
+        return None if home is None else home / "Library" / "Application Support"
+    base = _xdg_data_home()
+    if base is None:
+        home = home_dir()
+        base = None if home is None else home / ".local" / "share"
+    return base
+
+
 def user_data_dir(app_id: str) -> Path | None:
     """Windows %APPDATA%\\vn-engine\\<id>; macOS ~/Library/Application Support/vn-engine/<id>;
     other $XDG_DATA_HOME/vn-engine/<id> (only if absolute) else ~/.local/share/vn-engine/<id>.
@@ -203,17 +219,62 @@ def user_data_dir(app_id: str) -> Path | None:
     exists (the caller treats the folder as not writable). Never returns a relative path.
     Not created here."""
     _require_app_id(app_id)
-    if sys.platform == "win32":
-        base = _windows_env_dir("APPDATA")
-    elif sys.platform == "darwin":
-        home = home_dir()
-        base = None if home is None else home / "Library" / "Application Support"
-    else:
-        base = _xdg_data_home()
-        if base is None:
-            home = home_dir()
-            base = None if home is None else home / ".local" / "share"
+    base = _data_base()
     return None if base is None else base / "vn-engine" / app_id
+
+
+# F48 (04 §7.5, ADR-0003 §3, 07 I-9): Studio's per-user folder. The name fails ``APP_ID_RE``
+# (the underscore), so no game's ``user_data_dir`` can be it.
+STUDIO_DIR_NAME = "_studio"
+STUDIO_DIR_MODE = 0o700
+# The files Studio writes there with ``write_atomic`` (``assistant.json``; a fallback key file
+# ``key-<16 hex>.txt``): their stale temps are cleaned when the folder is opened.
+STUDIO_TEMP_TARGETS = r"assistant\.json|key-[0-9a-f]{16}\.txt"
+
+
+def studio_user_dir(*, local: bool = False) -> Path | None:
+    """Studio's per-user folder (F48, dev tools only), made if missing: Windows
+    ``%APPDATA%\\vn-engine\\_studio`` (roaming: settings, consent) or, with ``local``,
+    ``%LOCALAPPDATA%\\vn-engine\\_studio`` (a fallback key file must not roam); macOS
+    ``~/Library/Application Support/vn-engine/_studio`` and other ``$XDG_DATA_HOME`` (absolute)
+    else ``~/.local/share``, ``+ /vn-engine/_studio``, for both.
+
+    ``_studio`` is created with mode 0700 (missing parents with the default mode) and must
+    then be a real directory by ``lstat`` (not a link, junction, or reparse point); links at
+    or above the per-user root only locate it (ADR-0003 §5). Stale temps of Studio's files
+    are removed (over 60 s old, at most 16). Returns None when no absolute base exists or
+    the folder can't be made real: Studio then saves no setting. Never raises ``OSError``."""
+    from engine.core import safefile      # dev tools only: keeps paths' imports unchanged
+
+    base = _data_base(windows_var="LOCALAPPDATA" if local else "APPDATA")
+    if base is None:
+        return None
+    folder = base / "vn-engine" / STUDIO_DIR_NAME
+    try:
+        os.makedirs(folder.parent, exist_ok=True)
+        try:
+            os.mkdir(folder, STUDIO_DIR_MODE)
+        except FileExistsError:
+            pass
+    except (OSError, ValueError):
+        return None
+    if not safefile.ensure_real_dir(folder, release=True, create=False):
+        return None
+    safefile.remove_stale_temps(folder, target_pattern=STUDIO_TEMP_TARGETS)
+    return folder
+
+
+# Unicode categories a plain name may not hold (F48 SEC-F48-02): controls, format characters
+# (zero-width and bidi marks among them), surrogates, and line and paragraph separators.
+_NOT_PLAIN_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
+
+
+def is_plain_name(name: object) -> bool:
+    """Whether ``name`` is a str with no Cc, Cf (U+200B–U+200F, U+202A–U+202E,
+    U+2066–U+2069 and the rest), Cs, Zl or Zp character (SEC-F48-02). Applied to a whole
+    ref or one name. No file-system call."""
+    return type(name) is str and not any(
+        unicodedata.category(char) in _NOT_PLAIN_CATEGORIES for char in name)
 
 
 def user_log_dir(app_id: str) -> Path | None:

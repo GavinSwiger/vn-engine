@@ -10,7 +10,9 @@ stop a child and everything it started. Shared by the build child and Studio (st
 
 - ``PYINSTALLER_VERSION``: the one pinned version (``requirements-build.txt``; a test ties
   them together).
-- ``child_env()``: the environment without any ``PYTHON*`` variable.
+- ``child_env()``: the environment without any ``PYTHON*`` variable or provider key
+  (``PROVIDER_KEY_VARS``, F48 SEC-F48-22). ``without_keys()``: without the provider keys
+  only (Studio's check, preview and helper children, which keep ``PYTHON*``).
 - ``spawn(argv)``: ``Popen`` with the rules above; on Windows no console window
   (``CREATE_NO_WINDOW``), on POSIX a new session so ``kill_tree`` reaches grandchildren.
 - ``kill_tree(proc)``: Windows ``%SystemRoot%\\System32\\taskkill.exe /T /F /PID``; POSIX
@@ -33,7 +35,7 @@ import os
 import signal
 import subprocess
 import sys
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -57,10 +59,23 @@ DIST_DIR: Final = "dist"
 SPEC_DIR: Final = "spec"
 
 
-def child_env(base: dict[str, str] | None = None) -> dict[str, str]:
-    """A copy of ``base`` (default ``os.environ``) without ``PYTHON*`` keys, any case."""
+# F48 (SEC-F48-22, 07 I-4): the AI providers' key variables. No child Studio or the build
+# starts inherits them (compared in upper case: Windows names are case-insensitive), so a
+# checked or previewed game's code can't read them. Defence in depth.
+PROVIDER_KEY_VARS: Final = frozenset({"ANTHROPIC_API_KEY", "OPENAI_API_KEY"})
+
+
+def without_keys(base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """A copy of ``base`` (default ``os.environ``) without ``PROVIDER_KEY_VARS``, any case."""
     source = os.environ if base is None else base
     return {key: value for key, value in source.items()
+            if key.upper() not in PROVIDER_KEY_VARS}
+
+
+def child_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """A copy of ``base`` (default ``os.environ``) without ``PYTHON*`` keys or
+    ``PROVIDER_KEY_VARS``, any case."""
+    return {key: value for key, value in without_keys(base).items()
             if not key.upper().startswith("PYTHON")}
 
 
@@ -157,7 +172,8 @@ def redacted_tail(lines: Iterable[str], roots: Sequence[RedactRoot],
     return [escape_controls(redact(own(line.rstrip("\r\n")))) for line in tail]
 
 
-__all__ = ["DIST_DIR", "PYINSTALLER_VERSION", "REQUIREMENTS", "SAVE_TO_TOKEN", "SPEC_DIR",
-           "STAGING_TOKEN", "TAIL_LINES", "ToolStatus", "WORK_DIR", "WORK_TOKEN",
-           "build_roots", "child_env", "install_argv", "kill_tree",
-           "redacted_tail", "requirements_path", "spawn", "taskkill_path", "tool_status"]
+__all__ = ["DIST_DIR", "PROVIDER_KEY_VARS", "PYINSTALLER_VERSION", "REQUIREMENTS",
+           "SAVE_TO_TOKEN", "SPEC_DIR", "STAGING_TOKEN", "TAIL_LINES", "ToolStatus", "WORK_DIR",
+           "WORK_TOKEN", "build_roots", "child_env", "install_argv", "kill_tree",
+           "redacted_tail", "requirements_path", "spawn", "taskkill_path", "tool_status",
+           "without_keys"]

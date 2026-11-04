@@ -68,6 +68,7 @@ from engine.core.paths import engine_root
 from engine.core.redact import echo
 from engine.script.labelgraph import LabelLink
 from engine.script.limits import SCRIPT_FILE_MAX_BYTES
+from engine.tools.build.procs import without_keys
 from engine.tools.editor.preview import CHILD_ENCODING, EOF, KILL_AFTER_S, read_child_output
 
 _IS_WINDOWS = os.name == "nt"
@@ -518,7 +519,7 @@ class CheckRunner:
     def _spawn(self, overlay: bytes | None, serial: int, launch: bool,
                events: list[CheckEvent]) -> None:
         argv = self._argv(self.game_dir, overlay=overlay is not None, launch=launch)
-        env = dict(os.environ)
+        env = without_keys()             # F48 SEC-F48-22
         env["PYTHONIOENCODING"] = CHILD_ENCODING
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         kwargs: dict = {"cwd": str(engine_root()),

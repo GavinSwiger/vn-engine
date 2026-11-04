@@ -60,6 +60,7 @@ from engine.core.editorreport import (
 )
 from engine.core.paths import engine_root
 from engine.core.redact import echo
+from engine.tools.build.procs import without_keys
 from engine.tools.editor.checker import encode_overlay
 from engine.tools.editor.preview import CHILD_ENCODING, EOF, KILL_AFTER_S, read_child_output
 
@@ -454,7 +455,7 @@ class HelperRunner:
         return sum(1 for sent in self._inflight if sent.op == "thumb")
 
     def _spawn(self) -> _Child:
-        env = dict(os.environ)
+        env = without_keys()             # F48 SEC-F48-22
         env["PYTHONIOENCODING"] = CHILD_ENCODING
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         kwargs: dict = {"cwd": str(engine_root()), "stdin": subprocess.PIPE,
