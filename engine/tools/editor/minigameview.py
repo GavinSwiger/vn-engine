@@ -79,6 +79,8 @@ DELETE_ASK = "Delete {name}? Its lines are removed from {ref}; Edit ▸ Undo the
 DELETE_BUTTONS = ("Delete", "Cancel")
 DELETE_REFUSED = "{name} is used in {lines}, so it can't be deleted yet."
 EDIT_AS_SCRIPT = db.EDIT_AS_SCRIPT
+NO_SOUND = "None"                    # F57: the sound field's empty choice
+AUDIO_PREFIX = "audio/"
 
 POEM_HINT = ("Points each word gives to each meter, 0 to 3. A few words with no points make "
              "the choice less obvious.")
@@ -2070,12 +2072,13 @@ def attach(database: Any) -> MinigamePane:
 # --- The Minigame form (Events) ----------------------------------------------------------------
 
 def shown_value(field: mg.ArgField, written: str) -> str:
-    """A field's text as the form shows it: a quoted text unquoted (TEXT, CHOICE, METER),
+    """A field's text as the form shows it: a quoted text unquoted (TEXT, CHOICE, METER,
+    SOUND),
     ``None`` as empty; else as written."""
     text = written.strip()
     if text == "None" and not field.required:
         return ""
-    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER):
+    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND):
         try:
             value = ast.literal_eval(text)
         except (ValueError, SyntaxError):
@@ -2086,10 +2089,10 @@ def shown_value(field: mg.ArgField, written: str) -> str:
 
 
 def is_raw(field: mg.ArgField, written: str) -> bool:
-    """A TEXT, CHOICE or METER value written as an expression (``"hi " + name``): the form
+    """A TEXT, CHOICE, METER or SOUND value written as an expression (``"hi " + name``): the form
     shows and keeps it as script."""
     text = written.strip()
-    if field.widget not in (mg.TEXT, mg.CHOICE, mg.METER) or text in ("", "None"):
+    if field.widget not in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND) or text in ("", "None"):
         return False
     try:
         return not isinstance(ast.literal_eval(text), str)
@@ -2102,7 +2105,7 @@ def written_value(field: mg.ArgField, shown: str, *, raw: bool = False) -> str:
     text = shown.strip()
     if not text:
         return ""
-    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER) and not raw:
+    if field.widget in (mg.TEXT, mg.CHOICE, mg.METER, mg.SOUND) and not raw:
         return mg.literal(text)
     if field.widget == mg.TOGGLE:
         return "True" if text in ("1", "True", "true") else "False"
@@ -2156,6 +2159,11 @@ class MinigameDialog:
         dialog.protocol("WM_DELETE_WINDOW", lambda: self._pick(1))
         self.vars: dict[str, tk.Variable] = {}
         self.widgets: dict[str, tk.Widget] = {}
+        self.pickers: dict[str, Any] = {}           # F57: SOUND fields' AssetPickers
+        self.tips: dict[str, Any] = {}              # field name → its label's Tooltip
+        self.assets = self._assets()
+        if self.assets is not None:
+            self.assets.on_change = self._sync_play  # a sound ended: ■ back to ▶
         self.form: mg.GameForm | None = None
         self.skip_var = tk.BooleanVar(master=dialog,
                                       value=bool(self.old and self.old.skippable))
@@ -2164,7 +2172,8 @@ class MinigameDialog:
     def set_game(self, game: str, first: bool = False) -> None:
         for child in self.grid.winfo_children():
             child.destroy()
-        self.vars, self.widgets = {}, {}
+        self.stop_sound()
+        self.vars, self.widgets, self.pickers, self.tips = {}, {}, {}, {}
         self.game = game
         self.game_var.set(mg.game_title(game))
         self.form = mg.form_fields(game, self.plugin_texts)
@@ -2179,8 +2188,9 @@ class MinigameDialog:
         gap = self.px(6)
         r = 0
         for field in self.form.fields:
-            ttk.Label(self.grid, text=field.label, style="Dialog.TLabel").grid(
-                row=r, column=0, sticky="w", padx=(0, self.px(16)), pady=(gap, 0))
+            label = ttk.Label(self.grid, text=field.label, style="Dialog.TLabel")
+            label.grid(row=r, column=0, sticky="w", padx=(0, self.px(16)), pady=(gap, 0))
+            self._tip(label, field)
             holder = ttk.Frame(self.grid, style="Dialog.TFrame")
             holder.grid(row=r, column=1, sticky="w", pady=(gap, 0))
             self._field(holder, field, shown_value(field, values.get(field.name, "")))
@@ -2220,6 +2230,9 @@ class MinigameDialog:
                 values = [""] + self.store.lookups.variables
             widget = ttk.Combobox(holder, textvariable=var, values=values, width=24,
                                   state="readonly" if field.widget == mg.CHOICE else "normal")
+        elif field.widget == mg.SOUND:
+            var = tk.StringVar(master=self.dialog, value=value)
+            widget = self._sound_field(holder, field, var, value)
         else:
             var = tk.StringVar(master=self.dialog, value=value)
             widget = ttk.Entry(holder, textvariable=var, width=28)
@@ -2235,6 +2248,77 @@ class MinigameDialog:
         var.trace_add("write", lambda *_a: self._changed())
         if field.data_kind == mg.TESTIMONY:
             var.trace_add("write", lambda *_a: self._answer_for(str(var.get()).strip()))
+
+    # -- F57: hints and the Sound field --------------------------------------------------
+
+    def _tip(self, label: ttk.Label, field: mg.ArgField) -> None:
+        """The field's plain-words hint (``fieldhints.minigame_hint``) as its label's
+        tooltip."""
+        from engine.tools.editor.fieldhints import minigame_hint
+        hint = minigame_hint(self.game, field.name)
+        if hint:
+            from engine.tools.editor.playbar import Tooltip     # Tk only; playbar imports dialogs
+            self.tips[field.name] = Tooltip(label, hint)
+
+    def _assets(self) -> Any:
+        """The window's form assets (▶/■ through the helper child), or None."""
+        story = getattr(self.win, "story", None)
+        make = getattr(story, "form_assets", None)
+        return make() if make is not None else None
+
+    def audio_refs(self) -> list[str]:
+        """The game's sound files as a line writes them (``audio/`` left out)."""
+        project = getattr(self.win, "project", None)
+        refs = project.file_refs("audio") if project is not None else []
+        return [ref[len(AUDIO_PREFIX):] for ref in refs if ref.startswith(AUDIO_PREFIX)]
+
+    def _sound_field(self, holder: ttk.Frame, field: mg.ArgField, var: tk.StringVar,
+                     value: str) -> tk.Widget:
+        """Game settings' audio field (``fieldwidgets.AssetPicker``): the files in
+        ``audio/`` and ▶/■; None (empty) writes nothing."""
+        from engine.tools.editor.fieldwidgets import AssetPicker
+        refs = self.audio_refs()
+        if value and value not in refs:
+            refs.append(value)
+        picker = AssetPicker(holder, refs, value or None, none_text=NO_SOUND,
+                             on_change=lambda new: var.set(new or ""),
+                             play=lambda ref: self.toggle_sound(field.name), width=26,
+                             scale=self.scale)
+
+        def follow(*_a: object) -> None:
+            shown = str(var.get()).strip() or None
+            if picker.value != shown:
+                picker.set(shown)
+            self._sync_play()
+
+        var.trace_add("write", follow)
+        self.pickers[field.name] = picker
+        return picker.widget
+
+    def toggle_sound(self, name: str) -> None:
+        """▶ plays field ``name``'s sound; ■ (it is playing) stops it."""
+        value = str(self.vars[name].get()).strip()
+        if self.assets is None or not value:
+            return
+        if self.assets.playing() == value:
+            self.assets.stop()
+        else:
+            self.assets.play(value)
+        self._sync_play()
+
+    def stop_sound(self) -> None:
+        assets = getattr(self, "assets", None)
+        if assets is not None and assets.playing() is not None:
+            assets.stop()
+
+    def _sync_play(self) -> None:
+        playing = self.assets.playing() if self.assets is not None else None
+        for name, picker in self.pickers.items():
+            value = str(self.vars[name].get()).strip() if name in self.vars else ""
+            try:
+                picker.set_playing(bool(value) and playing == value)
+            except tk.TclError:
+                pass
 
     def _choices(self, field: mg.ArgField) -> list[str]:
         found = list(mg.data_choices(field, self.store.sets))
@@ -2320,6 +2404,9 @@ class MinigameDialog:
             if call is None:
                 return
             self.result = {"line": mg.call_line(replace(call, indent="", comment=""))}
+        self.stop_sound()                            # closing the form stops the sound
+        if self.assets is not None and self.assets.on_change == self._sync_play:
+            self.assets.on_change = None
         self.dialog.destroy()
 
     def run(self) -> dict[str, str] | None:

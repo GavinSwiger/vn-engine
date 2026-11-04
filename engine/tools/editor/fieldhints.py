@@ -235,6 +235,25 @@ def form_hint(form_key: str, field_key: str) -> str:
     return own.get(field_key) or COMMON.get(field_key, "")
 
 
+# F57 §7: the Minigame form's fields, by minigame then argument (its labels' tooltips).
+MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
+    "heartbeat": {
+        "beats": "How many beats the player presses on.",
+        "bpm": ("60 is one beat a second. Players with Timing assist get half the speed, or "
+                "no time limit."),
+        "window": "How close to the beat a press must be: tight, normal or wide.",
+        "meter": "The meter each missed beat lowers. Empty: none.",
+        "cost": "How much each missed beat lowers the meter, 0 to 20.",
+        "sound": "Plays on each beat, with the ring. Empty: no sound.",
+    },
+})
+
+
+def minigame_hint(game: str, arg: str) -> str:
+    """The Minigame form's hint for ``game``'s argument ``arg`` ("" when there is none)."""
+    return MINIGAME_HINTS.get(game, {}).get(arg, "")
+
+
 def database_tips(category: str) -> Mapping[str, str]:
     """Label → hint for a Database form (``DATABASE``'s key; a chapter shows an ending's
     rows)."""
@@ -242,5 +261,5 @@ def database_tips(category: str) -> Mapping[str, str]:
                         {})
 
 
-__all__ = ["CHOICE_HINTS", "COMMON", "DATABASE", "FORM_HINTS", "ROUTE", "database_tips",
-           "form_hint"]
+__all__ = ["CHOICE_HINTS", "COMMON", "DATABASE", "FORM_HINTS", "MINIGAME_HINTS", "ROUTE",
+           "database_tips", "form_hint", "minigame_hint"]

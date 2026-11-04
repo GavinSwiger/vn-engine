@@ -75,7 +75,7 @@ USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("poem_game", "words"): POEM, ("present_evidence", "testimony"): TESTIMONY,
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
     ("puzzle_room", "room"): ROOM}
-BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room")
+BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -1356,6 +1356,7 @@ TEXT: Final = "text"            # a quoted text, or None
 METER: Final = "meter"
 VARIABLE: Final = "variable"
 VALUE: Final = "value"          # any value, written as script
+SOUND: Final = "sound"          # F57: a sound file under audio/ (quoted), or None
 NO_DEFAULT: Final = object()
 NO_PLUGINS: Final[Mapping[str, str]] = MappingProxyType({})
 
@@ -1420,6 +1421,13 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
     "puzzle_room": (
         _f("room", "Room", DATA, data_kind=ROOM),
         _f("state", "Where the player left it", VARIABLE, None)),
+    "heartbeat": (                                                      # F57 §7
+        _f("beats", "Beats", NUMBER, 8, lo=4, hi=20),
+        _f("bpm", "Beats a minute", NUMBER, 60, lo=40, hi=120),
+        _f("window", "How forgiving", CHOICE, "normal", choices=("tight", "normal", "wide")),
+        _f("meter", "Meter a miss lowers", METER, None),
+        _f("cost", "A miss costs", NUMBER, 1, lo=0, hi=20),
+        _f("sound", "Beat sound", SOUND, None)),
 }
 
 
@@ -1539,7 +1547,7 @@ def call_from_form(form: GameForm, values: Mapping[str, str], *, skippable: bool
 MINIGAME_FORM: Final = "minigame"
 GAME_TITLES: Final[Mapping[str, str]] = {
     "poem_game": "Poem", "present_evidence": "Present evidence",
-    "phone_chat": "Phone chat", "puzzle_room": "Puzzle room"}
+    "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat"}
 
 
 def game_title(game: str) -> str:
@@ -1581,7 +1589,7 @@ __all__ = [
     "CHANGED", "CHAT", "CHOICE", "Call", "ChatStep", "DATA", "DONT_REPLY", "DataPlan",
     "DataSet", "Evidence", "FIELDS", "FROM_CONTACT", "FROM_ME", "FROM_OTHER", "GameForm",
     "Hotspot", "INTO_LABEL", "KINDS", "KIND_TITLES", "METER", "NEEDED", "NO_DEFAULT",
-    "NUMBER", "POEM", "POINTS_PICK", "PoemWord", "PoemWords", "RECT_MIN", "ROOM", "Reply",
+    "NUMBER", "POEM", "SOUND", "POINTS_PICK", "PoemWord", "PoemWords", "RECT_MIN", "ROOM", "Reply",
     "Room", "STEP_TITLES", "Statement", "Step", "TESTIMONY", "TEXT", "TIME", "TOGGLE",
     "USE_KINDS", "VALUE", "VARIABLE", "answer_name", "call_from_form", "call_line", "calls",
     "clamp_rect", "data_choices", "define_lines", "evidence_of", "evidence_values",
