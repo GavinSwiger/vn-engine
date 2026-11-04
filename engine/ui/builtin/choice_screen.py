@@ -62,6 +62,20 @@ guard is not kept.
   so the frame the line is fully shown already draws the choices; it is 1 with ``fade`` 0
   or while the player's reduce motion is on (read each frame). The guard doesn't wait for
   the fade.
+
+**Timed menus** (F51 ``04-technical.md`` §7.3, §7.4; 07 I-2, I-5, I-6). A ``ShowMenu`` with
+``seconds`` gets a ``ChoiceClock``. Each ``update`` reads the player's Timing assist
+(``timing_level``, an App-injected port; F50's ``timing_limit``): under a limit the clock
+counts the frame's ``dt`` while the guard would (top, drawn, not hidden) and the window has
+focus (``window_focused``, App-injected, 07 I-5). When it runs out the screen picks
+``ShowMenu.timeout`` through ``ChoiceController.pick`` (listeners, pick sound), bypassing
+only the guard; a pick that doesn't close the menu (a future veto) leaves the clock fired
+and the menu waiting for the player. A player's pick handled earlier in the frame wins: the
+screen is no longer current, so ``pick`` ignores the timeout (PR-F51-07). Under a limit the
+layout gets the countdown panel as its header (``render/choicetimer.panel_height`` at the
+player's text scale), drawn after the buttons at the same alpha; hidden mode draws nothing.
+``tick_sound`` (Could) plays when the number becomes 3, 2 or 1. Reading the past or "No
+time limits": no panel and no timeout; every choice stays pickable.
 """
 
 from collections.abc import Callable
@@ -82,8 +96,11 @@ from engine.render.choices import (
     half_up,
     rgb_hex,
 )
+from engine.render.choicetimer import (TimerGeometry, TimerPanelView, number_size,
+                                      panel_height, timer_colors)
 from engine.render.textlayout import FaceSet
 from engine.runtime.commands import Choose, Say, ShowMenu
+from engine.ui.builtin.choice_clock import ChoiceClock
 from engine.ui.input import UiEvent
 from engine.ui.nav import Nav, NavReader
 from engine.ui.screen import Screen, ScreenStack
@@ -103,6 +120,7 @@ NUMBER_KEYS: Final = {**{getattr(pygame, f"K_{n}"): n for n in range(1, 7)},
                       **{getattr(pygame, f"K_KP{n}"): n for n in range(1, 7)}}
 MIN_SIZE: Final = 20
 MAX_SIZE: Final = 48
+TICK_NUMBERS: Final = (3, 2, 1)          # F51 PR-F51-20: tick_sound at these seconds left
 
 _log = get_logger("choice")
 
@@ -143,6 +161,7 @@ class ChoiceLook:
     focused_frame: str | None
     focus_sound: str | None
     pick_sound: str | None
+    tick_sound: str | None = None        # F51: ``choice.timer.tick_sound`` (None: silence)
 
 
 class MenuListener(Protocol):
@@ -162,13 +181,20 @@ class ChoiceController:
     textbox's faces with ``choice.text_font`` as the regular face when it is usable);
     ``base_text_size`` is ``[theme.textbox] text_size``, the player's text scale's
     denominator. ``play`` plays a UI sound (``App.audio.play_ui``); ``focus_sound`` and
-    ``pick_sound`` are the tokens that passed W48 (None: silence)."""
+    ``pick_sound`` are the tokens that passed W48 (None: silence).
+
+    F51: ``timing_level()`` is the player's Timing assist (the stored int; None: Normal),
+    ``window_focused()`` whether the window has focus (None: always), ``tick_sound`` the
+    checked ``choice.timer.tick_sound``; ``timer_view`` draws the countdown panel."""
 
     def __init__(self, stack: ScreenStack, textbox: _Textbox, *, theme: "ChoiceTheme",
                  assets: Any, faces: FaceSet, base_text_size: int,
                  post: Callable[[object], None], view: ChoiceStackView | None = None,
                  play: Callable[[str], None] | None = None, focus_sound: str | None = None,
-                 pick_sound: str | None = None) -> None:
+                 pick_sound: str | None = None, tick_sound: str | None = None,
+                 timing_level: Callable[[], int | str] | None = None,
+                 window_focused: Callable[[], bool] | None = None,
+                 timer_view: Any = None) -> None:
         self.stack = stack
         self.textbox = textbox
         self.theme = theme
@@ -180,6 +206,12 @@ class ChoiceController:
         self.play = play
         self.focus_sound = focus_sound
         self.pick_sound = pick_sound
+        self.tick_sound = tick_sound
+        self._timing_level = timing_level
+        self._window_focused = window_focused
+        self.timer_view = timer_view if timer_view is not None else TimerPanelView(
+            assets, theme, faces)
+        self._timer_geometry: tuple[tuple, TimerGeometry] | None = None
         self.floor: Callable[[], float] = lambda: LAST_BOTTOM
         self.screen: ChoiceScreen | None = None
         self._listeners: list[MenuListener] = []
@@ -222,6 +254,9 @@ class ChoiceController:
                                     focused_frame=part.focused_frame)
         self.focus_sound = part.focus_sound
         self.pick_sound = part.pick_sound
+        self.tick_sound = part.tick_sound
+        self.timer_view = TimerPanelView(self.assets, part.theme, part.faces)
+        self._timer_geometry = None
         self._layout = self._layout_key = self._layout_cmd = None
 
     def close(self) -> None:
@@ -284,9 +319,39 @@ class ChoiceController:
             listener.focus_changed(key)
         self._sound(self.focus_sound)
 
+    def tick(self) -> None:
+        """F51 (Could): ``tick_sound`` at 3, 2 and 1 seconds left."""
+        self._sound(self.tick_sound)
+
     def _sound(self, token: str | None) -> None:
         if token is not None and self.play is not None:
             self.play(token)
+
+    # -- F51: the clock's ports and the panel --
+
+    def timing_level(self) -> int | str:
+        """The player's Timing assist now (read every frame); Normal without a port."""
+        if self._timing_level is None:
+            return 0
+        return self._timing_level()
+
+    def window_focused(self) -> bool:
+        """Whether the window has focus (07 I-5: from the App, not the textbox)."""
+        return True if self._window_focused is None else bool(self._window_focused())
+
+    def header_height(self) -> float:
+        """The countdown panel's height at the player's text scale (``t + 12``)."""
+        return float(panel_height(self.text_scale()))
+
+    def timer_geometry(self, rect: tuple[float, float, float, float]) -> TimerGeometry:
+        """The panel's boxes at ``rect`` (the layout's ``header_rect``), kept while the rect
+        and the number's size stay."""
+        size = number_size(self.text_scale())
+        key = (rect, size)
+        kept = self._timer_geometry
+        if kept is None or kept[0] != key:
+            kept = self._timer_geometry = (key, self.timer_view.geometry(rect, size))
+        return kept[1]
 
     # -- motion --
 
@@ -303,18 +368,19 @@ class ChoiceController:
 
     # -- layout --
 
+    def text_scale(self) -> float:
+        """The player's text scale (F32 04 §6.5: the textbox's, measured on its layout
+        look; else its text size over ``base_text_size``)."""
+        text_scale = getattr(self.textbox, "text_scale", None)
+        if text_scale is not None:
+            return text_scale()
+        return self.textbox.text_size() / self.base_text_size if self.base_text_size else 1.0
+
     def text_size(self) -> int:
         """s0: ``choice.text_size`` × the player's text scale, half up, 20–48."""
         base = self.theme.text_size if self.theme.text_size is not None \
             else self.base_text_size
-        # F32 (04 §6.5): the textbox's text scale, measured on its layout look.
-        text_scale = getattr(self.textbox, "text_scale", None)
-        if text_scale is not None:
-            scale = text_scale()
-        else:
-            scale = self.textbox.text_size() / self.base_text_size \
-                if self.base_text_size else 1.0
-        return max(MIN_SIZE, min(MAX_SIZE, half_up(base * scale)))
+        return max(MIN_SIZE, min(MAX_SIZE, half_up(base * self.text_scale())))
 
     def area(self, line: str, fits: Callable[[float, float], bool] | None = None
              ) -> ChoiceArea:
@@ -334,9 +400,10 @@ class ChoiceController:
             return ChoiceArea(AREA_TOP, floor, floor)
         return ChoiceArea(AREA_TOP, self.textbox.tab_top() - AREA_MARGIN, floor)
 
-    def layout(self, cmd: ShowMenu) -> ChoiceLayout:
+    def layout(self, cmd: ShowMenu, header: float = 0.0) -> ChoiceLayout:
         """``cmd``'s layout now (kept until its size or area changes; a new area re-places
-        the same measurements, ``ChoiceLayout.relaid``)."""
+        the same measurements, ``ChoiceLayout.relaid``). ``header`` (F51): the countdown
+        panel's height, 0 without one; a change is a ``relaid``."""
         size = self.text_size()
         layout = self._layout
         if layout is None or self._layout_cmd is not cmd or self._layout_key is None \
@@ -348,7 +415,9 @@ class ChoiceController:
             layout = ChoiceLayout([c.body for c in cmd.choices], assets=self.assets,
                                   faces=self.faces, theme=theme, text_size=size,
                                   area=ChoiceArea() if nvl else self.area(cmd.line),
-                                  colors=colors)
+                                  colors=colors, header=header)
+        if layout.header != header:
+            layout = layout.relaid(layout.area, header)
         area = self.area(cmd.line, layout.fits)
         if area != layout.area:
             layout = layout.relaid(area)
@@ -371,7 +440,9 @@ class ChoiceScreen(Screen):
         self.elapsed = 0.0
         self.started = False
         self.fade = controller.fade_s(cmd)       # seconds; per screen (F14 may set 0)
-        self.layout = controller.layout(cmd)
+        self.clock = ChoiceClock(cmd.seconds)    # F51: presentation state, never saved
+        self._number: int | None = None          # F51: the last number shown (tick sound)
+        self.layout = controller.layout(cmd, self._header())
         self._stick = NavReader()                # the left stick only
 
     # -- state --
@@ -473,9 +544,16 @@ class ChoiceScreen(Screen):
         return False                          # Esc, Ctrl, Page Up/Down, …
 
     def update(self, dt: float, *, is_top: bool) -> None:
-        if is_top and self.started and not self.hidden:
+        controller = self.controller
+        usable = is_top and self.started and not self.hidden
+        if usable:
             self.elapsed += dt
-        self.layout = self.controller.layout(self.cmd)   # a new one only on a change
+        level = controller.timing_level()
+        if self.clock.tick(dt, level, counting=usable and controller.window_focused()):
+            self._timeout()
+            return
+        self._tick_sound(level)
+        self.layout = controller.layout(self.cmd, self._header())  # new only on a change
 
     def draw(self, canvas: "Canvas") -> None:
         if self.hidden:
@@ -483,7 +561,43 @@ class ChoiceScreen(Screen):
         if not self.started:
             self.started = True
             self.controller.shown(self)
-        self.controller.view.draw(canvas, self.layout, self.states(), alpha=self.alpha())
+        alpha = self.alpha()
+        self.controller.view.draw(canvas, self.layout, self.states(), alpha=alpha)
+        self._draw_timer(canvas, alpha)
+
+    # -- F51: the countdown --
+
+    def timed(self) -> bool:
+        """Whether a countdown runs now: a time limit under the player's Timing assist."""
+        return self.clock.limit(self.controller.timing_level()) is not None
+
+    def _header(self) -> float:
+        return self.controller.header_height() if self.timed() else 0.0
+
+    def _draw_timer(self, canvas: "Canvas", alpha: float) -> None:
+        rect = self.layout.header_rect
+        controller = self.controller
+        level = controller.timing_level()
+        fraction = self.clock.fraction(level, reduce_motion=controller.fade_off())
+        if rect is None or fraction is None:
+            return
+        controller.timer_view.draw(canvas, controller.timer_geometry(rect), fraction,
+                                   self.clock.shown(level) or 0, timer_colors(controller.theme),
+                                   alpha=alpha)
+
+    def _tick_sound(self, level: int | str) -> None:
+        number = self.clock.shown(level)
+        previous, self._number = self._number, number
+        if (number is not None and previous is not None and number != previous
+                and number in TICK_NUMBERS):
+            self.controller.tick()
+
+    def _timeout(self) -> None:
+        """Time ran out: pick ``ShowMenu.timeout`` as a click would, past the guard (07
+        I-6: if the menu stays open, the clock stays fired and the player picks)."""
+        key = self.cmd.timeout
+        if key is not None and any(c.key == key and not c.locked for c in self.cmd.choices):
+            self.controller.pick(self, key)
 
     # -- helpers --
 

@@ -20,6 +20,10 @@ here, so a broken one costs one warning and never a checkerboard or a failed pla
   button.
 - ``focus_sound``, ``pick_sound``: a file that doesn't exist under ``audio/`` is **W48**
   (dev and release, 07 I-5), with ``GamePaths``' did-you-mean, and that sound never plays.
+  F51: ``timer.tick_sound`` the same way.
+- F51 (07 I-5): the controller's ``timing_level`` reads ``app.settings``' ``timing_assist``
+  every frame (Normal without a settings service) and ``window_focused`` reads
+  ``app.focused``, so ``ui`` never reaches ``app``.
 - Dev only, **W44** (``[theme.choice]`` form): ``text_color`` under 4.5:1 on its fill over a
   pure black or white picture (the focused fill is checked when the normal one passes), and
   ``locked.text_color`` on the locked fill. A state with a frame image isn't checked.
@@ -76,13 +80,16 @@ def install_choices(app: "App", textbox: "TextboxScreen") -> ChoiceController:
             warn(message)
     sounds = {key: _checked_sound(app, key, getattr(theme, key))
               for key in ("focus_sound", "pick_sound")}
+    tick = _checked_sound(app, "timer.tick_sound", theme.timer.tick_sound)    # F51: W48
     view = ChoiceStackView(assets, theme, frame=frame, focused_frame=focused_frame)
     controller = ChoiceController(app.screens, textbox, theme=theme, assets=assets,
                                   faces=faces, base_text_size=config.theme.textbox.text_size,
                                   post=lambda event: _post(app, event), view=view,
                                   play=lambda file: _play(app, file),
                                   focus_sound=sounds["focus_sound"],
-                                  pick_sound=sounds["pick_sound"])
+                                  pick_sound=sounds["pick_sound"], tick_sound=tick,
+                                  timing_level=lambda: timing_level(app),
+                                  window_focused=lambda: bool(getattr(app, "focused", True)))
     app.choices = controller                                 # type: ignore[attr-defined]
     app.router.register(ShowMenu, controller.show)
     textbox.add_say_listener(controller.on_say)
@@ -130,14 +137,15 @@ def choice_look(cfg: "ThemeConfig", textbox_faces: FaceSet,
     def image(ref: str | None) -> str | None:
         return ref if ref is not None and usable(ref, "image") else None
 
-    def sound(key: str) -> str | None:
-        token = getattr(theme, key)
+    def sound(key: str, token: str | None) -> str | None:
         base, checked = base_sounds.get(key, (None, None))
         return checked if token == base else token
 
     return ChoiceLook(theme, faces, cfg.textbox.text_size, image(theme.frame_image),
-                      image(theme.focused.frame_image), sound("focus_sound"),
-                      sound("pick_sound"))
+                      image(theme.focused.frame_image),
+                      sound("focus_sound", theme.focus_sound),
+                      sound("pick_sound", theme.pick_sound),
+                      sound("tick_sound", theme.timer.tick_sound))           # F51
 
 
 def _checked_image(assets: "AssetManager", key: str, ref: str | None,
@@ -209,6 +217,19 @@ def _checked_sound(app: "App", key: str, file: str | None) -> str | None:
     return file
 
 
+def timing_level(app: "App") -> int:
+    """F51 (04 §3): the player's Timing assist as the stored int, read every frame; Normal
+    (0) without a settings service or with anything unexpected."""
+    settings = getattr(app, "settings", None)
+    if settings is None:
+        return 0
+    try:
+        value = settings.value("timing_assist")
+    except (KeyError, ValueError):
+        return 0
+    return value if type(value) is int else 0
+
+
 def _post(app: "App", event: object) -> None:
     story = app.story
     if story is not None:
@@ -221,4 +242,5 @@ def _play(app: "App", file: str) -> None:
         audio.play_ui(file)
 
 
-__all__ = ["choice_colors_warnings", "choice_faces", "choice_look", "install_choices"]
+__all__ = ["choice_colors_warnings", "choice_faces", "choice_look", "install_choices",
+           "timing_level"]

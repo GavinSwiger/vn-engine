@@ -138,6 +138,8 @@ def add_parts(looks: Looks, checks: LookChecks, choices: object | None) -> None:
     base = looks.base.cfg.choice
     sounds = {key: (getattr(base, key), getattr(choices, key, getattr(base, key)))
               for key in ("focus_sound", "pick_sound")}
+    tick = base.timer.tick_sound                                     # F51: [theme.choice.timer]
+    sounds["tick_sound"] = (tick, getattr(choices, "tick_sound", tick))
     looks.add_part("choice", lambda cfg: choice_look(cfg, looks.part("textbox").faces,
                                                      usable, sounds))
 
