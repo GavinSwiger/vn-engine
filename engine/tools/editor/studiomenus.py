@@ -5,7 +5,8 @@ disabled entry does nothing), ``Check(label, variable, command)``, or ``SEPARATO
 and Story are built from the doc registry and ``story_actions``. View's tab rows come from
 ``window.TABS``. F47 adds Run and Help rows; Help ▸ Guides opens the docs pages; F42 a File row after Save all; F39 the Run
 menu's "Update the running game" (Ctrl+R, on while a game runs) and "Update the game on
-save"; F48 Help ▸ Connect an AI app… (``connectdialog``).
+save"; F48 Help ▸ Connect an AI app… (``connectdialog``) and File ▸ Studio settings… (Ctrl+,,
+``aisettings``).
 
 macOS shows ``menubar`` as the native bar; elsewhere ``views.MenuBar`` posts the same menus
 from a dark bar inside the window (``08`` D5).
@@ -36,6 +37,7 @@ from engine.tools.editor.guides import GUIDES, GUIDES_MENU, open_guide
 from engine.tools.editor.dialogs import show_error
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
+from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
 from engine.tools.build.texts import MENU as BUILD_MENU
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
@@ -93,6 +95,8 @@ class StudioMenus:
                 SEPARATOR,
                 Item(BUILD_MENU, f"{key}+Shift+B", lambda: open_build_dialog(self),
                      guarded=True),
+                SEPARATOR,
+                Item(SETTINGS_MENU, f"{key}+,", self.studio_settings),     # F48 §6.2
                 SEPARATOR,
                 Item("Close", command=self.on_close),
             ]),
@@ -197,6 +201,10 @@ class StudioMenus:
         _add_row(menu, SEPARATOR)
         _add_row(menu, Item(CONNECT_MENU, command=self.connect_ai_app))
         return menu
+
+    def studio_settings(self) -> None:
+        """File ▸ Studio settings… (F48 01 §6.2): the AI page."""
+        open_ai_settings(self)
 
     def connect_ai_app(self) -> None:
         """Help ▸ Connect an AI app… (F48 01 §6.5)."""

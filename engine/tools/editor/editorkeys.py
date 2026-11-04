@@ -68,6 +68,8 @@ class EditorKeys:
             # F42: File ▸ Build game… (it does nothing while a build runs).
             ((f"<{mod}-Shift-B>",), lambda _e: brk(open_build_dialog, self), MAIN),
             (both("g"), lambda _e: brk(self.go_to_label), MAIN),
+            # F48: File ▸ Studio settings… (the AI page).
+            ((f"<{mod}-comma>",), lambda _e: brk(self.studio_settings), MAIN),
             (("<F7>",), lambda _e: brk(self.check_now), MAIN),
             # Ctrl+1, Ctrl+2, …: one per tab, in ``tabs`` order.
             *(((f"<{mod}-Key-{index + 1}>",), lambda _e, i=index: brk(self.show_tab, i), MAIN)

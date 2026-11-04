@@ -98,6 +98,12 @@ SUBPACKAGE_ALLOWED[ASSISTANT] = (*(f"engine.tools.editor.{m}" for m in ASSISTANT
                                  "engine.tools.build.procs")
 NETWORK_MODULES = ("socket", "ssl", "http", "urllib")
 EXTERNAL_BANNED[ASSISTANT] = ("tkinter", *NETWORK_MODULES)
+# F48 W3/W4 (04 §3.2, §18 item 5): Studio's Tk modules for the assistant may import
+# tools.assistant; no other editor module may (the assistant imports the pure editor modules,
+# which stay Tk-free: test_f48_i2_the_server_closure_loads_no_tk_or_network).
+ASSISTANT_TK_MODULES = ("aisettings", "assistpane", "assistwiring")
+FILE_SIBLING_ALLOWED: dict[str, tuple[str, ...]] = {
+    f"engine/tools/editor/{name}.py": (ASSISTANT,) for name in ASSISTANT_TK_MODULES}
 # Files allowed one of their package's EXTERNAL_BANNED modules (prefix of the repo path).
 EXTERNAL_ALLOWED: dict[str, tuple[str, ...]] = {
     "engine/tools/assistant/providers/": NETWORK_MODULES}
@@ -200,6 +206,11 @@ def _sibling_allowed(own_prefix: str, line: int, name: str,
     return bool(loaded) and all(ok(t) for t in loaded)
 
 
+def _file_allowed(rel: str, name: str) -> bool:
+    """``FILE_SIBLING_ALLOWED``: this one file may import ``name``."""
+    return any((name + ".").startswith(a + ".") for a in FILE_SIBLING_ALLOWED.get(rel, ()))
+
+
 def _external_banned(own_prefix: str | None, rel: str, top: str) -> bool:
     if not own_prefix or top not in EXTERNAL_BANNED.get(own_prefix, ()):
         return False
@@ -257,7 +268,8 @@ def scan(engine_dir: Path) -> list[str]:
             if own_prefix and layer != ROOT_LAYER \
                     and layer == name.split(".")[1] == own_prefix.split(".")[1] \
                     and not (name + ".").startswith(own_prefix + ".") \
-                    and not _sibling_allowed(own_prefix, line, name, targets):
+                    and not _sibling_allowed(own_prefix, line, name, targets) \
+                    and not _file_allowed(rel, name):
                 violations.append(f"{rel}:{line}: {package} must not import {name}")
             elif own_prefix and any(name == banned or name.startswith(banned + ".")
                                     for banned in SUBPACKAGE_BANNED.get(own_prefix, ())):
@@ -834,6 +846,25 @@ def test_ac_f48_01_assistant_row(tmp_path):
         "engine/ui/x.py:1: ui must not import engine.tools.assistant",
     ]
     assert scan(REPO / "engine") == []
+
+
+def test_f48_w4_only_the_assistant_tk_modules_import_the_assistant(tmp_path):
+    """04 §3.2: aisettings, assistpane and assistwiring may import tools.assistant; any
+    other tools/editor module may not."""
+    engine = tmp_path / "engine"
+    for package in ("core", "script", "tools", "tools/assistant", "tools/editor"):
+        (engine / package).mkdir(parents=True)
+        (engine / package / "__init__.py").write_text("", encoding="utf-8")
+    (engine / "__init__.py").write_text("", encoding="utf-8")
+    line = "from engine.tools.assistant import prefs" + chr(10) + \
+        "import engine.tools.assistant.chat" + chr(10)
+    for name in (*ASSISTANT_TK_MODULES, "window"):
+        (engine / "tools" / "editor" / f"{name}.py").write_text(line, encoding="utf-8")
+    assert scan(engine) == [
+        "engine/tools/editor/window.py:1: tools.editor must not import engine.tools.assistant",
+        "engine/tools/editor/window.py:2: tools.editor must not import "
+        "engine.tools.assistant.chat",
+    ]
 
 
 def test_f48_i2_the_server_closure_loads_no_tk_or_network():
