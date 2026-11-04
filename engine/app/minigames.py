@@ -27,9 +27,10 @@ App's pieces as ``HostPorts`` built here, once per launch, from ``install_story`
 """
 
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from engine.app.codex import AppCodexPort
+from engine.core.settings_schema import TIMING_LEVELS
 from engine.minigames.context import PlayerSettings
 from engine.minigames.host import HostPorts, MinigameHost
 from engine.minigames.tables import PluginTables
@@ -65,6 +66,7 @@ def player_settings(app: "App") -> PlayerSettings:
     reduce = bool(getattr(shell, "reduce_motion", False))
     settings = getattr(app, "settings", None)
     volumes = [100, 100, 100, 100]
+    timing = TIMING_LEVELS[0]
     if settings is not None:
         for i, key in enumerate(("master_volume", "music_volume", "sound_volume",
                                  "voice_volume")):
@@ -74,7 +76,19 @@ def player_settings(app: "App") -> PlayerSettings:
                 continue
             if type(value) is int:
                 volumes[i] = value
-    return PlayerSettings(scale, reduce, *volumes)
+        timing = timing_id(settings)
+    return PlayerSettings(scale, reduce, *volumes, timing_assist=timing)
+
+
+def timing_id(settings: Any) -> str:
+    """F50 (07 I-3): the stored Timing assist as its id; Normal for anything else."""
+    try:
+        value = settings.value("timing_assist")
+    except (KeyError, ValueError):
+        return TIMING_LEVELS[0]
+    if type(value) is int and 0 <= value < len(TIMING_LEVELS):
+        return TIMING_LEVELS[value]
+    return TIMING_LEVELS[0]
 
 
 def install_minigames(app: "App", interp: "Interpreter",
@@ -163,4 +177,4 @@ def _ask_skip(host: MinigameHost, ctx: EntryContext) -> None:
     host.ask_skip(ctx.by)
 
 
-__all__ = ["install_minigames", "player_settings", "statement_place"]
+__all__ = ["install_minigames", "player_settings", "statement_place", "timing_id"]

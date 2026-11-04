@@ -1304,6 +1304,10 @@ Plugins are powerful, so a few rules keep players and their saves safe:
 - **Honour `reduce_motion`.** If your game moves, shakes, or flashes, check
   `ctx.settings.reduce_motion` in `start` and again in `settings_changed`: when it is
   `True`, cut instead of animating.
+- **Honour Timing assist.** If your game has a time limit or a beat, get every limit from
+  `ctx.settings.timed(seconds)` and never pick your own factor: it gives `seconds`, twice
+  that, or `None` when the player chose No time limits. Under `None`, wait for the player
+  and never fail on time. Declare `api = "1.3"` (see "API 1.3 notes").
 - **Use relative imports in packages.** A bigger plugin can be a folder with an
   `__init__.py` (a package), such as `game/minigames/night_sky/`. Its files import each other
   with relative imports (`from . import rules`, `from .board import Board`), never as
@@ -1312,6 +1316,21 @@ Plugins are powerful, so a few rules keep players and their saves safe:
 Two more habits keep the game smooth: do slow work (loading pictures, building big lists) in
 `start`, not in `draw`; and keep `update` and `draw` short. In dev runs the engine warns
 when one frame takes over 8 ms.
+
+### API 1.3 notes (Timing assist)
+
+Minigame API 1.3 adds the player's **Timing assist** setting (Settings ▸ Display) to
+`ctx.settings`:
+
+- **Declare `api = "1.3"`** to use `ctx.settings.timing_assist` and `ctx.settings.timed`. An
+  older engine has neither, and refuses a 1.3 plugin with E278 instead of failing later.
+- `ctx.settings.timing_assist` is `"normal"`, `"slower"`, or `"off"` (No time limits).
+  `ctx.settings.timed(seconds)` turns a time limit into the player's: `timed(2.0)` is `2.0`,
+  `4.0`, or `None`.
+- **Under "off", wait for the player and never auto-fail.** Heartbeat is the example: its
+  ring closes at the normal pace, then waits on the circle until the player presses.
+- **A change arrives through `settings_changed`.** Your game decides when it applies, for
+  example from the next beat or the next round, so a running countdown never jumps.
 
 ### Achievement hook
 
@@ -1376,7 +1395,7 @@ save holds, that save goes back to the nearest point it can.
 |---|---|
 | `name` | The minigame's name in scripts: lower-case letters, digits, `_`. Required. |
 | `title` | The heading and save description; `[words.plugin.<name>] title` wins. Default: the name. |
-| `api` | The minigame API version the plugin was written for: `"1.0"` (default), `"1.1"`, or `"1.2"`. |
+| `api` | The minigame API version the plugin was written for: `"1.0"` (default), `"1.1"`, `"1.2"`, or `"1.3"`. |
 | `args` | `{"name": Arg(), "other": Arg(default=value)}`. Names start with a letter. |
 | `test_outcome` | `Outcome(result, changes)` for headless runs and Shift+F8, or `None`. |
 | `skipped_outcome` | `Outcome(…)` for Skip Game, or `None` (then the game can't be `skippable`). |
@@ -1411,7 +1430,7 @@ n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
 | `ctx.points` | Meters: `get(name)`, `names()`, `highest()`, and `add(name, n)`, `set(name, n)` (made when the game finishes). |
 | `ctx.codex` | `items()`, `tips()`, `has(kind, name)`, `title(name)`, and `give(item)`, `take(item)`, `unlock_tip(tip)` (made when the game finishes). |
 | `ctx.story` | The story's declared names: `meters`, `items`, `tips`, `item_categories`. |
-| `ctx.settings` | `text_scale`, `reduce_motion`, and the volumes. |
+| `ctx.settings` | `text_scale`, `reduce_motion`, the volumes, and (API 1.3) `timing_assist` (`"normal"`, `"slower"`, `"off"`) with `timed(seconds)`: the player's time limit, or `None` for no limit. |
 | `ctx.area` | The play area, a `Box`. |
 | `ctx.scope` | The focus scope: `set_groups([FocusGroup(buttons)])`, `set_default(button)`, `focused`. |
 | `ctx.painter` | F10's painter, for drawing frames in the game's look. |

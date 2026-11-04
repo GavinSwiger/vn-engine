@@ -1,4 +1,4 @@
-"""The public minigame plugin API, version 1.2 (F23 ``04`` §4.3; ADR-0009).
+"""The public minigame plugin API, version 1.3 (F23 ``04`` §4.3; ADR-0009).
 
 Why this module exists: a plugin in ``game/minigames/`` subclasses ``Minigame``, declares
 its name, arguments, and outcomes as class attributes, and calls ``register(cls)``. Plugins

@@ -104,7 +104,7 @@ def test_a_returned_outcome_is_a_copy(sigs):
 
 
 def test_version_exports_and_closest():
-    assert api.API_VERSION == (1, 2) and messages.ENGINE_API == "1.2"
+    assert api.API_VERSION == (1, 3) and messages.ENGINE_API == "1.3"
     assert {"StoryNames", "closest"} <= set(api.__all__)
     assert api.StoryNames is StoryNames
     for written, expected in (("sayory", "sayori"), ("Yuri", "yuri"), ("zzz", None)):

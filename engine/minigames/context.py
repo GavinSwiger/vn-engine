@@ -24,6 +24,7 @@ from types import FunctionType
 from typing import Any, Protocol
 
 from engine.core.minigame_types import StoryNames
+from engine.core.settings_schema import TIMING_LEVELS, timing_limit
 
 _NO_NAMES = StoryNames((), (), ())
 
@@ -31,7 +32,12 @@ _NO_NAMES = StoryNames((), (), ())
 @dataclass(frozen=True, slots=True)
 class PlayerSettings:
     """What a plugin learns of the player's settings (PR-F23-19): plain values, a fresh
-    snapshot per read (``ctx.settings``, ``Minigame.settings_changed``)."""
+    snapshot per read (``ctx.settings``, ``Minigame.settings_changed``).
+
+    API 1.3 (F50, 07 I-3): ``timing_assist`` is the player's Timing assist as its id,
+    ``"normal"``, ``"slower"`` or ``"off"`` (never the stored number), and ``timed(seconds)``
+    applies the engine's one rule to a time limit. A change reaches a running minigame
+    through ``settings_changed``, as every setting does (the snapshot's equality)."""
 
     text_scale: float = 1.0
     reduce_motion: bool = False
@@ -39,6 +45,13 @@ class PlayerSettings:
     music_volume: int = 100
     sound_volume: int = 100
     voice_volume: int = 100
+    timing_assist: str = TIMING_LEVELS[0]
+
+    def timed(self, seconds: float) -> float | None:
+        """``seconds`` under the player's Timing assist: ``seconds`` (Normal), twice that
+        (Slower), or ``None`` for No time limits, where a timed part waits for the
+        player and never fails on time."""
+        return timing_limit(seconds, self.timing_assist)
 
 
 class MinigameThreadError(RuntimeError):
