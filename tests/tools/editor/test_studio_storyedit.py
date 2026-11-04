@@ -2,8 +2,8 @@
 
 Studio L: the Studio window on a copy of ``tests/fixtures/F46/games/lanterns/`` with the fake
 check runner of ``test_studio_window.py`` (it records requests and never answers them), after
-one fake ``DONE`` holding L's labels and links. ``FOLLOW_MS`` is patched to 20 ms; the real
-value is asserted first. The pure halves are ``test_scenes.py`` and ``test_storymap*.py``."""
+one fake ``DONE`` holding L's labels and links. ``livemap.FOLLOW_MS`` is patched to 20 ms;
+the real values (F58 C1: 80 ms, 250 ms max wait) are asserted first. The pure halves are ``test_scenes.py`` and ``test_storymap*.py``."""
 
 import shutil
 import time
@@ -13,7 +13,8 @@ import pytest
 
 from engine.script.labelgraph import LabelLink
 from engine.tools.editor import (
-    assist, document, formdialogs, forms, layoutfile, scenes, scriptedit, storymap, views)
+    assist, document, formdialogs, forms, layoutfile, livemap, scenes, scriptedit, storymap,
+    views)
 from engine.tools.editor.checker import CheckEvent, CheckResult, CheckState, NameEntry
 from engine.tools.editor.theme import THEME
 
@@ -87,8 +88,8 @@ def wait_follow(ed, calls: list) -> None:
 
 def test_ac_f46_04_the_map_follows_typing_and_choice_arrows_show_their_text(
         studio, lanterns, monkeypatch):
-    assert scenes.FOLLOW_MS == 500
-    monkeypatch.setattr(scenes, "FOLLOW_MS", 20)
+    assert (livemap.FOLLOW_MS, livemap.FOLLOW_MAX_MS) == (80, 250)     # F58 C1
+    monkeypatch.setattr(livemap, "FOLLOW_MS", 20)
     on_disk = {ref: (lanterns / ref).read_bytes() for ref in (MAIN, CH2)}
     ed = studio_l(studio, lanterns)
     view = ed.story_map
@@ -250,7 +251,7 @@ def test_ac_f46_05_side_pane_tabs(studio, lanterns):
 
 
 def test_ac_f46_09_rows_and_text_stay_in_step_and_f6(studio, lanterns, monkeypatch):
-    monkeypatch.setattr(scenes, "FOLLOW_MS", 20)
+    monkeypatch.setattr(livemap, "FOLLOW_MS", 20)
     ed = studio_l(studio, lanterns)
     canvas, events = ed.map_canvas, ed.events_view
     click_box(ed, "start")
@@ -425,7 +426,8 @@ def test_ac_f46_16_insert(studio, lanterns, monkeypatch):
 
 
 def test_ac_f46_13_refusals_stale_broken_locked(studio, lanterns, monkeypatch, tmp_path):
-    monkeypatch.setattr(scenes, "FOLLOW_MS", 60_000)     # no follow unless an action asks
+    monkeypatch.setattr(livemap, "FOLLOW_MS", 60_000)    # no follow unless an action asks
+    monkeypatch.setattr(livemap, "FOLLOW_MAX_MS", 60_000)
     picks, values, seen = [], [], {}
     answer_dialogs(monkeypatch, picks, values, seen)
     ed = studio_l(studio, lanterns)
@@ -717,7 +719,7 @@ def test_ac_f46_25_moving_boxes(studio, lanterns, monkeypatch):
 def test_ac_f46_22_the_layout_file_in_studio(studio, lanterns, monkeypatch):
     assert layoutfile.LAYOUT_SAVE_MS == 1_000
     monkeypatch.setattr(layoutfile, "LAYOUT_SAVE_MS", 20)
-    monkeypatch.setattr(scenes, "FOLLOW_MS", 20)
+    monkeypatch.setattr(livemap, "FOLLOW_MS", 20)
     path = lanterns / ".studio" / "storymap.json"
     assert not path.parent.exists()
     writes: list[bytes] = []

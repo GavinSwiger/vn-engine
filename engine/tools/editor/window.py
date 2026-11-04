@@ -57,7 +57,7 @@ from engine.script.assetgroups import CONFIG_REF
 from engine.script.diagnostics import ScriptError
 from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
-from engine.tools.editor import files, scenes
+from engine.tools.editor import files, livemap, scenes
 from engine.tools.editor.assist import (
     Context,
     auto_open,
@@ -415,7 +415,13 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self.scene_indexes: dict[str, scenes.SceneIndex] = {}
         self._checked: dict[str, dict[scenes.Key, bytes]] = {}
         self._check_snapshot: tuple[int, dict[str, dict[scenes.Key, bytes]]] | None = None
-        self._follow_id: str | None = None
+        # F58 (04 §7.4): the follow clock (80 ms debounce, 250 ms max wait), what asked for
+        # the update in hand, and the map's live status line (S1-S8).
+        self.follow_clock = self._make_follow_clock()
+        self._follow_source = "typing"
+        self._follow_throttle = False
+        self._after_throttle = False
+        self.map_line = livemap.MapLine(lambda: time.perf_counter() * 1000)
         self._map_shown: tuple | None = None    # the data the map last drew
         self._help_key: tuple | None = None
         self._help_sash_placed = False

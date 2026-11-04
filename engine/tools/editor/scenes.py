@@ -1,7 +1,7 @@
 """Studio's scene index: each open script file read as label chunks (F46 ``04-technical.md``
 §3.1, §6.1, §6.2; ``07`` I-1 to I-5).
 
-Why this module exists: the story map has to follow typing within ``FOLLOW_MS``, but a full
+Why this module exists: the story map has to follow typing within ``livemap.FOLLOW_MS``, but a full
 re-read costs about 28 µs per line (19 s at the 16 MB cap), and the check child takes over
 0.5 s just to start. So Studio splits each open file into label chunks, digests them, and
 parses only the chunks that changed since the last good check (or that the view or an action
@@ -47,7 +47,6 @@ from engine.script.statements import ParseContext
 from engine.script.words import canonical_name
 from engine.tools.editor.checker import NameEntry
 
-FOLLOW_MS: Final = 500                  # the map follows typing after this pause (§6.1.1)
 SCENE_ROW_CAP: Final = 2_000            # Events rows shown per scene (§6.7.1)
 SCENE_PARSE_MAX_LINES: Final = 10_000   # I-2: about 0.3 s of parsing on the Tk thread
 SCENE_TOO_LONG: Final = "This scene is too long to change here. Change it in the text."
@@ -517,7 +516,7 @@ def duplicate_text(name: str, here: Place, places: Sequence[Place]) -> str:
     return format_message("E25", (name, [place for place in places if place != here]))
 
 
-__all__ = ["BlockRead", "DIGEST_SIZE", "FOLLOW_MS", "Key", "LABEL_START", "SCENE_PARSE_MAX_LINES",
+__all__ = ["BlockRead", "DIGEST_SIZE", "Key", "LABEL_START", "SCENE_PARSE_MAX_LINES",
            "SCENE_ROW_CAP", "SCENE_TOO_LONG", "SceneIndex", "SceneRead", "Span", "StmtRead",
            "changed_lines", "chunks", "digest", "drop_checked_reads", "duplicate_text",
            "duplicates", "map_data", "out_of_date", "parse_chunk", "reindex", "slim"]

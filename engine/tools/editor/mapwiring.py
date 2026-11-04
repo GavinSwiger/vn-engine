@@ -1,12 +1,19 @@
 """Studio's Story map tab (PR-F45-18, 19; F46 ``04`` §6), as the ``MapWiring`` mixin of
 ``window.EditorWindow``: the map, its side pane (Events | Script, a Tk peer of the file's
-text), following the text (``scenes.FOLLOW_MS`` after the last change ``follow`` re-reads
-the changed scripts' label chunks), the layout file and the map history (§6.8–6.10), and the
-Story menu's, map's and Events list's actions (§6.11).
+text), following the text, the layout file and the map history (§6.8–6.10), and the Story
+menu's, map's and Events list's actions (§6.11).
+
+F58 (``04`` §7.4, Q5): typing follows on ``livemap.FollowClock``, ``FOLLOW_MS`` (80 ms)
+after the last change and at least every ``FOLLOW_MAX_MS`` (250 ms) while it continues; a
+throttle tick marks nothing newly "out of date" and leaves the Events list alone (PR-22).
+Actions follow at once through ``follow_now(source)``: map and Events actions, map undo and
+redo, and the Assistant pane's Apply and Undo. The map draws only what changed (W1), and
+holds an update while a gesture runs (PR-08, S3 on the live line).
 """
 
 from __future__ import annotations
 
+import time
 import tkinter as tk
 from collections.abc import Sequence
 from tkinter import ttk
@@ -15,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 from engine.script.labelgraph import LabelLink
 from engine.script.menu import Menu
 from engine.script.messages import show
-from engine.tools.editor import files, formdialogs, layoutfile, scenes, scriptedit
+from engine.tools.editor import files, formdialogs, layoutfile, livemap, scenes, scriptedit
 from engine.tools.editor.checker import NameEntry
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
@@ -171,6 +178,7 @@ class MapWiring:
         view.on_rename = lambda: self.rename_scene()
         view.on_retarget = lambda index, target: self._head_dropped(index, target)
         view.on_context = lambda kind, what, x, y: self.map_context(kind, what, x, y)
+        view.on_hold = self._map_held
         canvas = self.map_canvas
         for key in (f"<{self.mod}-j>", f"<{self.mod}-J>"):
             canvas.bind(key, lambda _e: self._break(self.go_to_scene))
@@ -242,13 +250,16 @@ class MapWiring:
 
     # --- Story map (PR-F45-18, 19; design §6.2) ---------------------------------------------
 
-    def refresh_story_map(self) -> None:
+    def refresh_story_map(self, throttle: bool = False) -> None:
         """Draw the map from ``check_names["label"]`` and ``check_links`` with the open
-        scripts' scenes swapped in (``map_data``, F46 04 §6.1.6), if they changed."""
+        scripts' scenes swapped in (``map_data``, F46 04 §6.1.6), if they changed. A
+        ``throttle`` tick (F58 PR-22) marks no scene newly "out of date"."""
         if self.closed or not self._map_dirty:
             return
         self._map_dirty = False
         labels, links, stale = self.map_data()
+        if throttle:
+            stale = stale & self.story_map.out_of_date
         notes = label_notes(labels, self._check_names)
         data = (tuple(labels), tuple(links), self._check_stale, stale, notes)
         if data == self._map_shown:
@@ -272,14 +283,18 @@ class MapWiring:
             found = {}
         self.story_map.places = dict(found)
 
-    def _map_moved(self, title: str, before: dict, after: dict) -> None:
-        """A move or Tidy up on the map: one map step; the layout file is saved soon."""
-        self.map_history.push(MapStep(title, before, after))
+    def _map_moved(self, title: str, before: dict, after: dict, pins: tuple | None = None
+                   ) -> None:
+        """A move or Tidy up on the map: one map step (Tidy up's carries the pins, F58
+        I-9); the layout file is saved soon."""
+        self.map_history.push(MapStep(title, before, after, pins=pins))
         self._places_changed()
 
     def map_plan_done(self, plan: object) -> None:
-        """A plan applied from the map or the Events list (``StoryEditor._after``): one map
-        step holding each touched file's edit token and the plan's places."""
+        """A plan applied from the map or the Events list (``StoryEditor._after``): the map
+        follows at once (F58 Q5), then one map step holding each touched file's edit token
+        and the plan's places."""
+        self.follow_now("action")
         places = dict(getattr(plan, "places", {}) or {})
         view = self.story_map
         before = {name: view.places.get(name) for name in places}
@@ -311,10 +326,14 @@ class MapWiring:
             return
         view.say("")
         if step.files:
-            self.follow()
+            self.follow_now("action")
             if self.story is not None:
                 self.story.refresh()
-        if done.places:
+        if step.pins is not None:               # F58 I-9: Tidy up's pins come back
+            view.restore_pins(step.pins[1] if redo else step.pins[0])
+            view.apply_places(done.places)
+            self._places_changed()
+        elif done.places:
             view.apply_places(done.places)
             self._places_changed()
 
@@ -394,26 +413,69 @@ class MapWiring:
         self._checked.pop(ref, None)
         self._map_dirty = True
 
-    def _schedule_follow(self) -> None:
-        """``follow`` ``FOLLOW_MS`` after the last change (separate from the check's
-        debounce)."""
-        self._cancel_follow()
-        if not self.closed:
-            self._follow_id = self.root.after(scenes.FOLLOW_MS, self.follow)
+    def _make_follow_clock(self) -> livemap.FollowClock:
+        """F58 C1: ``FOLLOW_MS`` after the last change, at least every ``FOLLOW_MAX_MS``
+        from the previous update's start while changes keep coming."""
+        root = self.root
 
-    def _cancel_follow(self) -> None:
-        if self._follow_id is not None:
+        def cancel(token: object) -> None:
             try:
-                self.root.after_cancel(self._follow_id)
+                root.after_cancel(token)        # type: ignore[arg-type]
             except tk.TclError:
                 pass
-            self._follow_id = None
+
+        def after(ms: float, func: Any) -> object:
+            return root.after(max(0, round(ms)), func)   # Tk takes whole ms
+
+        return livemap.FollowClock(self._follow_tick, after=after, cancel=cancel,
+                                   now=lambda: time.perf_counter() * 1000,
+                                   debounce=livemap.FOLLOW_MS,
+                                   max_wait=livemap.FOLLOW_MAX_MS)
+
+    def _schedule_follow(self) -> None:
+        """A text change: the follow clock runs ``follow`` (separate from the check's
+        debounce)."""
+        if not self.closed:
+            self.follow_clock.changed()
+
+    def _cancel_follow(self) -> None:
+        self.follow_clock.cancel()
+
+    def _follow_tick(self, throttle: bool) -> None:
+        if self.closed:
+            return
+        self._follow_source = "typing"
+        self._follow_throttle = throttle
+        self.follow()
+
+    def follow_now(self, source: str = "action") -> None:
+        """Follow at once (F58 Q5): a map or Events action, map undo, the pane's Apply or
+        Undo (``source``: ``action`` or ``pane``; ``disk`` for the watch). Any wait on the
+        clock is dropped."""
+        if self.closed:
+            return
+        self._follow_source = source
+        self.follow_clock.now()
 
     def follow(self) -> None:
-        """Re-read the scripts that changed since their index and redraw what changed."""
-        self._follow_id = None
-        if not self.closed and self._reindex():
-            self._index_changed()
+        """Re-read the scripts that changed since their index and redraw what changed: the
+        map now when it shows (F58), the Events list at a pause only (PR-22)."""
+        throttle, self._follow_throttle = self._follow_throttle, False
+        if self.closed:
+            return
+        changed = self._reindex()
+        if not changed and (throttle or not self._after_throttle):
+            return
+        self._after_throttle = throttle
+        self._map_dirty = True
+        if not throttle and self._side_open and self.side_tab == "events":
+            self.root.after_idle(self._follow_events)
+        if self.current_tab() == "map":
+            self.refresh_story_map(throttle=throttle)
+        else:
+            on_show = self.tabs[self.notebook.index("current")].on_show
+            if on_show is not None:
+                self.root.after_idle(getattr(self, on_show))
 
     def _reindex(self) -> bool:
         """``scenes.reindex`` each open script whose ``changes`` its index hasn't seen;
@@ -751,8 +813,7 @@ class MapWiring:
             (STORY_CHOICE_TEXT, "F2", lambda: self.edit_choice_text(), choice, ("edge",)),
             (STORY_CHANGE_TARGET, "", lambda: self.change_target(), edge, ("edge",)),
             None,
-            (STORY_TIDY_UP, "", lambda: self.tidy_up(), lambda: bool(view.places),
-             ("map", "box")),
+            (STORY_TIDY_UP, "", lambda: self.tidy_up(), view.can_tidy, ("map", "box")),
             None,
             (STORY_INSERT, "Insert", lambda: self.insert_command(), editable_row, ("row",)),
             (STORY_EDIT, "Enter", lambda: self.edit_command(), editable_row, ("row",)),
@@ -830,10 +891,14 @@ class MapWiring:
 
     def _post(self, menu: tk.Menu, x: int, y: int) -> None:
         if CONTEXT_MENUS_POST:
+            view = self.story_map
+            view.menu_open = True               # F58 PR-08: no update under the menu
             try:
                 menu.tk.call("tk_popup", menu, x, y)
             finally:
                 menu.grab_release()
+                view.menu_open = False
+                view.release_hold()
 
     def _map_say(self, text: str) -> None:
         """A map action's outcome or refusal: the map's banner and the Events status."""
@@ -910,7 +975,6 @@ class MapWiring:
         widget = record.widget
         for file_plan in plan.files:
             self._as_one_step(widget, lambda e=file_plan.edits: apply_edits(widget, e))
-        self.follow()
         self.map_plan_done(plan)
         self._map_dirty = True
         self.refresh_story_map()
@@ -1047,6 +1111,19 @@ class MapWiring:
         else:
             self.delete_scene()
 
+    def _map_held(self, held: bool) -> None:
+        """A gesture holds the map (F58 PR-08): S3 until it ends and the update lands."""
+        if held:
+            self.map_line.say("S3", livemap.S3)
+        else:
+            self.map_line.clear("S3")
+        self._show_map_line()
+
+    def _show_map_line(self) -> None:
+        """The live line shows ``map_line``'s text (F58 PR-17, C2)."""
+        if not self.closed:
+            self.story_map.live_say(self.map_line.text())
+
     def _script_refs(self) -> list[str]:
         return [ref for ref in self.refs if ref.startswith("script/") and ref.endswith(".vns")]
 
@@ -1138,7 +1215,6 @@ class MapWiring:
                                                                      positions=positions)):
             show_error(self.root, scriptedit.UNSAFE)
             return None
-        self.follow()
         self.map_plan_done(result)
         story = self.story
         if story is not None and story.key is not None and story.key[0] == old:

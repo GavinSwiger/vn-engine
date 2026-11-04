@@ -98,7 +98,6 @@ def jump_line(n: int) -> int:
 
 # --- AC-F58-11: typing ------------------------------------------------------------------------
 
-@pytest.mark.xfail(reason="F58 W2 (follow clock 80/250 ms, incremental draw)", strict=False)
 @pytest.mark.parametrize("n", SIZES)
 def test_ac_f58_11_typed_jump_and_throttle(bench, n):
     win = bench(n)
@@ -145,7 +144,6 @@ def test_ac_f58_11_typed_jump_and_throttle(bench, n):
 
 # --- AC-F58-12: pane Apply and map undo ----------------------------------------------------------
 
-@pytest.mark.xfail(reason="F58 W2 (follow_now: actions follow at once)", strict=False)
 @pytest.mark.parametrize("n", SIZES)
 def test_ac_f58_12_apply_and_map_undo(bench, n):
     from engine.tools.editor.scriptedit import FilePlan, LineEdit, Plan

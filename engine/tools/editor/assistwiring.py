@@ -516,6 +516,7 @@ class AssistWiring:
             self._assist_remove(created)
             self._assist_stale(card)
             return
+        self.follow_now("pane")                 # F58 Q5: on the map at once
         card.tokens = tuple((fp.ref, self.files[fp.ref].changes) for fp in plan.files)
         card.created = tuple(created)
         card.state = "applied"
@@ -587,6 +588,7 @@ class AssistWiring:
                     record.widget.edit_undo()
                 except tk.TclError:
                     pass
+        self.follow_now("pane")                 # F58 Q5
         card.tokens, card.created = None, ()
         card.state = "open"
         card.show_status(UNDONE)

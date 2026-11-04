@@ -239,7 +239,7 @@ class StoryEditor:
             return None
         text = record.widget.get("1.0", "end-1c")
         if self.drawn is None or _live_digest(text, self.key) != self.drawn:
-            self.win.follow()
+            self.win.follow_now("action")
             self.refresh()
             self.say(scriptedit.STALE)
             return None
@@ -329,8 +329,7 @@ class StoryEditor:
                 if col1 > col0:
                     widget.tag_add("sel", f"{line}.{col0}", f"{line}.{col1}")
                 widget.see("insert")
-        self.win.follow()
-        self.win.map_plan_done(plan)        # one map step (04 §6.9)
+        self.win.map_plan_done(plan)        # follows now (F58 Q5); one map step (04 §6.9)
         self.refresh()
         if line is not None and self.rows:
             self.view.select(self.row_at(line), notify=False)
@@ -570,7 +569,7 @@ class StoryEditor:
                 record.widget.edit_undo()
         except tk.TclError:
             return                              # nothing to undo
-        self.win.follow()
+        self.win.follow_now("action")
         self.refresh()
         if keep is not None and self.rows:
             self.view.select(min(keep, len(self.rows) - 1), notify=False)

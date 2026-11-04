@@ -897,7 +897,20 @@ class StoryMapView:
                                   detail_font=self.detail_font, chip_font=self.chip_font,
                                   scale=scale, dpi=scale)
         self.pins = Pins()
+        self.drifted = False                    # boxes came or went since F45's columns
         self.last_diff: LayoutDiff | None = None
+        # F58 PR-08: while a gesture holds the map (``holding``), set_data keeps the data
+        # and ``on_hold(True)`` says so (S3); the update lands when it ends (on_hold(False)).
+        self.on_hold: Callable[[bool], None] | None = None
+        self.menu_open = False
+        self._held = False
+        # F58 C2: the live status line (S1-S8), one line over the canvas's bottom-left
+        # corner, so the canvas never moves or resizes (UI-F58-05).
+        self.live_text = ""
+        self.live_line = tk.Label(self.canvas, text="", background=THEME["card.background"],
+                                  foreground=THEME["foreground"], font=self.legend_font,
+                                  anchor="w", borderwidth=0, padx=round(8 * scale),
+                                  pady=round(2 * scale))
         self._note_shown: str | None = None
         self._choices: tuple[str, ...] = ()
         self._stuck: set[str] = set()
@@ -993,7 +1006,42 @@ class StoryMapView:
             self.file_choice.configure(values=(ALL_FILES, *choices))
         if refilter:
             self.file_choice.set(ALL_FILES)
+        if self.holding and not refilter:
+            if not self._held:                  # PR-F58-08: lands when the gesture ends
+                self._held = True
+                if self.on_hold is not None:
+                    self.on_hold(True)
+            return
         self._relayout(full=refilter)
+
+    @property
+    def holding(self) -> bool:
+        """A gesture an update must not cut (F58 PR-08): a box press or drag, Move box, an
+        arrow drag, the inline choice field, or a map context menu."""
+        return (self.drag is not None or self.moving is not None or self.link is not None
+                or self.field is not None or self.menu_open)
+
+    def release_hold(self) -> None:
+        """A gesture ended: a held update lands now, as one update."""
+        if self._held and not self.holding:
+            self._held = False
+            self._relayout()
+            if self.on_hold is not None:
+                self.on_hold(False)
+
+    def live_say(self, text: str) -> None:
+        """The live status line (F58 S1-S8, C2): one line over the canvas's bottom-left
+        corner, long names cut in the middle with "…"; ``""`` hides it."""
+        if text == self.live_text:
+            return
+        self.live_text = text
+        if not text:
+            self.live_line.place_forget()
+            return
+        room = max(40, self.canvas.winfo_width() - round(24 * self.dpi))
+        self.live_line.configure(text=elide_middle(text, room, self.legend_font.measure))
+        inset = round(4 * self.dpi)
+        self.live_line.place(in_=self.canvas, relx=0, rely=1, x=inset, y=-inset, anchor="sw")
 
     def _on_file(self, _event: tk.Event | None = None) -> None:
         choice = self.file_choice.get()
@@ -1049,13 +1097,16 @@ class StoryMapView:
             self.pins.add(choice, diff.placed)
         if diff.removed:
             self.pins.removed(diff.removed, choice)
+        if not diff.full and (diff.added or diff.removed or diff.edges_added
+                              or diff.edges_removed):
+            self.drifted = True                 # F58 AC-19: F45's columns may differ now
         self.layout, self.last_diff = found, diff
         self._incident = {}
         self._restore_names(names)
         self._show_note()
         if full or not found.boxes or self.painter.layout is None or self._shifted \
                 or not self.painter.apply(found, diff):
-            self.draw()
+            self.draw(reset=full)
         else:
             self._after_paint(diff)
 
@@ -1226,9 +1277,10 @@ class StoryMapView:
         tags)."""
         return self.painter.items_of(name)
 
-    def draw(self) -> None:
+    def draw(self, reset: bool = True) -> None:
         """Everything again (first draw, zoom, file filter, Tidy up, a big diff; F58
-        PR-06), through ``MapPainter.draw``."""
+        PR-06), through ``MapPainter.draw``. ``reset``: the scroll region may shrink (zoom,
+        file filter); a live update's full draw keeps it growing only (PR-08)."""
         canvas = self.canvas
         self._drop_field()
         self._drop_handle()
@@ -1247,7 +1299,8 @@ class StoryMapView:
         self.chip_font.configure(size=-max(6, round(CHIP_FONT_PX * s)))
         painter = self.painter
         painter.set_scale(s, self.dpi)
-        painter.reset_extent()
+        if reset:
+            painter.reset_extent()
         if found is None or not found.boxes:
             painter.clear()
             if self.ring is not None:
@@ -1255,6 +1308,7 @@ class StoryMapView:
                 self.ring = None
             self.start_only.hide()
             self.empty.show(canvas)
+            painter.reset_extent()
             canvas.configure(scrollregion=(0, 0, 1, 1))
             return
         self.empty.hide()
@@ -1595,6 +1649,7 @@ class StoryMapView:
             self._sync_escape()
             x, y = self._shifted.get(moving.box, moving.origin)
             self.move_to(moving.box, (round(x), round(y)))
+            self.release_hold()
             return "break"
         if self.layout is not None and self.edge is not None and not tab:
             edge = self.layout.edges[self.edge]     # F46: Enter on an arrow: its target
@@ -1707,7 +1762,14 @@ class StoryMapView:
 
     def _release(self, event: tk.Event) -> None:
         """A release ends a drag: snapped to 20 px (Shift: as dropped), never below 0, one
-        map step. Without a drag it opens the box, as F45's click did."""
+        map step. Without a drag it opens the box, as F45's click did. A held update lands
+        after it (F58 PR-08)."""
+        try:
+            self._release_drop(event)
+        finally:
+            self.release_hold()
+
+    def _release_drop(self, event: tk.Event) -> None:
         if self.link is not None:
             self._link_to(event)
             link, target = self.link, self.link.target
@@ -1770,7 +1832,13 @@ class StoryMapView:
 
     def cancel_move(self) -> None:
         """A drag or Move box mode ends with no map step and the box back where it was
-        (Esc, the canvas losing the focus, G9)."""
+        (Esc, the canvas losing the focus, G9); a held update lands after it (F58)."""
+        try:
+            self._cancel_move()
+        finally:
+            self.release_hold()
+
+    def _cancel_move(self) -> None:
         if self._drag_id is not None:
             try:
                 self.canvas.after_cancel(self._drag_id)
@@ -1832,6 +1900,7 @@ class StoryMapView:
             self.canvas.delete(link.line)
         self._paint_box(link.target)
         self._sync_escape()
+        self.release_hold()
 
     def head_at(self, x: int, y: int) -> int | None:
         """The selected arrow, when window point (``x``, ``y``) is on its head (dragging
@@ -2001,6 +2070,7 @@ class StoryMapView:
             pass
         if focus:
             self.canvas.focus_set()
+        self.release_hold()
 
     def start_move(self) -> None:
         """**Move box** (G3): the focused box follows the arrow keys (20 px, Shift 100)
@@ -2043,12 +2113,33 @@ class StoryMapView:
         after[name] = place
         self._step(title, before, after)
 
+    def can_tidy(self) -> bool:
+        """Tidy up has work: places, or boxes that came or went since F45's columns."""
+        return bool(self.places) or self.drifted
+
     def tidy_up(self) -> None:
-        """Tidy up (PR-F46-11): every box back to F45's columns, as one map step."""
-        if not self.places:
+        """Tidy up (PR-F46-11): every box back to F45's columns, as one map step. F58
+        (AC-19, I-9): the pins go too, and the step carries them so its undo restores
+        them."""
+        if not self.can_tidy():
             return
         before: dict[str, tuple[int, int] | None] = dict(self.places)
-        self._step(TIDY_UP, before, {n: None for n in before})
+        pins = self.pins.snapshot()
+        self.pins.clear()
+        self.drifted = False
+        self.places = {}
+        self._relayout(full=True)
+        self.message = ""
+        if self.on_step is not None:
+            self.on_step(TIDY_UP, before, {n: None for n in before},
+                         pins=(pins, self.pins.snapshot()))
+        if self.focused is not None:
+            self.see(self.focused)
+
+    def restore_pins(self, pins: Mapping) -> None:
+        """A Tidy up step's undo or redo: these pins again (the places follow)."""
+        self.pins.restore(pins)
+        self.drifted = True
 
     def _step(self, title: str, before: dict, after: dict) -> None:
         self.message = ""
@@ -2100,6 +2191,8 @@ class StoryMapView:
             self.draw()
             if self.focused is not None:
                 self.see(self.focused)
+            self.live_text, text = "", self.live_text
+            self.live_say(text)
 
 
 # --- Icon glyphs (08 §6) -------------------------------------------------------------------
@@ -2352,6 +2445,23 @@ class OutlineView:
         if place is not None:
             self.on_open(*place)
         return "break"
+
+
+def elide_middle(text: str, width: int, measure: Callable[[str], int]) -> str:
+    """``text`` cut in the middle with ``…`` so ``measure`` of it is at most ``width``
+    (F58 UI-F58-05: a long file name keeps its start and end)."""
+    if measure(text) <= width:
+        return text
+    low, high = 0, len(text)
+    while low < high:
+        keep = (low + high + 1) // 2
+        head, tail = text[:(keep + 1) // 2], text[len(text) - keep // 2:] if keep // 2 else ""
+        if measure(head + "…" + tail) <= width:
+            low = keep
+        else:
+            high = keep - 1
+    head, tail = text[:(low + 1) // 2], text[len(text) - low // 2:] if low // 2 else ""
+    return head + "…" + tail
 
 
 def elide(text: str, width: int, measure: Callable[[str], int]) -> str:
