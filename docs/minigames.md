@@ -1880,6 +1880,43 @@ Minigame API 1.3 adds the player's **Timing assist** setting (Settings ▸ Displ
 - **A change arrives through `settings_changed`.** Your game decides when it applies, for
   example from the next beat or the next round, so a running countdown never jumps.
 
+### API 1.4 notes (text fields)
+
+Minigame API 1.4 adds **`api.TextField`**, the engine's one-line text field (the one
+`ask_text` uses), so your game can ask the player to type: a name, a password, a letter.
+
+- **Declare `api = "1.4"`** to use it. An older engine refuses a 1.4 plugin with E278.
+- **Put it in `ctx.scope`** like a button: `ctx.scope.set_groups([FocusGroup([field, ok])])`,
+  give it a `box` in `layout`, and `ctx.scope.set_default(field)` to start with it focused.
+- **Arguments** (all optional): `text` (the starting text), `max_length` (1 to 200
+  characters, default 40), `allowed` (`"any"`, `"name"`, `"letters"`, `"digits"`,
+  `"letters_digits"`, or your own string of characters, such as `"ABCDEF"`), `case`
+  (`"upper"` or `"lower"`), `mask` (dots instead of letters), `placeholder` (shown while
+  it is empty), `cell=True` (one letter in a square: typing replaces it, Up and Down turn it
+  through `allowed`; needs your own `allowed` string), `bare=True` (no box: a prompt line),
+  `keep_keyboard=True` (the on-screen keyboard stays open after Enter), `on_change(text)`
+  and `on_submit(text)` (Enter, or the keyboard's Done), `enabled`, and, for a bare field,
+  `font`, `text_size`, `text_color`, `caret_color`.
+- **Read and set it** with `field.text` and `field.set_text("…")`. `field.last_edit` says
+  what the player did last (`"type"`, `"paste"`, `"delete"`, `"turn"`, `"move"`).
+- **The engine does the typing.** Under API 1.4 the engine owns the keyboard's text: text
+  input is on only while a `TextField` is focused, and your `handle_event` never sees
+  `TEXTINPUT` or the field's editing keys (Backspace, Delete, Left, Right, Home, End,
+  Enter). Japanese and other input methods, paste (Ctrl+V), length and character limits
+  all work. Up, Down, Tab and the mouse still reach your game, so Up and Down can move
+  between fields or recall history.
+- **Gamepads.** A on a focused field opens the engine's on-screen keyboard. It is the
+  engine's, drawn over your game; it never joins `ctx.scope`, and your game keeps running
+  under it. B closes it and keeps the text.
+- **Esc still opens the game menu**, and the typed text is still there afterwards.
+  Backspace on a focused field never opens the menu or goes back.
+- **Typed text counts as playing**, so the player can't step back past the minigame after
+  typing (as with any used input).
+- **An older plugin** (API 1.3 or below) is unchanged: text input stays on while it runs,
+  and it reads `TEXTINPUT` in `handle_event` as before.
+- **Never log typed text** or show it anywhere but your own screen; finish with it as the
+  result (`ctx.finish(field.text)`) if the story needs it.
+
 ### Achievement hook
 
 Achievements (docs/script-language.md, section 7, "lock achievement") are kept on the

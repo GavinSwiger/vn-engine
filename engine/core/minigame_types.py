@@ -11,9 +11,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Literal
 
-API_VERSION: Final = (1, 3)          # 1.1: check_story, outcome_for (F24 A1; F23 I-19)
+API_VERSION: Final = (1, 4)          # 1.1: check_story, outcome_for (F24 A1; F23 I-19)
 #                                      1.2: register_achievement_hook (F37 §5.3)
 #                                      1.3: PlayerSettings.timing_assist, timed (F50)
+#                                      1.4: TextField (F52)
 # Plugin unit stems, names inside a package, and minigame names (SEC-F23-02). Use
 # ``fullmatch`` only: ``match`` with ``$`` would accept a trailing newline.
 PLUGIN_NAME_RE: Final = re.compile(r"[a-z][a-z0-9_]{0,39}", re.ASCII)

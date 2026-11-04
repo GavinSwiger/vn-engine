@@ -42,6 +42,11 @@ the stack, and posts the result when the closing dissolve ends.
   The watchdog gives E277; a ledger refusal F22's/F21's text at the plugin's line (P prefix);
   any other ``BaseException`` E275 at the script line (``ports.where(sid)``). The host logs the
   error with its traceback (area ``plugin``), abandons, then calls ``ports.fatal`` (I-11).
+- **Text** (F52, API 1.4, 07 §3.2): a session whose plugin declares API 1.4 or later has
+  ``text_api``; the screen then routes raw events to a focused ``TextField`` first, and the
+  host owns one modal ``OnScreenKeyboard`` per session (``keyboard``), never in
+  ``ctx.scope``. ``HostPorts.text`` (or the shell's ``text``) gives the clipboard and
+  language. A plugin below 1.4 gets no router, and SDL text input stays on for it.
 - **Ports.** ``HostPorts`` is everything the host needs of the App, so ``minigames`` never
   imports ``app`` (``app/minigames.py`` builds it); tests build it over F10's test shell.
 
@@ -85,7 +90,10 @@ from engine.runtime.values import Unsaveable, freeze, kind_words
 from engine.ui.builtin.codex_page import KINDS, CodexFilter, CodexView, PickAction
 from engine.ui.focus import Box, FocusScope
 from engine.ui.layouts import MG_CUE_DEFAULT, Frame, minigame_frame
+from engine.ui.menu_screen import keyboard_services
 from engine.ui.nav import InputKind
+from engine.ui.osk import OnScreenKeyboard
+from engine.ui.textrouting import TextRouter, TextServices
 from engine.ui.theme import measure_with, w64_text
 
 if TYPE_CHECKING:
@@ -188,6 +196,7 @@ class HostPorts:
     focused: Callable[[], bool] = lambda: True
     viewport: Callable[[], tuple[int, int] | None] = lambda: None
     tables: PluginTables | None = None
+    text: TextServices | None = None               # F52: None → the shell's ``text``
     main_thread: int = field(default_factory=threading.get_ident)
     log: logging.Logger = _log
 
@@ -401,6 +410,9 @@ class Session:
     changes: tuple = ()
     settings: PlayerSettings | None = None
     held: list = field(default_factory=list)       # budget entries held
+    text_api: bool = False              # F52: the plugin declares API 1.4 or later
+    keyboard: OnScreenKeyboard | None = None       # F52: host-owned, modal
+    router: TextRouter | None = None
 
     @property
     def sig(self):
@@ -518,6 +530,7 @@ class MinigameHost:
         s.fade_s = look.fade_ms / 1000.0 if fades else 0.0
         s.from_pic = from_pic
         s.settings = self.player_settings()
+        s.text_api = _minor(entry.api) >= 4                        # F52 (API 1.4)
         last = self.ports.stack.last_input
         s.last_kind = InputKind.MOUSE if last is InputKind.MOUSE else InputKind.KEYS
         self.session = s
@@ -680,9 +693,10 @@ class MinigameHost:
         s.phase = Phase.RUNNING
         s.t = 1.0
         scope = s.scope
-        if s.last_kind is InputKind.KEYS and scope.focused is None:     # F10's first focus
+        if scope.focused is None:                                     # F10's first focus
             target = scope.default()
-            if target is not None:
+            # F52 (07 §3.1): a text default is focused visibly whatever the input kind.
+            if target is not None and (s.last_kind is InputKind.KEYS or target.takes_text):
                 scope.focus(target, InputKind.KEYS, sound=False)
         if s.opening is not None:
             s.thumb = make_thumbnail(s.opening)
@@ -773,6 +787,10 @@ class MinigameHost:
     def _clear(self, s: Session) -> None:
         if self.session is s:
             self.session = None
+        if s.keyboard is not None:
+            s.keyboard.close()
+        if s.router is not None:
+            s.router.repeat.stop()
         cue = self.ports.cue
         if cue is not None:
             cue.set_anchor(None)
@@ -796,6 +814,24 @@ class MinigameHost:
         s = self.session
         if s is not None and s.phase is not Phase.CLOSING:
             self.abandon()
+
+    # -- F52 text --
+
+    def text_services(self) -> TextServices:
+        found = self.ports.text if self.ports.text is not None else getattr(
+            self.shell, "text", None)
+        return found if isinstance(found, TextServices) else TextServices()
+
+    def keyboard(self, s: Session) -> OnScreenKeyboard:
+        if s.keyboard is None:
+            s.keyboard = OnScreenKeyboard(keyboard_services(self.shell, self.text_services()))
+        return s.keyboard
+
+    def router(self, s: Session) -> TextRouter:
+        if s.router is None:
+            s.router = TextRouter(read_clipboard=lambda: self.text_services().read_clipboard(),
+                                  open_keyboard=lambda f: self.keyboard(s).open_for(f))
+        return s.router
 
     # -- input bookkeeping --
 
@@ -1029,6 +1065,14 @@ class MinigameHost:
         error.logged = True
         self.abandon()
         self.ports.fatal(error)
+
+
+def _minor(api: str) -> int:
+    """The minor number of a checked ``"1.4"`` (0 when it can't be read)."""
+    try:
+        return int(api.split(".")[1])
+    except (IndexError, ValueError):
+        return 0
 
 
 class _ResultRefused(Exception):

@@ -1,4 +1,4 @@
-"""The public minigame plugin API, version 1.3 (F23 ``04`` §4.3; ADR-0009).
+"""The public minigame plugin API, version 1.4 (F23 ``04`` §4.3; ADR-0009).
 
 Why this module exists: a plugin in ``game/minigames/`` subclasses ``Minigame``, declares
 its name, arguments, and outcomes as class attributes, and calls ``register(cls)``. Plugins
@@ -21,6 +21,15 @@ did-you-mean rule for a reason text.
 API 1.2 (F37 §5.3) adds ``register_achievement_hook(hook)``: a game's one achievement
 platform hook (``achievement_hook.py``), an object with ``unlocked(name)`` and, optionally,
 ``started(unlocked)``. A plugin file that only registers a hook loads (no W161).
+
+API 1.3 (F50) adds ``ctx.settings.timing_assist`` and ``ctx.settings.timed(seconds)``.
+
+API 1.4 (F52) adds ``TextField``: a one-line text widget for ``ctx.scope`` (typing, IME,
+paste, limits, a dot mask, letter cells and a bare prompt line, and the engine's on-screen
+keyboard for gamepads). Under API 1.4 or later the engine owns SDL text input: it is on only
+while a ``TextField`` is focused, and the plugin never sees raw ``TEXTINPUT`` (the host's
+router gives text and editing keys to the focused field before ``handle_event``). A plugin
+below 1.4 keeps text input on while it is on top, as before (F52 07 I-9).
 """
 
 import keyword
@@ -52,6 +61,7 @@ from engine.runtime.errors import suggest
 from engine.runtime.values import BIG_INT, INF, KEY, KIND, NAN, Unsaveable, freeze, kind_words
 from engine.ui.builtin.codex_page import CodexFilter, PickAction   # F25 A6: codex_view's types
 from engine.ui.notice import clean_text
+from engine.ui.textfield import TextField                         # API 1.4 (F52)
 
 if TYPE_CHECKING:
     from engine.ui.input import UiEvent
@@ -431,5 +441,5 @@ def register_achievement_hook(hook: object) -> object:
 
 __all__ = ["API_VERSION", "Arg", "CodexChange", "CodexFilter", "Context", "MeterChange",
            "Minigame", "MinigameThreadError", "Outcome", "PickAction", "PlayerSettings",
-           "PluginEvent", "StoryNames", "TokenDecl", "add_points", "closest", "give", "register",
-           "register_achievement_hook", "set_points", "take", "unlock_tip"]
+           "PluginEvent", "StoryNames", "TextField", "TokenDecl", "add_points", "closest",
+           "give", "register", "register_achievement_hook", "set_points", "take", "unlock_tip"]

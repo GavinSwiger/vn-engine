@@ -109,9 +109,12 @@ def is_printable_key(raw: object) -> bool:
     return bool(text) and text.isprintable()
 
 
+_F_KEYS: Final = frozenset(getattr(pygame, f"K_F{n}") for n in range(1, 16))
+
+
 def is_f_key(raw: object) -> bool:
-    key = getattr(raw, "key", -1)
-    return pygame.K_F1 <= key <= pygame.K_F15
+    """F1 to F15 (SDL's key codes put the keypad between them, so never a range)."""
+    return getattr(raw, "key", -1) in _F_KEYS
 
 
 class EditRepeat:

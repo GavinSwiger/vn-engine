@@ -32,6 +32,12 @@ decides per input, by 04 §7.6's table:
   live in-game screens below (not opaque).
 - **W162** (dev): a RUNNING frame's ``plugin.update`` and ``plugin.draw`` are timed with
   ``perf_counter``; over 8 ms together, the host warns once per minigame name.
+- **Text** (F52, API ≥ 1.4, 04 §4.2): RUNNING input goes composing guard → snap keys and
+  Shift+F8 → ``TextRouter`` (a focused ``TextField`` and the host's keyboard) → plugin →
+  scope. Keys the guard swallows and router USEDs count as used (``TEXTINPUT`` too), so
+  typing refuses rollback like any used input; Esc opens the game menu and the text stays.
+  The keyboard draws after the scope's widgets and before the frame. ``text_target``: the
+  field (API ≥ 1.4), ``LEGACY_TEXT`` (below 1.4: SDL text input stays on), or None.
 """
 
 from time import perf_counter
@@ -44,8 +50,10 @@ from engine.minigames.api import PluginEvent
 from engine.minigames.host import MinigameHost, Phase, PluginFailed, Session
 from engine.ui.input import UiEvent
 from engine.ui.layouts import pitch
+from engine.ui.menu_screen import text_field_of
 from engine.ui.nav import DIRECTIONS, InputKind, Nav, NavReader, RepeatClock
-from engine.ui.screen import Screen
+from engine.ui.screen import LEGACY_TEXT, Screen
+from engine.ui.textrouting import Routed
 from engine.ui.widgets import Look, Widget, clipped
 
 if TYPE_CHECKING:
@@ -65,6 +73,7 @@ _MOUSE: Final = frozenset({pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MO
 _ROLLBACK_KEYS: Final = frozenset({pygame.K_PAGEUP, pygame.K_PAGEDOWN})
 _SHOULDERS: Final = frozenset({pygame.CONTROLLER_BUTTON_LEFTSHOULDER,
                                pygame.CONTROLLER_BUTTON_RIGHTSHOULDER})
+_TEXT_EVENTS: Final = frozenset({pygame.TEXTINPUT, pygame.TEXTEDITING})
 
 
 def _mods(raw: pygame.event.Event) -> int:
@@ -124,6 +133,48 @@ class MinigameScreen(Screen):
     def _live(self) -> bool:
         return self.host.session is self.s
 
+    # -- F52 text --
+
+    def _field(self):
+        """The text field that gets raw input now (API ≥ 1.4): the keyboard's, or the
+        focused one."""
+        s = self.s
+        if not s.text_api or s.phase is not Phase.RUNNING:
+            return None
+        kb = s.keyboard
+        if kb is not None and kb.is_open:
+            return kb.field
+        return text_field_of(s.scope)
+
+    def text_target(self) -> object:
+        s = self.s
+        if not self._live() or s.phase in (Phase.CLOSING, Phase.CLOSED):
+            return None
+        if not s.text_api:
+            return LEGACY_TEXT
+        return self._field()
+
+    def _text_route(self, event: UiEvent, nav: Nav | None, released: Nav | None,
+                    field) -> Routed:
+        """The router, inside the plugin's call (``on_change``/``on_submit`` are plugin
+        code)."""
+        field.word_for = self.host.shell.words.get
+        return self.host.router(self.s).route(event, nav, field, self.s.keyboard,
+                                              minigame=True, released=released)
+
+    def _tick_text(self, dt: float) -> None:
+        s = self.s
+        if s.router is not None:
+            s.router.tick(dt)
+        reduce = self.host.reduce_motion()
+        widgets = s.scope.widgets()
+        for w in widgets:
+            if w.takes_text:
+                w.tick(dt, reduce)
+        kb = s.keyboard
+        if kb is not None and kb.is_open and not any(w is kb.field for w in widgets):
+            kb.close()
+
     def on_exit(self) -> None:
         """Taken out of the stack by someone else (a load, the title, the error screen):
         the session is abandoned."""
@@ -164,13 +215,26 @@ class MinigameScreen(Screen):
                 host.snap(s)
                 return False
             return True
+        kind = raw.type
+        field = self._field()
+        routed: Routed | None = None
+        if field is not None and field.composing:            # F52: the composing guard first
+            nav = self.nav_of(event)
+            released = self.reader.released(event)
+            try:
+                routed = host.call(self._text_route, event, nav, released, field)
+            except PluginFailed:
+                return True
+            if routed is Routed.USED:
+                if self._live():
+                    host.note_used(s)                         # I-4: swallowed keys are used
+                return True
         if is_snap_key(raw):
             return False
         if is_dev_end(raw):
             if host.ports.dev:
                 self._dev_end()
             return True
-        kind = raw.type
         if kind in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP,
                     pygame.MOUSEWHEEL) and not event.in_canvas:
             return True                                # the letterbox: ignored
@@ -181,10 +245,25 @@ class MinigameScreen(Screen):
         press = kind in _PRESSES or (kind == pygame.CONTROLLERAXISMOTION and nav is not None)
         if press:
             s.last_kind = InputKind.MOUSE if kind in _MOUSE else InputKind.KEYS
+        if field is not None and routed is None:              # F52: the router
+            try:
+                routed = host.call(self._text_route, event, nav, released, field)
+            except PluginFailed:
+                return True
+            if routed is Routed.MENU:
+                return False
+            if routed is Routed.USED:
+                if self._live() and (press or kind in _TEXT_EVENTS):
+                    host.note_used(s)
+                return True
         try:
             used = host.call(s.plugin.handle_event, PluginEvent(event, nav), convert=bool)
             if not used and self._live():
                 used = bool(host.call(self._route, event, nav))
+            if self._live() and s.text_api and kind == pygame.MOUSEBUTTONDOWN:
+                clicked = text_field_of(s.scope)                 # F52: the keyboard icon
+                if clicked is not None and clicked.take_keyboard_request():
+                    host.keyboard(s).open_for(clicked)
         except PluginFailed:
             return True
         if used and press and self._live():
@@ -333,6 +412,8 @@ class MinigameScreen(Screen):
                     if not host.call(self._repeat_once, nav):
                         self.repeat.stop()
                         break
+            if self._live() and s.text_api:
+                host.call(self._tick_text, dt)                   # F52
             if self._live():
                 s.scope.refresh()
         except PluginFailed:
@@ -393,6 +474,9 @@ class MinigameScreen(Screen):
             host.call(self._draw_widgets, painter)
         except PluginFailed:
             return
+        kb = s.keyboard
+        if kb is not None and kb.is_open and s.phase is Phase.RUNNING:
+            kb.draw(painter)                                      # F52: over the widgets
         self._draw_frame(canvas, painter)
 
     def look_for(self, w: Widget) -> Look:

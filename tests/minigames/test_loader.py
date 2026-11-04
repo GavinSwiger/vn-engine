@@ -310,11 +310,11 @@ def test_a_game_plugin_replaces_a_bundled_one(game, load, one_bundled):
 
 
 def test_newer_minor_is_e278(game, load):
-    write(game, "minigames/x.py", plugin("x", body="    api = '1.4'\n"))
+    write(game, "minigames/x.py", plugin("x", body="    api = '1.5'\n"))
     loaded = load(game)
     assert loaded.codes == ["E278"]
-    assert loaded.errors == ["minigames/x.py needs minigame API 1.4, but this engine has 1.3. "
-                             "Update the engine, or use a version of the plugin made for 1.3."]
+    assert loaded.errors == ["minigames/x.py needs minigame API 1.5, but this engine has 1.4. "
+                             "Update the engine, or use a version of the plugin made for 1.4."]
 
 
 @pytest.mark.parametrize("version", ["1.0", "1"])
@@ -325,9 +325,9 @@ def test_same_api_loads(game, load, version):
 
 
 def test_a_later_engine_minor_keeps_1_0_working(game, load, monkeypatch):
-    monkeypatch.setattr(api, "API_VERSION", (1, 4))
+    monkeypatch.setattr(api, "API_VERSION", (1, 5))
     write(game, "minigames/x.py", plugin("x", body="    api = '1.0'\n"))
-    write(game, "minigames/y.py", plugin("y", body="    api = '1.4'\n"))
+    write(game, "minigames/y.py", plugin("y", body="    api = '1.5'\n"))
     assert load(game).names == ["x", "y"]
 
 
