@@ -105,6 +105,11 @@ sandboxed. What needs deciding is how the code is found and imported, so that lo
   `FocusScope.set_default` joined 1.1, and so did F27's `ctx.codex.title`), so `api = "1.1"`
   means one surface. After a release,
   any addition bumps the minor, and removals or changes bump the major (E278).
+  *Amended at F50/F52:* from F37 on, each feature that adds to the API takes the next minor
+  even before a release, so a plugin's `api` names the feature set it needs: 1.2 F37
+  (`register_achievement_hook`), 1.3 F50 (`ctx.settings.timing_assist`, `timed`), 1.4 F52
+  (`api.TextField`; a plugin declaring ≥ 1.4 hands SDL text input to the engine). Later
+  amendments from the same feature still join its unreleased minor.
 
 ## Status history
 
@@ -121,3 +126,8 @@ sandboxed. What needs deciding is how the code is found and imported, so that lo
   item's or tip's title, held or not; read-only, thread-checked through `LedgerCodexPort`),
   joins 1.1 under the versioning consequence, since 1.1 is still unreleased. Nothing else
   changes.
+- 2026-11-04: amended (F50, F51 and F52 07-architecture-reviews). The versioning consequence
+  records one minor per feature before a release (1.2 F37, 1.3 F50, 1.4 F52, by main-session
+  ruling) and that API ≥ 1.4 plugins get text input only through a focused `TextField`. How
+  code is found and loaded is unchanged; Decision 7 holds for `TextField` (a kit widget that
+  holds no engine service).

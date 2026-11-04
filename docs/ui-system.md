@@ -1004,6 +1004,31 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
 - **Never captured.** Not in `scene_picture()`, save thumbnails, or menu backdrops.
 - **Reduced motion.** Appear, leave, and restack in one frame.
 
+### Text field and on-screen keyboard (proposed, F52)
+
+Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
+
+- **Text field.** A one-line field with a caret, in a button-sized box (height
+  max(56, pitch + 16)); F10's focused look. Variants: a **letter cell** (square, side
+  max(40, pitch + 8), underlined, Up/Down turn the letter) and a **bare** field (no box; F56's
+  prompt line). The caret blinks 500 ms on / 500 ms off and is steady under reduce motion.
+  Notes ("That character can't be used here.") show as a tag 8 below for 2,000 ms.
+- **Typing.** SDL text input is on only while a field is focused on the top screen; IME
+  composition shows underlined at the caret and owns Enter, Esc, Backspace, arrows and Tab
+  until committed. Backspace in a focused field never acts as Back (the one exception to
+  "Back for the plugin is Backspace" above; Esc still opens the game menu, the text kept).
+- **Focus.** A screen or minigame whose default widget is a text field focuses it visibly
+  whatever input opened it (the one exception to the mouse-open rule under "Focus" above).
+- **On-screen keyboard** (gamepad south on a field, or its keyboard icon by mouse): a modal
+  panel owned by the screen or minigame host, `midbottom` (640, 696), 1040 wide, 472 tall at
+  100 % text and 504 at 150 %, with an echo row, a page row, a 10 × 4 key grid and
+  ◀ ▶ / Space / Delete / Done. West deletes, north adds a space, the bumpers change page, east
+  closes. Pages follow the game's language and what its fonts draw.
+- **Tokens** (all following, so every color scheme applies): `text_entry.fill_color`,
+  `.fill_opacity`, `.border_color`, `.text_color`, `.text_size` (the `button.*` ones),
+  `text_entry.placeholder_color` (`button.disabled.text_color`), `text_entry.caret_color`
+  (`button.marker.fill_color`). The keyboard uses `panel.*` and `button.*`.
+
 ## Changelog
 
 - 2026-11-01: Created with F04 (vn-ui-designer): canvas and anchors, standard stage
@@ -1129,3 +1154,7 @@ notices, SEC-F12-12, and F37's achievements reuse it). Full layout in
   style's `preset`, the lookup order with the scheme layer (as architecture "Looks"), the
   six-scheme table, the mapped, following and neutral token groups, and W67's scheme
   sentence.
+- 2026-11-04: F52 (vn-feature-designer): §9 "Text field and on-screen keyboard (proposed,
+  F52)": field, letter cell, bare field, typing rules, keyboard panel, `text_entry.*` tokens.
+- 2026-11-04: F52 07 (vn-system-architect): §9's F52 entry accepted with the keyboard heights
+  (472/504, F52 C1), its modal host ownership, and the Backspace and focus exceptions.
