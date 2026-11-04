@@ -95,7 +95,7 @@ def test_ac_f49_02_every_color_token_is_in_one_group():
     mapped = [path for paths in ROLE_TOKENS.values() for path in paths]
     groups = mapped + list(FOLLOWING_TOKENS) + list(NEUTRAL_TOKENS)
     assert sorted(groups) == sorted(colors)                       # each exactly once
-    assert (len(mapped), len(FOLLOWING_TOKENS), len(NEUTRAL_TOKENS)) == (64, 20, 6)  # F51: +2
+    assert (len(mapped), len(FOLLOWING_TOKENS), len(NEUTRAL_TOKENS)) == (64, 25, 6)  # F51 +2, F52 +5
     assert set(ROLE_TOKENS) == set(ROLES)
     for path in FOLLOWING_TOKENS:
         assert token(ThemeConfig(), path) is None, path

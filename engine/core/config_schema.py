@@ -1267,6 +1267,25 @@ class FlowchartTheme:
     here: FlowchartHereTheme = _table(FlowchartHereTheme)
 
 
+# --- [theme.text_entry] (F52 01 §6.4, 07 I-8) ---------------------------------------------------
+# Every value follows a [theme.button] token when not set; the five colors are in F49's
+# following group, so every color scheme applies. ``ui/theme.py`` resolves the follows.
+
+@dataclass(frozen=True)
+class TextEntryTheme:
+    """``[theme.text_entry]``: text fields and letter cells (F52). ``None`` follows:
+    ``fill_color``, ``fill_opacity``, ``border_color``, ``text_color`` and ``text_size`` the
+    button's; ``placeholder_color`` ``button.disabled.text_color``; ``caret_color``
+    ``button.marker.fill_color``."""
+    fill_color: RGB | None = _follow_color()          # button.fill_color
+    fill_opacity: float | None = _follow_opacity()    # button.fill_opacity
+    border_color: RGB | None = _follow_color()        # button.border_color
+    text_color: RGB | None = _follow_color()          # button.text_color
+    text_size: int | None = field(default=None, metadata=spec(_WIDGET_TEXT_SIZE))
+    placeholder_color: RGB | None = _follow_color()   # button.disabled.text_color
+    caret_color: RGB | None = _follow_color()         # button.marker.fill_color
+
+
 # --- [theme.minigame], [theme.plugin], [words.plugin] (F23 03-ui "Theme tokens", 04 §7.9, §12) --
 
 @dataclass(frozen=True)
@@ -1377,6 +1396,7 @@ class ThemeConfig:
     codex: CodexTheme = _table(CodexTheme)                              # F21
     flowchart: FlowchartTheme = _table(FlowchartTheme)                  # F20
     gallery: GalleryTheme = _table(GalleryTheme)                        # F34
+    text_entry: TextEntryTheme = _table(TextEntryTheme)                 # F52
     minigame: MinigameTheme = field(default_factory=MinigameTheme, metadata=spec(  # F23
         Table(MinigameTheme), "the frame around every minigame"))
     plugin: Mapping[str, RawPluginTable] = field(                       # F23 (raw, §7.9)
@@ -1620,6 +1640,12 @@ class WordsConfig:
     achievements_progress: str = _word("Unlocked")
     achievement_hidden: str = _word("Hidden achievement")
     achievement_hidden_text: str = _word("Keep playing to unlock it.")
+    # F52 (01 §8): the on-screen keyboard's keys and a text field's notes.
+    text_entry_space: str = _word("Space")
+    text_entry_delete: str = _word("Delete")
+    text_entry_done: str = _word("Done")
+    text_entry_full: str = _word("That's as long as it can be.")
+    text_entry_refused: str = _word("That character can't be used here.")
     # F23 (04 §7.9): a minigame's own words, raw until the minigames load; not a word key
     # (``word_fields`` leaves it out).
     plugin: Mapping[str, RawPluginTable] = field(
@@ -2131,6 +2157,9 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "theme.flowchart.path": "this playthrough's lines and boxes",
     "theme.flowchart.here": 'the "You are here" tab',
     "gallery": "the gallery page on the Extras screen",
+    "text_entry": "text fields the player types into, and letter squares",
+    "placeholder_color": "the color of the hint shown while the field is empty",
+    "caret_color": "the color of the blinking text cursor",
     "theme.gallery.caption": "the picture titles under the squares",
     "theme.gallery.viewer": "a gallery picture shown on the whole screen",
     "line_color": "the line color", "line_width": "the line width",
@@ -2330,6 +2359,11 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
                           "yet",
     "achievement_hidden_text": "the line under a hidden achievement the player hasn't earned "
                                "yet",
+    "text_entry_space": "the on-screen keyboard's space button",
+    "text_entry_delete": "the on-screen keyboard's delete button",
+    "text_entry_done": "the on-screen keyboard's finish button",
+    "text_entry_full": "the note when typed text doesn't fit",
+    "text_entry_refused": "the note when a character isn't allowed",
 })
 
 

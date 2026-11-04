@@ -186,6 +186,8 @@ class UiTheme:
                               marker_color=marker)
         if area in ("button", *ROW_AREAS):
             return self._widget_style(area, state)
+        if area == "text_entry":                                       # F52
+            return self._text_entry_style(state)
         if area == "list.empty":
             return PaintStyle(font=self.font(c.panel.text_size),
                               text_color=c.list.empty.text_color, marker_color=marker)
@@ -230,6 +232,26 @@ class UiTheme:
             marker_color=b.marker.fill_color, side_padding=b.side_padding,
             colors=colors)
 
+    def _text_entry_style(self, state: str) -> PaintStyle:
+        """F52 (01 §6.1, §6.4): a text field's box, text, placeholder, caret and border. At
+        rest the field's own fill and border; focused and pressed F10's focused frame;
+        disabled no border and muted text."""
+        b = self.cfg.button
+        t = {key: text_entry_token(self.cfg, f"text_entry.{key}") for key in TEXT_ENTRY_KEYS}
+        if state in ("focused", "pressed"):
+            frame = self._button_frame(state)
+            frame = FrameSpec(frame.fill_color, t["fill_opacity"], frame.border_color,
+                              frame.border_width, b.corner_radius, b.frame_slice_width)
+        else:
+            width = 0 if state == "disabled" else b.border_width
+            frame = FrameSpec(t["fill_color"], t["fill_opacity"], t["border_color"], width,
+                              b.corner_radius, b.frame_slice_width)
+        text = t["placeholder_color"] if state == "disabled" else t["text_color"]
+        return PaintStyle(frame=frame, font=self.font(t["text_size"]), text_color=text,
+                          marker_color=b.marker.fill_color, side_padding=b.side_padding,
+                          colors={"placeholder": t["placeholder_color"],
+                                  "caret": t["caret_color"], "border": t["border_color"]})
+
     def _row_colors(self, area: str) -> dict[str, RGB]:
         c = self.cfg
         disabled_track = c.button.disabled.track_color
@@ -254,6 +276,30 @@ class UiTheme:
         return quick_menu_layout(labels, measure, scale=scale, text_size=q.text_size,
                                  side_padding=q.side_padding, bottom_gap=q.bottom_gap,
                                  strip=self.cfg.textbox.bottom_gap)
+
+
+# F52 (01 §6.4, 07 I-8): ``[theme.text_entry]`` tokens follow these when unset.
+TEXT_ENTRY_FOLLOWS: Final[dict[str, str]] = {
+    "text_entry.fill_color": "button.fill_color",
+    "text_entry.fill_opacity": "button.fill_opacity",
+    "text_entry.border_color": "button.border_color",
+    "text_entry.text_color": "button.text_color",
+    "text_entry.text_size": "button.text_size",
+    "text_entry.placeholder_color": "button.disabled.text_color",
+    "text_entry.caret_color": "button.marker.fill_color",
+}
+TEXT_ENTRY_KEYS: Final = tuple(path.split(".", 1)[1] for path in TEXT_ENTRY_FOLLOWS)
+
+
+def text_entry_token(cfg: ThemeConfig, path: str) -> object:
+    """A ``text_entry.*`` token with its follow resolved (``TEXT_ENTRY_FOLLOWS``)."""
+    node: object = cfg
+    for part in path.split("."):
+        node = getattr(node, part)
+    follows = TEXT_ENTRY_FOLLOWS.get(path)
+    if node is None and follows is not None:
+        return text_entry_token(cfg, follows)
+    return node
 
 
 def plain_theme(cfg: ThemeConfig | None = None, *, faces: FaceSet = BUNDLED_FACES) -> UiTheme:
@@ -463,6 +509,7 @@ def w68_text(cut: LabelCut) -> str:
             f'{cut.size}, so it shows as "{echo(cut.shown)}". {advice}')
 
 
-__all__ = ["F10_ENTRY_WORDS", "FRAME_TOKENS", "LabelCut", "UiTheme", "Words", "font_spec",
+__all__ = ["F10_ENTRY_WORDS", "FRAME_TOKENS", "LabelCut", "TEXT_ENTRY_FOLLOWS", "UiTheme",
+           "Words", "font_spec", "text_entry_token",
            "label_cuts", "measure_with", "plain_theme", "resolve_theme", "resolve_words",
            "ui_faces", "w64_text", "w65_text", "w68_text", "warn_label_cuts"]

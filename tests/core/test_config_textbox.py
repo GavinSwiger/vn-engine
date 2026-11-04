@@ -117,6 +117,7 @@ def test_theme_areas():
         "codex",                                                 # F21 step 3
         "flowchart",                                             # F20 s8
         "gallery",                                               # F34 W3
+        "text_entry",                                            # F52 W1
         "minigame", "plugin",                                    # F23 s5b
         "preset"}                                                # F49 S1
 

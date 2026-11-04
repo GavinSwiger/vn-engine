@@ -125,7 +125,9 @@ FOLLOWING_TOKENS: Final[tuple[str, ...]] = (
     "flowchart.unknown.text_color", "flowchart.path.line_color",
     "flowchart.here.fill_color", "flowchart.here.text_color",
     "minigame.fill_top_color", "minigame.fill_bottom_color",
-    "choice.timer.fill_color", "choice.timer.track_color")          # F51 (C1)
+    "choice.timer.fill_color", "choice.timer.track_color",          # F51 (C1)
+    "text_entry.fill_color", "text_entry.border_color", "text_entry.text_color",   # F52
+    "text_entry.placeholder_color", "text_entry.caret_color")
 
 # Tokens no scheme sets.
 NEUTRAL_TOKENS: Final[tuple[str, ...]] = (

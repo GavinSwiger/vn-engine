@@ -35,7 +35,7 @@ from engine.core.logsetup import get_logger
 from engine.core.schemes import SCHEMES, scheme_colors
 from engine.render.nvllayout import nvl_look
 from engine.ui.builtin.flowchart_page import FOLLOWS, flow_color
-from engine.ui.theme import UiTheme
+from engine.ui.theme import TEXT_ENTRY_FOLLOWS, UiTheme, text_entry_token
 
 _log = get_logger("ui")
 
@@ -74,6 +74,14 @@ class Pair:
     minimum: float
     needs: str
     drawn: Callable[[UiTheme], bool] = _always
+
+
+def _own_text_entry(theme: UiTheme) -> bool:
+    """F52: the author set a ``[theme.text_entry]`` color or opacity."""
+    t = theme.cfg.text_entry
+    return any(getattr(t, key) is not None for key in
+               ("fill_color", "fill_opacity", "border_color", "text_color",
+                "placeholder_color", "caret_color"))
 
 
 _BUTTON = "button.fill_opacity"
@@ -148,6 +156,15 @@ PAIRS: Final[tuple[Pair, ...]] = (
          "flowchart lines need"),
     Pair("flowchart.path.line_color", "flowchart.fill_color", None, LARGE,
          "flowchart lines need"),
+    # F52 (01 §6.1, 07 I-8): a text field's text, placeholder and caret on its fill. The
+    # tokens follow button.* when unset, and the button's own pairs check those colors, so
+    # these are checked once the author sets one of their tokens. Drafted nouns.
+    Pair("text_entry.text_color", "text_entry.fill_color", "text_entry.fill_opacity", TEXT,
+         "text field text needs", _own_text_entry),
+    Pair("text_entry.placeholder_color", "text_entry.fill_color", "text_entry.fill_opacity",
+         TEXT, "text field hints need", _own_text_entry),
+    Pair("text_entry.caret_color", "text_entry.fill_color", "text_entry.fill_opacity", LARGE,
+         "text cursors need", _own_text_entry),
 )
 
 
@@ -172,9 +189,10 @@ LOOK_PAIRS: Final[tuple[Pair, ...]] = (
          "choice text needs", _no_frame("choice.focused")),
     Pair("nvl.text_color", "nvl.fill_color", "nvl.fill_opacity", TEXT, "NVL text needs"),
 )
-# NVL tokens that follow the text box's when unset (``nvl_look``).
+# NVL tokens that follow the text box's when unset (``nvl_look``), and F52's text field
+# tokens that follow the button's (``ui.theme.TEXT_ENTRY_FOLLOWS``).
 _NVL_FOLLOWS: Final = {"nvl.fill_color": "textbox.fill_color",
-                       "nvl.text_color": "textbox.text_color"}
+                       "nvl.text_color": "textbox.text_color", **TEXT_ENTRY_FOLLOWS}
 
 
 def _token(cfg: ThemeConfig, path: str) -> object:
@@ -185,6 +203,8 @@ def _token(cfg: ThemeConfig, path: str) -> object:
         node = getattr(node, part)
     if node is None and path in FOLLOWS:
         return flow_color(cfg, path)
+    if node is None and path in TEXT_ENTRY_FOLLOWS:
+        return text_entry_token(cfg, path)
     if node is None and path in _NVL_FOLLOWS:
         return getattr(nvl_look(cfg), path.split(".", 1)[1])
     return node
