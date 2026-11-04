@@ -28,6 +28,10 @@ from engine.core.redact import KEY_TOKEN, echo
 
 NO_KEY: Final = "Set up AI in Studio settings ▸ AI first."
 BAD_KEY: Final = "{provider} didn't accept the API key. Check it in Studio settings ▸ AI."
+# An Admin API key (sk-ant-admin…) manages an organization and can't send messages.
+NOT_A_CHAT_KEY: Final = ("This is an Admin key, which can't send messages. Make a regular API "
+                         "key under API keys in the Claude Console, then paste it in Studio "
+                         "settings ▸ AI.")
 FORBIDDEN: Final = ("This API key can't use {model}. Pick another model or check your "
                     "{provider} account.")
 NO_MODEL: Final = "{provider} has no model named {model}. Pick another in Studio settings ▸ AI."
@@ -194,6 +198,8 @@ def classify(status: int | None, kind: str, code: str, message: str, *, provider
             or _has(message, "prompt is too long", "context length", "context window",
                     "maximum context", "too many tokens")):
         return ProviderError(TOO_LARGE.format(**names), "too_large", status=status)
+    if _has(message, "not scoped to a workspace"):
+        return ProviderError(NOT_A_CHAT_KEY, "key", status=status)
     if status == 401 or kind == "authentication_error" or code == "invalid_api_key":
         return ProviderError(BAD_KEY.format(**names), "key", status=status)
     if status == 403 or kind == "permission_error":

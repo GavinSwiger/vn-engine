@@ -23,6 +23,8 @@ def body(kind: str = "", message: str = "", code: str = "") -> bytes:
     (401, body("authentication_error", "invalid x-api-key"), {},
      errors.BAD_KEY.format(**P), "key"),
     (403, body("permission_error", "no"), {}, errors.FORBIDDEN.format(**P), "forbidden"),
+    (400, body("invalid_request_error", "This API key is not scoped to a workspace"), {},
+     errors.NOT_A_CHAT_KEY, "key"),
     (404, body("not_found_error", "model: x"), {}, errors.NO_MODEL.format(**P), "model"),
     (404, json.dumps({"error": {"message": "nope", "code": "model_not_found"}}).encode(), {},
      errors.NO_MODEL.format(**P), "model"),
