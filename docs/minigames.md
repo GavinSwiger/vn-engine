@@ -1700,6 +1700,118 @@ heading color). The squares use `[theme.text_entry]`. `[words.plugin.cipher_note
 `title`, `hint`, `hint_shift`, `shift_label`, `hints`, `no_hints`, `put_away`, `confirm`,
 `solved`, `done`.
 
+## Computer terminal
+
+Computer terminal (`terminal`) comes with the engine. The player types commands into an old
+computer. You write the commands and their replies as a table; commands can wait for another
+command, sit behind a password, unlock a tip, or end the session. `help` lists the commands
+the player knows, and a **Commands** button lists them too, so a player with a controller
+can finish without typing. Passwords learned from tips are offered at the password prompt.
+
+```
+lock tip hana_password "Hana's notebook" in "Hana":
+    "On the last page, underlined twice: lantern."
+lock tip hana_diary "Hana's diary"
+default hacked = False
+
+define library_pc = {
+    "welcome": "KUROSAWA HIGH LIBRARY TERMINAL\nType help to see what you can do.",
+    "prompt": "A:\\>",
+    "unknown": "Bad command or file name.",
+    "not_yet": "Access denied. Log in first.",
+    "commands": [
+        {"command": "dir", "reply": "DIARY.TXT    GRADES.DAT    README.TXT"},
+        {"command": "type readme.txt", "also": ["read readme.txt"], "help": False,
+         "reply": "Library hours: 8:00 to 17:00."},
+        {"command": "login", "password": "lantern", "known_from": "hana_password",
+         "reply": "Welcome back, H. Sato."},
+        {"command": "type diary.txt", "after": "login", "unlock": "hana_diary", "help": "hana_password",
+         "reply": "June 3. They'll find out about the grades. I have to delete them."},
+        {"command": "del grades.dat", "after": "login", "help": False, "ends": "goal",
+         "reply": "1 file deleted."},
+    ],
+    }
+
+label start:
+    minigame terminal data=library_pc screen="dark" into hacked
+    if hacked:
+        "The grades are gone."
+```
+
+In Studio: **Database ▸ Minigame data ▸ Terminals ▸ + New** makes a terminal to fill in, and
+**Insert ▸ Minigame ▸ Computer terminal** puts it in the story.
+
+### The table
+
+| Key | Default | Meaning |
+|---|---|---|
+| `welcome` | `""` | Shown when the session starts (up to 2,000 characters; `\n` for new lines) |
+| `prompt` | `">"` | Before each command (1 to 12 characters) |
+| `unknown`, `not_yet` | the words `unknown`, `not_yet` | The reply to a line that isn't a command, and to a command whose `after` hasn't run |
+| `commands` | (required) | 1 to 100 commands |
+
+Each command:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `command` | (required) | What to type (1 to 40 characters). Capitals and extra spaces don't matter |
+| `also` | `[]` | Up to 8 other ways to type it |
+| `reply` | `""` | What it prints (up to 2,000 characters) |
+| `help` | `True` | `True`: `help` lists it; `False`: secret; a tip's name: listed once the player has that tip |
+| `after` | `None` | Another command that must run first |
+| `password` | `None` | Asked first; capitals don't matter |
+| `known_from` | `None` | The tip that teaches the password: Commands offers it at the password prompt |
+| `unlock` | `None` | A tip unlocked when it runs |
+| `ends` | `None` | `"goal"` or `"out"`: the session ends after the reply (Continue) |
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `data` | (required) | a table like the one above | The terminal |
+| `result` | `"reached"` | `"reached"`, `"details"` | `True`/`False` (reached a `goal` command), or `{"reached": …, "ended_by": the command as written or None, "tried": the lines typed}` |
+| `screen` | `"game"` | `"game"`, `"dark"` | The game's colors, or an amber monitor in any color scheme |
+| `hide_passwords` | `True` | `True` or `False` | Dots instead of a typed password |
+
+### Playing
+
+- Type a command and press Enter. `help` lists what you know, `clear` empties the screen,
+  `exit` (or Leave) asks before stepping away. A mistyped command gets "Did you mean: …"
+  (never for a secret command). Up and Down bring back earlier commands.
+- **Commands** lists what `help` lists; at a password prompt it offers "Password from: <tip>"
+  when the player has the tip. A pick goes into the field; Enter runs it.
+- The wheel, Page Up and Page Down, and the bumpers scroll the output.
+- Passwords are never kept in `tried`, the history or the log.
+
+### When the arguments are refused
+
+The story stops at the line (E272), for example:
+
+- `the terminal needs 1 to 100 commands, but it has 0.`
+- `"open diary" is used twice (command 2, and command 5's also). Each command needs its own words.`
+- `"help" is built into the terminal, so command 4 can't use it. Pick other words.`
+- `"type diary.txt" works only after "logn", which isn't a command. Did you mean "login"?`
+- `"a" works only after "b", and "b" only after "a", so neither can ever run.`
+- `"login" names the tip "hana_pasword", which isn't a declared tip. Did you mean "hana_password"?`
+
+In dev runs: W273 when the screen's font can't draw a character, W274 when `help` lists no
+command at the start, W275 when a command uses the words of a renamed `help`, `clear` or
+`exit` (the built-in wins).
+
+### Testing the terminal
+
+Headless runs, Shift+F8 and Skip Game run the first `"goal"` command: reached, with its tip.
+With no goal command, not reached.
+
+### Changing the look and the words
+
+`[theme.plugin.terminal]`: `screen.fill_color`, `screen.fill_opacity`, `screen.border_color`,
+`text_color`, `prompt_color`, `dim_color` (system lines), `text_font`, `text_size` (24),
+`dark.fill_color`, `dark.text_color`, `dark.prompt_color`, `dark.dim_color`,
+`dark.border_color` (the dark screen's amber colors), `key_sound`, `error_sound`.
+`[words.plugin.terminal]` holds every word the terminal shows, including the built-ins'
+`help`, `clear` and `exit`.
+
 ## Writing a minigame
 
 A minigame of your own is a **plugin**: a Python file in your game's `game/minigames/`
