@@ -171,7 +171,9 @@ def redaction_roots(*, game_root: Path | None, game_dir_as_given: Path | None,
     return roots
 
 
-def _install_redactor(roots: list[RedactRoot]) -> None:
+def install_redactor(roots: list[RedactRoot]) -> None:
+    """Install the process redactor for ``roots`` plus the home folder's name. The one place
+    outside ``core/paths.py`` that looks up the home folder (privacy AST test)."""
     home = home_dir()
     _redact.install(Redactor(roots, home_name=home.name if home is not None else None,
                              case_insensitive=sys.platform in ("win32", "darwin")))
@@ -718,7 +720,7 @@ class LogSetup:
     # -- internals --
 
     def _install(self) -> None:
-        _install_redactor(redaction_roots(game_root=self._game_root,
+        install_redactor(redaction_roots(game_root=self._game_root,
                                           game_dir_as_given=self._game_dir_as_given,
                                           engine_root=self._engine_root))
 

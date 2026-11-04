@@ -28,7 +28,6 @@ Imports ``engine.core``, ``engine.script``, the pure editor modules ``checker`` 
 
 import hashlib
 import os
-import sys
 import threading
 import time
 from collections import OrderedDict
@@ -37,11 +36,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
-from engine.core import redact as _redact
 from engine.core.editorreport import CHECK_TIMEOUT_S
 from engine.core.errors import EngineError
-from engine.core.logsetup import redaction_roots
-from engine.core.paths import GamePaths, engine_root, home_dir
+from engine.core.logsetup import install_redactor, redaction_roots
+from engine.core.paths import GamePaths, engine_root
 from engine.core.redact import echo
 from engine.script.assetgroups import ASSET_GROUPS, CONFIG_REF
 from engine.script.diagnostics import ScriptError
@@ -84,11 +82,8 @@ def bytes_sha(data: bytes) -> str:
 def install_redaction(paths: GamePaths) -> None:
     """Make ``redact()`` (and so every ``one_line``) replace the game folder, the engine,
     the home folder and the other F01 roots, and the user's name (SEC-F48-09 (d))."""
-    roots = redaction_roots(game_root=paths.root, game_dir_as_given=paths.root,
-                            engine_root=engine_root())
-    home = home_dir()
-    _redact.install(_redact.Redactor(roots, home_name=home.name if home is not None else None,
-                                     case_insensitive=sys.platform in ("win32", "darwin")))
+    install_redactor(redaction_roots(game_root=paths.root, game_dir_as_given=paths.root,
+                                     engine_root=engine_root()))
 
 
 # --- Files ----------------------------------------------------------------------------------
