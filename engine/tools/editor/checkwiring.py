@@ -206,8 +206,12 @@ class CheckWiring:
             return
         self._cancel_debounce()
         self._reindex()                     # the digests this request's text has (04 §6.1.4)
+        # F58 Q2: with each file's stamp, so a file that moves before the next listing
+        # keeps its old digests (dirty files: None, adopted at the result).
         self._check_snapshot = (self.edit_serial, {
-            ref: dict(index.digests) for ref, index in self.scene_indexes.items()})
+            ref: dict(index.digests) for ref, index in self.scene_indexes.items()}, {
+            ref: None if ref in self.files and self.files[ref].dirty else self._stamp_of(ref)
+            for ref in self.scene_indexes})
         overlay, unsaved = self._overlay()
         self._check_unsaved = unsaved
         self._check_overlay = overlay is not None
@@ -326,10 +330,19 @@ class CheckWiring:
             self._check_links = tuple(result.links)
             snapshot = self._check_snapshot
             if snapshot is not None and snapshot[0] == result.serial:
-                for ref, digests in snapshot[1].items():   # the checked digests (§6.1.4)
-                    if ref in self.scene_indexes:
-                        self._checked[ref] = digests
+                # The checked digests (§6.1.4): dirty files now; the others after the
+                # first listing that starts after this result (F58 Q2, I-7).
+                dirty = {ref: d for ref, d in snapshot[1].items() if snapshot[2].get(ref)
+                         is None and ref in self.scene_indexes}
+                for ref, digests in dirty.items():
+                    self._checked[ref] = digests
+                rest = {ref: d for ref, d in snapshot[1].items() if ref not in dirty}
+                watch = self.watch
+                self._adopt = (watch.started if watch is not None else 0, rest,
+                               snapshot[2])
+                self._maybe_adopt()
         self._check_stale = result.links is None
+        self.big_batch_done()                   # F58 PR-10: S4's check has landed
         self._index_changed()
         for record in self.files.values():
             self._place_marks(record)

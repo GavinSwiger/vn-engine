@@ -84,7 +84,8 @@ def test_ac_f58_15_a_one_scene_change_is_drawn_by_stored_id(root):
 # Studio L (F46's lanterns game) from test_studio_storyedit.py.
 
 from tests.tools.editor.test_studio_storyedit import (  # noqa: E402
-    CH2, MAIN, click_box, drag, draw_arrow, events_on, lanterns, places, point, studio_l)
+    CH2, L_LABELS, L_LINKS, MAIN, click_box, drag, draw_arrow, events_on, lanterns, places,
+    point, studio_l)
 from tests.tools.editor.test_studio_window import studio  # noqa: E402,F401
 from tests.tools.editor.test_window import take_focus  # noqa: E402
 
@@ -420,3 +421,240 @@ def test_ac_f58_26_follow_changes_scrolls_to_disk_and_pane_updates_only(studio, 
     win._follow_changes_toggled()
     assert not far("when_off", "disk")
     assert studiostate.read_state(lanterns).follow_changes is False
+
+
+# --- W4: the watch and outside changes (AC-F58-01-05, 09, 35, 36, 38) ---------------------------
+# The watch thread is off here (window.WATCH_THREAD): each test ticks it by hand, so what a
+# tick sees is exact. AC-F58-13 times the real thread (tests/perf).
+
+RIVER_TO_POND = (b"label river:\n    show hana happy at left\n    hana \"You came!\"\n"
+                 b"    jump pond\n\nlabel pond:\n    return\n")
+
+
+@pytest.fixture
+def watched(studio, lanterns, monkeypatch):
+    """Studio L with its watch ticked by hand; ``tick()`` runs one listing and the poll."""
+    from engine.tools.editor import window
+    monkeypatch.setattr(window, "WATCH_THREAD", False)
+    ed = studio_l(studio, lanterns)
+    focus_ins: list[int] = []
+    real = ed.win.check_outside_changes
+    monkeypatch.setattr(ed.win, "check_outside_changes",
+                        lambda: (focus_ins.append(1), real())[1])
+
+    def tick() -> None:
+        ed.win.watch.tick()
+        ed.win.take_news(ed.win.watch.mailbox.take())
+        ed.root.update()
+
+    ed.tick, ed.focus_ins, ed.game = tick, focus_ins, lanterns
+    return ed
+
+
+def write(ed, ref: str, data: bytes) -> None:
+    from engine.core import safefile
+    safefile.write_atomic(ed.game / ref, [data])          # as MCP apply_edit writes
+
+
+def test_ac_f58_01_a_closed_file_written_outside_is_on_the_map_unfocused(watched):
+    from engine.tools.editor.livemap import s1
+    ed, view = watched, watched.story_map
+    assert CH2 not in ed.win.files                        # closed
+    head = (ed.game / CH2).read_bytes().split(b"label river:")[0]
+    write(ed, CH2, head + RIVER_TO_POND)
+    ed.tick()
+    assert "pond" in names_of(view) and ("river", "pond", "jump") in view.painter.edges
+    assert not ed.focus_ins and not ed.dialogs            # no focus, no dialog
+    assert CH2 not in ed.win.files and CH2 in ed.win.scene_indexes   # indexed from disk
+    assert view.live_text == s1([CH2])
+
+
+def test_ac_f58_02_an_open_clean_file_reloads_with_its_cursor_line(watched):
+    ed, view = watched, watched.story_map
+    main = ed.win.files[MAIN]
+    main.widget.mark_set("insert", "13.4")
+    changes = main.changes
+    disk = (ed.game / MAIN).read_bytes().replace(b"    return\n", b"    jump pond\n") \
+        + b"\nlabel pond:\n    return\n"
+    write(ed, MAIN, disk)
+    ed.tick()
+    assert main.widget.get("1.0", "end-1c") == disk.decode().rstrip("\n")
+    assert main.widget.index("insert") == "13.0" and not main.dirty
+    assert main.changes > changes and not ed.focus_ins and not ed.dialogs
+    assert ("festival", "pond", "jump") in view.painter.edges
+
+
+def test_ac_f58_03_a_dirty_file_waits_for_focus_and_keep_mine_keeps_it(watched,
+                                                                       monkeypatch):
+    from engine.tools.editor.livemap import s2
+    ed, view, win = watched, watched.story_map, watched.win
+    monkeypatch.setattr(win, "_focused", lambda: False)  # another app has the focus
+    main = win.files[MAIN]
+    main.widget.insert("end", "\n# mine")
+    mine = main.widget.get("1.0", "end-1c")
+    write(ed, MAIN, (ed.game / MAIN).read_bytes() + b"\nlabel theirs:\n    return\n")
+    ed.tick()
+    time.sleep(0.05)
+    ed.root.update()
+    assert main.widget.get("1.0", "end-1c") == mine and not ed.dialogs
+    assert view.live_text == s2(MAIN) and "theirs" not in names_of(view)
+    ed.answers.append(0)                                  # Keep mine
+    win._last_outside_check = float("-inf")
+    ed.root.event_generate("<FocusIn>")
+    ed.root.update()
+    assert [d[0] for d in ed.dialogs] == ["ask"] and "changed on disk" in ed.dialogs[0][1]
+    assert main.widget.get("1.0", "end-1c") == mine and view.live_text == ""
+    ed.tick()                                             # one question per stamp
+    win._last_outside_check = float("-inf")
+    ed.root.event_generate("<FocusIn>")
+    ed.root.update()
+    assert len(ed.dialogs) == 1
+
+
+def test_ac_f58_04_while_focused_the_question_waits_for_a_typing_pause(watched,
+                                                                     monkeypatch):
+    from engine.tools.editor import window
+    ed, win = watched, watched.win
+    assert window.ASK_PAUSE_MS == 1_000
+    monkeypatch.setattr(window, "ASK_PAUSE_MS", 150)
+    monkeypatch.setattr(win, "_focused", lambda: True)
+    main = win.files[MAIN]
+    main.widget.insert("end", "\n# mine")
+    write(ed, MAIN, (ed.game / MAIN).read_bytes() + b"\n# theirs\n")
+    ed.answers.append(0)
+    ed.tick()
+    for _ in range(4):                                    # typing: no question yet
+        time.sleep(0.08)
+        main.widget.insert("end", "x")
+        ed.root.update()
+    assert not ed.dialogs
+    end = time.monotonic() + 3
+    while not ed.dialogs and time.monotonic() < end:     # the pause: asked once
+        ed.root.update()
+        time.sleep(0.01)
+    assert [d[0] for d in ed.dialogs] == ["ask"] and main.dirty
+    time.sleep(0.3)
+    ed.root.update()
+    assert len(ed.dialogs) == 1
+
+
+def test_ac_f58_05_new_and_deleted_script_files_on_disk(watched):
+    ed, view, win = watched, watched.story_map, watched.win
+    write(ed, "script/extra.vns", b"label extra:\n    jump start\n")
+    ed.tick()
+    assert "extra" in names_of(view) and ("extra", "start", "jump") in view.painter.edges
+    assert "script/extra.vns" in win.refs and ed.tree.exists("script/extra.vns")
+    (ed.game / "script" / "extra.vns").unlink()
+    ed.tick()
+    assert "extra" not in names_of(view) and "script/extra.vns" not in win.refs
+    assert not ed.tree.exists("script/extra.vns") and not ed.focus_ins
+
+
+def test_ac_f58_09_an_outside_change_checks_after_the_debounce_a_big_batch_at_once(
+        watched, monkeypatch):
+    from engine.core.editorreport import CHECK_DEBOUNCE_MS
+    from engine.tools.editor import checkwiring
+    from engine.tools.editor.checker import CheckEvent, CheckResult, CheckState
+    from engine.tools.editor.livemap import BIG_BATCH_LINES, s4
+    ed, win, view = watched, watched.win, watched.story_map
+    assert checkwiring.CHECK_DEBOUNCE_MS == CHECK_DEBOUNCE_MS
+    monkeypatch.setattr(checkwiring, "CHECK_DEBOUNCE_MS", 60)
+    asked = len(ed.checks.requests)
+    write(ed, "script/extra.vns", b"label extra:\n    return\n")
+    ed.tick()
+    assert len(ed.checks.requests) == asked and win._debounce_id is not None
+    time.sleep(0.12)
+    ed.root.update()
+    assert len(ed.checks.requests) == asked + 1
+    assert ed.checks.requests[-1][2] is False             # never an armed check (I-6)
+
+    lines = "\n".join(f'    "Line {i}."' for i in range(BIG_BATCH_LINES))
+    write(ed, "script/huge.vns", f"label huge:\n{lines}\n".encode())
+    names = names_of(view)
+    ed.tick()                                             # over 50,000 lines: S4, check now
+    assert len(ed.checks.requests) == asked + 2 and view.live_text == s4(1)
+    assert win.watch.lists_only and names_of(view) == names
+    result = CheckResult(problems=(), problem_total=0, names={"label": (*L_LABELS, (
+        "huge", "script/huge.vns", 1), ("extra", "script/extra.vns", 1))},
+        links=L_LINKS, loaded=True, serial=win.edit_serial, seconds=0.1)
+    win.apply_check_events([CheckEvent(CheckState.DONE, result.serial, result)])
+    ed.root.update()
+    assert "huge" in names_of(view) and not win.watch.lists_only and view.live_text == ""
+
+
+def test_ac_f58_35_own_saves_and_files_are_quiet(watched):
+    ed, view, win = watched, watched.story_map, watched.win
+    clock = fake_glow(view)
+    main = win.files[MAIN]
+    main.widget.insert("end", "\n# saved here")
+    win.follow_now()
+    clock.advance(3_000)
+    changes = main.changes
+    assert win.save_current()
+    win.save_layout()
+    win.save_studio_state(follow_changes=True)
+    ed.answers.append(("quiet.vns", False))               # New script file
+    assert win.new_script_file() == "script/quiet.vns"
+    ed.tick()
+    assert main.changes == changes                        # no reload
+    assert not view.painter.glows and view.live_text == "" and not ed.dialogs[1:]
+
+
+def test_ac_f58_36_closing_stops_the_watch_without_waiting(studio, lanterns, monkeypatch):
+    import ast
+    import threading
+    from engine.tools.editor import mapwatch
+    tree = ast.parse(open(mapwatch.__file__, encoding="utf-8").read())
+    imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import)
+                for alias in node.names} | {node.module for node in ast.walk(tree)
+                                            if isinstance(node, ast.ImportFrom)}
+    assert not any(str(name).startswith("tkinter") for name in imported)   # no Tk at all
+    ed = studio_l(studio, lanterns)
+    watch = ed.win.watch
+    assert watch.alive
+    busy, release = threading.Event(), threading.Event()
+    real = watch._lister
+
+    def slow(root):
+        busy.set()
+        release.wait(5)
+        return real(root)
+
+    watch._lister = slow
+    assert busy.wait(3)                                   # the thread is mid-listing
+    start = time.perf_counter()
+    ed.win.close()
+    assert (time.perf_counter() - start) < 0.5 and watch._stop.is_set() and watch.alive
+    release.set()
+    end = time.monotonic() + 3
+    while watch.alive and time.monotonic() < end:
+        time.sleep(0.01)
+    assert not watch.alive and watch.failed is None
+
+
+def test_ac_f58_38_hidden_or_minimised_the_map_waits_then_catches_up(watched):
+    ed, view, win = watched, watched.story_map, watched.win
+    clock = fake_glow(view)
+    head = (ed.game / CH2).read_bytes().split(b"label river:")[0]
+    win.select_tab("editor")                              # the map is hidden
+    ed.root.update()
+    drawn = view.painter.layout
+    write(ed, CH2, head + RIVER_TO_POND)
+    ed.tick()
+    assert view.painter.layout is drawn and "pond" not in names_of(view)
+    win.select_tab("map")                                 # one catch-up update, glowing
+    ed.root.update()
+    assert "pond" in names_of(view) and ("box", "pond") in view.painter.glows
+    clock.advance(2_000)
+    ed.root.iconify()                                     # minimised: nothing is drawn
+    ed.root.update()
+    drawn = view.painter.layout
+    write(ed, CH2, head + RIVER_TO_POND + b"\nlabel lake:\n    return\n")
+    ed.tick()
+    assert view.painter.layout is drawn and "lake" not in names_of(view)
+    ed.root.deiconify()
+    end = time.monotonic() + 3
+    while "lake" not in names_of(view) and time.monotonic() < end:
+        ed.root.update()
+        time.sleep(0.01)
+    assert ("box", "lake") in view.painter.glows

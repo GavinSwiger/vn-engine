@@ -167,7 +167,6 @@ def test_ac_f58_12_apply_and_map_undo(bench, n):
 
 # --- AC-F58-13: an outside edit (MCP apply_edit) --------------------------------------------------
 
-@pytest.mark.xfail(reason="F58 W4 (the background watch)", strict=False)
 @pytest.mark.parametrize("files", (1, 0), ids=("one-file", "file-per-scene"))
 @pytest.mark.parametrize("focused", (False, True), ids=("unfocused", "focused"))
 @pytest.mark.parametrize("n", SIZES)

@@ -273,8 +273,8 @@ class MapWiring:
         """Draw the map from ``check_names["label"]`` and ``check_links`` with the open
         scripts' scenes swapped in (``map_data``, F46 04 §6.1.6), if they changed. A
         ``throttle`` tick (F58 PR-22) marks no scene newly "out of date"."""
-        if self.closed or not self._map_dirty:
-            return
+        if self.closed or not self._map_dirty or self._iconic():
+            return                              # F58 PR-21: minimised, nothing is drawn
         self._map_dirty = False
         labels, links, stale = self.map_data()
         if throttle:
@@ -287,7 +287,16 @@ class MapWiring:
         self._read_layout()
         self.map_line.update_started()          # F58: S1 and S5 clear at the next update
         self.story_map.set_data(labels, links, self._check_stale, notes, out_of_date=stale)
+        if not self.story_map.holding:
+            self._said_from_disk()
         self._show_map_line()
+
+    def _said_from_disk(self) -> None:
+        """S1 for what came from disk, when the map changed (own writes stay quiet:
+        PR-20)."""
+        refs, self._disk_refs = list(self._disk_refs), {}
+        if refs and self.story_map.delta.map_changed:
+            self._map_said("S1", livemap.s1(refs))
 
     # --- Places, the layout file and the map history (F46 04 §6.8–6.10) --------------------
 
@@ -420,11 +429,13 @@ class MapWiring:
 
     def _baseline(self, record: OpenFile) -> None:
         """Index a script as loaded: its digests count as checked until a check that saw
-        them lands (07 I-1), so nothing is parsed now."""
+        them lands (07 I-1), so nothing is parsed now. F58: a file indexed while closed
+        keeps the digests it had (its scenes changed since the check parse now)."""
         if not self._is_script(record):
             return
         index = scenes.reindex(None, record.ref, record.widget.get("1.0", "end-1c"),
-                               record.changes, checked=None, positions=self._positions())
+                               record.changes, checked=self._checked.get(record.ref),
+                               positions=self._positions())
         self.scene_indexes[record.ref] = index
         self._checked[record.ref] = index.checked
         self._map_dirty = True
@@ -433,6 +444,19 @@ class MapWiring:
         self.scene_indexes.pop(ref, None)
         self._checked.pop(ref, None)
         self._map_dirty = True
+
+    def _make_map_line(self) -> livemap.MapLine:
+        return livemap.MapLine(lambda: time.perf_counter() * 1000)
+
+    def _stop_live_map(self) -> None:
+        """Window close: the glow and the line's timer stop."""
+        self.story_map.stop_glow()
+        if self._line_id is not None:
+            try:
+                self.root.after_cancel(self._line_id)
+            except tk.TclError:
+                pass
+            self._line_id = None
 
     def _make_follow_clock(self) -> livemap.FollowClock:
         """F58 C1: ``FOLLOW_MS`` after the last change, at least every ``FOLLOW_MAX_MS``
@@ -1140,6 +1164,7 @@ class MapWiring:
             self.map_line.say("S3", livemap.S3)
         else:
             self.map_line.clear("S3")
+            self._said_from_disk()
         self._show_map_line()
 
     def _show_map_line(self) -> None:

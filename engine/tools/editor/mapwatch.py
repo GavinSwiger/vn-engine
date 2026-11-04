@@ -160,6 +160,8 @@ class ScriptWatch:
         self._posted: dict[str, tuple[str, Stamp]] = {}      # capped / check-only notices
         self._open: frozenset[str] = frozenset()
         self.lists_only = False
+        self.started = 0                        # ticks begun and finished (Q2, I-7)
+        self.finished = 0
         self.interval = WATCH_MS
         self.listing_ms = 0.0
         self.failed: BaseException | None = None
@@ -224,6 +226,13 @@ class ScriptWatch:
         """One listing and its reads."""
         if self._stop.is_set():
             return
+        tick = self.started = self.started + 1
+        try:
+            self._tick()
+        finally:
+            self.finished = tick
+
+    def _tick(self) -> None:
         start = self._clock()
         listed = self._lister(self.root)
         self.listing_ms = (self._clock() - start) * 1000

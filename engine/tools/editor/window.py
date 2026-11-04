@@ -58,6 +58,8 @@ from engine.script.diagnostics import ScriptError
 from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
 from engine.tools.editor import files, livemap, scenes
+from engine.tools.editor import mapwatch as watchmod
+from engine.tools.editor.mapwatch import FileNews, ScriptWatch, scan as scan_scripts
 from engine.tools.editor.assist import (
     Context,
     auto_open,
@@ -217,6 +219,9 @@ EOL_NAMES = {"\n": "LF", "\r\n": "CRLF", "\r": "CR"}
 
 HELP_LINE_CHARS = 4_096                 # Help and completion read this much of a line
 OUTSIDE_CHECK_INTERVAL = 1.0            # seconds between disk checks on <FocusIn> (§7.2)
+WATCH_POLL_MS = 50                      # F58 04 §7.2: the watch's mailbox, polled on Tk
+WATCH_THREAD = True                     # tests turn the thread off and tick by hand
+ASK_PAUSE_MS = 1_000                    # F58 PR-02, I-5: the question after a typing pause
 _MIN_COLORED_LINES = 60                 # lines colored per refresh when the view is unknown
 
 
@@ -315,6 +320,7 @@ class OpenFile:
     stamp: tuple[int, int] | None = None    # disk stamp of a read-only file
     marks: dict[str, CheckItem] = field(default_factory=dict)   # Tk mark -> its check item
     changes: int = 0                        # F46: content changes, counted as they happen
+    outside_stamp: tuple[int, int] | None = None    # F58: changed on disk, not yet asked
 
     @property
     def editable(self) -> bool:
@@ -414,7 +420,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         # as checked, and the digests sent with the newest check request (its serial).
         self.scene_indexes: dict[str, scenes.SceneIndex] = {}
         self._checked: dict[str, dict[scenes.Key, bytes]] = {}
-        self._check_snapshot: tuple[int, dict[str, dict[scenes.Key, bytes]]] | None = None
+        self._check_snapshot: tuple[int, dict[str, dict[scenes.Key, bytes]], dict] | None = None
         # F58 (04 §7.4): the follow clock (80 ms debounce, 250 ms max wait), what asked for
         # the update in hand, and the map's live status line (S1-S8).
         self.follow_clock = self._make_follow_clock()
@@ -422,7 +428,22 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._now_source: str | None = None
         self._follow_throttle = False
         self._after_throttle = False
-        self.map_line = livemap.MapLine(lambda: time.perf_counter() * 1000)
+        self.map_line = self._make_map_line()
+        # F58 W4 (04 §7.1-7.3, §7.11): the watch, its update batch, the decoded documents
+        # of open clean files waiting to reload, the stamps of the closed files indexed
+        # from disk, what the next map update brings from disk (S1), the capped files
+        # (S6), S4's pending check, Q2's pending adoption, and the dirty-file question.
+        self.watch: ScriptWatch | None = None
+        self._watch_id: str | None = None
+        self._batch_id: str | None = None
+        self._ask_id: str | None = None
+        self._batch = livemap.UpdateBatch()
+        self._news_docs: dict[str, ScriptDocument] = {}
+        self._closed_stamps: dict[str, tuple[int, int]] = {}
+        self._disk_refs: dict[str, None] = {}
+        self._capped: set[str] = set()
+        self._big = False
+        self._adopt: tuple[int, dict, dict] | None = None
         self._map_shown: tuple | None = None    # the data the map last drew
         self._help_key: tuple | None = None
         self._help_sash_placed = False
@@ -441,6 +462,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         else:
             self._show_empty()
         self._update_title()
+        self._start_watch()
+        root.bind("<Map>", self._on_map_event, add="+")
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         if self.mod == "Command":
             root.createcommand("tk::mac::Quit", self.on_close)
@@ -904,6 +927,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         record = self.files.get(ref)
         if record is None:
             record = self.files[ref] = self._new_record(ref)
+            self._closed_stamps.pop(ref, None)
+            self._watch_open()
         return record
 
     # --- The document API (F47 04 §3.4; F46's StoryEditor.act, F47 Database and Settings,
@@ -957,7 +982,16 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         record = self.files.pop(ref, None)
         if record is None:
             return
-        self._forget_index(ref)
+        index = self.scene_indexes.get(ref)
+        if index is not None and record.doc is not None and not record.doc.dirty \
+                and self._stat(record.doc.real_path) == record.doc.stamp:
+            # F58: still on disk as loaded: its index stays, as a closed file's (PR-03).
+            self.scene_indexes[ref] = scenes.slim(index)
+            self._closed_stamps[ref] = record.doc.stamp
+            self._map_dirty = True
+        else:
+            self._forget_index(ref)
+        self._watch_open()
         if self.current is record:
             self.current = None
             others = [r for r in self.refs if r != ref]
@@ -1236,6 +1270,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             record.changes += 1                 # now, not at <<Modified>> (F46 map undo)
             if not self._suppress and record.ref in self.scene_indexes:
                 self._schedule_follow()
+            if self._ask_id is not None and not self._suppress:
+                self._arm_ask()                 # F58 I-5: the question waits for a pause
         if content and not self._suppress:
             self.edit_serial += 1
             self._schedule_auto_check()
@@ -1538,6 +1574,8 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         self._refresh_id = self._poll_id = self._add_id = None
         self._cancel_debounce()
         self._cancel_follow()
+        self._stop_watch()                      # F58 AC-36: never waits for the thread
+        self._stop_live_map()
         self._cancel_layout_save()
         self.save_layout()                      # F46: whatever happens to the scripts
         self.runner.stop()
@@ -1589,6 +1627,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             if stamp is None or stamp == record.doc.stamp:
                 return
             if record.doc.dirty:
+                self._answered(record)          # F58 I-5: one question per stamp
                 choice = ask(self.root, changed_message(record.ref), CHANGED_BUTTONS,
                              escape=CHANGED_ESCAPE)
                 if choice == 0:
@@ -1602,18 +1641,11 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
 
     def reload(self, record: OpenFile) -> OpenFile:
         """Read ``record``'s file again, keeping the cursor line."""
-        line = line_of(record.widget.index("insert"))
         result = self._open_any(record.ref)
         if isinstance(result, ScriptDocument) and record.doc is not None:
-            self._set_text(record, result.text)
-            result.text = ""
-            record.doc = result
-            self._forget_index(record.ref)
-            self._baseline(record)
-            widget = record.widget
-            widget.mark_set("insert", f"{min(line, line_of(widget.index('end-1c')))}.0")
-            widget.see("insert")
-            self._place_marks(record)
+            self._reload_from(record, result)   # F58 contract 3: changed scenes parse
+            record.widget.see("insert")
+            self._map_dirty = True
             fresh = record
         else:
             fresh = self._new_record(record.ref)
@@ -1630,6 +1662,328 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
             self._schedule_refresh()
         self._update_marks()
         return fresh
+
+    # --- The live map's watch of script/** (F58 04 §7.1-7.3, §7.11; 07 I-2 to I-7) ----------
+
+    def _start_watch(self) -> None:
+        """The watch thread over ``script/**`` (``mapwatch``), baselined with Studio's own
+        listing so nothing is read until it changes; its mailbox is polled here every
+        ``WATCH_POLL_MS``. ``WATCH_THREAD`` False (tests): no thread, ``watch.tick()`` by
+        hand."""
+        self.watch = ScriptWatch(self.paths.root)
+        self.watch.baseline(scan_scripts(self.paths.root))
+        self._watch_open()
+        if WATCH_THREAD:
+            self.watch.start()
+        self._watch_id = self.root.after(WATCH_POLL_MS, self._poll_watch)
+
+    def _stop_watch(self) -> None:
+        """Window close (AC-F58-36): the thread is asked to stop, never waited for."""
+        if self.watch is not None:
+            self.watch.stop()
+        for after_id in (self._watch_id, self._batch_id, self._ask_id):
+            if after_id is not None:
+                try:
+                    self.root.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+        self._watch_id = self._batch_id = self._ask_id = None
+
+    def _watch_open(self) -> None:
+        """The open scripts (their news carries the decoded document)."""
+        if self.watch is not None:
+            self.watch.set_open(ref for ref, record in self.files.items()
+                                if record.doc is not None)
+
+    def _poll_watch(self) -> None:
+        """The mailbox, every ``WATCH_POLL_MS``: news applied, then Q2's adoption. A failed
+        watch stops here; the focus listing (``check_outside_changes``) covers it."""
+        self._watch_id = None
+        watch = self.watch
+        if self.closed or watch is None or watch.failed is not None:
+            return
+        news = watch.mailbox.take()
+        if news:
+            self.take_news(news)
+        self._maybe_adopt()
+        self._watch_id = self.root.after(WATCH_POLL_MS, self._poll_watch)
+
+    def take_news(self, news: Mapping[str, FileNews]) -> None:
+        """The watch's news (one entry per file): own writes are quiet (the stamp after the
+        read equals Studio's own, I-2), news older than Studio's last save or reload of
+        that file is dropped (the file's ``os.stat`` moved on, I-4), a file with unsaved
+        edits keeps them and gets one question (I-5); the rest joins the update batch."""
+        listed = False
+        for ref, item in news.items():
+            kind = item.kind
+            if kind == watchmod.REMOVED:
+                listed = True
+                self._capped.discard(ref)
+                if ref not in self.files and ref in self.scene_indexes:
+                    self._drop_closed(ref)
+                    self._disk_refs[ref] = None
+                continue
+            if kind == watchmod.CAPPED:
+                self._capped.add(ref)
+                self.map_line.say("S6", livemap.S6)
+                continue
+            if kind in (watchmod.CHECK_ONLY, watchmod.UNREADABLE):
+                if ref not in self.files:       # the check covers it (and the map with it)
+                    self._drop_closed(ref)
+                self._outside_check()
+                continue
+            if kind != watchmod.CHANGED:
+                continue                        # LISTED: S4's check covers it
+            if ref not in self.refs:
+                listed = True                   # a new file: the project panel lists it
+            record = self.files.get(ref)
+            if record is not None:
+                self._news_for_record(record, item)
+            elif self._closed_stamps.get(ref) != item.stamp \
+                    and self._stat(self.paths.root / ref) == item.stamp:
+                self._closed_stamps[ref] = item.stamp
+                self._batch.add(ref, item.text)
+        if listed:
+            self.refresh_project()
+        if not self._capped:
+            self.map_line.clear("S6")
+        if self._batch_id is None:              # else a slice is already on its way
+            self._run_batch()
+
+    def _news_for_record(self, record: OpenFile, item: FileNews) -> None:
+        doc = record.doc
+        if doc is None:                         # read-only: reload as F44 does
+            if item.stamp != record.stamp:
+                self.reload(record)
+            return
+        if item.stamp == doc.stamp or self._stat(doc.real_path) != item.stamp:
+            return                              # own write (PR-20), or older news (I-4)
+        if doc.dirty:
+            self._outside_dirty(record, item.stamp)
+            return
+        if item.doc is not None:
+            self._news_docs[record.ref] = item.doc
+            self._batch.add(record.ref, None)
+
+    def _run_batch(self) -> None:
+        """The pending files, parsed in 30 ms slices (PR-10); over 50,000 changed lines the
+        map waits for a check instead (S4)."""
+        self._batch_id = None
+        batch = self._batch
+        if self.closed or self._big:
+            return
+        if not batch.pending:
+            self._disk_updated()                # removals only (or nothing)
+            return
+        if batch.big(self._changed_lines):
+            self._big_batch()
+            return
+        if batch.step(self._index_news, lambda: time.perf_counter() * 1000):
+            self._disk_updated()
+        else:
+            self._batch_id = self.root.after(1, self._run_batch)
+
+    def _changed_lines(self, ref: str, text: str | None) -> int:
+        if text is None:
+            doc = self._news_docs.get(ref)
+            text = doc.text if doc is not None else ""
+        return scenes.changed_lines(text, self._checked.get(ref))
+
+    def _index_news(self, ref: str, text: str | None) -> None:
+        """One file of the batch: an open clean file reloads from the watch's document (no
+        second read, I-3); a closed file's index is brought up to date, parsing only the
+        scenes whose digest differs from the last check's (contract 3)."""
+        record = self.files.get(ref)
+        if text is None:
+            doc = self._news_docs.pop(ref, None)
+            if doc is not None and record is not None and record.doc is not None \
+                    and not record.doc.dirty:
+                self._reload_from(record, doc)
+                self._disk_refs[ref] = None
+            return
+        if record is not None:
+            return                              # opened meanwhile: its own text rules
+        index = scenes.reindex(self.scene_indexes.get(ref), ref, text, 0,
+                               checked=self._checked.get(ref, {}),
+                               positions=self._positions())
+        self.scene_indexes[ref] = scenes.slim(index)
+        self._checked.setdefault(ref, index.checked)
+        self._disk_refs[ref] = None
+
+    def _disk_updated(self) -> None:
+        """A batch landed: one map update (S1 with it), and the usual check after
+        ``CHECK_DEBOUNCE_MS`` (PR-03; never an armed one, I-6)."""
+        if not self._disk_refs:
+            return
+        self.edit_serial += 1
+        self._schedule_auto_check()
+        self._map_dirty = True
+        self._follow_source = "disk"
+        if self._side_open and self.side_tab == "events":
+            self.root.after_idle(self._follow_events)
+        if self.current_tab() == "map" and not self._iconic():
+            self.refresh_story_map()
+            self.follow_scroll()
+        else:
+            on_show = self.tabs[self.notebook.index("current")].on_show
+            if on_show is not None and on_show != "refresh_story_map":
+                self.root.after_idle(getattr(self, on_show))
+
+    def _big_batch(self) -> None:
+        """PR-10: too much changed to parse here. Boxes stay, S4 shows, the watch only
+        lists, open clean files reload without parsing and closed files leave the map to
+        the check, which runs now."""
+        refs = list(self._batch.take())
+        self._big = True
+        if self.watch is not None:
+            self.watch.lists_only = True
+        for ref in refs:
+            doc = self._news_docs.pop(ref, None)
+            record = self.files.get(ref)
+            if doc is not None and record is not None and record.doc is not None \
+                    and not record.doc.dirty:
+                self._reload_from(record, doc, parse=False)
+            elif record is None:
+                self._drop_closed(ref)
+        self.map_line.say("S4", livemap.s4(len(refs)))
+        self._show_map_line()
+        self.request_check()
+
+    def big_batch_done(self) -> None:
+        """S4's check result arrived: the watch reads again, S4 goes."""
+        if not self._big:
+            return
+        self._big = False
+        if self.watch is not None:
+            self.watch.lists_only = False
+        self.map_line.clear("S4")
+        self._show_map_line()
+
+    def _outside_check(self) -> None:
+        self.edit_serial += 1
+        self._schedule_auto_check()
+
+    def _drop_closed(self, ref: str) -> None:
+        self.scene_indexes.pop(ref, None)
+        self._checked.pop(ref, None)
+        self._closed_stamps.pop(ref, None)
+        self._map_dirty = True
+
+    def _reload_from(self, record: OpenFile, doc: ScriptDocument, *, parse: bool = True
+                     ) -> None:
+        """Replace an open clean file's text with ``doc`` (as read from disk), keeping the
+        cursor line; its index follows the previous check's digests, so a changed scene
+        parses at once (contract 3; ``parse`` False: baseline, the check follows)."""
+        widget = record.widget
+        line = line_of(widget.index("insert"))
+        self._set_text(record, doc.text)
+        doc.text = ""
+        record.doc = doc
+        widget.mark_set("insert", f"{min(line, line_of(widget.index('end-1c')))}.0")
+        self._place_marks(record)
+        if self._is_script(record):
+            text = widget.get("1.0", "end-1c")
+            self.scene_indexes[record.ref] = scenes.reindex(
+                self.scene_indexes.get(record.ref), record.ref, text, record.changes,
+                checked=self._checked.get(record.ref) if parse else None,
+                positions=self._positions())
+            self._checked.setdefault(record.ref, self.scene_indexes[record.ref].checked)
+        if record is self.current:
+            self._label_line = None
+            self._schedule_refresh()
+        self._update_marks()
+
+    def _iconic(self) -> bool:
+        try:
+            return str(self.root.state()) == "iconic"
+        except tk.TclError:
+            return True
+
+    def _on_map_event(self, event: tk.Event) -> None:
+        """The window shows again (PR-21): one catch-up update, glowing what changed."""
+        if event.widget is self.root and not self.closed and self.current_tab() == "map":
+            self.root.after_idle(self.refresh_story_map)
+
+    # --- A changed file with unsaved edits (PR-F58-02; 07 I-5) ---------------------------------
+
+    def _outside_dirty(self, record: OpenFile, stamp: tuple[int, int]) -> None:
+        """Changed on disk, unsaved here: the text stays, S2 shows, and F44's question
+        waits for focus: asked at <FocusIn>, or after a 1 s typing pause while Studio has
+        the focus, whichever comes first, once per outside stamp."""
+        if record.outside_stamp == stamp:
+            return
+        record.outside_stamp = stamp
+        self.map_line.say("S2", livemap.s2(record.ref))
+        self._show_map_line()
+        self._arm_ask()
+
+    def _arm_ask(self) -> None:
+        if self._ask_id is not None:
+            try:
+                self.root.after_cancel(self._ask_id)
+            except tk.TclError:
+                pass
+            self._ask_id = None
+        if not self.closed and any(r.outside_stamp is not None for r in self.files.values()):
+            self._ask_id = self.root.after(ASK_PAUSE_MS, self._ask_after_pause)
+
+    def _ask_after_pause(self) -> None:
+        self._ask_id = None
+        if self.closed or self._checking_outside or not self._focused():
+            return                              # <FocusIn> asks instead
+        self._checking_outside = True
+        try:
+            for record in list(self.files.values()):
+                if record.outside_stamp is not None and record.doc is not None:
+                    self._check_record(record)
+        finally:
+            self._checking_outside = False
+        self._update_marks()
+
+    def _focused(self) -> bool:
+        try:
+            return self.root.focus_get() is not None
+        except (KeyError, tk.TclError):
+            return False
+
+    def _answered(self, record: OpenFile) -> None:
+        """The question for ``record`` was asked (or its file reloaded): S2 goes when no
+        other file waits."""
+        record.outside_stamp = None
+        if not any(r.outside_stamp is not None for r in self.files.values()):
+            self.map_line.clear("S2")
+            self._show_map_line()
+
+    # --- Q2: the checked digests (04 §7.11; 07 I-7) -------------------------------------------
+
+    def _maybe_adopt(self) -> None:
+        """A check result's digests are adopted for files without unsaved edits only after
+        a listing that started after the result has finished, and only where the stamp is
+        still the snapshot's (a file that moved keeps its old ``checked``)."""
+        pending = self._adopt
+        watch = self.watch
+        if pending is None or (watch is not None and watch.alive
+                               and watch.finished <= pending[0]):
+            return
+        self._adopt = None
+        self._adopt_digests(pending[1], pending[2])
+
+    def _adopt_digests(self, digests: Mapping[str, dict], stamps: Mapping[str, object]
+                       ) -> None:
+        for ref, checked in digests.items():
+            index = self.scene_indexes.get(ref)
+            if index is None or self._stamp_of(ref) != stamps.get(ref):
+                continue
+            self._checked[ref] = checked
+            if ref not in self.files:           # closed: the check's links take over
+                self.scene_indexes[ref] = scenes.drop_checked_reads(index, checked)
+        self._map_dirty = True
+
+    def _stamp_of(self, ref: str) -> object:
+        record = self.files.get(ref)
+        if record is not None:
+            return record.doc.stamp if record.doc is not None else None
+        return self._closed_stamps.get(ref)
 
     @staticmethod
     def _stat(path: os.PathLike | str) -> tuple[int, int] | None:
