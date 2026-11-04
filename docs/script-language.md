@@ -2405,20 +2405,25 @@ applies at once, with no Apply button, and the game opens the same way next time
 
 | Group | Rows |
 |---|---|
-| Display | Fullscreen · Reduce motion and flashing |
+| Display | Fullscreen · Reduce motion and flashing · Timing assist (Normal, Slower, or No time limits) |
 | Text | Text speed (10 to 200 letters a second, or Instant) · Text size (100% to 150%) · Auto-advance wait (25% to 400%) · Auto-advance waits for voices · Skip unread text |
 | Sound | Master, Music, Sound, and Voice volume (0 to 100) · Text blips · Let voices finish · Play audio when unfocused · Play audio when minimized · Mono audio |
 | Data | Use my computer's user name (only with `[meta] username = true`) · Label fake error screens (only when the story has an `effect crash`) · Reset settings · Delete progress (on the title only) |
 
 - **Your `config.toml` gives the starting values**: `[textbox] cps`, `[auto]
   wait_for_voice`, `[skip] all`, the four `[audio]` volumes, `[audio] play_unfocused` and
-  `play_minimized`, and `[window] fullscreen`, `width`, and `height`. Settings adds no key
-  of its own, only the words below.
+  `play_minimized`, `[window] fullscreen`, `width`, and `height`, and `[effects]
+  timing_assist`. Settings adds no key of its own, only the words below.
 - **Only what a player changes is stored.** Every setting they never touched follows your
   `config.toml`, even after an update: raise `[audio] sound_volume` in a patch, and
   everyone who never moved that slider hears the new volume.
 - **`[effects] reduce = true`** turns reduced motion on for every player: the toggle shows
   On and can't be turned off (see [Transitions and effects](#16-transitions-and-effects)).
+- **Timing assist** sets every time limit in the game: **Normal**, **Slower** (twice the
+  time for timed choices and minigames, and half the speed for beats), or **No time
+  limits** (timed parts wait for the player). `[effects] timing_assist` (`"normal"`,
+  `"slower"`, or `"off"`) is the Timing assist a new player starts with; players change it;
+  it never locks the setting.
 - **Settings aren't part of the story.** Saves, loading, rollback, and New Game never
   change them, and your script can't read or set them.
 - **Reset settings** forgets every stored value after a question, so your `config.toml`
@@ -2442,6 +2447,7 @@ Every word on the page can be changed under `[words]`, like the menu words above
 | `settings_display`, `settings_text`, `settings_sound`, `settings_data` | "Display", "Text", "Sound", "Data" (the group headings) |
 | `fullscreen` | "Fullscreen" |
 | `reduce_motion` | "Reduce motion and flashing" |
+| `timing_assist`, `timing_normal`, `timing_slower`, `timing_off` | "Timing assist", "Normal", "Slower", "No time limits" |
 | `text_speed`, `text_instant` | "Text speed", "Instant" |
 | `text_size` | "Text size" |
 | `auto_wait`, `auto_voice` | "Auto-advance wait", "Auto-advance waits for voices" |

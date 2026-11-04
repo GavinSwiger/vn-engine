@@ -1,5 +1,5 @@
-"""F50 Timing assist, step 2 (minigame API 1.3; 07 I-3): AC-F50-05 in the real App (the
-F23 Probe on Template M)."""
+"""F50 Timing assist: AC-F50-05 (step 2, minigame API 1.3; 07 I-3) in the real App (the
+F23 Probe on Template M), and AC-F50-08 (step 3: the story state never changes)."""
 
 import pygame
 
@@ -67,3 +67,28 @@ def test_ac_f50_05_player_settings_follow_timing_assist(tmp_path, user_roots, py
     assert seen["changed"] == [("slower", 4.0)] and seen["learns"] == 4.0
     assert seen["menu"] == ["off"]
 
+
+
+def test_ac_f50_08_settings_stay_outside_the_story(tmp_path, user_roots, pygame_ready):
+    """AC-F50-08 (PR-F50-08): changing Timing assist leaves the story's state as it was (the
+    docs rows are review)."""
+    from engine.app.settings import install_settings_ui
+    from tests.app.test_settings_service import make as make_settings
+
+    s = Session(m_game(tmp_path / "g"))
+    seen: dict = {}
+
+    def script(s: Session):
+        yield from s.until_line("Before.")
+        app = s.app
+        app.settings = make_settings(tmp_path)
+        install_settings_ui(app)
+        before = app.story.interp.checkpoint().to_json()
+        for stored in (1, 2, 0):
+            app.settings.set("timing_assist", stored)
+            yield
+            seen.setdefault("after", []).append(app.story.interp.checkpoint().to_json())
+        seen["before"] = before
+
+    s.play(script)
+    assert seen["after"] == [seen["before"]] * 3

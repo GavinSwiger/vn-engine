@@ -13,8 +13,10 @@ editing `config.toml` by hand. Pick a page on the left; its fields are on the ri
 - **Saves & going back**: save pages, auto-saves, chapter save names, the Save and Load
   pages' look, and how far players can go back.
 - **Sound volumes**: starting volumes, fades, playing in the background, music loop points.
-- **Effects & comfort**: reduce motion and flashing, default effect lengths and sizes,
-  effect colours, auto-advance and skipping.
+- **Effects & comfort**: reduce motion and flashing, the Timing assist a new player starts
+  with (Normal, Slower, or No time limits; players change it on their Settings page, and it
+  never locks the setting), default effect lengths and sizes, effect colours, auto-advance
+  and skipping.
 - **Chapters & codex**: the chapter title card, and the Codex page and its notices.
 - **Flowchart**: the players' Flowchart page: whether it shows, which choices get a box,
   jumping, and every box's look.

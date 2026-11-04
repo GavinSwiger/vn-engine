@@ -341,7 +341,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("audio", "In the background", ("play_unfocused", "play_minimized")),
         Row("audio", "Music loops", rest=True))),
     PageDef("effects", "Effects & comfort", (
-        Row("effects", "Comfort", ("reduce",)),
+        Row("effects", "Comfort", ("reduce", "timing_assist")),          # F50
         Row("effects", "Effect lengths and sizes", rest=True),
         Row("theme.effects", "Effect colors"),
         Row("animation", "Sprite animation"),           # F38 PR-F38-08
@@ -410,7 +410,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
             "save_other_game", "saving_off", "loading_off")),
         Row("words", "Player's Settings page", (
             "settings_display", "settings_text", "settings_sound", "settings_data",
-            "fullscreen", "reduce_motion", "text_speed", "text_instant", "text_size",
+            "fullscreen", "reduce_motion", "timing_assist", "timing_normal", "timing_slower",
+            "timing_off", "text_speed", "text_instant", "text_size",
             "auto_wait", "auto_voice", "skip_unread", "master_volume", "music_volume",
             "sound_volume", "voice_volume", "text_blips", "voice_sustain", "audio_unfocused",
             "audio_minimized", "mono", "settings_username", "settings_crash_label",
@@ -461,6 +462,7 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "audio.play_unfocused": "Play in the background",
     "audio.play_minimized": "Play while minimized", "audio.loop_start": "Loop points",
     "effects.reduce": "Reduce motion and flashing",
+    "effects.timing_assist": "Timing assist for new players",       # F50 §6
     "animation.enabled": "Blinking and talking sprites",            # F38 §4
     "animation.blink_every": "Blink about every (seconds)",
     "animation.blink_frame": "Seconds per blink frame",
@@ -496,6 +498,13 @@ _WORDS: Final = {"ms": "(ms)", "mb": "(MB)", "cps": "(characters per second)", "
                  "fps": "frames per second", "fadein": "fade in", "fadeout": "fade out",
                  "autosave": "auto-save", "cant": "can't", "char": "character",
                  "var": "variable", "q": "quick"}
+
+
+# Hints a key's config description doesn't say well for Studio, by dotted path.
+HELPS: Final[Mapping[str, str]] = MappingProxyType({
+    "effects.timing_assist": "The Timing assist a new player starts with. Players change it "
+                             "on the Settings page.",                # F50 §6
+})
 
 
 def label_for(section: str, key: str) -> str:
@@ -549,7 +558,8 @@ def _make_field(section: str, key: str, found: dataclasses.Field) -> Field:
     widget = widget_for(found)
     default = raw_default(found)
     return Field(section, key, label_for(section, key),
-                 key_doc(section, key) or f"Accepts {widget.expected}",
+                 HELPS.get(f"{section}.{key}") or key_doc(section, key)
+                 or f"Accepts {widget.expected}",
                  default, default_caption(widget, default), widget,
                  found.metadata["validator"])
 
@@ -876,8 +886,8 @@ def section_values(section: str, text: str | None) -> dict[str, object]:
     return out
 
 
-__all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Field", "KINDS",
-           "LABELS", "LOOKS", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row", "SCHEMES",
+__all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Field", "HELPS",
+           "KINDS", "LABELS", "LOOKS", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row", "SCHEMES",
            "Section",
            "TABLE_REASON", "TEXT_ONLY", "WidgetKind", "WidgetSpec", "all_keys", "is_look",
            "look_page", "look_title", "looks", "new_look_change", "new_look_problem",
