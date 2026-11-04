@@ -162,7 +162,8 @@ def read_playthrough(store: "PersistentStore | None", warned: list[bool]) -> int
 def look_warnings(looks: Looks, styles: Mapping[str, LookTable],
                   playthroughs: Mapping[int, LookTable]) -> list[str]:
     """W67 (dev) for each table's own look: ``(None, style)`` and ``(N, None)``, keeping the
-    pairs that show a token the table sets (04 §6.7)."""
+    pairs that show a token the table sets (04 §6.7). F49 §3.4: a pair whose colors both
+    come from the look's scheme (a style's own, else ``[theme] preset``) names it."""
     out: list[str] = []
     base = looks.base
     for name in sorted(styles):
@@ -170,13 +171,15 @@ def look_warnings(looks: Looks, styles: Mapping[str, LookTable],
         if table.tokens:
             theme = looks.look((None, name)).theme
             out += contrast_warnings(theme, pairs=PAIRS + LOOK_PAIRS,
-                                     section=f"style.{name}.theme", only=set(table.tokens))
+                                     section=f"style.{name}.theme", only=set(table.tokens),
+                                     scheme=table.preset or base.cfg.preset)
     for n in sorted(playthroughs):
         table = playthroughs[n]
         if table.tokens:
             theme = _with_title_pictures(looks.look((n, None)).theme, base)
             out += contrast_warnings(theme, pairs=PAIRS + LOOK_PAIRS,
-                                     section=f"playthrough.{n}.theme", only=set(table.tokens))
+                                     section=f"playthrough.{n}.theme", only=set(table.tokens),
+                                     scheme=base.cfg.preset)
     return out
 
 

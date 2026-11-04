@@ -80,3 +80,59 @@ def test_w67_skips_a_pair_drawn_from_a_frame_image(caplog):
     texts = w67_texts(caplog, framed, dev=True)
     assert BUTTON_TEXT not in texts
     assert texts                         # the focused and pressed looks are still drawn
+
+
+# --- AC-F49-04 — W67 names the color scheme both colors come from (F49 SPEC §3.4) -------------
+
+def test_ac_f49_04_w67_names_the_scheme(tmp_path, caplog):
+    from engine.app.looks import look_warnings
+    from engine.app.ui_contrast import LOOK_PAIRS, SCHEME_SENTENCE, contrast_warnings
+    from engine.core.config import load_config
+    from engine.core.paths import GamePaths
+    from engine.ui.looks import Looks
+    from engine.ui.menus import UiOverrides
+
+    def load(text: str):
+        root = tmp_path / str(len(list(tmp_path.iterdir())))
+        root.mkdir()
+        (root / "config.toml").write_text(text, encoding="utf-8")
+        result = load_config(GamePaths.for_game(root))
+        assert result.errors == [] and result.warnings == []
+        return result.config
+
+    synth = SCHEME_SENTENCE.format(name="Synthwave Sunset")
+    assert synth == " Both colors come from the Synthwave Sunset color scheme."
+    cfg = load('[theme]\npreset = "synthwave"\n')
+    texts = contrast_warnings(plain_theme(cfg.theme), pairs=PAIRS + LOOK_PAIRS,
+                              scheme=cfg.theme.preset)
+    assert texts and all(text.endswith(synth) for text in texts)
+    track = ("config.toml: [theme.toggle] track_color #5A4A7A is hard to see on "
+             "[theme.panel] fill_color #262335 (1.6:1; tracks need at least 3:1). Pick a "
+             "lighter track_color." + synth)
+    assert track in texts
+    assert track in w67_texts(caplog, plain_theme(cfg.theme), dev=True)   # warn_contrast
+    # The author's own panel fill: that pair loses the sentence; scheme-only pairs keep it.
+    own = load('[theme]\npreset = "synthwave"\n[theme.panel]\nfill_color = "#262336"\n')
+    texts = contrast_warnings(plain_theme(own.theme), scheme=own.theme.preset)
+    track_own = [t for t in texts if t.startswith("config.toml: [theme.toggle] track_color")
+                 and "[theme.panel] fill_color #262336" in t]
+    assert track_own and not any(t.endswith(synth) for t in track_own)
+    assert any(t.endswith(synth) for t in texts)
+    # A style's scheme warnings name the style's own scheme, not the base one.
+    styled = load('[theme]\npreset = "synthwave"\n[style.lcd.theme]\npreset = "pocket"\n')
+    looks = Looks(plain_theme(styled.theme), styles=styled.style,
+                  playthroughs=styled.playthrough, overrides=UiOverrides(),
+                  image=lambda ref: None)
+    texts = look_warnings(looks, styled.style, styled.playthrough)
+    assert texts and all(t.startswith("config.toml: [style.lcd.theme.") for t in texts)
+    pocket = SCHEME_SENTENCE.format(name="Pocket LCD")
+    assert sum(t.endswith(pocket) for t in texts) >= 5 and not any(synth in t for t in texts)
+    # The base title's version text on Pocket's panel: one color each, so no sentence.
+    mixed = [t for t in texts if not t.endswith(pocket)]
+    assert mixed == ["config.toml: [style.lcd.theme.title.version] text_color #9A90B4 on "
+                     "[style.lcd.theme.panel] fill_color #9BBC0F at fill_opacity 0.9 gives "
+                     "1.1:1 over a black picture; version text needs at least 4.5:1. Pick "
+                     "colors further apart."]
+    # Without a scheme, the texts are F10's (the existing W67 tests above).
+    assert not any("color scheme" in t for t in contrast_warnings(
+        plain_theme(dataclasses.replace(CFG, button=PALE_BUTTON))))

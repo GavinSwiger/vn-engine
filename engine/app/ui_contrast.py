@@ -15,6 +15,11 @@ checks one look's pairs that use a token its table sets, naming the table
 (``[style.ashes.theme.textbox]``). NVL colors that follow the text box are resolved as
 ``nvl_look`` resolves them.
 
+F49 (SPEC §3.4): ``contrast_warnings(…, scheme=)`` appends " Both colors come from the
+{name} color scheme." to a pair whose two colors both show that scheme's values (each read
+at its source token, so following tokens resolve). ``warn_contrast`` passes ``[theme]
+preset``; ``app/looks.look_warnings`` a style's own scheme, else the base one.
+
 The message forms are 03-ui's two W67 examples; the opaque and black-screen forms and every
 "needs at least" noun are drafted here for the narrative designer's review.
 """
@@ -27,6 +32,7 @@ from typing import Final
 from engine.app.text_check import BLACK, WHITE, composite, contrast_ratio, relative_luminance
 from engine.core.config_schema import ThemeConfig
 from engine.core.logsetup import get_logger
+from engine.core.schemes import SCHEMES, scheme_colors
 from engine.render.nvllayout import nvl_look
 from engine.ui.builtin.flowchart_page import FOLLOWS, flow_color
 from engine.ui.theme import UiTheme
@@ -185,10 +191,13 @@ def _token(cfg: ThemeConfig, path: str) -> object:
 
 
 def _source(cfg: ThemeConfig, path: str) -> str:
-    """The token whose value ``path`` shows (an unset NVL color: the text box's)."""
-    follows = _NVL_FOLLOWS.get(path)
-    if follows is not None and _token_raw(cfg, path) is None:
-        return follows
+    """The token whose value ``path`` shows (an unset NVL color: the text box's; an unset
+    F20 flowchart color: the one it follows, as ``flow_color``)."""
+    while _token_raw(cfg, path) is None:
+        follows = _NVL_FOLLOWS.get(path) or FOLLOWS.get(path)
+        if follows is None:
+            break
+        path = follows
     return path
 
 
@@ -213,11 +222,12 @@ def pair_ratios(cfg: ThemeConfig, pair: Pair) -> tuple[float, float]:
 
 
 def contrast_warnings(theme: UiTheme, *, pairs: tuple[Pair, ...] = PAIRS,
-                      section: str = "theme", only: "Collection[str] | None" = None
-                      ) -> list[str]:
+                      section: str = "theme", only: "Collection[str] | None" = None,
+                      scheme: str | None = None) -> list[str]:
     """W67's text for each drawn pair of ``theme`` under its minimum, in ``pairs`` order.
     F32: ``only`` keeps the pairs showing a token in it (a look table's own tokens), and
-    ``section`` names that table (``style.ashes.theme``)."""
+    ``section`` names that table (``style.ashes.theme``). F49: ``scheme`` is the color
+    scheme the look uses (None: none), named in a pair whose colors both come from it."""
     out = []
     for pair in pairs:
         if not pair.drawn(theme):
@@ -230,14 +240,15 @@ def contrast_warnings(theme: UiTheme, *, pairs: tuple[Pair, ...] = PAIRS,
         ratio, backdrop = (over_black, "black") if over_black <= over_white else \
             (over_white, "white")
         if ratio < pair.minimum:
-            out.append(w67_text(theme.cfg, pair, ratio, backdrop, section=section))
+            out.append(w67_text(theme.cfg, pair, ratio, backdrop, section=section,
+                                scheme=scheme))
     return out
 
 
 def warn_contrast(theme: UiTheme, *, dev: bool, log=_log) -> None:
     """W67 (dev only) for each pair ``contrast_warnings`` finds; each pair is its own cause."""
     if dev:
-        for text in contrast_warnings(theme):
+        for text in contrast_warnings(theme, scheme=theme.cfg.preset):
             log.warning("%s", text, extra={"code": "W67"})
 
 
@@ -264,12 +275,38 @@ def _shade(fg: RGB, bg: RGB, minimum: float) -> str:
     return "darker" if contrast_ratio(BLACK, bg) >= contrast_ratio(WHITE, bg) else "lighter"
 
 
+SCHEME_SENTENCE = " Both colors come from the {name} color scheme."
+
+
+def from_scheme(cfg: ThemeConfig, pair: Pair, scheme: str | None) -> bool:
+    """F49 §3.4: both of ``pair``'s colors equal ``scheme``'s value at their source token
+    (an author color that happens to equal it counts as the scheme's). False without a
+    scheme, for the loading screen, and for a token no scheme sets."""
+    if scheme is None or pair.bg == LOADING_SCREEN:
+        return False
+    colors = scheme_colors(scheme)
+    for path in (pair.fg, pair.bg):
+        want = colors.get(_source(cfg, path))
+        if want is None or _hex(_token(cfg, path)) != want.upper():   # type: ignore[arg-type]
+            return False
+    return True
+
+
 def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str, *,
-             section: str = "theme") -> str:
+             section: str = "theme", scheme: str | None = None) -> str:
     """W67 for ``pair`` at ``ratio`` (the worse one; ``backdrop`` ``"black"`` or ``"white"``).
     Keys are named under the table the two colors share, e.g. ``[theme.button]
     disabled.text_color … on fill_color``; a key outside it carries its own table. F32:
-    ``section`` is the table path the keys are under (``style.ashes.theme``)."""
+    ``section`` is the table path the keys are under (``style.ashes.theme``). F49: when
+    both colors come from ``scheme``, the scheme sentence ends the text."""
+    text = _w67_text(cfg, pair, ratio, backdrop, section)
+    if from_scheme(cfg, pair, scheme):
+        text += SCHEME_SENTENCE.format(name=SCHEMES[scheme].name)          # type: ignore
+    return text
+
+
+def _w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str,
+              section: str) -> str:
     fg_table, fg_key = pair.fg.rsplit(".", 1)
     bg_table = pair.bg.rsplit(".", 1)[0] if pair.bg else ""
     common: list[str] = []
@@ -304,4 +341,5 @@ def w67_text(cfg: ThemeConfig, pair: Pair, ratio: float, backdrop: str, *,
             f"over a {backdrop} picture; {need}. Pick colors further apart.")
 
 
-__all__ = ["LOOK_PAIRS", "PAIRS", "Pair", "contrast_warnings", "pair_ratios", "w67_text", "warn_contrast"]
+__all__ = ["LOOK_PAIRS", "PAIRS", "Pair", "SCHEME_SENTENCE", "contrast_warnings", "from_scheme",
+           "pair_ratios", "w67_text", "warn_contrast"]
