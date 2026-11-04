@@ -29,7 +29,7 @@ diff lines come from the tool layer's plan (``edits.Proposal``), never from mode
 
 ``AssistPane`` only draws and calls back (``assistwiring.AssistWiring`` owns what Send,
 Stop and the cards do). ``Card`` is one proposal's card; its Apply, Undo and Ask again
-buttons call the window's hooks (F48 W5 fills them).
+buttons call the window's hooks (``AssistWiring.assist_apply`` and so on).
 
 Imports ``tkinter``, its own package and ``tools.assistant`` (a Tk module: the import-rule
 exception).
@@ -81,6 +81,13 @@ ASK_AGAIN = "Ask again"
 SHOW_ALL = "Show all {n} lines"
 DISCARDED = "Discarded: {title}"
 NEW_FILE_TITLE = "{ref} (new file)"
+# §6.3's Apply, Stale, Ask again and Undo texts (W5).
+APPLIED = "Applied. Ctrl+Z in the editor undoes it."
+APPLIED_MANY = "Applied to {n} files. Undo in each file, or use Undo here."
+STALE = "This file changed after the assistant wrote this change, so nothing was changed."
+ASK_AGAIN_TEXT = "The file changed. Read it again and propose the change again."
+UNDONE = "Undone."
+UNDO_REFUSED = "A file changed since, so Undo here can't run. Use Ctrl+Z in the editor."
 
 # --- Look (px at 100 %) ------------------------------------------------------------------------
 
@@ -169,10 +176,11 @@ def _styles(root: tk.Misc, fonts: dict) -> None:
 
 class Card:
     """One proposal's card in the transcript (§6.1, §6.3). ``frame`` is embedded in the
-    transcript. ``buttons``: Apply, Show, Discard, Undo, Ask again (Undo and Ask again
-    hidden until W5 shows them); ``status`` is the line W5 sets ("Applied…", the stale
-    text, "Undone."); ``state`` is "open", "discarded" (W5 adds "applied", "stale");
-    ``tokens`` and ``created`` are W5's (F46 map-undo tokens; files Apply created)."""
+    transcript. ``buttons``: Apply, Show, Discard, Undo, Ask again (Undo shows once
+    applied, Ask again once stale); ``status`` is §6.3's line ("Applied…", the stale text,
+    "Undone.", Undo's refusal); ``state`` is "open", "applied", "stale" or "discarded";
+    ``tokens`` are the F46 map-undo tokens ``(ref, OpenFile.changes)`` right after Apply
+    (None once Undo can't run) and ``created`` the files Apply created."""
 
     def __init__(self, pane: "AssistPane", parent: tk.Misc, proposal: Proposal) -> None:
         self.pane = pane
@@ -251,7 +259,7 @@ class Card:
             file.fit(inner)
 
     def show_status(self, text: str) -> None:
-        """W5: the line under the check texts ("Applied…", the stale text, "Undone.")."""
+        """The line under the check texts ("Applied…", the stale text, "Undone.")."""
         self.status.configure(text=text)
         if text and not self.status.winfo_manager():
             self.status.pack(anchor="w", fill="x", pady=(self.pane.px(6), 0),
@@ -260,7 +268,7 @@ class Card:
             self.status.pack_forget()
 
     def show_buttons(self, *actions: str) -> None:
-        """W5: show exactly ``actions`` (in the card's order)."""
+        """Show exactly ``actions`` (in the card's order)."""
         for button in self.buttons.values():
             button.pack_forget()
         for action in ("apply", "show", "discard", "undo", "ask_again"):
@@ -826,8 +834,9 @@ def model_line(name: str, model: str) -> str:
     return f"{name} · {model}" if model else name
 
 
-__all__ = ["APPLY", "ASK_AGAIN", "ASSISTANT", "AssistPane", "CARD_LINES", "Card", "CardFile",
-           "DISCARD", "DISCARDED", "EMPTY_MCP", "EMPTY_TEXT", "HEADING", "NEW_CHAT",
-           "OPEN_SETTINGS", "PLACEHOLDER", "SEND", "SET_UP", "SHOW", "SHOW_ALL", "STOP",
-           "TITLE_MAX", "UNDO", "YOU", "card_title", "file_heading", "find_links",
-           "first_line", "model_line", "new_text", "shown_text"]
+__all__ = ["APPLIED", "APPLIED_MANY", "APPLY", "ASK_AGAIN", "ASK_AGAIN_TEXT", "ASSISTANT",
+           "AssistPane", "CARD_LINES", "Card", "CardFile", "DISCARD", "DISCARDED", "EMPTY_MCP",
+           "EMPTY_TEXT", "HEADING", "NEW_CHAT", "OPEN_SETTINGS", "PLACEHOLDER", "SEND", "SET_UP",
+           "SHOW", "SHOW_ALL", "STALE", "STOP", "TITLE_MAX", "UNDO", "UNDONE", "UNDO_REFUSED",
+           "YOU", "card_title", "file_heading", "find_links", "first_line", "model_line",
+           "new_text", "shown_text"]

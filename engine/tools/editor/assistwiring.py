@@ -1,7 +1,7 @@
 """The Assistant pane in the Studio window, as the ``AssistWiring`` mixin of
 ``window.EditorWindow`` (F48 ``01-design.md`` §6.1, §6.6, PR-F48-14, -19 to -22, -24;
-``04-technical.md`` §3.2, §7.7; ``05-security.md`` SEC-F48-12, -16, -20, -21; ``07`` I-7;
-AC-F48-30, -31, -44, -46, -53).
+``04-technical.md`` §3.2, §7.4, §7.7; ``05-security.md`` SEC-F48-12, -16, -20, -21; ``07``
+I-7; AC-F48-30, -31, -44, -46 to -49, -53, -56).
 
 Why this module exists: the pane must never hold Studio up, and nothing may leave the
 computer before the author agrees. So a Send, on the Tk thread, only checks the token
@@ -21,8 +21,13 @@ tool layer's record), the streamed answer, activity lines, cards and the usage l
 - Closing the window cancels the run and stops the pane's check child as well as the
   window's own (07 I-7). The pane's ``CheckService`` runs its child without the key
   variables (``procs.without_keys``, through ``CheckRunner``).
-- Cards (``assistpane.Card``): Show and Discard act here; Apply, Undo and Ask again call
-  ``assist_apply``, ``assist_undo`` and ``assist_ask_again``, which F48 W5 fills in.
+- Cards (``assistpane.Card``, §6.3, PR-F48-23, -29; 04 §7.4): **Apply** moves each file's
+  plan onto its live editor text (``edits.rebase``; a changed scene is Stale and nothing
+  changes), makes a new file empty through F45's New script file, then ``apply_plan`` (one
+  undo step per file, unsaved, the check scheduled). Nothing else reaches the disk until
+  the author saves. **Undo** follows F46's map-undo rule (every file's ``changes`` token
+  unchanged; a made file is deleted through F45's Delete). **Ask again** sends §6.3's
+  message with a fresh snapshot.
 
 Imports ``tkinter``, its own package and ``tools.assistant`` (a Tk module: the import-rule
 exception). Logs nothing about the chat (SEC-F48-14: ``chat`` logs the provider, status and
@@ -35,6 +40,9 @@ import time
 import tkinter as tk
 from typing import Any
 
+from collections.abc import Sequence
+
+from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.assistant.chat import (
     STATUS_STOPPED,
@@ -50,11 +58,12 @@ from engine.tools.assistant.chat import (
     Working,
     chat_total_text,
 )
+from engine.tools.assistant.edits import rebase
 from engine.tools.assistant.keystore import Slot
 from engine.tools.assistant.providers import COMPATIBLE, PANE_NAMES, errors
 from engine.tools.assistant.reference import build_reference
 from engine.tools.assistant.workspace import CheckService, Snapshot
-from engine.tools.editor import studiostate
+from engine.tools.editor import document, files, studiostate
 from engine.tools.editor.aisettings import (
     Background,
     ensure_consent,
@@ -62,14 +71,39 @@ from engine.tools.editor.aisettings import (
     session_for,
     slot_of,
 )
-from engine.tools.editor.assistpane import AssistPane, Card, first_line, model_line, new_text
+from engine.tools.editor.assistpane import (
+    APPLIED,
+    APPLIED_MANY,
+    ASK_AGAIN_TEXT,
+    STALE,
+    UNDO_REFUSED,
+    UNDONE,
+    AssistPane,
+    Card,
+    first_line,
+    model_line,
+    new_text,
+)
+from engine.tools.editor.declarations import position_rows
+from engine.tools.editor.files import Refusal
 from engine.tools.editor.guidepane import GUIDE_MIN_WIDTH, GUIDE_WIDTH
+from engine.tools.editor.scriptedit import FilePlan, Plan, verify
 
 POLL_MS = 50                            # 04 §7.7
 POLL_TIMES_KEPT = 200
 MENU = "AI Assistant"                   # View ▸ AI Assistant (Ctrl+Shift+A)
 # Done kinds that offer [Open settings] (S8 notes).
 SETTINGS_KINDS = frozenset({"key", "no_key", "model", "forbidden", "token_limit"})
+
+
+def _script_ref(ref: str) -> bool:
+    """SEC-F48-12: Apply touches only ``script/**.vns``."""
+    return ref.startswith("script/") and ref.endswith(".vns")
+
+
+def _disk_text(paths: object, ref: str) -> str | None:
+    """``ref``'s text on disk as Studio opens it; None when it can't be read."""
+    return getattr(document.open_document(paths, ref), "text", None)  # type: ignore[arg-type]
 
 
 class AssistWiring:
@@ -213,18 +247,22 @@ class AssistWiring:
 
     # --- Send, Stop, New chat --------------------------------------------------------------
 
-    def assist_send(self, *, retried: bool = False) -> None:
+    def assist_send(self, *, retried: bool = False, request: str | None = None) -> bool:
         """**Send** (Enter): the request goes out only after the token limit, the key and
-        consent pass; Cancel in the consent dialog sends nothing and keeps the text."""
+        consent pass; Cancel in the consent dialog sends nothing and keeps the text.
+        ``request`` (a card's Ask again) is sent in place of the input, which is kept. True
+        when a run started now."""
         pane = self.assist_pane
         if self.closed:
-            return
+            return False
         if self.assist_run is not None:
-            self.assist_stop()
-            return
-        request = pane.input_text().strip()
+            if request is None:
+                self.assist_stop()
+            return False
+        typed = request is None
+        request = (pane.input_text() if request is None else request).strip()
         if not request:
-            return
+            return False
         session = session_for(self)
         prefs = session.reload()
         chat = self.assist_chat
@@ -232,34 +270,37 @@ class AssistWiring:
         blocked = chat.blocked()
         if blocked is not None:
             pane.notice(blocked, settings=True)
-            return
+            return False
         target = session.target()
         if target.error is not None:
             pane.notice(target.error, settings=True)
-            return
+            return False
         slot = slot_of(target)
         if slot is None:
-            return
+            return False
         if not (session.key_known and session.key_slot == slot):
             if retried:
-                return
-            self._assist_load_key(slot, then=lambda: self.assist_send(retried=True))
-            return
+                return False
+            again = None if typed else request
+            self._assist_load_key(slot, then=lambda: self.assist_send(retried=True,
+                                                                      request=again))
+            return False
         key = session.key
         if key is None and target.provider != COMPATIBLE:
             pane.notice(errors.NO_KEY, settings=True)
-            return
+            return False
         if not ensure_consent(session, self.root, target, fonts=self.fonts):
-            return
+            return False
         snapshot = self.assist_snapshot()
         try:
             provider = session.provider(key=key)
         except errors.AddressError as exc:
             pane.notice(exc.text, settings=True)
-            return
+            return False
         if self.assist_checks is None:
             self.assist_checks = CheckService(self.paths.root)
-        pane.clear_input()
+        if typed:
+            pane.clear_input()
         pane.start_exchange(request)
         run = ChatRun(chat, provider, paths=self.paths, snapshot=snapshot, request=request,
                       checks=self.assist_checks)
@@ -268,6 +309,7 @@ class AssistWiring:
         pane.set_running(True)
         run.start()
         self._assist_schedule()
+        return True
 
     def assist_snapshot(self) -> Snapshot:
         """The worker's view, taken here on the Tk thread: every unsaved document's editor
@@ -386,9 +428,10 @@ class AssistWiring:
          "ask_again": self.assist_ask_again}[action](card)
 
     def assist_show(self, card: Card) -> None:
-        """**Show**: the first file at its first change; a new file read-only."""
+        """**Show**: the first file at its first change; a new file not yet made read-only
+        (once Apply made it, the file in the editor)."""
         file = card.proposal.files[0]
-        if file.new:
+        if file.new and file.ref not in card.created:
             self._assist_show_new(file.ref, new_text(file))
             return
         if file.ref in self._assist_listed():
@@ -425,14 +468,138 @@ class AssistWiring:
         card.discard()
 
     def assist_apply(self, card: Card) -> None:
-        """**Apply** (W5): rebase the card's files against the live texts, then
-        ``self.apply_plan(plan, verify)``; a stale scene shows §6.3's text."""
+        """**Apply** (PR-F48-23, SEC-F48-12; 04 §7.4): each existing file's plan is moved
+        onto its live editor text (``edits.rebase``, opening a file that isn't open); a
+        file that changed under the change gives §6.3's Stale and nothing changes. A new
+        file is made empty through F45's New script file (``files.new_script``), its text
+        arriving unsaved. Then ``apply_plan``: one undo step per file, the files unsaved,
+        the check scheduled by the change hook. The only disk write is that empty file."""
+        if self.closed or card.state != "open":
+            return
+        proposal = card.proposal
+        plans: dict[str, FilePlan] = {}
+        for file in proposal.files:
+            if not _script_ref(file.ref):
+                self._assist_stale(card)            # never: the tool layer refuses these
+                return
+            if file.new:
+                if file.ref in self.refs or file.ref in self.files:
+                    self._assist_stale(card)        # made since the proposal
+                    return
+                continue
+            if file.ref not in self.refs:
+                self._assist_stale(card)
+                return
+            record = self.record_for(file.ref)
+            live = record.widget.get("1.0", "end-1c")
+            moved = rebase(file, live) if record.editable else None
+            if moved is None:
+                self._assist_stale(card)
+                return
+            plans[file.ref] = moved
+        created: list[str] = []
+        for file in proposal.files:
+            if file.new:
+                folder, name = file.ref.rsplit("/", 1)
+                made = files.new_script(self.paths, folder, name, text="")
+                if isinstance(made, Refusal):
+                    self._assist_remove(created)
+                    card.show_status(made.text)
+                    return
+                created.append(made)
+                plans[file.ref] = file.plan
+        if created:
+            self.refresh_project()
+        plan = Plan(proposal.summary, tuple(plans[f.ref] for f in proposal.files))
+        positions = self._assist_positions()
+        if not self.apply_plan(plan, lambda texts: verify(plan, texts, positions=positions)):
+            self._assist_remove(created)
+            self._assist_stale(card)
+            return
+        card.tokens = tuple((fp.ref, self.files[fp.ref].changes) for fp in plan.files)
+        card.created = tuple(created)
+        card.state = "applied"
+        count = len(plan.files)
+        card.show_status(APPLIED if count == 1 else APPLIED_MANY.format(n=count))
+        card.show_buttons("show", "undo")
+        self._update_marks()
+
+    def _assist_stale(self, card: Card) -> None:
+        """§6.3 Stale: nothing changed; [Ask again] and Discard."""
+        card.state = "stale"
+        card.show_status(STALE)
+        card.show_buttons("ask_again", "discard")
+
+    def _assist_remove(self, refs: Sequence[str]) -> Refusal | None:
+        """Delete files Apply made (F45's Delete, ``files.delete_file``) and close their
+        documents; the first refusal, if any."""
+        refused = None
+        for ref in refs:
+            result = files.delete_file(self.paths, ref)
+            if isinstance(result, Refusal) and refused is None:
+                refused = result
+        if refs:
+            self.refresh_project()
+        for ref in refs:
+            if ref not in self.refs:
+                self._drop_record(ref)
+        return refused
+
+    def _assist_positions(self) -> frozenset[str]:
+        """The stage positions for ``verify``: the check's names, the built-ins and the
+        live ``config.toml``'s (as ``propose`` parsed with)."""
+        names = set(self._positions()) | set(BUILTIN_POSITIONS)
+        record = self.files.get(CONFIG_REF)
+        if record is not None and record.editable:
+            text = record.widget.get("1.0", "end-1c")
+        else:
+            text = getattr(document.open_config(self.paths), "text", "")
+        names.update(row.name for row in position_rows(text) or ())
+        return frozenset(names)
 
     def assist_undo(self, card: Card) -> None:
-        """**Undo** (W5): the card's files back, while each still holds the applied text."""
+        """**Undo** (PR-F48-29, the F46 map-undo rule): only while every file the card
+        changed still has its token (``OpenFile.changes`` right after Apply); then each
+        file's text undo runs once, and a file the card created is deleted through F45's
+        Delete (while its disk text is still empty or the applied text). Otherwise §6.3's
+        refused text, and Undo here goes."""
+        if self.closed or card.state != "applied" or card.tokens is None:
+            return
+        records = {ref: self.files.get(ref) for ref, _token in card.tokens}
+        ready = all(records[ref] is not None and records[ref].editable
+                    and records[ref].changes == token for ref, token in card.tokens)
+        for ref in card.created if ready else ():
+            text = records[ref].widget.get("1.0", "end-1c")
+            if _disk_text(self.paths, ref) not in ("", text):
+                ready = False
+        if not ready:
+            card.tokens = None
+            card.show_status(UNDO_REFUSED)
+            card.show_buttons("show")
+            return
+        refused = self._assist_remove(card.created)
+        if refused is not None:
+            card.show_status(refused.text)
+            return
+        for ref, record in records.items():
+            if ref not in card.created and record is not None:
+                try:
+                    record.widget.edit_undo()
+                except tk.TclError:
+                    pass
+        card.tokens, card.created = None, ()
+        card.state = "open"
+        card.show_status(UNDONE)
+        card.show_buttons("apply", "show", "discard")
+        self._update_marks()
 
     def assist_ask_again(self, card: Card) -> None:
-        """**Ask again** (W5): sends §6.3's "The file changed. …" message."""
+        """**Ask again** (a stale card): sends §6.3's "The file changed. …" with the
+        current editor texts (a fresh snapshot); the author's typed input stays."""
+        if self.closed or card.state != "stale" or self.assist_run is not None:
+            return
+        if self.assist_send(request=ASK_AGAIN_TEXT):
+            card.show_buttons("discard")
 
     # --- Focus and closing -----------------------------------------------------------------
 
