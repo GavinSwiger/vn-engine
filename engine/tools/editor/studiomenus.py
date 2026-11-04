@@ -40,6 +40,7 @@ from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
 from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
 from engine.tools.build.texts import MENU as BUILD_MENU
+from engine.tools.editor.livemap import FOLLOW_CHANGES, REDUCE_MOTION
 
 SHOW_WARNINGS = "Show warnings"         # View menu toggle (PR-F45-12)
 PLAY_MENU = "Play"                      # Run menu (F47 §6.1)
@@ -122,6 +123,7 @@ class StudioMenus:
                 Item("Actual size", f"{key}+0", lambda: self.zoom_view(0)),
                 SEPARATOR,
                 Check(SHOW_WARNINGS, self.show_warnings, self.render_panel),
+                Check(REDUCE_MOTION, self.reduce_motion, self.toggle_reduce_motion),   # F58
                 SEPARATOR,
                 Item(ASSISTANT_MENU, f"{key}+Shift+A", self.toggle_assistant),   # F48 §6.1
             ]),
@@ -230,6 +232,9 @@ class StudioMenus:
             label, accel, run, _when, _kinds = entry
             menu.add_command(label=label, accelerator=accel.replace("Ctrl", key),
                              command=menu_command(menu, label, run))
+        menu.add_separator()                # F58 PR-13: the map's toolbar box, no key
+        menu.add_checkbutton(label=FOLLOW_CHANGES, variable=self.story_map.follow_var,
+                             command=self._follow_changes_toggled)
         return menu
 
     def _update_story_menu(self) -> None:

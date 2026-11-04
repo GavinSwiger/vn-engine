@@ -41,7 +41,8 @@ from engine.tools.editor.assist import (
     help_sections,
 )
 from engine.tools.editor.files import ProjectTree, Refusal, TreeNode
-from engine.tools.editor.livemap import Pins
+from engine.tools.editor.livemap import (
+    FOLLOW_CHANGES, FileRows, GlowSet, MapDelta, MapModel, Pins, glow_items, s5)
 from engine.tools.editor.mapcanvas import MapPainter
 from engine.tools.editor.storymap import (
     BOX_HEIGHT,
@@ -825,6 +826,12 @@ class StoryMapView:
         self.file_choice.set(ALL_FILES)
         self.file_choice.pack(side="left")
         self.file_choice.bind("<<ComboboxSelected>>", self._on_file, add="+")
+        # F58 PR-13 (UI-F58-03): Follow changes, 16 px after the group before it; Space
+        # toggles it. The window binds its variable to the Story menu item and studio.json.
+        self.follow_var = tk.BooleanVar(master=parent, value=False)
+        self.follow_check = ttk.Checkbutton(self.filter, text=FOLLOW_CHANGES,
+                                            variable=self.follow_var)
+        self.follow_check.pack(side="left", padx=(round(16 * scale), 0))
         self.legend = tk.Canvas(bar, height=round(LEGEND_HEIGHT * scale), width=1,
                                 background=background, highlightthickness=0, borderwidth=0,
                                 takefocus=0)
@@ -898,6 +905,19 @@ class StoryMapView:
                                   scale=scale, dpi=scale)
         self.pins = Pins()
         self.drifted = False                    # boxes came or went since F45's columns
+        # F58 PR-11, 12 (04 §7.9): what the last update changed (MapModel's delta against
+        # the rows shown), the glow on one timer, Reduce motion (the window sets it), and
+        # the changed boxes Follow changes scrolls to (added first, then changed).
+        self._shown_rows: dict[str, FileRows] | None = None
+        self.delta = MapDelta()
+        self.changed: tuple[str, ...] = ()
+        self.reduce_motion = False
+        self.on_line: Callable[[str, str], None] | None = None
+        self.glow_now: Callable[[], float] = lambda: time.perf_counter() * 1000
+        self.glow_after: Callable[[int, Callable[[], None]], object] = self.canvas.after
+        self.glow_cancel: Callable[[object], None] = self.canvas.after_cancel
+        self.glows = GlowSet(lambda: self.glow_now())
+        self._glow_id: object | None = None
         self.last_diff: LayoutDiff | None = None
         # F58 PR-08: while a gesture holds the map (``holding``), set_data keeps the data
         # and ``on_hold(True)`` says so (S3); the update lands when it ends (on_hold(False)).
@@ -1090,7 +1110,13 @@ class StoryMapView:
         file filter or Tidy up changed, so everything is laid out and drawn again."""
         names = self._state_names()
         choice = self.file
-        found, diff = relayout(None if full else self.layout, self.links, self.labels,
+        model = MapModel.from_check(self.labels, self.links)
+        shown, self._shown_rows = self._shown_rows, model.files
+        delta = model.delta(shown) if shown is not None and not full else MapDelta()
+        for old, new in delta.renamed:          # PR-23: a renamed box keeps its spot
+            self.pins.rename(old, new)
+        before = self.layout
+        found, diff = relayout(None if full else before, self.links, self.labels,
                                file=choice, notes=self.notes, stale=self.out_of_date,
                                places=self.places, pins=self.pins.of(choice))
         if diff.placed:
@@ -1104,11 +1130,68 @@ class StoryMapView:
         self._incident = {}
         self._restore_names(names)
         self._show_note()
+        if full:
+            self.stop_glow()
         if full or not found.boxes or self.painter.layout is None or self._shifted \
                 or not self.painter.apply(found, diff):
             self.draw(reset=full)
         else:
             self._after_paint(diff)
+        self.delta = delta
+        self.changed = ()
+        if delta and before is not None and found.boxes:
+            self._glow(model, delta, before, found, diff)
+
+    # --- Glow (F58 PR-11, 12; 04 §7.9) -------------------------------------------------------
+
+    def _glow(self, model: MapModel, delta: MapDelta, before: MapLayout, after: MapLayout,
+              diff: LayoutDiff) -> None:
+        """What changed glows for 2 s (``livemap.glow_items``), or S5 past 50 changes;
+        ``changed`` keeps the boxes Follow changes scrolls to."""
+        boxes, edges, ghosts, ghost_edges = glow_items(delta, before, after, diff)
+        new = {*delta.added, *(n for _o, n in delta.renamed)}
+        order = {name: i for i, (name, _f, _l) in enumerate(model.labels())}
+        self.changed = tuple(sorted((n for n in boxes if n in new), key=lambda n: order.get(
+            n, 0))) + tuple(sorted((n for n in boxes if n not in new),
+                                   key=lambda n: order.get(n, 0)))
+        if not (boxes or edges or ghosts or ghost_edges):
+            return
+        started = self.glows.start(boxes, edges, ghosts, ghost_edges,
+                                   reduce=self.reduce_motion)
+        if started.over:
+            if self.on_line is not None:
+                self.on_line("S5", s5(started.over))
+            return
+        self.painter.glow(started.changes)
+        self._arm_glow()
+
+    def _arm_glow(self) -> None:
+        """One timer for every glow: the next fade step or end."""
+        if self._glow_id is not None:
+            try:
+                self.glow_cancel(self._glow_id)
+            except tk.TclError:
+                pass
+            self._glow_id = None
+        due = self.glows.due()
+        if due is not None:
+            self._glow_id = self.glow_after(max(1, round(due - self.glow_now())),
+                                            self._glow_tick)
+
+    def _glow_tick(self) -> None:
+        self._glow_id = None
+        self.painter.glow(self.glows.tick())
+        self._arm_glow()
+
+    def stop_glow(self) -> None:
+        """Every glow and ghost off now (the window closes, a filter change)."""
+        if self._glow_id is not None:
+            try:
+                self.glow_cancel(self._glow_id)
+            except tk.TclError:
+                pass
+            self._glow_id = None
+        self.painter.glow(self.glows.clear())
 
     def _show_note(self) -> None:
         assert self.layout is not None

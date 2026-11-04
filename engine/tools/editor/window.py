@@ -419,6 +419,7 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         # the update in hand, and the map's live status line (S1-S8).
         self.follow_clock = self._make_follow_clock()
         self._follow_source = "typing"
+        self._now_source: str | None = None
         self._follow_throttle = False
         self._after_throttle = False
         self.map_line = livemap.MapLine(lambda: time.perf_counter() * 1000)

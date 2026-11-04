@@ -13,6 +13,7 @@ holds an update while a gesture runs (PR-08, S3 on the live line).
 
 from __future__ import annotations
 
+import threading
 import time
 import tkinter as tk
 from collections.abc import Sequence
@@ -22,7 +23,8 @@ from typing import TYPE_CHECKING, Any
 from engine.script.labelgraph import LabelLink
 from engine.script.menu import Menu
 from engine.script.messages import show
-from engine.tools.editor import files, formdialogs, layoutfile, livemap, scenes, scriptedit
+from engine.tools.editor import (
+    files, formdialogs, layoutfile, livemap, scenes, scriptedit, studiostate, theme)
 from engine.tools.editor.checker import NameEntry
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
@@ -95,6 +97,7 @@ CHANGE_TARGET_OK = "Change"
 CHOICE_STATUS = "Choice: {text}"
 NO_SCRIPT_FOR_SCENE = "Add a script file first: a scene lives in one."
 CONTEXT_MENUS_POST = True               # tests set False: tk_popup would wait for a click
+OS_MOTION_POLL_MS = 50                  # F58: the OS reduce-motion read's answer
 
 
 class _UndoFile:
@@ -179,6 +182,22 @@ class MapWiring:
         view.on_retarget = lambda index, target: self._head_dropped(index, target)
         view.on_context = lambda kind, what, x, y: self.map_context(kind, what, x, y)
         view.on_hold = self._map_held
+        view.on_line = self._map_said
+        # F58 PR-12, 13: Follow changes and Reduce motion, per game in studio.json; the
+        # OS's reduce-motion setting is read once, off the Tk thread (it may take 1 s).
+        state = studiostate.read_state(self.paths.root)
+        known = state if isinstance(state, studiostate.StudioState) else \
+            studiostate.StudioState()
+        view.follow_var.set(known.follow_changes)
+        view.follow_check.configure(command=self._follow_changes_toggled)
+        self.reduce_motion = tk.BooleanVar(master=self.root, value=known.reduce_motion)
+        view.reduce_motion = known.reduce_motion
+        self.os_reduce_motion = False
+        self._line_id: str | None = None
+        self._os_motion: list[bool] = []
+        threading.Thread(target=lambda: self._os_motion.append(theme.os_reduce_motion()),
+                         name="vn-os-motion", daemon=True).start()
+        self.root.after(OS_MOTION_POLL_MS, self._poll_os_motion)
         canvas = self.map_canvas
         for key in (f"<{self.mod}-j>", f"<{self.mod}-J>"):
             canvas.bind(key, lambda _e: self._break(self.go_to_scene))
@@ -266,7 +285,9 @@ class MapWiring:
             return                              # redraw only on change (04 §6.1.6)
         self._map_shown = data
         self._read_layout()
+        self.map_line.update_started()          # F58: S1 and S5 clear at the next update
         self.story_map.set_data(labels, links, self._check_stale, notes, out_of_date=stale)
+        self._show_map_line()
 
     # --- Places, the layout file and the map history (F46 04 §6.8–6.10) --------------------
 
@@ -444,7 +465,7 @@ class MapWiring:
     def _follow_tick(self, throttle: bool) -> None:
         if self.closed:
             return
-        self._follow_source = "typing"
+        self._follow_source, self._now_source = self._now_source or "typing", None
         self._follow_throttle = throttle
         self.follow()
 
@@ -454,7 +475,7 @@ class MapWiring:
         clock is dropped."""
         if self.closed:
             return
-        self._follow_source = source
+        self._now_source = source
         self.follow_clock.now()
 
     def follow(self) -> None:
@@ -472,6 +493,8 @@ class MapWiring:
             self.root.after_idle(self._follow_events)
         if self.current_tab() == "map":
             self.refresh_story_map(throttle=throttle)
+            if self._follow_source in ("disk", "pane"):
+                self.follow_scroll()
         else:
             on_show = self.tabs[self.notebook.index("current")].on_show
             if on_show is not None:
@@ -1123,6 +1146,78 @@ class MapWiring:
         """The live line shows ``map_line``'s text (F58 PR-17, C2)."""
         if not self.closed:
             self.story_map.live_say(self.map_line.text())
+
+    def _map_said(self, kind: str, text: str) -> None:
+        """A live status text (S1-S8): said now; S1 and S5 clear after 5 s."""
+        self.map_line.say(kind, text)
+        self._show_map_line()
+        self._arm_line_expiry()
+
+    def _arm_line_expiry(self) -> None:
+        if self.closed:
+            return
+        if self._line_id is not None:
+            try:
+                self.root.after_cancel(self._line_id)
+            except tk.TclError:
+                pass
+            self._line_id = None
+        due = self.map_line.due()
+        if due is not None:
+            wait = max(1, round(due - time.perf_counter() * 1000))
+            self._line_id = self.root.after(wait, self._expire_line)
+
+    def _expire_line(self) -> None:
+        self._line_id = None
+        if self.closed:
+            return
+        if self.map_line.expire():
+            self._show_map_line()
+        self._arm_line_expiry()
+
+    def follow_scroll(self) -> None:
+        """Follow changes (F58 PR-13): an update from disk or the pane scrolls the least
+        amount to show its first changed box; never during a gesture."""
+        view = self.story_map
+        if not view.follow_var.get() or view.holding or not view.changed \
+                or view.layout is None:
+            return
+        index = view.layout.index_of(view.changed[0])
+        if index is not None:
+            view.see(index)
+
+    def _follow_changes_toggled(self) -> None:
+        """The toolbar box or Story ▸ Follow changes: stored per game."""
+        self.save_studio_state(follow_changes=bool(self.story_map.follow_var.get()))
+
+    def toggle_reduce_motion(self) -> None:
+        """View ▸ Reduce motion (F58 PR-12): stored per game; while the OS asks for less
+        animation it stays on (the item is checked and disabled)."""
+        if self.os_reduce_motion:
+            self.reduce_motion.set(True)
+            return
+        on = bool(self.reduce_motion.get())
+        self.story_map.reduce_motion = on
+        self.save_studio_state(reduce_motion=on)
+
+    def _poll_os_motion(self) -> None:
+        """The OS read's answer, once it is there (never logged)."""
+        if self.closed:
+            return
+        if not self._os_motion:
+            self.root.after(OS_MOTION_POLL_MS, self._poll_os_motion)
+            return
+        self.set_os_reduce_motion(self._os_motion[0])
+
+    def set_os_reduce_motion(self, reduce: bool) -> None:
+        """The OS asks for less animation: Reduce motion on, its item checked and off."""
+        self.os_reduce_motion = reduce
+        if reduce:
+            self.reduce_motion.set(True)
+            self.story_map.reduce_motion = True
+        menu = getattr(self, "view_menu", None)
+        if menu is not None:
+            set_entry_enabled(menu, livemap.REDUCE_MOTION, not reduce)
 
     def _script_refs(self) -> list[str]:
         return [ref for ref in self.refs if ref.startswith("script/") and ref.endswith(".vns")]

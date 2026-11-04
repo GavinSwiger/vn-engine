@@ -7,6 +7,7 @@ check what the window and the view do with them.
 """
 
 import re
+import time
 
 import pytest
 
@@ -251,3 +252,171 @@ def test_ac_f58_39_a_throttle_tick_marks_nothing_out_of_date_and_skips_events(
     clock.advance(livemap.FOLLOW_MS)                     # the pause tick
     ed.root.update()
     assert "stall" in view.out_of_date and refreshed
+
+
+# --- W3: glow, Reduce motion, Follow changes (AC-F58-24, 25, 26) ----------------------------------
+
+def fake_glow(view):
+    """The view's glow on a fake clock (ms)."""
+    from engine.tools.editor.livemap import GlowSet
+    from tests.tools.editor.live_fakes import FakeClock
+    clock = FakeClock()
+    view.glow_now, view.glow_after, view.glow_cancel = clock.now, clock.after, clock.after_cancel
+    view.glows = GlowSet(clock.now)
+    return clock
+
+
+def outline_of(view, key) -> tuple[str, float]:
+    item = view.painter.glows[key]
+    canvas = view.canvas
+    color = canvas.itemcget(item, "fill" if key[0] == "ghost_edge" else "outline")
+    return str(color), float(canvas.itemcget(item, "width"))
+
+
+def visible(view, name: str) -> bool:
+    canvas = view.canvas
+    x0, y0, x1, y1 = view.painter.box_rect(name)
+    left, top = canvas.canvasx(0), canvas.canvasy(0)
+    return left <= x0 and x1 <= left + canvas.winfo_width() and top <= y0 \
+        and y1 <= top + canvas.winfo_height()
+
+
+def test_ac_f58_24_what_changed_glows_for_two_seconds(studio, lanterns):
+    from engine.tools.editor.livemap import FADE_AT, S5
+    from engine.tools.editor.mapcanvas import BOX_OUTLINE, EDGE_STYLES, GLOW_COLOR, GLOW_PX
+    ed = studio_l(studio, lanterns)
+    view, canvas = ed.story_map, ed.map_canvas
+    clock = fake_glow(view)
+    ch2 = ed.win.record_for(CH2).widget
+    assert ch2.get("17.0", "17.end") == "    return"
+    ch2.replace("17.0", "17.end", "    jump pond")          # river gets a new arrow
+    ch2.insert("end", "\nlabel pond:\n    return\n\nlabel quiet:\n    return\n")
+    follow(ed)
+    new_edge = ("river", "pond", "jump")
+    glowing = set(view.painter.glows)
+    assert {("box", "pond"), ("box", "quiet"), ("box", "river")} <= glowing
+    assert outline_of(view, ("box", "pond")) == (GLOW_COLOR, GLOW_PX)
+    assert ("box", "start") not in glowing and ("box", "festival") not in glowing
+    edge = view.painter.edges[new_edge]
+    assert canvas.itemcget(edge, "fill") == GLOW_COLOR      # the new arrow, its own line
+    clock.advance(FADE_AT[0])                                # fading: a blend
+    assert outline_of(view, ("box", "pond"))[0] not in (GLOW_COLOR, BOX_OUTLINE)
+    clock.advance(2_000 - FADE_AT[0])
+    assert not view.painter.glows and len(view.glows) == 0  # all gone after 2 s
+    assert canvas.itemcget(edge, "fill") == EDGE_STYLES["jump"][1]
+
+    ch2.insert("1.0", "# moved down a line\n")               # a line shift alone: no glow
+    follow(ed)
+    assert not view.painter.glows and view.layout.boxes[view.layout.index_of("river")].line \
+        == 12
+
+    spot = places(view)["quiet"]                             # a rename: kept spot, glows
+    start = ch2.search("label quiet:", "1.0")
+    ch2.replace(start, f"{start} lineend", "label still:")
+    follow(ed)
+    assert places(view)["still"] == spot and set(view.painter.glows) == {("box", "still")}
+    clock.advance(500)
+    ch2.replace(f"{start} +1l linestart", f"{start} +1l lineend", "    jump river")
+    follow(ed)                                               # within 1 s: not restarted
+    clock.advance(1_500)
+    assert ("box", "still") not in view.painter.glows      # ended 2 s after the first
+
+    start = ch2.search("label still:", "1.0")
+    ch2.delete(f"{start} -1c", "end")                        # a removal leaves a ghost
+    follow(ed)
+    color, _width = outline_of(view, ("ghost", "still"))
+    assert color == GLOW_COLOR and canvas.itemcget(view.painter.glows[("ghost", "still")],
+                                                   "dash")
+    clock.advance(2_000)
+    assert not view.painter.glows
+
+    ch2.insert("end", "".join(f"\nlabel many{i}:\n    return\n" for i in range(51)))
+    follow(ed)                                               # over 50: S5, no glow
+    assert view.live_text == S5.format(n=51) and not view.painter.glows
+
+
+def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lanterns,
+                                                                    monkeypatch):
+    from engine.tools.editor import studiostate, theme
+    from engine.tools.editor.livemap import FADE_AT, REDUCE_MOTION
+    from engine.tools.editor.mapcanvas import GLOW_COLOR
+    from engine.tools.editor.views import entry_enabled
+    ed = studio_l(studio, lanterns)
+    win, view = ed.win, ed.story_map
+    menu = win.view_menu
+    labels = [str(menu.entrycget(i, "label")) for i in range(menu.index("end") + 1)
+              if menu.type(i) == "checkbutton"]
+    assert labels == ["Show warnings", REDUCE_MOTION]       # after Show warnings (UI-04)
+    assert not win.reduce_motion.get() and entry_enabled(menu, REDUCE_MOTION)
+    menu.invoke(REDUCE_MOTION)
+    assert win.reduce_motion.get() and view.reduce_motion
+    assert studiostate.read_state(lanterns).reduce_motion is True
+    clock = fake_glow(view)
+    ed.win.record_for(CH2).widget.insert("end", "\nlabel pond:\n    return\n")
+    follow(ed)
+    for step in (0, FADE_AT[0], FADE_AT[-1] - FADE_AT[0]):  # on in one step, held
+        clock.advance(step)
+        assert view.canvas.itemcget(view.painter.glows[("box", "pond")], "outline") \
+            == GLOW_COLOR
+    clock.advance(2_000)
+    assert not view.painter.glows                           # off in one step
+    menu.invoke(REDUCE_MOTION)
+    assert not view.reduce_motion and studiostate.read_state(lanterns).reduce_motion is False
+
+    monkeypatch.setattr(theme, "os_reduce_motion", lambda platform=None: True)
+    forced = studio_l(studio, lanterns)                     # the OS asks: on, checked, off
+    end = time.monotonic() + 5
+    while not forced.win.os_reduce_motion and time.monotonic() < end:
+        forced.root.update()
+        time.sleep(0.01)
+    assert forced.win.os_reduce_motion and forced.win.reduce_motion.get()
+    assert forced.story_map.reduce_motion
+    assert not entry_enabled(forced.win.view_menu, REDUCE_MOTION)
+    assert studiostate.read_state(lanterns).reduce_motion is False      # not written
+
+
+def test_ac_f58_26_follow_changes_scrolls_to_disk_and_pane_updates_only(studio, lanterns):
+    from engine.tools.editor import studiostate
+    from engine.tools.editor.livemap import FOLLOW_CHANGES
+    ed = studio_l(studio, lanterns)
+    win, view, canvas = ed.win, ed.story_map, ed.map_canvas
+    menu = win.story_menu
+    last = menu.index("end")
+    assert menu.type(last) == "checkbutton" and menu.entrycget(last, "label") == FOLLOW_CHANGES
+    assert menu.entrycget(last, "accelerator") == ""
+    assert view.follow_check.cget("text") == FOLLOW_CHANGES and not view.follow_var.get()
+    view.follow_check.invoke()                               # the toolbar box
+    assert view.follow_var.get() and studiostate.read_state(lanterns).follow_changes is True
+    ed.root.geometry("700x500")
+    take_focus(canvas)
+    for _ in range(4):
+        ed.press(canvas, "<Control-equal>")                 # 200 %: the map overflows
+    ch2 = win.record_for(CH2).widget
+
+    def far(name: str, source: str) -> bool:
+        canvas.xview_moveto(0)
+        canvas.yview_moveto(0)
+        ed.root.update()
+        ch2.replace("17.0", "17.end", f"    jump {name}")
+        ch2.insert("end", f"\nlabel {name}:\n    return\n")
+        follow(ed, source)
+        return visible(view, name)
+
+    ed.root.update()
+    assert not far("by_typing", "typing")                   # typing never scrolls
+    assert not far("by_action", "action")                   # nor a map action
+    assert far("from_disk", "disk")                         # disk and pane updates do
+    assert far("from_pane", "pane")
+    drag(ed, "start", (20, 20), release=False)               # never during a gesture
+    canvas.xview_moveto(0)
+    canvas.yview_moveto(0)
+    ed.root.update()
+    seen = (canvas.xview(), canvas.yview())
+    ch2.insert("end", "\nlabel held:\n    return\n")
+    follow(ed, "disk")
+    assert (canvas.xview(), canvas.yview()) == seen and view.drag is not None
+    ed.press(canvas, "<Escape>")
+    view.follow_var.set(False)                               # off: no scroll at all
+    win._follow_changes_toggled()
+    assert not far("when_off", "disk")
+    assert studiostate.read_state(lanterns).follow_changes is False
