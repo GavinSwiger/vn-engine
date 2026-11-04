@@ -240,11 +240,11 @@ def test_shift_f5_and_a_cursor_above_every_label_pass_no_start(make_editor, rout
     assert "--start" not in ed.launcher.argvs[1]
 
 
-def test_the_play_button_enter_and_space_do_what_shift_f5_does(make_editor, route_game):
+def test_run_play_does_what_shift_f5_does(make_editor, route_game):
     ed = make_editor(route_game, mapped=True, children=("exit3",))
-    ed.press(ed.play_button, "<Return>")
+    ed.run_menu.invoke("Play")                                  # Run ▸ Play
     pump(ed, lambda: status(ed) == UNEXPECTED)
-    ed.press(ed.play_button, "<space>")
+    ed.press(ed.text, "<Shift-F5>")
     pump(ed, lambda: len(ed.launcher.argvs) == 2 and status(ed) == UNEXPECTED)
     assert ed.launcher.argvs[0] == ed.launcher.argvs[1]
     assert "--start" not in ed.launcher.argvs[0]                # main.vns line 1

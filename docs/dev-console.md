@@ -31,7 +31,7 @@ You don't have to type anything in the game:
 - **Run ▸ Jump the game to this scene** jumps the running game to the selected box on the
   Story map, or to the scene at the editor's cursor. On the map, right-click a box and
   pick **Jump the game here**. Both are dimmed, with "no game running" beside them, until
-  you press ▶ Play.
+  you choose Run ▸ Play.
 - **Database ▸ Variables** and **▸ Meters** show **In the game now:** with the value in the
   running game, and **Change…** to set it. "not started" means the game is on its title
   screen.

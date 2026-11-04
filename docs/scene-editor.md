@@ -8,7 +8,7 @@ Studio edits, checks, plays, and maps your game.
 python -m engine edit game
 ```
 
-Leave out `game` to open the game next to `main.py`. **File ▸ Open game…**
+Leave out `game` to open the one next to `main.py`. **File ▸ Open game…**
 opens another game in its own window. Drag pane titles to an
 edge. **View ▸ Tabs and panes…** (or right-click the tabs) hides, locks and
 resets them, for every game; going to a hidden tab brings it back.
@@ -39,7 +39,7 @@ stop typing, when you save, and on F7 (**Check now**). The status bar counts err
 and warnings (⚠) and says "Out of date" until a newer check finishes.
 
 The **Problems** panel lists each problem (Error, Warning, or Info) with its code, place,
-and message. Click a row (or press Enter on it) to jump to its line, marked `E` or
+and message. Click a row (or Enter) to jump to its line, marked `E` or
 `W` beside its number. **View ▸ Show warnings** hides or shows warnings and info.
 
 **Your game's code waits for you.** Until your first Preview, Save, or Check now in a
@@ -69,7 +69,7 @@ for `call`, dotted for a `menu` choice. Boxes are marked `start`, `not reached`,
 The **Outline** tab (Ctrl+6) lists chapters, endings, routes, codex entries, meters,
 minigames, and flowchart boxes; Enter opens one.
 
-Click a box (or press Enter) to open its scene beside the map; F6 reaches it, Esc closes
+Click a box (or Enter) to open its scene beside the map; F6 reaches it, Esc closes
 it. Map editing: [Story map editing](story-map.md). Ctrl+Enter or
 Ctrl+click uses the Editor tab. Ctrl+= and Ctrl+- zoom.
 
@@ -78,16 +78,16 @@ If a change stops the script loading, the map keeps its last drawing, marked "ou
 
 ## Play a scene
 
-**▶ Play this scene** (F5) saves and plays from the label above the cursor or the
-selected map box. **▶ Play** (Shift+F5) starts at
-`label start`. **■ Stop** (Ctrl+F2) closes it.
+**Run ▸ Play this scene** (F5) saves and plays from the label above the cursor or the
+selected map box. **Run ▸ Play** (Shift+F5) starts at
+`label start`. **Run ▸ Stop** (Ctrl+F2) closes it.
 
 A scene that is only reached by `call` ends the preview at its `return`.
 
 ## Start values
 
 In *Paper Lanterns*, the example game, `label bridge` checks `bought_lantern`. Hana's
-name is "???" until `label start` sets it. In **Play options…**, type them in the
+name is "???" until `label start` sets it. In **Run ▸ Play options…**, type them in the
 **Start values** box, one per line, written like a `default`:
 
 ```

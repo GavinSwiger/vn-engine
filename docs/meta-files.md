@@ -45,7 +45,7 @@ back. A write or delete blocks rollback by itself: the player can't step back pa
 
 ## 4. Test it
 
-Press **▶ Play** in Studio. The files appear in your project's `characters/` folder; open
+Choose **Run ▸ Play** in Studio. The files appear in your project's `characters/` folder; open
 it and watch them come and go. Studio's **Outline** tab lists each name with the lines
 that use it.
 

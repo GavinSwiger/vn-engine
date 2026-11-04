@@ -1025,7 +1025,7 @@ def test_f6_cycles_the_five_areas(make_editor, route_game):
     """Amended by F45 (AC-F44-32) and F47 (the Play bar replaced start values): ▶ Play →
     problems → help → project → editor."""
     ed = make_editor(route_game, mapped=True)
-    order = [ed.play_button, ed.problems, ed.help_text, ed.tree, ed.text]
+    order = [ed.bar_focus, ed.problems, ed.help_text, ed.tree, ed.text]
     widget = ed.text
     for expected in order:
         ed.press(widget, "<F6>")
@@ -1035,7 +1035,7 @@ def test_f6_cycles_the_five_areas(make_editor, route_game):
         ed.press(widget, "<Shift-F6>")
         widget = ed.focus()
         assert widget is expected
-    ed.press(ed.play_bar.options_button, "<F6>")
+    ed.press(ed.play_bar.buttons[-1], "<F6>")
     assert ed.focus() is ed.problems
 
 
@@ -1045,23 +1045,23 @@ def test_tab_indents_in_the_editor_and_moves_focus_elsewhere(make_editor, route_
     ed.press(ed.text, "<Tab>")
     assert ed.focus() is ed.text
     assert ed.text.get("6.0", "6.end") == "        \"Opening line.\""
-    ed.press(ed.play_button, "<Tab>")                       # F47: ▶ Play replaced start
+    ed.press(ed.bar_focus, "<Tab>")                       # F47: ▶ Play replaced start
     assert ed.focus() is ed.problems                         # values and Preview
     ed.press(ed.problems, "<Shift-Tab>")
-    assert ed.focus() is ed.play_button
-    ed.press(ed.play_button, "<Shift-Tab>")
+    assert ed.focus() is ed.bar_focus
+    ed.press(ed.bar_focus, "<Shift-Tab>")
     assert ed.focus() is ed.text
-    ed.press(ed.play_bar.options_button, "<Tab>")
+    ed.press(ed.play_bar.buttons[-1], "<Tab>")
     assert ed.focus() is ed.problems
     ed.press(ed.problems, "<Tab>")
     assert ed.focus() is ed.tree
     ed.press(ed.tree, "<Tab>")
     assert ed.focus() is ed.text
-    ed.press(ed.play_button, "<Right>")                      # along the bar
-    assert ed.focus() is ed.play_bar.scene_button
+    ed.press(ed.bar_focus, "<Right>")                      # along the bar
+    assert ed.focus() is ed.play_bar.buttons[1 % len(ed.play_bar.buttons)]
     if ed.root.tk.call("tk", "windowingsystem") == "x11":
         ed.press(ed.problems, "<ISO_Left_Tab>")              # X11's Shift+Tab
-        assert ed.focus() is ed.play_button
+        assert ed.focus() is ed.bar_focus
 
 
 def test_no_key_binding_in_the_main_window_reacts_to_escape(make_editor, route_game):

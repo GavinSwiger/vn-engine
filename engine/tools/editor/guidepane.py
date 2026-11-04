@@ -22,7 +22,8 @@ calls ``show_guide``); whether it is open is remembered per game in ``studiostat
 Show me targets (``guide.ShowMe``): Game settings' "game" page (the Game settings tab when
 it exists, else ``config.toml``'s title line in the Editor), a Database category with its
 **+ New** button focused, the Story map's ``start`` scene opened beside the map on its
-Events list, the Insert form for a choice or an ending on that scene, and the ▶ Play button.
+Events list, the Insert form for a choice or an ending on that scene, and the Run menu with
+Play chosen.
 
 Imports only the standard library, ``engine.script`` and the editor's own modules
 (ADR-0008).
@@ -58,7 +59,7 @@ STEP_HINTS: dict[str, str] = {
     "scene": "Open the first scene and give it a few lines.",
     "choice": "Let the player pick what happens next.",
     "ending": "Finish your story with an ending card.",
-    "play": "Press ▶ Play to see your game run.",
+    "play": "Choose Run ▸ Play (Shift+F5) to see your game run.",
 }
 
 GUIDE_WIDTH = 280                       # px at 100 %: the column's first width
@@ -327,12 +328,16 @@ class GuideWiring:
                 doc = insert_doc(target.item)
                 self.story.insert(None, doc=doc)
         elif target.place == guide.PLAY:
-            button = self.play_bar.play_button
-            button.focus_set()
-            tip = getattr(button, "tooltip", None)
-            if tip is not None and self.root.winfo_viewable():
-                tip.show()
-                self.root.after(4000, tip.hide)
+            self.show_run_menu()
+
+    def show_run_menu(self) -> None:
+        """Show me for Play: the Run menu open with Play chosen (macOS's own bar can't be
+        opened from code, so there it does nothing)."""
+        bar = getattr(self, "menu_bar", None)
+        if bar is None or not self.root.winfo_viewable():
+            return
+        index = bar.labels().index("Run")
+        self.root.after_idle(lambda: bar.open(index, keyboard=True))
 
     def _show_me_settings(self, page: str | None) -> None:
         """Game settings on ``page``; before that tab exists, ``config.toml``'s title."""

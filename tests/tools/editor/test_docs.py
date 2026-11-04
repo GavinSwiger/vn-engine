@@ -40,8 +40,8 @@ def test_ac_f44_37_page_is_short():
 
 def test_ac_f44_37_page_covers_the_editor():
     flat = _flat(_text())
-    for needed in ("python -m engine edit", "F5", "**▶ Play**", "Shift+F5", "**Start values**",
-                   "**▶ Play this scene**", "**■ Stop**", "**Play options…**",
+    for needed in ("python -m engine edit", "F5", "**Run ▸ Play**", "Shift+F5", "**Start values**",
+                   "**Run ▸ Play this scene**", "**Run ▸ Stop**", "**Run ▸ Play options…**",
                    "**Play as a new player**",
                    "**Problems**", RTL_SENTENCE, "E26b", "E26c"):
         assert needed in flat, needed

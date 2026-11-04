@@ -177,8 +177,13 @@ def test_ac_f47_25_the_guide_pane_ticks_shows_me_each_place_and_is_remembered(
                         lambda index=None, doc=None: asked.append(doc.key))
     show_me(6)
     assert asked == ["ending"]
+    opened: list = []                                              # the Run menu, Play chosen
+    monkeypatch.setattr(win, "menu_bar", type("Bar", (), {
+        "labels": lambda self: ["File", "Run"],
+        "open": lambda self, i, keyboard=False: opened.append((i, keyboard))})())
     show_me(7)
-    assert focused(ed, win.play_bar.play_button)
+    ed.root.update()
+    assert opened == [(1, True)]
     assert not win.dirty_files()                                   # Show me changed nothing
 
     # The author's own work ticks 1, 2, 3 and 6 after the next check (unsaved edits too

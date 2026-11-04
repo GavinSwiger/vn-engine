@@ -33,7 +33,7 @@ positions go into `config.toml`.
   scene**.
 - **Transitions**: your own Dissolve, Fade or Mask with its length, colour, mask picture,
   soft edge and direction (`define … = Dissolve(…)`). **Try it** comes in a later update;
-  until then, use the transition in a scene and press ▶ Play this scene.
+  until then, use the transition in a scene and choose Run ▸ Play this scene.
 - **Positions**: the stage, drawn small, with a marker where each position stands. Drag a
   marker (or use the arrow keys, or type x and y) and `[stage.positions]` in `config.toml`
   changes. A drop near the bottom edge lands on it. **Use default** puts a moved left,
@@ -174,7 +174,7 @@ lock replay bridge "On the Footbridge" image cg lanterns to fireworks:
   one names a replay, its scene can't change and **Delete** is refused, with **Show uses**.
 - **◀ Move earlier** and **Move later ▶** (or Alt+Up / Alt+Down in the list) change the
   order. Both replays must be in the same script file.
-- **▶ Play replay** plays the scene as players see it from Extras, through the Play bar;
+- **▶ Play replay** plays the scene as players see it from Extras;
   **▶ Preview Extras** opens Extras ▸ Scenes with every scene open. Nothing is saved.
 
 In Endings & routes, each ending has **▶ Play replay** too (it plays the ending's scene)
@@ -209,7 +209,7 @@ lock achievement completionist "Completionist" "See every ending." when "lantern
   the condition. A story has up to 200 achievements, 64 of them automatic.
 - **▲ Move up** and **▼ Move down** (or Alt+Up / Alt+Down in the list) change the order.
   Both must be in the same script file.
-- **▶ Preview achievements** opens Extras ▸ Achievements through the Play bar with every
+- **▶ Preview achievements** opens Extras ▸ Achievements with every
   achievement unlocked. Nothing is saved.
 - **Delete** is refused while an Unlock achievement line names it, with **Show uses**.
   Players' unlocked achievements are kept under the script name, so Studio doesn't rename

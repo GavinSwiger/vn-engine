@@ -61,13 +61,9 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     win, view = ed.win, ed.story_map
     game = fake_game(win)
     bar = win.play_bar
-    assert [b.cget("text") for b in bar.buttons] == [
-        "▶ Play", "▶ Play this scene", "■ Stop", "Play options…", "AI Assistant",  # F48
-        "? Guide"]
-    assert str(bar.play_button.cget("style")) == "TButton"          # the one primary
-    assert [b.tooltip.text for b in bar.buttons[:3]] == [
-        "Play from the start (Shift+F5)", "Play from the selected scene (F5)",
-        "Stop the game (Ctrl+F2)"]
+    # 2026-11-04: running the game is the Run menu's; the bar keeps the pane toggles.
+    assert [b.cget("text") for b in bar.buttons] == ["AI Assistant", "? Guide"]   # F48
+    assert not any(w.winfo_ismapped() for w in bar.run_widgets)
     assert bar.frame.winfo_ismapped() and bar.frame.winfo_y() < win.hpane.winfo_y()
     assert bar.stop_button.instate(["disabled"])                     # not running yet
 

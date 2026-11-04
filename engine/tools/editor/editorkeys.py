@@ -109,11 +109,11 @@ class EditorKeys:
                 except tk.TclError:
                     pass                    # a keysym this Tk doesn't know
 
-        # Tab order outside the editor (03 §4; F47): project → editor → ▶ Play → problems
-        # → project. Tab in the editor indents instead; the Play bar's other buttons are
-        # reached with Left and Right from ▶ Play.
+        # Tab order outside the editor (03 §4; F47): project → editor → the bar's first
+        # button → problems → project. Tab in the editor indents instead; the bar's other
+        # buttons are reached with Left and Right from it.
         order: list[Callable[[], tk.Widget]] = [
-            lambda: self.tree, lambda: self.text, lambda: self.play_button,
+            lambda: self.tree, lambda: self.text, lambda: self.bar_focus,
             lambda: self.problems]
         for index, get in enumerate(order):
             if index == 1:
@@ -127,7 +127,7 @@ class EditorKeys:
                 except tk.TclError:
                     pass
         self._guard_stop_key(self.root)
-        for widget in self.play_bar.buttons[1:]:        # the rest of the bar Tabs as ▶ Play
+        for widget in self.play_bar.buttons[1:]:        # the rest of the bar Tabs as its first
             widget.bind("<Tab>", lambda _e: self._move_focus(self.problems))
             for key in ("<Shift-Tab>", "<ISO_Left_Tab>"):
                 try:
@@ -184,7 +184,7 @@ class EditorKeys:
         page = self._side_page_widget()
         if side is not None and page is not None:
             areas.append(page)              # F46: the side pane's shown page
-        areas += [self.play_button, self.problems, self.help_text]
+        areas += [self.bar_focus, self.problems, self.help_text]
         assistant = self.assist_focus_widget()
         if assistant is not None:
             areas.append(assistant)
@@ -193,7 +193,7 @@ class EditorKeys:
         except (KeyError, tk.TclError):
             focus = None
         if focus in self.play_bar.buttons:
-            target = self.problems if step > 0 else areas[areas.index(self.play_button) - 1]
+            target = self.problems if step > 0 else areas[areas.index(self.bar_focus) - 1]
         else:
             pages = [self._attr(tab.focus) for tab in self.tabs if tab.name != "editor"]
             if focus in self._editor_widgets() or focus in pages \

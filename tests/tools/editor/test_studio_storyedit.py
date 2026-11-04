@@ -287,7 +287,7 @@ def test_ac_f46_09_rows_and_text_stay_in_step_and_f6(studio, lanterns, monkeypat
     assert events.texts()[-3:] == ["Wait  1 s", "Return", "◆"]
     assert events.selected() == row                      # the cursor's row, still
     # F6 with Events shown
-    order = [ed.tree, canvas, events.tree, ed.play_button, ed.problems, ed.help_text]
+    order = [ed.tree, canvas, events.tree, ed.bar_focus, ed.problems, ed.help_text]
     seen = [ed.tree]
     ed.press(ed.tree, "<F6>")
     for _ in range(len(order)):

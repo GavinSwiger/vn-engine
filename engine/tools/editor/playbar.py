@@ -168,10 +168,15 @@ class PlayBar:
         if on_assistant is not None:                    # F48: left of ? Guide
             self.assistant_button = button(ASSISTANT, "Chrome.Ghost.TButton", on_assistant,
                                            TIP_ASSISTANT, side="right", pad=(0, 0))
-        self.buttons = (self.play_button, self.scene_button, self.stop_button,
-                        self.options_button,
-                        *((self.assistant_button,) if self.assistant_button else ()),
-                        self.guide_button)
+        # Play, Play this scene, the scene name, Stop and Play options live in the Run menu
+        # only (2026-11-04: one place to run the game). They are still made, so the run
+        # code keeps their state, but never shown; the bar holds the pane toggles.
+        self.run_widgets = (self.play_button, self.scene_button, self.scene_label,
+                            self.stop_button, self.options_button)
+        for widget in self.run_widgets:
+            widget.pack_forget()
+        self.buttons = (*((self.assistant_button,) if self.assistant_button else ()),
+                        self.guide_button)          # left to right on screen
         for widget in self.buttons:                       # a toolbar: arrows move along it
             widget.bind("<Left>", lambda _e, w=widget: self._step(w, -1))
             widget.bind("<Right>", lambda _e, w=widget: self._step(w, 1))
@@ -186,12 +191,9 @@ class PlayBar:
         self.frame.pack(in_=row, side="left", fill="both", expand=True,
                         padx=(round(BAR_GAP * scale_of(row)), 0))
         self.frame.lift(row)
-        # Pack order is who keeps room in a narrow window: Play, Play this scene, then the
-        # pane toggles; the scene name, Stop and Play options give way first (all of them
-        # are in the Run menu too). The left-to-right order on screen stays the same.
-        keep = [self.play_button, self.scene_button, self.guide_button,
-                *((self.assistant_button,) if self.assistant_button else ()),
-                self.scene_label, self.stop_button, self.options_button]
+        # Pack order is who keeps room in a narrow window: ? Guide, then AI Assistant.
+        keep = [self.guide_button,
+                *((self.assistant_button,) if self.assistant_button else ())]
         packed = {str(w): w.pack_info() for w in keep}
         for widget in keep:
             widget.pack_forget()

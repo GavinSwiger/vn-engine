@@ -140,7 +140,8 @@ class RunWiring:
                                 on_assistant=getattr(self, "toggle_assistant", None))
         self.play_bar.frame.pack(side="top", fill="x")
         self.play_bar.divider.pack(side="top", fill="x")
-        self.play_button = self.play_bar.play_button
+        self.play_button = self.play_bar.play_button       # hidden: Run ▸ Play
+        self.bar_focus = self.play_bar.buttons[0]         # the bar's Tab and F6 stop
         self.stop_button = self.play_bar.stop_button
         self.start_label = self.play_bar.scene_label
         self._played_marked = False

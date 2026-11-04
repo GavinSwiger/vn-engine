@@ -29,7 +29,7 @@ Good to know:
 - An update writes no save file.
 - The first `file` line you add reaches the disk only after you start the game again
   (see [Meta files](meta-files.md)).
-- **▶ Play**, **▶ Play this scene** and **■ Stop** work as before: they start the
+- **Run ▸ Play**, **Play this scene** and **Stop** work as before: they start the
   game again, or end it.
 
 Back to [Studio](scene-editor.md).

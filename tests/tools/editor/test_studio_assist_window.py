@@ -310,9 +310,9 @@ def test_ac70_the_map_opens_the_editor_beside_it(studio, studio_game):
     ed.press(side, "<Control-s>")
     text = (studio_game / "script/ch2.vns").read_text(encoding="utf-8")
     assert text.splitlines()[9] == "x" + before and not ed.current.dirty
-    ed.press(side, "<F6>")                               # F6: side editor → ▶ Play (F47)
-    assert ed.focus() is ed.play_button
-    ed.press(ed.play_button, "<Shift-F6>")
+    ed.press(side, "<F6>")                               # F6: side editor → the bar
+    assert ed.focus() is ed.bar_focus
+    ed.press(ed.bar_focus, "<Shift-F6>")
     assert ed.focus() is side
     ed.press(side, "<Escape>")                           # Esc: closed, focus on the map
     assert ed.side_text is None and ed.focus() is canvas

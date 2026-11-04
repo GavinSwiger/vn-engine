@@ -41,7 +41,7 @@ without their approval.
    Admin key or the other provider's key.
 4. Add credit to your API account on the provider's website if you haven't yet.
 5. Press **Test connection**. It should say "Connected."
-6. Open the pane with **AI Assistant** on the Play bar or **View ▸ AI Assistant**
+6. Open the pane with **AI Assistant** on the menu bar or **View ▸ AI Assistant**
    (Ctrl+Shift+A), and ask about your game.
 
 If `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set and no key is saved, settings offer
