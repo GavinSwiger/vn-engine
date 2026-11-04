@@ -20,6 +20,9 @@ what it read, or the row stays a plain Script row. Pure: no Tk.
 - The Choice form (§6.7.4) reads the parsed ``Menu`` (``read_choice``) and writes raw line
   patches (``choice_patches``): the menu is never regenerated, so its comments and ``voice``
   line survive.
+  F51: its time limit (``ChoiceValues.time``, ``ChoiceItem.timeout``) patches only the
+  ``menu`` line and the choice headers it changes; ``choice_problems`` is the form's problem
+  line, ``default_timeout`` the option ticking the box picks.
 
 Lines here are chunk-relative, as ``scenes`` gives them: ``lines[k - 1]`` is chunk line ``k``
 (the label line is 1).
@@ -59,6 +62,15 @@ CHOICE_LIMIT_TEXT: Final = f"A choice can have at most {MENU_MAX_CHOICES} option
 CHOICE_EMPTY_TEXT: Final = "A choice needs at least one option."
 IN_TEXT: Final = "(lines in the text)"     # a choice block the form can't hold
 CONTINUES: Final = "continues here"
+# F51 (01 §7): the Choice form's time limit.
+TIMEOUT_SUMMARY: Final = "when time runs out"
+TIME_DEFAULT: Final = "5"
+TIME_RE: Final = re.compile(r"[0-9]+(?:\.[0-9]+)?")       # SR-F51-01 (script/menu.py)
+TIMEOUT_PICK_TEXT: Final = "Pick the option to choose when time runs out."
+TIMEOUT_CONDITION_TEXT: Final = (
+    'The option chosen when time runs out can\'t have an "Only show when" condition. Clear '
+    "its condition, or pick another option.")
+TIME_RANGE_TEXT: Final = "The time limit is 1 to 60 seconds."
 
 # Why a doc inserts its example as text, with no form (PR-F46-24, PR-F47-06), shown to
 # authors in the Insert picker. ``TEXT_ONLY_REASONS``: F47 §4.8's, word for word.
@@ -173,23 +185,27 @@ class Row:
 class ChoiceItem:
     """One choice in the Choice form. ``goes``: a scene, or None for "continues here";
     ``in_text``: its block is neither, so the form keeps it as is (read-only). ``old``: the
-    index of the choice it was read from (None: new)."""
+    index of the choice it was read from (None: new). ``timeout`` (F51): the option time
+    running out picks (written only while the menu has a ``time``)."""
 
     text: str
     condition: str = ""
     goes: str | None = None
     in_text: bool = False
     old: int | None = None
+    timeout: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class ChoiceValues:
-    """The Choice form's values; ``question`` "" means no question."""
+    """The Choice form's values; ``question`` "" means no question. ``time`` (F51): the time
+    limit in seconds as written (``menu time 5:``), "" for none."""
 
     speaker: str = ""
     look: str = ""
     question: str = ""
     choices: tuple[ChoiceItem, ...] = ()
+    time: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -860,6 +876,8 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
         if task[0] == "choice":
             _, index, block, depth, choice = task
             summary = "" if choice.condition is None else _condition(choice.condition.source)
+            if choice.timeout:                                  # F51 (01 §7.2)
+                summary = TIMEOUT_SUMMARY
             out.append(Row(index, block, depth, f'"{_one_line(choice.text)}"', summary,
                            CHOICE_FORM, None, "header"))
             continue
@@ -889,6 +907,8 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
             summary = NO_QUESTION if question is None else _say_summary(
                 {"speaker": question.speaker or "", "look": " ".join(question.attributes),
                  "text": question.text})
+            if node.time is not None:                           # F51 (01 §7.2, 07 I-8)
+                summary += time_summary(node.time_text)
             out.append(Row(index, block, depth, CHOICE.word, summary, CHOICE_FORM, None))
             for b, choice in zip(branches(index), node.choices):
                 children += [("choice", index, b, depth + 1, choice), ("block", b, depth + 2, 0)]
@@ -950,12 +970,14 @@ def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
     for n, (choice, block) in enumerate(zip(node.choices, _choice_blocks(scene, stmt))):
         goes, in_text = _goes(scene, scene.blocks[block].members)
         condition = "" if choice.condition is None else choice.condition.source
-        items.append(ChoiceItem(choice.text, condition, goes, in_text, n))
+        items.append(ChoiceItem(choice.text, condition, goes, in_text, n,
+                                timeout=choice.timeout))
     question = node.question
+    time = node.time_text if node.time is not None else ""
     if question is None:
-        return ChoiceValues(choices=tuple(items))
+        return ChoiceValues(choices=tuple(items), time=time)
     return ChoiceValues(question.speaker or "", " ".join(question.attributes), question.text,
-                        tuple(items))
+                        tuple(items), time)
 
 
 def choice_summary(item: ChoiceItem) -> str:
@@ -965,9 +987,53 @@ def choice_summary(item: ChoiceItem) -> str:
     return CONTINUES if item.goes is None else item.goes
 
 
-def _header_code(item: ChoiceItem) -> str:
+# --- F51: the time limit (01 §7.1) ---------------------------------------------------------------
+
+def time_summary(time_text: str) -> str:
+    """The menu row's ending: `` · 5 seconds``, `` · 1 second`` (07 I-8)."""
+    try:
+        one = float(time_text) == 1
+    except ValueError:
+        one = False
+    return f" · {time_text} second" if one else f" · {time_text} seconds"
+
+
+def time_ok(time: str) -> bool:
+    """Whether ``time`` is a time limit the script takes: a number from 1 to 60."""
+    return TIME_RE.fullmatch(time) is not None and 1 <= float(time) <= 60
+
+
+def default_timeout(values: ChoiceValues) -> int | None:
+    """The option ticking "Give the player" picks first: the last one with no condition."""
+    for index in range(len(values.choices) - 1, -1, -1):
+        if not values.choices[index].condition:
+            return index
+    return None
+
+
+def choice_problems(values: ChoiceValues) -> str | None:
+    """The form's problem line for the time limit (OK is disabled while one shows), or None.
+    Untimed: none (a ``timeout`` mark is dropped when written)."""
+    if not values.time:
+        return None
+    marked = [item for item in values.choices if item.timeout]
+    if not marked:
+        return TIMEOUT_PICK_TEXT
+    if any(item.condition for item in marked):
+        return TIMEOUT_CONDITION_TEXT
+    if not time_ok(values.time):
+        return TIME_RANGE_TEXT
+    return None
+
+
+def _menu_code(time: str) -> str:
+    return f"menu time {time}:" if time else "menu:"
+
+
+def _header_code(item: ChoiceItem, timed: bool = False) -> str:
     condition = f" if {item.condition}" if item.condition else ""
-    return f"{quote(item.text)}{condition}:"
+    marker = " timeout" if timed and item.timeout else ""
+    return f"{quote(item.text)}{marker}{condition}:"
 
 
 def _target_code(goes: str | None) -> str:
@@ -975,14 +1041,15 @@ def _target_code(goes: str | None) -> str:
 
 
 def choice_lines(values: ChoiceValues, indent: str, unit: str) -> list[str]:
-    """A new menu at ``indent`` (Insert…)."""
-    out = [indent + "menu:"]
+    """A new menu at ``indent`` (Insert…). F51: ``menu time N:`` and the ``timeout`` mark."""
+    timed = bool(values.time)
+    out = [indent + _menu_code(values.time)]
     inner = indent + unit
     if values.question:
         out.append(inner + _say_write({"speaker": values.speaker, "look": values.look,
                                        "text": values.question}))
     for item in values.choices:
-        out += [inner + _header_code(item), inner + unit + _target_code(item.goes)]
+        out += [inner + _header_code(item, timed), inner + unit + _target_code(item.goes)]
     return out
 
 
@@ -1029,6 +1096,14 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     choice_indent = _indent(lines[heads[0].first - 1]) if heads else read.indent + unit
     block_indent = next((b.indent for b in blocks if b.indent), choice_indent + unit)
     patches: list[Patch] = []
+    timed = bool(new.time)
+
+    # F51: the menu line (``menu:`` ↔ ``menu time 5:``), its comment kept.
+    if old.time != new.time:
+        head = read.head
+        _, comment = code_of(lines[head.first - 1:head.last])
+        patches.append(Patch(head.first, head.last,
+                             (_indent(lines[head.first - 1]) + _menu_code(new.time) + comment,)))
 
     # The question.
     if (old.speaker, old.look, old.question) != (new.speaker, new.look, new.question):
@@ -1051,10 +1126,13 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
         block, was = blocks[i], old.choices[i]
         out: list[Patch] = []
         head = block.head
-        if head is not None and (item.text, item.condition) != (was.text, was.condition):
+        marked = timed and item.timeout
+        if head is not None and (item.text, item.condition, marked) != (
+                was.text, was.condition, bool(old.time) and was.timeout):
             _, comment = code_of(lines[head.first - 1:head.last])
             indent = _indent(lines[head.first - 1])
-            out.append(Patch(head.first, head.last, (indent + _header_code(item) + comment,)))
+            out.append(Patch(head.first, head.last,
+                             (indent + _header_code(item, timed) + comment,)))
         if was.in_text or item.in_text or item.goes == was.goes:
             return out
         members = block.members
@@ -1097,7 +1175,7 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     pending: list[str] = []
     for item in new.choices:
         if item.old is None:
-            pending += [choice_indent + _header_code(item),
+            pending += [choice_indent + _header_code(item, timed),
                         block_indent + _target_code(item.goes)]
             continue
         if pending:
@@ -1117,4 +1195,6 @@ __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "C
            "all_forms",
            "choice_lines",
            "choice_patches", "choice_summary", "code_of", "form_by_key", "form_for_doc",
-           "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape"]
+           "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape",
+           "TIMEOUT_CONDITION_TEXT", "TIMEOUT_PICK_TEXT", "TIMEOUT_SUMMARY", "TIME_DEFAULT",
+           "TIME_RANGE_TEXT", "choice_problems", "default_timeout", "time_ok", "time_summary"]

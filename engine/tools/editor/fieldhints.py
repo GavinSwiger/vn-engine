@@ -149,6 +149,11 @@ CHOICE_HINTS: Final[Mapping[str, str]] = MappingProxyType({
     "text": "The choice's words, as players see them.",
     "condition": "Only show this choice when this is true. Empty: always.",
     "goes": "The scene this choice goes to, or continues here.",
+    # F51 (01 §7.1)
+    "time": ("Give the player this many seconds to choose; a bar counts down above the "
+             "options. Players who turned on Timing assist get twice as long, or no limit."),
+    "timeout": ("The option chosen for the player when time runs out. It's always shown, so "
+                "players without a time limit can still pick it."),
 })
 
 # Database form → its label → hint (labels as ``database``/``dbmore`` show them). A form is

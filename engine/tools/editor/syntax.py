@@ -47,6 +47,8 @@ _NAME_AFTER = re.compile(r"[ \t]+([^\W\d]\w*)")
 _SPEAKER = re.compile(r"([^\W\d]\w*(?:[ \t]+\w+)*)[ \t]*\"")
 _QUOTE_OR_COMMENT = re.compile(r"[\"#]")
 _PY_STOP = re.compile(r"[\"'#]")
+_TIME = re.compile(r"[ \t]+(time)\b")                     # F51, after a leading ``menu``
+_TIMEOUT = re.compile(r"[ \t]+(timeout)(?=[ \t]*:)")      # F51, between a choice and ":"
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
 Span = tuple[int, int, str]
@@ -71,9 +73,22 @@ def color_spans(line: str) -> list[Span]:
         return spans
     pos = start
     word = _WORD.match(line, start)
-    if word is not None and word.group() in STATEMENT_WORDS:
+    if line[start] == '"':                          # F51: "text" timeout: (a timed choice)
+        end, closed = _string_end(line, start + 1, '"')
+        _quote_with_tags(line, start, end, closed, spans)
+        pos = end
+        mark = _TIMEOUT.match(line, pos) if closed else None
+        if mark is not None:
+            spans.append((mark.start(1), mark.end(1), TAG_KEYWORD))
+            pos = mark.end(1)
+    elif word is not None and word.group() in STATEMENT_WORDS:
         spans.append((word.start(), word.end(), TAG_KEYWORD))
         pos = word.end()
+        if word.group() == "menu":                  # F51: menu time 5:
+            time = _TIME.match(line, pos)
+            if time is not None:
+                spans.append((time.start(1), time.end(1), TAG_KEYWORD))
+                pos = time.end(1)
         if word.group() in _LABEL_WORDS:
             name = _NAME_AFTER.match(line, pos)
             if name is not None:
