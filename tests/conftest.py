@@ -119,6 +119,14 @@ def user_roots(tmp_path, monkeypatch) -> UserRoots:
 
 
 @pytest.fixture(autouse=True)
+def _studio_look_folder(tmp_path_factory, monkeypatch):
+    """Studio's per-user look (``uiprefs``: tabs, panes, Show warnings) goes to a fresh
+    folder per test, never the real profile."""
+    from engine.tools.editor import uiprefs
+    monkeypatch.setattr(uiprefs, "folder_override", tmp_path_factory.mktemp("studio-look"))
+
+
+@pytest.fixture(autouse=True)
 def _close_log_setup():
     """A test that begins logging and fails midway must not leave handlers attached."""
     yield

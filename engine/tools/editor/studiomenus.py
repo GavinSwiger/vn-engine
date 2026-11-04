@@ -39,9 +39,8 @@ from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
 from engine.tools.editor.assistwiring import MENU as ASSISTANT_MENU
-from engine.tools.editor.docking import CLOSABLE, LOCK_MENU, PANE_MENU, PANE_TITLES, RESET_MENU
 from engine.tools.editor.formdialogs import entry_title
-from engine.tools.editor.tabchoice import GAME_SETTINGS_MENU
+from engine.tools.editor.tabchoice import GAME_SETTINGS_MENU, LAYOUT_MENU
 from engine.tools.build.texts import MENU as BUILD_MENU
 from engine.tools.editor.livemap import FOLLOW_CHANGES, REDUCE_MOTION
 
@@ -129,14 +128,12 @@ class StudioMenus:
                 Item("Zoom out", f"{key}+-", lambda: self.zoom_view(-FONT_STEP_PX)),
                 Item("Actual size", f"{key}+0", lambda: self.zoom_view(0)),
                 SEPARATOR,
-                Check(SHOW_WARNINGS, self.show_warnings, self.render_panel),
+                Check(SHOW_WARNINGS, self.show_warnings, self.toggle_warnings),
                 Check(REDUCE_MOTION, self.reduce_motion, self.toggle_reduce_motion),   # F58
                 SEPARATOR,
                 Item(ASSISTANT_MENU, f"{key}+Shift+A", self.toggle_assistant),   # F48 §6.1
-                *(Check(PANE_MENU.format(title=PANE_TITLES[pane]), self.dock_vars[pane],
-                        lambda p=pane: self.toggle_pane(p)) for pane in CLOSABLE),
-                Check(LOCK_MENU, self.lock_var, self.toggle_lock),
-                Item(RESET_MENU, command=self.reset_layout),
+                # One window with every tab and pane box: a menu closes on each click.
+                Item(LAYOUT_MENU, command=self.open_layout),
             ]),
             ("Run", "run_menu", [
                 Item(PLAY_MENU, "Shift+F5", self.play_from_start),
@@ -220,6 +217,11 @@ class StudioMenus:
         _add_row(menu, SEPARATOR)
         _add_row(menu, Item(CONNECT_MENU, command=self.connect_ai_app))
         return menu
+
+    def toggle_warnings(self) -> None:
+        """View ▸ Show warnings: the panel again, and the choice kept for every game."""
+        self.save_studio_state(show_warnings=bool(self.show_warnings.get()))
+        self.render_panel()
 
     def studio_settings(self) -> None:
         """File ▸ Studio settings… (F48 01 §6.2): the AI page."""

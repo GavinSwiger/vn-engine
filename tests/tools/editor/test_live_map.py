@@ -338,7 +338,7 @@ def test_ac_f58_24_what_changed_glows_for_two_seconds(studio, lanterns):
 
 def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lanterns,
                                                                     monkeypatch):
-    from engine.tools.editor import studiostate, theme
+    from engine.tools.editor import studiostate, theme, uiprefs
     from engine.tools.editor.livemap import FADE_AT, REDUCE_MOTION
     from engine.tools.editor.mapcanvas import GLOW_COLOR
     from engine.tools.editor.views import entry_enabled
@@ -351,7 +351,7 @@ def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lante
     assert not win.reduce_motion.get() and entry_enabled(menu, REDUCE_MOTION)
     menu.invoke(REDUCE_MOTION)
     assert win.reduce_motion.get() and view.reduce_motion
-    assert studiostate.read_state(lanterns).reduce_motion is True
+    assert uiprefs.load()["reduce_motion"] is True          # the author's, every game
     clock = fake_glow(view)
     ed.win.record_for(CH2).widget.insert("end", "\nlabel pond:\n    return\n")
     follow(ed)
@@ -362,7 +362,7 @@ def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lante
     clock.advance(2_000)
     assert not view.painter.glows                           # off in one step
     menu.invoke(REDUCE_MOTION)
-    assert not view.reduce_motion and studiostate.read_state(lanterns).reduce_motion is False
+    assert not view.reduce_motion and uiprefs.load()["reduce_motion"] is False
 
     monkeypatch.setattr(theme, "os_reduce_motion", lambda platform=None: True)
     forced = studio_l(studio, lanterns)                     # the OS asks: on, checked, off
@@ -373,7 +373,7 @@ def test_ac_f58_25_reduce_motion_is_stored_and_the_os_can_force_it(studio, lante
     assert forced.win.os_reduce_motion and forced.win.reduce_motion.get()
     assert forced.story_map.reduce_motion
     assert not entry_enabled(forced.win.view_menu, REDUCE_MOTION)
-    assert studiostate.read_state(lanterns).reduce_motion is False      # not written
+    assert uiprefs.load()["reduce_motion"] is False      # not written
 
 
 def test_ac_f58_26_follow_changes_scrolls_to_disk_and_pane_updates_only(studio, lanterns):

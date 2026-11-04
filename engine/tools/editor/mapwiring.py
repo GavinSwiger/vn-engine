@@ -26,7 +26,8 @@ from engine.script.labelgraph import LabelLink
 from engine.script.menu import Menu
 from engine.script.messages import show
 from engine.tools.editor import (
-    files, formdialogs, layoutfile, livemap, scenes, scriptedit, studiostate, theme, wheel)
+    files, formdialogs, layoutfile, livemap, scenes, scriptedit, studiostate, theme, uiprefs,
+    wheel)
 from engine.tools.editor.checker import NameEntry
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
@@ -216,8 +217,9 @@ class MapWiring:
             studiostate.StudioState()
         view.follow_var.set(known.follow_changes)
         view.follow_check.configure(command=self._follow_changes_toggled)
-        self.reduce_motion = tk.BooleanVar(master=self.root, value=known.reduce_motion)
-        view.reduce_motion = known.reduce_motion
+        reduce = bool(uiprefs.value("reduce_motion", known.reduce_motion))  # every game
+        self.reduce_motion = tk.BooleanVar(master=self.root, value=reduce)
+        view.reduce_motion = reduce
         self.os_reduce_motion = False
         self._line_id: str | None = None
         self._os_motion: list[bool] = []

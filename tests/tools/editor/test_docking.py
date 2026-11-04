@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from engine.tools.editor import docking, studiostate
+from engine.tools.editor import docking, studiostate, uiprefs
 from engine.tools.editor.docking import ASSISTANT, BOTTOM, HELP, LEFT, PROBLEMS, RIGHT, Layout
 from tests.tools.f45_games import studio as make_game
 
@@ -32,6 +32,17 @@ def test_drop_zones():
     assert docking.drop_zone(500, 100, 1000, 600) is None
     assert docking.drop_zone(-1, 100, 1000, 600) is None
     assert docking.zone_box(BOTTOM, 1000, 600) == (0, 420, 1000, 180)
+
+
+def _texts(widget):
+    out = []
+    for child in widget.winfo_children():
+        try:
+            out.append(str(child.cget("text")))
+        except Exception:
+            pass
+        out += _texts(child)
+    return out
 
 
 def _names(window):
@@ -68,8 +79,9 @@ def test_panes_move_close_lock_and_reset(studio, tmp_path):
     win.toggle_pane(HELP)
     assert str(frames[HELP]) in _names(win.bottom)
     # The layout is kept per game.
-    state = studiostate.read_state(game)
-    assert Layout.from_json(state.panes).dock_of(ASSISTANT) == BOTTOM
+    saved = uiprefs.load()["panes"]                     # the author's, for every game
+    assert Layout.from_json(saved).dock_of(ASSISTANT) == BOTTOM
+    assert studiostate.read_state(game).panes is None   # not in the game's own file
     # Locked: a drag doesn't move the pane.
     win.lock_var.set(True)
     win.toggle_lock()
@@ -99,13 +111,12 @@ def test_panes_move_close_lock_and_reset(studio, tmp_path):
     # Reset: everything back where it started, and nothing kept in the state file.
     win.reset_layout()
     ed.root.update()
-    assert win.layout == Layout() and studiostate.read_state(game).panes is None
+    assert win.layout == Layout() and uiprefs.load()["panes"] is None
     assert str(frames[ASSISTANT]) in _names(win.right_dock)
     assert not win.guide_shown or not win.assistant_shown          # they share a dock again
-    # View lists the panes, Lock and Reset.
-    menu = win.view_menu
-    labels = [str(menu.entrycget(i, "label")) for i in range(menu.index("end") + 1)
-              if menu.type(i) in ("checkbutton", "command")]
-    for label in ("Project pane", "Problems pane", "Help pane", docking.LOCK_MENU,
-                  docking.RESET_MENU):
-        assert label in labels
+    # View ▸ Tabs and panes… has a box per pane, Lock and Reset, and stays open.
+    from engine.tools.editor import tabchoice
+    win.view_menu.invoke(tabchoice.LAYOUT_MENU)
+    texts = _texts(win.layout_window)
+    for label in ("Project", "Problems", "Help", docking.LOCK_MENU, docking.RESET_MENU):
+        assert label in texts

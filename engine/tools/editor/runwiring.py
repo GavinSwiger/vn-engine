@@ -36,6 +36,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from engine.tools.editor import consoleclient, studiostate
+from engine.tools.editor import uiprefs
 from engine.tools.editor.dialogs import ask, ask_text, show_info
 from engine.tools.editor.hotreload import HotReload, HotReloadEvent
 from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
@@ -152,10 +153,14 @@ class RunWiring:
             self._state_writable = False
         self.play_bar.set_guide(self.guide_shown)
 
-    def save_studio_state(self, **changes: bool) -> None:
+    def save_studio_state(self, **changes: object) -> None:
         """Change ``.studio/studio.json``; after a link is found, nothing more is written
-        for this window."""
-        if not self._state_writable:
+        for this window. How Studio looks (``uiprefs.LOOK_KEYS``: tabs, panes, Show
+        warnings, Reduce motion) goes to the per-user file instead, for every game."""
+        look = {key: changes.pop(key) for key in list(changes) if key in uiprefs.LOOK_KEYS}
+        if look:
+            uiprefs.save(**look)
+        if not changes or not self._state_writable:
             return
         problem = studiostate.with_change(self.paths.root, **changes)
         if problem is not None and problem.link:

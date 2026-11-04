@@ -147,6 +147,7 @@ from engine.tools.editor.guidepane import GuideWiring
 from engine.tools.editor.assistwiring import AssistWiring
 from engine.tools.editor.docking import DockWiring
 from engine.tools.editor.tabchoice import TabChoice
+from engine.tools.editor import uiprefs
 from engine.tools.editor.runwiring import (  # re-exported: tests read window.<NAME>
     START_VALUES_HEADING,
     STATUS_NOT_RUNNING,
@@ -407,7 +408,9 @@ class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring,
         # Runners polled with the preview's and the check's, and stopped on close.
         self.runners: list[tuple[object, Callable[[list], object]]] = []
         self._panel_view: tuple[str, object] = ("hint", PROBLEMS_HINT)   # preview's part
-        self.show_warnings = tk.BooleanVar(master=root, value=True)     # View menu toggle
+        # View menu toggle, the author's choice in every game (``uiprefs``).
+        self.show_warnings = tk.BooleanVar(
+            master=root, value=bool(uiprefs.value("show_warnings", True)))
         # Add files… runs its copies on a worker thread (04 §7.5 Add).
         self.adding = False
         self._add_queue: "queue.Queue[files.AddOutcome | None]" = queue.Queue()

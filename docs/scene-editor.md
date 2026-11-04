@@ -8,10 +8,10 @@ Studio edits, checks, plays, and maps your game.
 python -m engine edit game
 ```
 
-Leave out `game` to open the game next to `main.py`. **File ▸ Open game…** (Ctrl+O)
-opens another game in its own window. Drag pane titles to a side or the
-bottom; **View** hides, locks and resets panes. Right-click the tabs to hide ones you
-don't use; going to one brings it back.
+Leave out `game` to open the game next to `main.py`. **File ▸ Open game…**
+opens another game in its own window. Drag pane titles to an
+edge. **View ▸ Tabs and panes…** (or right-click the tabs) hides, locks and
+resets them, for every game; going to a hidden tab brings it back.
 
 ## Your files
 

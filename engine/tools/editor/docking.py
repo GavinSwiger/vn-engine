@@ -55,7 +55,7 @@ PANE_TITLES: Final = {PROJECT: "Project", PROBLEMS: "Problems", HELP: "Help", GU
 LOCK_MENU: Final = "Lock pane layout"
 RESET_MENU: Final = "Reset pane layout"
 CLOSE: Final = "✕"
-TIP_CLOSE: Final = "Hide this pane (View brings it back)"
+TIP_CLOSE: Final = "Hide this pane (View ▸ Tabs and panes… brings it back)"
 TIP_DRAG: Final = "Drag to the left, right or bottom edge to move this pane"
 
 # --- Look (px at 100 %) --------------------------------------------------------------------------
@@ -187,10 +187,10 @@ class DockWiring:
         self.dock_apply()
 
     def _saved_layout(self) -> Layout:
-        from engine.tools.editor import studiostate
+        from engine.tools.editor import studiostate, uiprefs
         state = studiostate.read_state(self.paths.root)
-        panes = getattr(state, "panes", None)
-        return Layout.from_json(panes) if panes else Layout()
+        panes = uiprefs.value("panes", getattr(state, "panes", None))   # the author's, any game
+        return Layout.from_json(panes) if isinstance(panes, dict) and panes else Layout()
 
     def _add_close(self, header: tk.Misc, pane: str) -> None:
         button = ttk.Button(header, text=CLOSE, width=3, takefocus=0,
@@ -297,7 +297,7 @@ class DockWiring:
     # -- View rows ----------------------------------------------------------------------------
 
     def show_pane(self, pane: str, on: bool) -> None:
-        """View ▸ Project / Problems / Help, and their ✕."""
+        """Tabs and panes… boxes for Project / Problems / Help, and their ✕."""
         if pane not in CLOSABLE:
             return
         self.layout = self.layout.shown(pane, on)
@@ -306,7 +306,7 @@ class DockWiring:
         self._save_layout()
 
     def toggle_pane(self, pane: str) -> None:
-        """View's check row: the variable already holds the new value."""
+        """A Tabs and panes… box: the variable already holds the new value."""
         self.show_pane(pane, bool(self.dock_vars[pane].get()))
 
     def toggle_lock(self) -> None:
@@ -314,7 +314,7 @@ class DockWiring:
         self._save_layout()
 
     def reset_layout(self) -> None:
-        """View ▸ Reset pane layout: every pane back in its first place, shown, unlocked."""
+        """Tabs and panes… ▸ Reset pane layout: every pane back in its first place, shown, unlocked."""
         self.layout = Layout()
         for var in self.dock_vars.values():
             var.set(True)
