@@ -46,6 +46,10 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    with more than 40 medium or large non-space graphemes (``Collected.long_glitches``, from
    the tag parser), at its ``{``, in reading order. The technical design calls this "step
    6c"; 6c and 6d were taken.
+   6f. F51 (``04-technical.md`` §7.1 step 4): W257 (dev loads only) for each timed menu whose
+   choices take longer to read than its time limit (``Collected.timed_menus``): ``c`` the
+   shown characters of every choice (tags removed, ``{var=x}`` as its name), ``r =
+   ceil(c / 15)``; it warns at the menu line when the time is under ``r``.
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
    summary line.
@@ -127,10 +131,12 @@ recurses (SEC-F02-05).
 
 import ast
 import heapq
+import math
 import re
 from collections import deque
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Final
 
 from engine.core.constants import META_NAMES_MAX, META_ORIGINAL_MAX_BYTES, META_ORIGINALS_DIR
 from engine.core.errors import AssetRefError, EngineError
@@ -169,6 +175,7 @@ from engine.script.stage import Scene, Show
 from engine.script.startcheck import START_LABEL, check_start
 from engine.script.statements import Collected, Uses, resolve_no_text
 from engine.script.suggest import max_distance, suggest
+from engine.script.texttags import NameMark, Span, VarMark
 from engine.script.words import ENGINE_NAMES, canonical_name, is_image_word
 
 # §7.6.2: label and define names salvaged from a file's text (an E01a file, and the lazy
@@ -794,6 +801,38 @@ def _w185(collected: Collected) -> list[ScriptWarning]:
     return [ScriptWarning(format_message("W185", (count, strength)), code="W185",
                           file=file.ref, line=line, column=column)
             for file, line, column, count, strength in found]
+
+
+# --- Step 6f: W257 (F51) -----------------------------------------------------------------
+
+W257_CHARS_PER_SECOND: Final = 15                   # F51 01 §5: reading speed for W257
+
+
+def _shown_chars(body) -> int:
+    """A choice's shown characters: its spans, ``{var=x}`` and ``{username=x}`` as their
+    names (the fallback word as ``username``)."""
+    count = 0
+    for piece in body.pieces:
+        if isinstance(piece, Span):
+            count += len(piece.text)
+        elif isinstance(piece, VarMark):
+            count += len(piece.name)
+        elif isinstance(piece, NameMark):
+            count += len(piece.var or "username")
+    return count
+
+
+def _w257(collected: Collected) -> list[ScriptWarning]:
+    """W257 (dev loads) for each timed menu whose choices read longer than its time, at its
+    line, in reading order."""
+    warnings: list[ScriptWarning] = []
+    for menu in sorted(collected.timed_menus, key=lambda m: (m.file.order, m.line)):
+        chars = sum(_shown_chars(choice.body) for choice in menu.choices)
+        read = math.ceil(chars / W257_CHARS_PER_SECOND)
+        if menu.time is not None and menu.time < read:
+            warnings.append(ScriptWarning(format_message("W257", (menu.time_text, chars, read)),
+                                          code="W257", file=menu.file.ref, line=menu.line))
+    return warnings
 
 
 # --- Step 7: W04 --------------------------------------------------------------------------
@@ -1442,6 +1481,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
         yield
     if inp.dev:
         out.warnings += _w185(collected)                                # F29
+        out.warnings += _w257(collected)                                # F51
     out.warnings += yield from _iter_w04(collected)
     yield
     yield from iter_attach_fixed(inp.nodes, sink)                    # F14: E204

@@ -60,9 +60,11 @@ ROWS: tuple[StatementDoc, ...] = (
         "rollback block", "rollback", "F14", fields=("block",)),
     # --- Choices ------------------------------------------------------------------------
     StatementDoc(
-        "menu", "Menu", "Choices", 'menu:\n    "choice" [if condition]:',
+        "menu", "Menu", "Choices",
+        'menu [time <seconds>]:\n    "choice" [timeout] [if condition]:',
         "Shows choices as buttons. The picked choice's lines run, then the story goes on "
-        "after the menu.",
+        "after the menu. With a time limit, the choice marked timeout is picked when the "
+        "time runs out.",
         'menu:\n    "Go to the river":\n        jump river\n    "Stay here":\n'
         '        "You stay a while."', "menu (choices)", "F07",
         fields=("Go to the river", "Stay here")),

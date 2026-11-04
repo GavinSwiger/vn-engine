@@ -1771,6 +1771,44 @@ def _e174(form: int = 3) -> str:
             "this line inside a choice, or move it above menu:.")
 
 
+# F51 timed choices (01 §5, final texts): E368 (menu.py, the header), E369 (menu.py, the
+# marking; 07 I-3: form 1 at the marked choice, form 2 at the menu, form 3 at the second
+# marked choice), E370 (menu.py, the timeout choice's if), W257 (checks.py step 6f, dev).
+
+def _e368(form: int = 1, found: str = "five") -> str:
+    """``form`` 1: ``menu time:``; 2: not a number from 1 to 60 (``found``: the text as
+    written, cut to 30 characters); 3: something after the number (``found``: the number)."""
+    if form == 2:
+        return (f"menu time takes a number of seconds from 1 to 60, but found {show(found)}. "
+                "Write e.g. menu time 5:")
+    if form == 3:
+        return (f"menu time {show(found)} takes nothing else on its line. Put the question "
+                'on the first line inside the menu, e.g. hana "Where to?"')
+    return "menu time needs a number of seconds after it, e.g. menu time 5:"
+
+
+def _e369(form: int = 2, count: int = 2) -> str:
+    """``form`` 1: ``timeout`` in an untimed menu; 2: a timed menu with no ``timeout``
+    choice; 3: ``count`` choices marked ``timeout``."""
+    if form == 1:
+        return ("this choice is marked timeout, but its menu has no time limit. Write menu "
+                "time 5: to give the player 5 seconds, or remove timeout.")
+    if form == 3:
+        return (f"this menu has {count} choices marked timeout, but time running out picks "
+                "only one. Remove timeout from all but one.")
+    return ("this menu has a time limit but no choice marked timeout, so nothing could "
+            "happen when time runs out. Write timeout after one choice's text, e.g. "
+            '"Say nothing" timeout:')
+
+
+def _w257(seconds: str = "3", chars: int = 112, read: int = 8) -> str:
+    """``seconds``: the time as written; ``chars``: the choices' shown characters;
+    ``read``: ``ceil(chars / 15)``."""
+    return (f"this menu gives the player {show(seconds)} seconds, but its choices are "
+            f"{chars} characters long, about {read} seconds of reading. Raise the time, e.g. "
+            f"menu time {read}:, or shorten the choices.")
+
+
 def _w47(lines: int = 2, size: int = 28) -> str:
     """A choice that needs ``lines`` lines at text size ``size`` (dev launches)."""
     if lines <= 2:
@@ -4530,6 +4568,12 @@ TEMPLATES: dict[str, Callable[..., str]] = {
                      "between the quotes."),
     "E177": lambda: ("menu takes nothing else on its line. Put the question on the first line "
                      'inside the menu, e.g. hana "Where to?"'),
+    # F51 timed choices (01 §5): load E368–E370 (menu.py); W257 (checks.py step 6f, dev)
+    "E368": _e368,
+    "E369": _e369,
+    "E370": lambda: ("the timeout choice can't have an if: when time runs out, it must be "
+                     "there to pick. Remove the if, or mark a choice without one as timeout."),
+    "W257": _w257,
     # F07 run (engine/runtime/menu.py)
     "E178": lambda locked=False: (
         f"every choice in this menu is {'locked' if locked else 'hidden'}, because all their "
