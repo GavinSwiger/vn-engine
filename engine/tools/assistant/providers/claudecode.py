@@ -92,7 +92,9 @@ def command(claude: str, config: str, model: str, session: str | None) -> list[s
     argv = [claude, "-p", "--output-format", "stream-json", "--verbose",
             "--include-partial-messages", "--strict-mcp-config", "--mcp-config", config,
             "--tools", "", "--allowedTools", f"mcp__{SERVER}",
-            "--append-system-prompt", PANE_NOTE, "--model", model]
+            # Not the game's CLAUDE.md / AGENTS.md: the pane's own note covers it, and every
+            # step would re-read it (2026-11-04).
+            "--setting-sources", "user", "--append-system-prompt", PANE_NOTE, "--model", model]
     return argv + ["--resume", session] if session else argv
 
 
@@ -421,6 +423,9 @@ class ClaudeCodeRun(ChatRun):
         """One partial-message event; False once the answer is too long."""
         if not isinstance(event, dict):
             return True
+        if event.get("type") == "message_start":
+            self._length(event.get("message"))
+            return True
         if event.get("type") == "content_block_start":
             block = event.get("content_block")
             if isinstance(block, dict) and block.get("type") == "text" and self._text and \
@@ -442,6 +447,14 @@ class ClaudeCodeRun(ChatRun):
         self._post(TextDelta(text))
         return True
 
+    def _length(self, message: object) -> None:
+        """A step's start: the tokens it reads are the chat's size."""
+        usage = message.get("usage") if isinstance(message, dict) else None
+        if isinstance(usage, dict):
+            sizes = [usage.get(name) for name in (
+                "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")]
+            self.chat.length = sum(n for n in sizes if type(n) is int and n >= 0)
+
     def _count(self, usage: object) -> None:
         if not isinstance(usage, dict):
             return
@@ -454,7 +467,7 @@ class ClaudeCodeRun(ChatRun):
                      number("cache_read_input_tokens"), number("output_tokens"), True)
         self.usage = self.usage + used
         self.chat.usage = self.chat.usage + used
-        self.chat.total += used.total
+        self.chat.total += used.counted
 
 
 __all__ = ["BAD_MODEL", "ClaudeCodeRun", "FAILED", "LocalMcp", "MODELS", "NAME",

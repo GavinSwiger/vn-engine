@@ -446,7 +446,7 @@ class AssistWiring:
             pane.finish(stopped=event.status == STATUS_STOPPED, usage=event.usage_text)
             if event.message:
                 pane.notice(event.message, settings=event.kind in SETTINGS_KINDS)
-            pane.set_total(chat_total_text(event.chat_total))
+            pane.set_total(event.total_text)
             return True
         return False
 

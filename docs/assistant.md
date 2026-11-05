@@ -49,7 +49,10 @@ If `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set and no key is saved, settings 
 
 **Steps** limits how many times the assistant may look something up or check a change before
 it stops (send "continue" to let it go on). **Chat token limit** stops a chat that has used
-that many tokens; each answer shows the tokens it used. A new chat starts from zero.
+that many tokens; each answer shows the tokens it used. Every step re-reads the whole chat,
+mostly from a cache that costs a tenth as much, so the chat's total counts those re-reads at a
+tenth. A long chat makes every step cost more: start a **New chat** for a new task. A new chat
+starts from zero.
 
 ## How a change reaches your game
 

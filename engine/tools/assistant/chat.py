@@ -69,6 +69,9 @@ STOPPED_MARK: Final = "(stopped)"
 USAGE: Final = "↑ {total_in} ({cached} cached) ↓ {output}"
 USAGE_NONE: Final = "Usage not reported."
 CHAT_TOTAL: Final = "This chat: {n} tokens"
+# Once a step re-reads this much, a new task is cheaper in a New chat (2026-11-04).
+CHAT_LONG: Final = "This chat: {n} tokens. It's long now: a New chat costs less for a new task."
+LONG_CHAT_TOKENS: Final = 30_000
 SENT: Final = "Sent: {items}"
 SENT_MORE: Final = "…and {n:,} more"
 NOT_RUN_LIMIT: Final = "Not run: this request reached its step limit."
@@ -113,8 +116,10 @@ def usage_text(usage: Usage) -> str:
                         output=f"{usage.output:,}")
 
 
-def chat_total_text(total: int) -> str:
-    return CHAT_TOTAL.format(n=f"{total:,}")
+def chat_total_text(total: int, length: int = 0) -> str:
+    """The pane's footer: the chat's counted tokens (``Usage.counted``), with the New chat
+    hint once its latest step read ``length`` >= ``LONG_CHAT_TOKENS``."""
+    return (CHAT_LONG if length >= LONG_CHAT_TOKENS else CHAT_TOTAL).format(n=f"{total:,}")
 
 
 def _lines_text(ref: str, first: int, last: int) -> str:
@@ -176,6 +181,7 @@ class Chat:
         self.summary: Context | None = None
         self.usage = Usage()
         self.total = 0
+        self.length = 0               # tokens the latest step read: the chat's size
         self.running = False
         self.claude_session: str | None = None    # provider claude_code: its session id
 
@@ -187,7 +193,7 @@ class Chat:
 
     @property
     def total_text(self) -> str:
-        return chat_total_text(self.total)
+        return chat_total_text(self.total, self.length)
 
 
 # --- Events (worker → Tk) ---------------------------------------------------------------------
@@ -242,6 +248,11 @@ class Done:
     chat_total: int
     steps: int
     kind: str | None = None
+    chat_length: int = 0
+
+    @property
+    def total_text(self) -> str:
+        return chat_total_text(self.chat_total, self.chat_length)
 
     @property
     def usage_text(self) -> str:
@@ -387,7 +398,7 @@ class ChatRun(threading.Thread):
     def _finish(self, status: str, message: str | None = None, kind: str | None = None) -> None:
         self.done = Done(status, message, self.usage,
                          sent_text(self.sent, selection=self.selection), self.chat.total,
-                         self.steps, kind)
+                         self.steps, kind, self.chat.length)
         self._post(self.done)
 
     # -- the run -------------------------------------------------------------------------------
@@ -475,7 +486,9 @@ class ChatRun(threading.Thread):
             self._step_text = []
             self.usage = self.usage + turn.usage
             chat.usage = chat.usage + turn.usage
-            chat.total += turn.usage.total
+            chat.total += turn.usage.counted
+            if turn.usage.reported:
+                chat.length = turn.usage.total_in
             if turn.stop == STOP_REFUSAL:
                 self._finish(STATUS_FAILED, errors.REFUSED.format(provider=self.provider.name),
                              "refusal")
@@ -530,8 +543,9 @@ class ChatRun(threading.Thread):
         return False
 
 
-__all__ = ["ACTIVITY", "ANSWER_MAX_CHARS", "Activity", "CHAT_TOTAL", "CardEvent", "Chat",
-           "ChatRun", "Done", "Event", "EventPump", "INTERNAL", "NOT_RUN_CUT", "NOT_RUN_LIMIT",
+__all__ = ["ACTIVITY", "ANSWER_MAX_CHARS", "Activity", "CHAT_LONG", "CHAT_TOTAL", "CardEvent",
+           "Chat", "ChatRun", "Done", "Event", "EventPump", "INTERNAL", "LONG_CHAT_TOKENS",
+           "NOT_RUN_CUT", "NOT_RUN_LIMIT",
            "NOT_RUN_STOPPED", "POLL_MAX_CHARS", "SENT", "STATUS_DONE", "STATUS_FAILED",
            "STATUS_STEP_LIMIT", "STATUS_STOPPED", "STOPPED_MARK", "SentUpdate", "TextDelta",
            "USAGE", "USAGE_NONE", "WORKING", "Waiting", "Working", "activity_text",

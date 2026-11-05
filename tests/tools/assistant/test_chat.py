@@ -14,6 +14,7 @@ from engine.tools.assistant.chat import (
     NOT_RUN_LIMIT, STATUS_DONE, STATUS_FAILED, STATUS_STEP_LIMIT, STATUS_STOPPED, Activity,
     CardEvent, Chat, ChatRun, Done, EventPump, SentUpdate, TextDelta, Waiting, Working,
     chat_total_text, sent_text, usage_text)
+from engine.tools.assistant.chat import CHAT_LONG
 from engine.tools.assistant.context import (
     CONTEXT_HEADER, NOT_CHECKED, SCENE_MAX_LINES, SUMMARY_HEADER, studio_context)
 from engine.tools.assistant.providers import ANTHROPIC, COMPATIBLE, errors
@@ -267,11 +268,15 @@ def test_ac50_usage_sums_steps_and_the_chat(tmp_path):
     done = drain(run)[-1]
     assert done.usage == Usage(200, 40, 100, 14, True)
     assert done.usage_text == "↑ 340 (100 cached) ↓ 14"
-    assert chat.total == done.chat_total == 354
+    # 2026-11-04: the chat counts a cache re-read a tenth (200 + 40 + 14 + 100 / 10).
+    assert chat.total == done.chat_total == 264
+    assert chat.length == done.chat_length == 170       # the latest step's input
     chat_run(game, made, "more", chat=chat).run()
-    assert chat.total == 354 + 177
-    assert chat.total_text == "This chat: 531 tokens"
+    assert chat.total == 264 + 132
+    assert chat.total_text == "This chat: 396 tokens"
     assert chat_total_text(1_234_567) == "This chat: 1,234,567 tokens"
+    assert chat_total_text(80_000, 30_000) == CHAT_LONG.format(n="80,000")
+    assert Usage(10, 0, 31, 2, True).counted == 16      # a re-read rounds up
     local, _ = provider(COMPATIBLE, reply(openai_stream("hi")), address="http://localhost:1/v1",
                         model="m")
     run = chat_run(game, local)

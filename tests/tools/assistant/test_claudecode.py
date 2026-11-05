@@ -18,6 +18,7 @@ def test_the_command_keeps_the_prompt_off_the_command_line():
     argv = cc.command("claude", "cfg.json", "sonnet", None)
     assert argv[:2] == ["claude", "-p"] and "--strict-mcp-config" in argv
     assert argv[argv.index("--tools") + 1] == "" and "--resume" not in argv
+    assert argv[argv.index("--setting-sources") + 1] == "user"     # not the game's CLAUDE.md
     assert argv[argv.index("--allowedTools") + 1] == "mcp__vn"
     assert cc.command("claude", "cfg.json", "sonnet", "abc")[-2:] == ["--resume", "abc"]
     assert not cc.unsafe(argv) and not cc.unsafe(["claude.cmd", *argv[1:]])
@@ -119,6 +120,9 @@ def test_a_run_streams_text_and_keeps_the_session(tmp_path):
 
     chat, made, events = _run(tmp_path, [
         {"type": "system", "subtype": "init", "session_id": "s1"},
+        {"type": "stream_event", "event": {"type": "message_start", "message": {"usage": {
+            "input_tokens": 10, "cache_read_input_tokens": 5,
+            "cache_creation_input_tokens": 0}}}},
         delta("Hello "), delta("there."),
         {"type": "result", "subtype": "success", "is_error": False, "result": "Hello there.",
          "session_id": "s1", "usage": {"input_tokens": 10, "cache_read_input_tokens": 5,
@@ -126,7 +130,8 @@ def test_a_run_streams_text_and_keeps_the_session(tmp_path):
     assert "".join(e.text for e in events if isinstance(e, TextDelta)) == "Hello there."
     done = events[-1]
     assert isinstance(done, Done) and done.status == "done" and done.usage.total == 18
-    assert chat.claude_session == "s1" and chat.total == 18
+    # A re-read from the cache counts a tenth; the step's start gives the chat's size.
+    assert chat.claude_session == "s1" and chat.total == 14 and chat.length == 15
     argv, kwargs = made[0]
     assert "--resume" not in argv and "ANTHROPIC_API_KEY" not in kwargs["env"]
     # The next Send resumes the session.

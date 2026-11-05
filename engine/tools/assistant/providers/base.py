@@ -124,6 +124,13 @@ class Usage:
     def total(self) -> int:
         return self.total_in + self.output
 
+    @property
+    def counted(self) -> int:
+        """What a chat's total and limit count: a re-read from the prompt cache counts a
+        tenth, as it is billed. Every step re-reads the whole chat, so counting re-reads in
+        full made a 31,000-token chat read as 510,000 and trip the limit (2026-11-04)."""
+        return self.input + self.cache_write + self.output + -(-self.cache_read // 10)
+
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(self.input + other.input, self.cache_write + other.cache_write,
                      self.cache_read + other.cache_read, self.output + other.output,

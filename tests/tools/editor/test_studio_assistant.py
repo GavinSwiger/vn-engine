@@ -223,7 +223,7 @@ def test_consent_first_then_the_answer_and_the_sent_line(studio, tmp_path, ai, m
     assert text.startswith("YOU\nWhat happens at the river?\nASSISTANT\nSent: reference, "
                            "summary, ")
     assert "The river is quiet." in text and "↑ 170 (50 cached) ↓ 7" in text
-    assert pane.footer.cget("text") == "This chat: 177 tokens"
+    assert pane.footer.cget("text") == "This chat: 132 tokens"
     assert pane.sent_line() == "" and pane.input_text() == ""
     assert ANTHROPIC_KEY not in text
     # Consent was recorded: the next Send doesn't ask.
