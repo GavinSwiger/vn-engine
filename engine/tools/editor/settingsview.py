@@ -736,20 +736,27 @@ class SettingsPane:
             self.scheme_pick = use or DEFAULT_SCHEME
         self.scheme_unknown, inner = self._note_box(body, ROLES["warning"])
         self.scheme_unknown_label = self._note_label(inner)
-        self.scheme_cards = SchemeCards(
-            body, scm.cards(), scale=self.scale, fonts=self.win.fonts,
-            selected=self.scheme_pick, in_use=use, on_select=self.select_scheme,
-            on_apply=self.apply_scheme)
-        self.scheme_cards.widget.pack(fill="x", pady=(px(8), 0))
-        self.scheme_apply = ttk.Button(body, text="",
+        # 2026-11-05: Apply and Import palette… above the cards (there are 28 of them).
+        buttons = self.scheme_buttons = ttk.Frame(body)
+        buttons.pack(anchor="w", pady=(px(4), 0))
+        self.scheme_apply = ttk.Button(buttons, text="",
                                        command=lambda: self.apply_scheme(self.scheme_pick))
-        self.scheme_apply.pack(anchor="w", pady=(px(12), 0))
+        self.scheme_apply.pack(side="left")
+        # 2026-11-05: a palette from Lospec, Coolors or an art program (``paletteimport``).
+        self.scheme_import = ttk.Button(buttons, text=scm.IMPORT, style="Secondary.TButton",
+                                        command=self.import_palette)
+        self.scheme_import.pack(side="left", padx=(px(8), 0))
         self.scheme_note, inner = self._note_box(body, THEME["info"])
         self._note_label(inner, scm.NOTE_HEADING, strong=True)
         self.scheme_note_body = self._note_label(inner)
         self.scheme_clear = ttk.Button(inner, text=scm.CLEAR, style="Secondary.TButton",
                                        command=self.clear_my_colors)
         self.scheme_clear.pack(anchor="w", pady=(px(6), px(2)))
+        self.scheme_cards = SchemeCards(
+            body, scm.cards(self.found), scale=self.scale, fonts=self.win.fonts,
+            selected=self.scheme_pick, in_use=use, on_select=self.select_scheme,
+            on_apply=self.apply_scheme)
+        self.scheme_cards.widget.pack(fill="x", pady=(px(12), 0))
         self._show_schemes()
 
     def _show_schemes(self) -> None:
@@ -760,20 +767,26 @@ class SettingsPane:
         use = scm.in_use(self.found)
         if self.scheme_pick is None:
             self.scheme_pick = use or DEFAULT_SCHEME
+        shown = scm.cards(self.found)
+        cards.set_cards(shown)
+        if not any(card.id == self.scheme_pick for card in shown):
+            self.scheme_pick = use or DEFAULT_SCHEME
         cards.set_state(self.scheme_pick, use)
+        name = next(card.name for card in shown if card.id == self.scheme_pick)
         self.scheme_apply.configure(
-            text=scm.APPLY.format(name=SCHEMES[self.scheme_pick].name),
+            text=scm.APPLY.format(name=name),
             state="disabled" if self.scheme_pick == use else "normal")
         unknown = scm.unknown_text(self.found)
         if unknown is not None:
             self.scheme_unknown_label.configure(text=unknown)
-            self.scheme_unknown.pack(fill="x", pady=(0, self._px(8)), before=cards.widget)
+            self.scheme_unknown.pack(fill="x", pady=(0, self._px(8)),
+                                     before=self.scheme_buttons)
         else:
             self.scheme_unknown.pack_forget()
         custom = scm.custom_colors(self.found)
         if custom:
             self.scheme_note_body.configure(text=scm.note_body(len(custom)))
-            self.scheme_note.pack(fill="x", pady=(self._px(16), 0))
+            self.scheme_note.pack(fill="x", pady=(self._px(12), 0), before=cards.widget)
         else:
             self.scheme_note.pack_forget()
 
@@ -796,7 +809,24 @@ class SettingsPane:
             self.refresh()
             return True
         field = sm.fields_by_path()[scm.PATH]
-        return self._apply(tomlpatch.plan_set(text, *scm.apply_change(id_)), field)
+        return self._apply(tomlpatch.plan_changes(text, scm.apply_changes(id_, self.found)),
+                           field)
+
+    def import_palette(self) -> None:
+        """Import palette…: the window; its Import writes ``[theme.scheme]`` as one undo
+        step and the page shows "Your palette" in use."""
+        from engine.tools.editor.paletteimport import open_palette_import
+        open_palette_import(self.root, self.write_palette)
+
+    def write_palette(self, roles: dict[str, str], name: str | None) -> bool:
+        text = self.config_text()
+        if text is None:
+            self.refresh()
+            return False
+        self.scheme_pick = scm.CUSTOM
+        field = sm.fields_by_path()[f"{scm.SCHEME_SECTION}.fill"]
+        return self._apply(tomlpatch.plan_changes(text, scm.import_changes(roles, name)),
+                           field)
 
     def clear_my_colors(self) -> bool:
         """Clear my colors: ask, then remove every color the note counts as one undo
@@ -1073,7 +1103,7 @@ class SettingsPane:
         """The config text a still is drawn from: on Color scheme, ``text`` with the picked
         scheme planned but not applied (F49 §4), else ``text``."""
         if self.page.key == sm.SCHEMES and self.scheme_pick is not None:
-            return scm.preview_text(text, self.scheme_pick)
+            return scm.preview_text(text, self.scheme_pick, self.found)
         return text
 
     def _cancel_preview(self) -> None:

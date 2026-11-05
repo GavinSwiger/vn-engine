@@ -271,7 +271,7 @@ text box's colors and frame change on the shown box at once and its text with th
 line; the quick menu takes the whole style at once. Error screens and F30's fake crash
 never use a look.
 
-**Color schemes (F49).** `[theme] preset = "<id>"` picks one of six built-in schemes,
+**Color schemes (F49).** `[theme] preset = "<id>"` picks one of 28 built-in schemes,
 which sets every mapped color token to its role's color (Studio: Game settings > Color
 scheme). Colors you set under `[theme]` still win: the scheme layer sits under the
 `[theme]` tokens in the lookup order above. A scheme sets colors only, never fonts, sizes,
@@ -280,6 +280,20 @@ opacities, frame images or sounds. A style may name its own scheme
 style is on, under the style's own tokens; `ui style off` returns to the main look.
 `preset = "sakura"` is the same as no preset. An unknown id gives one config warning
 (with a did-you-mean) and the engine colors show.
+
+**Your own scheme (2026-11-05).** `[theme.scheme]` sets any of the eleven role colors
+(`fill`, `text`, `border`, `accent`, `accent2`, `soft`, `focus`, `pressed`, `muted`,
+`track`, `toggle`) plus a `name` for Studio's card. Each role set replaces that role of the
+preset's scheme (Sakura's without a preset); the scheme's single-token extras are dropped
+once any role is replaced (`schemes.custom_colors`). Studio's Import palette writes all
+eleven from a palette (`engine/core/palette.py`: `.ase`, `.act`, `.gpl`, `.pal`, Paint.NET
+`.txt`, Lospec `.hex`, Coolors links, CSS colors). Roles are derived as theme builders do
+from seed colors: the lightest or darkest color is the background (moved until 7:1 text
+fits on it), the most colorful readable one the accent, the most contrasting the text, and
+the in-between fills are mixed from background and accent. Text, accents, muted text and
+tracks are then moved toward black or white until each W67 pair passes, with see-through
+fills checked over black and white. The 22 genre schemes after `groovy` were made the same
+way from five picked colors (`palette.complete_roles`), so they give no W67 warnings.
 
 | id | Name | fill | text | border | accent | accent2 | soft | focus | pressed | muted | track | toggle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|

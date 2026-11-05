@@ -193,7 +193,7 @@ STUDIO_MODULES = ("window", "fileactions", "checkwiring", "runwiring", "mapwirin
                   "dbcleanup",
                   "animpanel",
                   "dbmore", "dbgallery", "dbextras", "dbreplays", "dbachievements", "studiomenus", "editorkeys", "settingsview",
-                  "editormenu")
+                  "editormenu", "paletteimport")
 
 
 def patch_studio(monkeypatch, name: str, value) -> None:

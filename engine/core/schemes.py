@@ -5,7 +5,7 @@ line (or a ``[style.<name>.theme] preset``). A scheme is a few role colors (fill
 border, accent, …); ``ROLE_TOKENS`` says which theme color tokens each role sets. Config
 lays a scheme's colors *under* the author's own keys (``config._with_scheme``), Studio's
 Color scheme page draws its cards from ``SCHEMES``, and W67 names a scheme its colors came
-from (``app/ui_contrast``). A seventh scheme is one more row in ``SCHEMES`` (PR-F49-01).
+from (``app/ui_contrast``). A new scheme is one more row in ``SCHEMES`` (PR-F49-01).
 
 Every color token of ``ThemeConfig`` is in exactly one group (AC-F49-02):
 
@@ -79,6 +79,74 @@ SCHEMES: Final[Mapping[str, Scheme]] = MappingProxyType({s.id: s for s in (
     _scheme("groovy", "Groovy '70s",
             "#F3E6C8 #3B2416 #D08A1E #9E3A12 #2F6F6A #F2D49B #F2D49B #E8C07A #6E5848 #D9C9A8 "
             "#8A6A4A"),
+    # 2026-11-05: themes across genres, each from five picked colors (fill, text, accent,
+    # accent2, border) completed by ``palette.complete_roles``, so every one meets W67.
+    _scheme("neon_vice", "Neon Vice",
+            "#1A1033 #FFFFFF #7A3E9D #FF72B5 #2DE2E6 #351840 #511F4E #6C275B #AFABB8 #433B58 "
+            "#FFA3CF"),
+    _scheme("high_fantasy", "High Fantasy",
+            "#F4E8CC #1A1108 #C9A86A #1F4E8C #785707 #EDDCB5 #E6D09E #DEC587 #615749 #CDC1A9 "
+            "#1D395E"),
+    _scheme("grimdark", "Grimdark",
+            "#16130F #F9F8F6 #4A4036 #CC9384 #968C7C #271811 #381C13 #492115 #AAA8A5 #3F3C39 "
+            "#DCB6AC"),
+    _scheme("gothic", "Gothic Velvet",
+            "#140A16 #F0E9F4 #4B2550 #D47F93 #997AB8 #270C1A #390D1F #4C0F23 #A39BA6 #3C323E "
+            "#DEA4B5"),
+    _scheme("noir", "Black and White",
+            "#000000 #FFFFFF #6B6B6B #FFFFFF #BDBDBD #171717 #2E2E2E #454545 #A6A6A6 #2E2E2E "
+            "#FFFFFF"),
+    _scheme("paper", "Ink on Paper",
+            "#FFFFFF #000000 #9E9E9E #111111 #484848 #E2E2E2 #C6C6C6 #A9A9A9 #505050 #D1D1D1 "
+            "#0B0B0B"),
+    _scheme("blood_moon", "Blood Moon",
+            "#0E0505 #F8F0F0 #5C1515 #E9666D #FF8A3D #27090A #400C0F #5A1014 #A69E9E #382F2F "
+            "#EE969B"),
+    _scheme("cyberpunk", "Cyberpunk",
+            "#0B0F1A #FFFFFF #1F4E5F #FCEE0A #00E5FF #0A2935 #084251 #075C6C #AAABAF #373A43 "
+            "#FDF460"),
+    _scheme("rose_garden", "Rose Garden",
+            "#FFF7F3 #1D0F13 #E8B4BF #9C2148 #43683F #F8E4E4 #F0D1D6 #E9BDC7 #675B5C #D6CDCB "
+            "#701B35"),
+    _scheme("starship", "Starship Console",
+            "#0D1B2A #FFFFFF #274C77 #4CC9F0 #FB9DC8 #153042 #1C455A #245A71 #AAAFB4 #394450 "
+            "#8BDCF5"),
+    _scheme("brass", "Brass and Steam",
+            "#2A1E14 #FFFFFF #6B4E2E #DCB36E #9EC4C2 #3E2E1B #533E21 #674E28 #B4B0AD #50463E "
+            "#E8CEA1"),
+    _scheme("seaside", "Seaside",
+            "#F1F8F7 #040E11 #9FD3D0 #0A5D64 #864939 #D6E9E9 #BBDADC #9FCBCE #535B5D #C6CECE "
+            "#084147"),
+    _scheme("enchanted_forest", "Enchanted Forest",
+            "#0F1F17 #FFFFFF #2E5641 #DBB853 #85CBAD #1C3329 #2A483A #375C4C #ABB1AE #3A4741 "
+            "#E8D18F"),
+    _scheme("frost", "Frostbite",
+            "#EEF5FB #040B13 #B9D3EA #265791 #6248A0 #D7E5F3 #C0D4EA #A9C4E2 #52585F #C4CBD1 "
+            "#1A3C65"),
+    _scheme("harvest", "Harvest Moon",
+            "#FBF0DF #090503 #E2B77F #873E14 #505F20 #F2DDC7 #EACAB0 #E1B798 #5E5750 #CFC6B7 "
+            "#5B2A0E"),
+    _scheme("royal", "Royal Court",
+            "#101833 #FFFFFF #3A4A80 #E3B341 #9AB1EA #1F2949 #2E3B5E #3E4C74 #ABAEB8 #3B4258 "
+            "#EDCE84"),
+    _scheme("sepia", "Old Photograph",
+            "#EFE3CF #000000 #C4AE8C #684224 #475044 #E1D1BB #D3BFA7 #C5AD94 #544F48 #C4BAAA "
+            "#442B17"),
+    _scheme("cotton_candy", "Cotton Candy",
+            "#FFF5FB #0C080F #F5B8D8 #9B2B65 #235F8A #F8DEEC #F0C7DD #E9B0CE #5C565D #D3CAD1 "
+            "#691F47"),
+    _scheme("eldritch", "Eldritch",
+            "#0A1514 #FFFFFF #24413C #8BD450 #7BC6BE #192C1B #294322 #385A2A #A9ADAD #363F3E "
+            "#B4E38D"),
+    _scheme("witching_hour", "Witching Hour",
+            "#1B1028 #FFFFFF #4A2E6B #FF8C1A #BA8DFF #2C1C42 #3D275C #4E3375 #AFABB4 #443B4F "
+            "#FFB46A"),
+    _scheme("wasteland", "Wasteland",
+            "#26231A #FFFFFF #55503A #E4A86B #AEB881 #3B2E1C #513A1E #664520 #B3B2AF #4D4B43 "
+            "#EDC69F"),
+    _scheme("cozy_cafe", "Cozy Café",
+            "#F7EFE5 #000000 #D8C0A8 #7E432A #445C50 #EADBCF #DDC7B9 #D0B4A3 #565450 #CBC4BC "
+            "#522C1B"),
 )})
 
 DEFAULT_SCHEME: Final = "sakura"           # the look with no preset (Studio's "In use")
@@ -156,5 +224,17 @@ def scheme_colors(id_: str) -> Mapping[str, str]:
     return MappingProxyType(colors)
 
 
-__all__ = ["DEFAULT_SCHEME", "FOLLOWING_TOKENS", "NEUTRAL_TOKENS", "ROLES", "ROLE_TOKENS",
+def custom_colors(base_id: str, roles: Mapping[str, str]) -> Mapping[str, str]:
+    """2026-11-05 (``[theme.scheme]``): the token colors of scheme ``base_id`` with
+    ``roles`` (role → ``"#RRGGBB"``) in place of its own. A scheme's ``extra`` colors are
+    tuned to its roles, so they are left out once any role is replaced."""
+    found = SCHEMES[base_id]
+    if not roles:
+        return scheme_colors(base_id)
+    merged = {**found.colors, **{r: v for r, v in roles.items() if r in found.colors}}
+    return MappingProxyType({path: merged[role] for role, paths in ROLE_TOKENS.items()
+                             for path in paths})
+
+
+__all__ = ["DEFAULT_SCHEME", "custom_colors", "FOLLOWING_TOKENS", "NEUTRAL_TOKENS", "ROLES", "ROLE_TOKENS",
            "SCHEMES", "Scheme", "scheme", "scheme_colors", "scheme_ids"]

@@ -22,7 +22,7 @@ from engine.tools.editor.schememodel import IN_USE, Card
 from engine.tools.editor.theme import ROLES, THEME
 
 # Sizes (px at 100 %, times the window's scale; SPEC §4).
-CARD_WIDTH = 168
+CARD_WIDTH = 150                # 2026-11-05: two a row in a narrow pane
 CARD_HEIGHT = 80
 GAP = 8
 SWATCH_WIDTH = 24
@@ -157,6 +157,14 @@ class SchemeCards:
                                text=IN_USE, tags=(tag, "in_use"))
 
     # --- Input --------------------------------------------------------------------------------
+
+    def set_cards(self, cards: Sequence[Card]) -> None:
+        """New cards (an imported palette's card came or went, or changed): redrawn."""
+        cards = tuple(cards)
+        if cards != self.cards:
+            self.cards = cards
+            self._fit(self.canvas.winfo_width())
+            self.draw()
 
     def set_state(self, selected: str | None, in_use: str | None) -> None:
         """Show ``selected`` and ``in_use`` (no callbacks)."""

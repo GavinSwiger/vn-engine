@@ -44,11 +44,15 @@ says why, for example a value the game refuses.
 
 ## Color scheme
 
-The **Color scheme** page shows the six built-in schemes as cards: Sakura (the engine's
-own colors), Pocket LCD, Amber Terminal, Synthwave Sunset, Vaporwave Dream and Groovy
-'70s. Each card shows four of its colors (fill, border, accent and text), and the scheme
-your game uses says "In use"; with no scheme set, that is Sakura. A scheme changes colors
-only: fonts, pictures and sounds stay as they are.
+The **Color scheme** page shows 28 built-in schemes as cards: Sakura (the engine's own
+colors), Pocket LCD, Amber Terminal, Synthwave Sunset, Vaporwave Dream, Groovy '70s, and
+themes for every kind of story: Neon Vice, High Fantasy, Grimdark, Gothic Velvet, Black and
+White, Ink on Paper, Blood Moon, Cyberpunk, Rose Garden, Starship Console, Brass and Steam,
+Seaside, Enchanted Forest, Frostbite, Harvest Moon, Royal Court, Old Photograph, Cotton
+Candy, Eldritch, Witching Hour, Wasteland and Cozy Café. Each card shows four of its colors
+(fill, border, accent and text), and the scheme your game uses says "In use"; with no
+scheme set, that is Sakura. A scheme changes colors only: fonts, pictures and sounds stay
+as they are.
 
 - **Click a card** (or move to it with the arrow keys) to see it. Half a second later the
   preview shows the text box in that scheme, with your other unsaved changes. Nothing is
@@ -61,6 +65,15 @@ only: fonts, pictures and sounds stay as they are.
   (after asking) so the scheme shows everywhere. Ctrl+Z brings them back.
 - If `config.toml` names a scheme this version doesn't have, the page says so and no card
   is in use; the default colors show until you apply one.
+- **Import palette…** turns a palette you found elsewhere into your game's scheme. Paste
+  hex colors or a Coolors link, or **Open file…** for a palette saved by Lospec, Coolors,
+  Adobe Color or an art program (`.hex`, `.gpl`, `.pal`, `.ase`, `.act`, `.txt`). Studio
+  picks the background, text and highlight colors from it, and adjusts them where needed
+  so text is easy to read. **Background** chooses Automatic, Light or Dark. The window
+  shows the result on a text box and choices; **Import** writes the colors under
+  `[theme.scheme]` as one Ctrl+Z step, and a **Your palette** card (named after the palette)
+  is first and in use. You can change any of its colors on All settings. Applying a
+  built-in card removes the imported palette.
 
 A style can have its own scheme while the story has it on: on **Styles & playthrough
 looks**, each style's first field is **Color scheme** ("not set" keeps the main look's

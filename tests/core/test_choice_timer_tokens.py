@@ -47,7 +47,7 @@ def test_ac23_fill_on_track_meets_3_to_1_in_every_scheme():
         colors = scheme_colors(id_)
         ratios[id_] = contrast_ratio(_rgb(colors["choice.marker.fill_color"]),
                                      _rgb(colors["choice.focused.fill_color"]))
-    assert len(ratios) == 6
+    assert len(ratios) == len(SCHEMES)
     assert all(ratio >= 3.0 for ratio in ratios.values()), ratios
 
 

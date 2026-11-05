@@ -10,6 +10,7 @@ import pytest
 
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import files, helperhub
+from engine.core.schemes import SCHEMES
 from engine.tools.editor import schememodel as scm
 
 tk = pytest.importorskip("tkinter")
@@ -122,8 +123,7 @@ def test_ac_f49_11_cards_select_preview_and_apply_one_undo_step(studio, tmp_path
     assert pane.title_label.cget("text") == "Color scheme"
     cards = pane.scheme_cards
     assert [name for _id, name in drawn(cards, "name")] == [
-        "Sakura", "Pocket LCD", "Amber Terminal", "Synthwave Sunset", "Vaporwave Dream",
-        "Groovy '70s"]
+        s.name for s in SCHEMES.values()]                       # 2026-11-05: 28 schemes
     assert drawn(cards, "in_use") == [("sakura", "In use")]          # no preset: Sakura
     assert str(pane.scheme_apply.cget("state")) == "disabled"        # Sakura is in use
     assert pane.scheme_note.winfo_manager() == "" and pane.scheme_unknown.winfo_manager() == ""
@@ -229,3 +229,61 @@ def test_ac_f49_12_custom_colors_note_clear_and_unknown_id(studio, tmp_path, hel
     assert drawn(pane.scheme_cards, "in_use") == []
     assert str(pane.scheme_apply.cget("state")) == "normal"          # Apply Sakura fixes it
     assert settingsview.INTRO["schemes"] == scm.INTRO
+
+
+def test_import_palette_writes_your_palette_and_a_built_in_replaces_it(studio, tmp_path,
+                                                                       helper, monkeypatch):
+    """2026-11-05: Import palette… reads a pasted palette or a file, shows it on a sample,
+    and writes ``[theme.scheme]`` as one undo step; a built-in card then removes it."""
+    from engine.core.palette import derive_roles
+    from engine.tools.editor import paletteimport as pi
+    from tests.tools.editor.conftest import patch_studio
+    patch_studio(monkeypatch, "PALETTE_MODAL", False)
+    game = sample_game(tmp_path)
+    ed = studio(game, mapped=True)
+    pane = open_schemes(ed)
+    record = ed.win.files[CONFIG_REF]
+    original = config_text(ed)
+    assert pane.scheme_import.cget("text") == "Import palette…"
+
+    dialog = pi.open_palette_import(ed.root, pane.write_palette)
+    assert dialog.status.cget("text") == pi.EMPTY and dialog.import_() is False
+    dialog.set_text("nothing here")
+    assert "No colors found" in dialog.status.cget("text")
+    assert dialog.buttons[0].instate(["disabled"])
+    # A file: its colors fill the box and its name the Name field.
+    gpl = tmp_path / "dusk-harbor.gpl"
+    gpl.write_text("GIMP Palette\nName: Dusk Harbor\n38 70 83\n42 157 143\n233 196 106\n"
+                   "244 162 97\n231 111 81\n", encoding="utf-8")
+    monkeypatch.setattr(pi, "ask_palette_file", lambda _parent: gpl)
+    dialog.open_file()
+    five = ("#264653", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51")
+    assert dialog.colors == five and dialog.name.get() == "Dusk Harbor"
+    assert dialog.status.cget("text") == pi.FOUND.format(n=5)
+    assert dialog.canvas.find_all()                                   # the sample is drawn
+    dialog.way.set("Light")
+    dialog.update()
+    assert dialog.roles == derive_roles(five, False).roles
+    assert dialog.import_() is True and not dialog.window.winfo_exists()
+    ed.root.update()
+
+    mine = config_text(ed)
+    assert mine.startswith(original) and '[theme.scheme]\nname = "Dusk Harbor"\n' in mine
+    assert f'accent = "{derive_roles(five, False).roles["accent"]}"' in mine
+    cards = pane.scheme_cards
+    assert cards.cards[0].id == scm.CUSTOM and cards.cards[0].name == "Dusk Harbor"
+    assert drawn(cards, "in_use") == [(scm.CUSTOM, "In use")]
+    assert str(pane.scheme_apply.cget("state")) == "disabled"
+    # A built-in removes the palette (it would hide the scheme), as one undo step.
+    pane.scheme_cards.select("gothic")
+    pane.scheme_apply.invoke()
+    ed.root.update()
+    gothic = config_text(ed)
+    assert 'preset = "gothic"' in gothic and "accent =" not in gothic
+    assert pane.scheme_cards.cards[0].id == "sakura"
+    record.widget.edit_undo()
+    ed.root.update()
+    assert config_text(ed) == mine
+    record.widget.edit_undo()
+    ed.root.update()
+    assert config_text(ed) == original

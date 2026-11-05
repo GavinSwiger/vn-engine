@@ -55,7 +55,8 @@ def theme_leaves(cls: type = ThemeConfig, prefix: str = "") -> dict[str, datacla
 # --- AC-F49-01 — the registry --------------------------------------------------------------------
 
 def test_ac_f49_01_registry_holds_the_six_schemes_exactly():
-    assert [row[0] for row in ROWS] == list(SCHEMES)
+    # F49's six first, exactly; 2026-11-05's genre schemes after (``test_palette``).
+    assert [row[0] for row in ROWS] == list(SCHEMES)[:6]
     assert len(ROLES) == 11
     for id_, name, *colors in ROWS:
         found = scheme(id_)
@@ -78,7 +79,8 @@ def test_ac_f49_01_registry_holds_the_six_schemes_exactly():
     # Studio's choice labels come from the registry.
     names = SchemeName()
     assert names.options == tuple(SCHEMES) and dict(names.labels) == {
-        row[0]: row[1] for row in ROWS}
+        id_: found.name for id_, found in SCHEMES.items()}
+    assert all(dict(names.labels)[row[0]] == row[1] for row in ROWS)
     # Pure data: the registry imports nothing from the engine.
     tree = ast.parse(Path(schemes.__file__).read_text(encoding="utf-8"))
     imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import)
@@ -167,7 +169,7 @@ def test_ac_f49_05_theme_preset_sets_the_mapped_tokens(load):
 
 # --- AC-F49-06 — an unknown or wrong preset ------------------------------------------------------
 
-SCHEME_LIST = '"sakura", "pocket", "amber", "synthwave", "vaporwave", "groovy"'
+SCHEME_LIST = ", ".join(f'"{id_}"' for id_ in SCHEMES)
 
 
 @pytest.mark.parametrize("label, prefix", [("[theme] preset", "[theme]\n\n"),

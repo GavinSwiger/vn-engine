@@ -11,10 +11,12 @@ from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 
 def test_ac_f49_09_cards_in_use_custom_colors_clear_and_preview_text():
     shown = scm.cards()
-    assert [c.id for c in shown] == ["sakura", "pocket", "amber", "synthwave", "vaporwave",
-                                     "groovy"]
-    assert [c.name for c in shown] == ["Sakura", "Pocket LCD", "Amber Terminal",
-                                       "Synthwave Sunset", "Vaporwave Dream", "Groovy '70s"]
+    assert [c.id for c in shown][:6] == ["sakura", "pocket", "amber", "synthwave",
+                                         "vaporwave", "groovy"]
+    assert [c.name for c in shown][:6] == ["Sakura", "Pocket LCD", "Amber Terminal",
+                                           "Synthwave Sunset", "Vaporwave Dream",
+                                           "Groovy '70s"]
+    assert [c.id for c in shown] == list(SCHEMES)              # 2026-11-05: 28 schemes
     assert shown[1].swatches == ("#9BBC0F", "#306230", "#0F380F", "#0F380F")
     for card in shown:
         colors = SCHEMES[card.id].colors

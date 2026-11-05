@@ -542,7 +542,8 @@ def style_ttk(root: object, fonts: dict[str, object] | None = None,
                                 ("readonly", field)],
               selectforeground=[("readonly", "focus", t["list.activeSelectionForeground"]),
                                 ("readonly", t["input.foreground"])])
-    for name, back in (("TCheckbutton", bg), ("Dialog.TCheckbutton", dialog)):
+    for name, back in (("TCheckbutton", bg), ("Dialog.TCheckbutton", dialog),
+                       ("Dialog.TRadiobutton", dialog)):          # Import palette
         style.configure(name, background=back, foreground=fg, indicatorbackground=field,
                         indicatorforeground=t["checkbox.foreground"],
                         upperbordercolor=edge, lowerbordercolor=edge,

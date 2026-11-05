@@ -1362,6 +1362,49 @@ def _no_plugin_tables() -> Mapping[str, RawPluginTable]:
 SCHEME_DOC = ("a built-in color scheme for every box, menu and button; colors you set "
               "yourself still win")
 
+# 2026-11-05: ``[theme.scheme]``, a scheme's role colors (``schemes.ROLES``) written by
+# Studio's Import palette or by hand. Each one set replaces that role of ``preset``'s scheme
+# (Sakura when there is none); ``config._with_scheme`` lays the result in, so the game
+# itself never reads this table.
+SCHEME_ROLE_DOCS = {
+    "fill": "the scheme's background: text box, menus, buttons",
+    "text": "the scheme's text color",
+    "border": "the scheme's borders and dividers",
+    "accent": "the scheme's main highlight: names, headings, markers, sliders",
+    "accent2": "the scheme's second highlight: the focus outline",
+    "soft": "the scheme's lightly tinted fill, behind the speaker's name",
+    "focus": "the scheme's fill for a focused button or choice",
+    "pressed": "the scheme's fill for a pressed button",
+    "muted": "the scheme's quiet text: locked choices, disabled buttons",
+    "track": "the scheme's empty scrollbar track",
+    "toggle": "the scheme's toggle and slider tracks",
+}
+
+
+def _role(role: str) -> Any:
+    return field(default=None, metadata=spec(HexColor(), SCHEME_ROLE_DOCS[role]))
+
+
+@dataclass(frozen=True)
+class SchemeRolesTheme:
+    """``[theme.scheme]``: one color per scheme role (``SCHEME_ROLE_DOCS``), and the
+    palette's ``name`` for Studio's card."""
+    name: str | None = field(default=None, metadata=spec(
+        OneLine(60, why="the palette's name on Studio's Color scheme page"),
+        "the palette's name, shown on Studio's Color scheme page"))
+    fill: RGB | None = _role("fill")
+    text: RGB | None = _role("text")
+    border: RGB | None = _role("border")
+    accent: RGB | None = _role("accent")
+    accent2: RGB | None = _role("accent2")
+    soft: RGB | None = _role("soft")
+    focus: RGB | None = _role("focus")
+    pressed: RGB | None = _role("pressed")
+    muted: RGB | None = _role("muted")
+    track: RGB | None = _role("track")
+    toggle: RGB | None = _role("toggle")
+
+
 UI_THEME_AREAS =("ui", "panel", "button", "toggle", "slider", "list", "title", "menu",
                   "quick_menu", "confirm")
 # F11's two areas (F11 03-ui "Theme tokens").
@@ -1373,6 +1416,8 @@ class ThemeConfig:
     """``[theme.<area>]``: one ``Table`` field per area, after F49's ``preset`` (the one
     key that isn't an area: walkers look areas up by name, never by position)."""
     preset: str | None = field(default=None, metadata=spec(SchemeName(), SCHEME_DOC))  # F49
+    scheme: SchemeRolesTheme = field(default_factory=SchemeRolesTheme, metadata=spec(
+        Table(SchemeRolesTheme), "your own color scheme: one color per role, over preset's"))
     stage: StageTheme = field(default_factory=StageTheme, metadata=spec(Table(StageTheme)))
     textbox: TextboxTheme = field(default_factory=TextboxTheme,
                                   metadata=spec(Table(TextboxTheme)))

@@ -64,7 +64,7 @@ from engine.core.errors import (
 )
 from engine.core.paths import GamePaths
 from engine.core.redact import echo, escape_controls, truncate
-from engine.core.schemes import SCHEMES, scheme_colors
+from engine.core.schemes import DEFAULT_SCHEME, ROLES, SCHEMES, custom_colors, scheme_colors
 
 # --- Messages (§7.2.1, §7.2.2) -----------------------------------------------------------
 
@@ -262,19 +262,36 @@ def _with_scheme(doc: dict, walk: "_Walk") -> dict:
     the author didn't set, as raw ``"#RRGGBB"`` text the walk then checks as usual; a path
     that meets a non-table is skipped (the walk reports that value). An unknown id warns
     once and is dropped from the copy, so the engine colors show. A value that isn't text
-    is left for the walk's usual ``Choice`` error. ``doc`` itself is never changed."""
+    is left for the walk's usual ``Choice`` error. ``doc`` itself is never changed.
+    2026-11-05: the role colors of ``[theme.scheme]`` replace those of the preset's scheme
+    (Sakura with no preset), as ``schemes.custom_colors``; the table stays for the walk."""
     theme = doc.get("theme")
-    if not isinstance(theme, dict) or "preset" not in theme:
+    if not isinstance(theme, dict) or ("preset" not in theme and "scheme" not in theme):
         return doc
-    preset = _scheme_id(theme["preset"], walk, ("theme", "preset"))
-    if preset is _NOT_TEXT:
+    preset: object = DEFAULT_SCHEME
+    if "preset" in theme:
+        preset = _scheme_id(theme["preset"], walk, ("theme", "preset"))
+    roles = _scheme_roles(theme.get("scheme"))
+    if preset is _NOT_TEXT and not roles:
         return doc
     out = dict(doc)
+    table = theme
     if preset is None:
-        out["theme"] = {key: value for key, value in theme.items() if key != "preset"}
-    else:
-        out["theme"] = _merged_under(theme, scheme_colors(preset).items())
+        table = {key: value for key, value in theme.items() if key != "preset"}
+    if isinstance(preset, str) or roles:
+        base = preset if isinstance(preset, str) else DEFAULT_SCHEME
+        table = _merged_under(table, custom_colors(base, roles).items())
+    out["theme"] = table
     return out
+
+
+def _scheme_roles(table: object) -> dict[str, str]:
+    """``[theme.scheme]``'s role colors written right (role → ``"#RRGGBB"``); a wrong one is
+    left out here and reported by the walk."""
+    if not isinstance(table, dict):
+        return {}
+    return {role: value for role, value in table.items() if role in ROLES
+            and isinstance(value, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", value)}
 
 
 _NOT_TEXT = object()
