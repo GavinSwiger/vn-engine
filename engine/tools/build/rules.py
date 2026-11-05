@@ -12,6 +12,7 @@ or None (ships). Rows, first match wins:
    trailing dot or space, ``<>:"/\\|?*``, a control character) → ``LEFT_OUT_BAD_NAME``.
 3. Top level, casefold: ``logs``, ``saves``, ``persistent``, ``settings`` →
    ``LEFT_OUT_TESTDATA``; ``characters`` → ``LEFT_OUT_CHARACTERS`` (``files/`` ships).
+   ``AGENTS.md`` and ``CLAUDE.md`` (casefold; new games have them) → ``LEFT_OUT_AGENT``.
 4. Any depth: a name starting with ``.`` (``.studio`` among them) → ``LEFT_OUT_HIDDEN``;
    ``__pycache__``, ``Thumbs.db``, ``desktop.ini`` (casefold) → ``LEFT_OUT_SYSTEM``.
 5. Under ``minigames/``, a file that isn't ``.py``: compiled Python (``.pyc``, ``.pyo``,
@@ -39,6 +40,7 @@ __all__ = ["ENTRY_DIR", "ENTRY_FILE", "ENTRY_LINK", "ENTRY_SPECIAL", "LeftOut", 
 _RESERVED = frozenset(name.casefold() for name in RESERVED_DIRNAMES)
 _TEST_DATA = frozenset(name.casefold() for name in WRITE_ROOT_DIRNAMES) - _RESERVED
 _SYSTEM_NAMES = frozenset({"__pycache__", "thumbs.db", "desktop.ini"})
+_AGENT_NOTES = frozenset({"agents.md", "claude.md"})       # top level: for AI apps
 _UNSAFE_CHARS = frozenset('<>:"/\\|?*')
 _MINIGAMES = "minigames"
 _PYTHON_SUFFIX = ".py"
@@ -98,6 +100,8 @@ def classify(parts: tuple[str, ...], kind: int) -> LeftOut | None:
         return LeftOut(ref, texts.LEFT_OUT_TESTDATA)
     if len(parts) == 1 and folded in _RESERVED:
         return LeftOut(ref, texts.LEFT_OUT_CHARACTERS)
+    if len(parts) == 1 and kind == ENTRY_FILE and folded in _AGENT_NOTES:
+        return LeftOut(ref, texts.LEFT_OUT_AGENT)
     if name.startswith("."):
         return LeftOut(ref, texts.LEFT_OUT_HIDDEN)
     if folded in _SYSTEM_NAMES:

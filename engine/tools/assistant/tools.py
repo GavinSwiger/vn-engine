@@ -33,7 +33,8 @@ from typing import Final, Protocol
 from engine.script.assetgroups import ASSET_GROUPS, CONFIG_REF
 from engine.tools.assistant import edits
 from engine.tools.assistant.reference import (
-    build_reference, doc_section, doc_topic_names, doc_topics)
+    GUIDE_NAMES, GUIDES, build_reference, doc_index, doc_section, doc_topic_names, doc_topics,
+    guide_file)
 from engine.tools.assistant.refs import (
     RefTable, ToolError, check_keys, flag_arg, int_arg, one_line, select, shown_value,
     text_arg)
@@ -44,7 +45,8 @@ from engine.tools.assistant.textout import (
 from engine.tools.assistant.workspace import CheckRun, Workspace
 from engine.tools.editor import declarations as dec
 from engine.tools.editor.cleanup import KINDS as LINT_KINDS
-from engine.tools.editor.config_help import key_help
+from engine.core.config_schema import Table, config_fields, section_class
+from engine.tools.editor.config_help import key_help, section_help, section_paths
 from engine.tools.editor.scenes import chunks
 
 log = logging.getLogger("vn.assistant")
@@ -136,7 +138,20 @@ TOOL_SPECS: Final[tuple[dict, ...]] = (
           _schema({"kind": _REF, "name": _REF}, ("kind", "name")), _READ),
     _spec("game_settings",
           "The config.toml keys the game sets, each with its value, default and meaning; "
-          "section picks one section.", _schema({"section": _REF}), _READ),
+          "section picks one section. settings_reference lists the ones it doesn't set.",
+          _schema({"section": _REF}), _READ),
+    _spec("settings_reference",
+          "Every setting the engine has (config.toml), with what it takes, its default "
+          "and meaning, and the game's value when set. With nothing: the sections. "
+          "section: that section's keys. search: keys whose name or meaning holds those "
+          "words (like \"text speed\").",
+          _schema({"section": _REF,
+                   "search": {"type": "string", "maxLength": SEARCH_TEXT_MAX_CHARS}}), _READ),
+    _spec("engine_docs",
+          "The engine's guides beyond the script language: game settings, screens and "
+          "UI, minigames, meta files, the Database, the story map, building the game. "
+          "With nothing: the guides; guide: its topics; guide and topic: that section.",
+          _schema({"guide": _REF, "topic": _REF}), _READ),
     _spec("run_check",
           "Check the whole game as Studio does: problems with file and line, and things "
           "nothing uses.", _schema(), _READ),
@@ -152,9 +167,22 @@ TOOL_SPECS: Final[tuple[dict, ...]] = (
                                                  "new_text": {"type": "string"}},
                                                 ("file", "old_text", "new_text"))}},
                   ("summary", "changes")), _READ),
+    _spec("propose_settings",
+          "Propose changes to the game's settings (config.toml) by section and key, never "
+          "as text: each change sets one key to a value, or to null for its default. "
+          "settings_reference lists every setting. A key that isn't a setting or a value "
+          "it doesn't take is refused with what it accepts. Returns the diff and the "
+          "problems it adds or fixes. Nothing is written.",
+          _schema({"summary": {"type": "string", "maxLength": edits.SUMMARY_MAX_CHARS},
+                   "changes": {"type": "array", "minItems": 1,
+                               "maxItems": edits.SETTINGS_MAX,
+                               "items": _schema({"section": _REF, "key": _REF,
+                                                 "value": {}},
+                                                ("section", "key", "value"))}},
+                  ("summary", "changes")), _READ),
     _spec("apply_edit",
-          "Write a proposed change to disk, by the id propose_edit gave, if the files are "
-          "unchanged since. Each id works once.",
+          "Write a proposed change to disk, by the id propose_edit or propose_settings "
+          "gave, if the files are unchanged since. Each id works once.",
           _schema({"id": {"type": "string", "maxLength": 64}}, ("id",)), _WRITE),
     _spec("undo_apply",
           "Undo the last applied change, while its files still hold exactly what it "
@@ -253,8 +281,11 @@ class ToolBox:
             "names": self._names,
             "lookup": self._lookup,
             "game_settings": self._game_settings,
+            "settings_reference": self._settings_reference,
+            "engine_docs": self._engine_docs,
             "run_check": self._run_check,
             "propose_edit": self._propose_edit,
+            "propose_settings": self._propose_settings,
             "apply_edit": self._apply_edit,
             "undo_apply": self._undo_apply,
         }
@@ -614,6 +645,95 @@ class ToolBox:
             row += f" (default {one_line(default)})"
         return row + f": {one_line(doc.summary)}"
 
+    def _settings_reference(self, args: object) -> ToolText:
+        """Every ``config_schema`` setting (section list, one section, or a word search)."""
+        args = check_keys(args, (), ("section", "search"))
+        sections = [path for path in section_paths() if section_class(path) is not None]
+        out = TextOut()
+        out.record_config()
+        if "section" not in args and "search" not in args:
+            out.line(f"Sections ({len(sections)}); pass section for its keys, or search:")
+            out.rows((self._section_row(path) for path in sections), len(sections))
+            return out.result()
+        data = self._config(self.ws.table())
+        if "section" in args:
+            wanted = select(args["section"], frozenset(sections), listing=sections,
+                            noun="Sections")
+            rows = [self._key_row(wanted, key, data) for key in self._section_keys(wanted)]
+            doc = section_help(wanted)
+            out.line(f"[{wanted}]: {one_line(doc.summary) if doc else ''}")
+            out.rows(rows, len(rows))
+            return out.result()
+        words = text_arg(args, "search", limit=SEARCH_TEXT_MAX_CHARS).casefold().split()
+        if not words:
+            raise ToolError("search needs a word to look for.")
+        found = []
+        for path in sections:
+            about = section_help(path)
+            for key in self._section_keys(path):
+                doc = key_help(path, key)
+                hay = (f"{path} {key} {doc.summary if doc else ''} "
+                       f"{about.summary if about else ''}").casefold().replace("_", " ")
+                if all(word.replace("_", " ") in hay for word in words):
+                    found.append(self._key_row(path, key, data))
+        if not found:
+            out.line("No setting matches those words. Call with nothing for the sections.")
+            return out.result()
+        out.line(f"Settings that match ({len(found):,}):")
+        out.rows(found, NAMES_MAX, len(found))
+        return out.result()
+
+    @staticmethod
+    def _section_keys(path: str) -> list[str]:
+        cls = section_class(path)
+        return [key for key, f in config_fields(cls).items()
+                if not isinstance(f.metadata["validator"], Table)] if cls is not None else []
+
+    def _section_row(self, path: str) -> str:
+        doc = section_help(path)
+        keys = len(self._section_keys(path))
+        return f"[{path}] ({keys} keys): {one_line(doc.summary) if doc else ''}"
+
+    @staticmethod
+    def _key_row(path: str, key: str, data: Mapping[str, object]) -> str:
+        doc = key_help(path, key)
+        if doc is None:
+            return f"[{path}] {key}"
+        row = f"[{path}] {key}: {one_line(doc.summary)}. {one_line(doc.syntax)}"
+        marker = "# default"
+        if doc.example.endswith(marker) and " = " in doc.example:
+            default = doc.example[:-len(marker)].split(" = ", 1)[1].strip()
+            row += f"; default {one_line(default)}"
+        here: object = data
+        for part in [*path.split("."), key]:
+            here = here.get(part) if isinstance(here, Mapping) else None
+        if here is not None and not isinstance(here, Mapping):
+            row += f"; this game: {one_line(_shown(here))}"
+        return row
+
+    def _engine_docs(self, args: object) -> ToolText:
+        """The guides (``reference.GUIDES``), one guide's topics, or one section."""
+        args = check_keys(args, (), ("guide", "topic"))
+        out = TextOut()
+        if "guide" not in args:
+            if "topic" in args:
+                raise ToolError("Pass guide with topic.")
+            out.line("Guides (pass guide for its topics):")
+            out.rows((f"{name}: {about}" for name, _file, about in GUIDES), len(GUIDES))
+            return out.result()
+        guide = select(args["guide"], frozenset(GUIDE_NAMES), listing=GUIDE_NAMES,
+                       noun="Guides")
+        index = doc_index(guide_file(guide) or "")
+        if not index.topics:
+            return ToolText.error(f"The {guide} guide isn't in this copy of vn-engine.")
+        if "topic" not in args:
+            out.line(f"Topics in {guide} (pass topic for one):")
+            out.rows(index.topics, len(index.topics))
+            return out.result()
+        topic = select(args["topic"], index.names(), listing=index.topics, noun="Topics")
+        out.line(index.section(topic) or "")
+        return out.result()
+
     def _run_check(self, args: object) -> ToolText:
         check_keys(args)
         run = self.ws.base_check()
@@ -648,7 +768,13 @@ class ToolBox:
     # -- edits -------------------------------------------------------------------------------
 
     def _propose_edit(self, args: object) -> ToolText:
-        proposal = edits.propose(self.ws, args)
+        return self._offer(edits.propose(self.ws, args))
+
+    def _propose_settings(self, args: object) -> ToolText:
+        return self._offer(edits.propose_settings(self.ws, args))
+
+    def _offer(self, proposal: edits.Proposal) -> ToolText:
+        """A proposal shown as the mode does: a card (pane), an id (MCP), or read-only."""
         if self.on_proposal is not None:
             self.on_proposal(proposal)
         if self.mode == MODE_PANE:

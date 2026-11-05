@@ -24,6 +24,11 @@ verified, parsed, and checked as an overlay against the same files without the c
   (`` 14 ``/``-15 ``/``+15 ``, SEC-F48-09 (a)); ``problem_delta`` compares the two checks by
   (code, file, line mapped through the edits, text); ``rebase`` moves a plan onto a changed
   text when every touched scene kept its digest (the pane's Apply).
+- ``propose_settings`` (2026-11-04) is the same flow for ``config.toml``: the model names
+  ``(section, key, value)`` settings, never text; ``tomlpatch.plan_changes`` (Game settings'
+  own writer) plans the lines, refusing a key that isn't a setting or a value its validator
+  refuses, and ``tomlpatch.verify`` is the gate again at Apply (``verify_file``). The file
+  must be unchanged since the proposal: a settings plan never rebases.
 - ``Proposal`` and ``ProposalFile`` hold plans, SHAs, guards and the numbered diff, never a
   file's text. ``render`` is the tool result (MCP adds the id; the pane says a card is shown).
 
@@ -51,8 +56,10 @@ from engine.tools.assistant.textout import (
 from engine.tools.assistant.workspace import Workspace, text_sha
 from engine.tools.editor.checker import CheckItem
 from engine.tools.editor.scenes import SceneIndex, chunks, digest
+from engine.tools.editor.tomlpatch import TomlPlan, plan_changes
+from engine.tools.editor.tomlpatch import verify as settings_fit
 from engine.tools.editor.scriptedit import (
-    UNSAFE, FilePlan, LineEdit, Plan, apply_lines, verify)
+    UNSAFE, FilePlan, LineEdit, Plan, Refuse, apply_lines, verify)
 
 # --- Bounds (01 PR-F48-08; SEC-F48-10) ------------------------------------------------------
 
@@ -60,6 +67,7 @@ SUMMARY_MAX_CHARS: Final = 200
 CHANGES_MAX: Final = 64
 CHANGE_TEXT_MAX_BYTES: Final = 64 * 1024
 FILES_MAX: Final = 8
+SETTINGS_MAX: Final = 32                # settings in one propose_settings
 NEW_TEXT_MAX_BYTES: Final = 64 * 1024
 CONTEXT_LINES: Final = 3
 ADDED_SHOWN: Final = 3                  # 01 §6.3: "up to 3"
@@ -86,6 +94,10 @@ FIX_FIRST: Final = ("{file} has a problem at line {line} that stops this change 
                     "safely: {message}")
 NEW_FILE_MARK: Final = " (new file)"
 HUNK_GAP: Final = "…"
+SETTINGS_SHAPE: Final = "changes must be a list of 1 to 32 settings."
+SETTING_SHAPE: Final = ("Each setting must be an object with section (like \"window\" or "
+                        "\"theme.textbox\"), key, and value (null puts the default back).")
+NO_CONFIG: Final = "This game has no config.toml."
 
 PROPOSED: Final = "Proposed change: "
 NO_NEW_PROBLEMS: Final = "No new problems."
@@ -135,6 +147,7 @@ class ProposalFile:
     touched: tuple[tuple[Key | None, ...], ...] = ()
     marks: tuple[tuple[Key, int, bytes], ...] = ()
     preamble: bytes | None = None
+    settings: TomlPlan | None = None    # propose_settings: config.toml's plan
 
 
 @dataclass(frozen=True, slots=True)
@@ -527,8 +540,8 @@ def rebase(file: ProposalFile, live_text: str, *,
     edit touches it) is digested here; without it every chunk is joined and digested."""
     if file.base_sha is not None and text_sha(live_text) == file.base_sha:
         return file.plan
-    if file.new:
-        return None
+    if file.new or file.settings is not None or len(file.touched) != len(file.plan.edits):
+        return None                     # a settings plan (or one without marks) never moves
     lines: list[str] | None = None
     if index is not None:
         live = {key: (first, index.digests[key]) for key, first in index.starts.items()}
@@ -746,6 +759,75 @@ def propose(ws: Workspace, args: object, *, check: bool = True,
     return Proposal(summary, files, code, launch, added[:PROBLEMS_MAX], len(fixed))
 
 
+def verify_file(file: ProposalFile, text: str, *, positions: frozenset[str] | None = None
+                ) -> bool:
+    """``file``'s plan still fits ``text``: ``tomlpatch.verify`` for a settings plan, else
+    ``scriptedit.verify``. Every Apply passes this gate."""
+    if file.settings is not None:
+        return file.ref == CONFIG_REF and settings_fit(file.settings, text)
+    return verify(Plan("", (file.plan,)), {file.ref: text}, positions=positions or ())
+
+
+# --- propose_settings (2026-11-04) ----------------------------------------------------------
+
+def _read_settings(args: object) -> tuple[str, list[tuple[str, str, object]]]:
+    args = check_keys(args, ("summary", "changes"))
+    summary = text_arg(args, "summary", limit=SUMMARY_MAX_CHARS)
+    changes = args["changes"]
+    if type(changes) is not list or not 1 <= len(changes) <= SETTINGS_MAX:
+        raise ToolError(SETTINGS_SHAPE)
+    out: list[tuple[str, str, object]] = []
+    for change in changes:
+        if type(change) is not dict:
+            raise ToolError(SETTING_SHAPE)
+        check_keys(change, ("section", "key", "value"))
+        section, key = change["section"], change["key"]
+        if type(section) is not str or type(key) is not str or not section or not key \
+                or len(section) > 200 or len(key) > 200:
+            raise ToolError(SETTING_SHAPE)
+        value = change["value"]
+        if isinstance(value, str) and _size(value) > CHANGE_TEXT_MAX_BYTES:
+            raise ToolError(TEXT_TOO_LONG.format(key="value"))
+        out.append((section, key, value))
+    return summary, out
+
+
+def propose_settings(ws: Workspace, args: object, *, check: bool = True,
+                     cancel: threading.Event | None = None) -> Proposal:
+    """``propose_settings``: ``config.toml`` settings by section and key (value None: the
+    default again), planned by ``tomlpatch`` and checked like ``propose``. ``ToolError`` for a
+    key that isn't a setting, a value it refuses, or a change that changes nothing."""
+    summary, changes = _read_settings(args)
+    if not ws.table().config:
+        raise ToolError(NO_CONFIG)
+    source = ws.read(CONFIG_REF)
+    planned = plan_changes(source.text, changes, title=summary)
+    if isinstance(planned, Refuse):
+        raise ToolError(planned.text)
+    if planned is None:
+        raise ToolError(NO_CHANGE)
+    edits = planned.edits
+    diff, sent = numbered_diff(source.lines, edits, new=False)
+    new_text = NL.join(apply_lines(source.lines, edits))
+    file = ProposalFile(CONFIG_REF, source.sha, FilePlan(CONFIG_REF, (), edits), False, False,
+                        sum(len(e.lines) for e in edits),
+                        sum(e.last - e.first + 1 for e in edits), tuple(diff), tuple(sent),
+                        settings=planned)
+    launch = ws.launch_allowed
+    if not check:
+        return Proposal(summary, (file,), False, launch, checked=False)
+    base = ws.base_check(launch=launch, cancel=cancel)
+    if base.result is None:
+        return Proposal(summary, (file,), False, launch, reason=base.reason)
+    done = ws.check_with([(CONFIG_REF, source.encode(new_text))], [], launch=launch,
+                         cancel=cancel)
+    if done.result is None:
+        return Proposal(summary, (file,), False, launch, reason=done.reason)
+    added, fixed = problem_delta(base.result.problems, done.result.problems,
+                                 {CONFIG_REF: line_map(edits)})
+    return Proposal(summary, (file,), False, launch, added[:PROBLEMS_MAX], len(fixed))
+
+
 # --- The result (§7.1 step 7; 01 §6.3) ------------------------------------------------------
 
 def _problem_row(item: CheckItem, many: bool) -> str:
@@ -803,7 +885,8 @@ def render(proposal: Proposal, *, id: str | None = None, card: bool = False) -> 
     return out.result()
 
 
-__all__ = ["ADDS", "APPLY_HINT", "CARD_SHOWN", "CHANGES_MAX", "CHANGE_TEXT_MAX_BYTES",
+__all__ = ["propose_settings", "verify_file",
+           "ADDS", "APPLY_HINT", "CARD_SHOWN", "CHANGES_MAX", "CHANGE_TEXT_MAX_BYTES",
            "CHECK_UNKNOWN", "CODE_NOTICE", "CODE_WORDS", "DOESNT_PARSE", "EMPTY_OLD",
            "FILES_MAX", "FIXES", "FIX_FIRST", "FOUND_MANY", "NEW_FILE_ONCE",
            "NEW_TEXT_MAX_BYTES", "NOT_FOUND", "NO_CHANGE", "NO_CODE_RUN", "NO_NEW_PROBLEMS",

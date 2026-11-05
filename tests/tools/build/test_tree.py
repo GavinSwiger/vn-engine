@@ -74,6 +74,8 @@ LEFT_OUT_ROWS = {
     "minigames/__pycache__/": texts.LEFT_OUT_SYSTEM,
     "images/Thumbs.db": texts.LEFT_OUT_SYSTEM,
     "desktop.ini": texts.LEFT_OUT_SYSTEM,
+    "AGENTS.md": texts.LEFT_OUT_AGENT,                   # 2026-11-04: notes for AI apps
+    "claude.md": texts.LEFT_OUT_AGENT,
     "minigames/a.pyc": texts.LEFT_OUT_COMPILED,
     "minigames/pkg/fast.pyd": texts.LEFT_OUT_COMPILED,
     "minigames/data.json": texts.LEFT_OUT_UNUSED,
@@ -81,6 +83,7 @@ LEFT_OUT_ROWS = {
 KEPT = ["config.toml", "script/start.vns", "images/bg/club.png", "images/saves/x.png",
         "audio/theme.ogg", "gui/box.png", "fonts/a.ttf", "files/note.txt",
         "characters.txt", "minigames/a.py", "minigames/pkg/__init__.py", "notes/todo.md",
+        "notes/AGENTS.md",                               # only the top-level one is left out
         "minigames/pkg/sub/deep.py", "saves.png"]
 REASON_TEXTS = {
     texts.LEFT_OUT_TESTDATA: "test-run data from your PC; players get their own",
@@ -89,6 +92,7 @@ REASON_TEXTS = {
     texts.LEFT_OUT_HIDDEN: "hidden file or folder",
     texts.LEFT_OUT_SYSTEM: "made by Windows or Python, not part of the game",
     texts.LEFT_OUT_COMPILED: "compiled code; the game uses the .py files",
+    texts.LEFT_OUT_AGENT: "notes for AI apps that help you make the game, not part of it",
 }
 
 

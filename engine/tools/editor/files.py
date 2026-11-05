@@ -75,6 +75,8 @@ TEMPLATES = ((TEMPLATE_SAMPLE, "A short sample story (recommended)"),
              (TEMPLATE_EMPTY, "An empty game"))
 START_FROM = "Start from"
 CONFIG_TEMPLATE = "config.toml.in"
+AGENT_NOTES_DIR = "agent-notes"      # engine/data/agent-notes: AGENTS.md, CLAUDE.md
+AGENT_NOTES = ("AGENTS.md", "CLAUDE.md")
 SAMPLE_MAX_FILES = 64                # a template larger than this is a packaging mistake
 SAMPLE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -1130,15 +1132,25 @@ def _fill_config(template_dir: Path, folder_name: str) -> bytes:
     return text.encode("utf-8")
 
 
+def agent_notes() -> dict[str, bytes]:
+    """``AGENTS.md`` (how an AI agent works with the game) and ``CLAUDE.md`` (which imports
+    it, for Claude Code) from ``engine/data/agent-notes/``; every new game gets both, and a
+    build leaves them out (2026-11-04)."""
+    folder = engine_data_dir() / AGENT_NOTES_DIR
+    return {name: (folder / name).read_bytes() for name in AGENT_NOTES}
+
+
 def template_files(template: str, folder_name: str) -> dict[str, bytes]:
     """Every file a new game from ``template`` gets, game ref → bytes, read before anything
     is created. ``TEMPLATE_EMPTY`` is the F45 starter (``config.toml``, ``script/main.vns``);
     ``TEMPLATE_SAMPLE`` is every regular file under ``engine/data/sample/`` (dot files and
-    ``__pycache__`` skipped), with ``config.toml.in`` filled in as ``config.toml``. Raises
-    ``ValueError`` for an unknown template and ``OSError`` when a file can't be read."""
+    ``__pycache__`` skipped), with ``config.toml.in`` filled in as ``config.toml``. Both get
+    ``agent_notes``. Raises ``ValueError`` for an unknown template and ``OSError`` when a
+    file can't be read."""
     if template == TEMPLATE_EMPTY:
         return {CONFIG_REF: starter_config(folder_name),
-                MAIN_REF: (starter_dir() / "script" / "main.vns").read_bytes()}
+                MAIN_REF: (starter_dir() / "script" / "main.vns").read_bytes(),
+                **agent_notes()}
     if template != TEMPLATE_SAMPLE:
         raise ValueError(f"unknown template {template!r}")
     root = sample_dir()
@@ -1157,7 +1169,7 @@ def template_files(template: str, folder_name: str) -> dict[str, bytes]:
         found[rel.as_posix()] = data
     if MAIN_REF not in found:
         raise OSError(errno.ENOENT, "the sample template has no script/main.vns")
-    return found
+    return {**found, **agent_notes()}
 
 
 def new_game(folder: Path | str, template: str = TEMPLATE_SAMPLE) -> Path | Refusal:

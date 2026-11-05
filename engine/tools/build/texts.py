@@ -155,6 +155,7 @@ LEFT_OUT_TESTDATA = "LEFT_OUT_TESTDATA"
 LEFT_OUT_CHARACTERS = "LEFT_OUT_CHARACTERS"
 LEFT_OUT_HIDDEN = "LEFT_OUT_HIDDEN"
 LEFT_OUT_SYSTEM = "LEFT_OUT_SYSTEM"
+LEFT_OUT_AGENT = "LEFT_OUT_AGENT"
 LEFT_OUT_COMPILED = "LEFT_OUT_COMPILED"
 LEFT_OUT_LINK = "LEFT_OUT_LINK"
 LEFT_OUT_UNUSED = "LEFT_OUT_UNUSED"
@@ -165,6 +166,7 @@ LEFT_OUT_REASONS: dict[str, str] = {
     LEFT_OUT_CHARACTERS: "written by the game while it runs; the originals ship from files/",
     LEFT_OUT_HIDDEN: "hidden file or folder",
     LEFT_OUT_SYSTEM: "made by Windows or Python, not part of the game",
+    LEFT_OUT_AGENT: "notes for AI apps that help you make the game, not part of it",
     LEFT_OUT_COMPILED: "compiled code; the game uses the .py files",
     LEFT_OUT_LINK: "a link or shortcut; builds copy only real files and folders",
     LEFT_OUT_UNUSED: "the game can't use this file here ({group} takes {suffixes} files)",

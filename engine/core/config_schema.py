@@ -571,8 +571,8 @@ class TextboxConfig:
     """``[textbox]``: textbox behavior (PR-F05-07). Look settings are ``[theme.textbox]``."""
     cps: int = field(default=DEFAULT_TEXTBOX_CPS, metadata=spec(
         IntRange(*TEXTBOX_CPS_RANGE, note="0 shows text instantly"),
-        "how many characters appear each second as a line types out; 0 shows each line at "
-        "once"))
+        "the text speed: how many characters appear each second as a line types out; 0 shows "
+        "each line at once"))
 
 
 # F05 02 §5.3: textbox colors say only 'a color "#RRGGBB"'.

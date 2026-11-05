@@ -325,3 +325,33 @@ def test_ac_f48_56_undo_is_refused_once_a_file_changed(studio, tmp_path, ai):
     made.buttons["undo"].invoke()
     assert (game / EXTRA).read_text(encoding="utf-8") == "label other:\n"
     assert made.texts()[-2] == UNDO_REFUSED and EXTRA in win.files
+
+
+# --- 2026-11-04: a propose_settings card applies to config.toml -------------------------------
+
+def test_a_settings_card_applies_to_config_toml_unsaved(studio, tmp_path, ai):
+    from engine.tools.assistant.edits import propose_settings
+    ai()
+    game = make_game(tmp_path)
+    before = disk(game)
+    ed = studio(game, mapped=True)
+    win = ed.win
+    pane = open_pane(ed)
+    ask = {"summary": "Wider window", "changes": [
+        {"section": "window", "key": "width", "value": 1600}]}
+    card = pane.add_card(propose_settings(pane_workspace(game), ask))
+    ed.root.update()
+    assert card.texts()[1] == "config.toml  +3 −0"            # [window] and the key
+    card.buttons["apply"].invoke()
+    ed.root.update()
+    assert card.state == "applied"
+    assert "width = 1600" in text_of(ed, "config.toml") and win.files["config.toml"].dirty
+    assert disk(game) == before                              # unsaved, as with scripts
+    # A config.toml edited after the proposal: Stale, and nothing changes.
+    other = pane.add_card(propose_settings(pane_workspace(game), {
+        "summary": "Taller", "changes": [{"section": "window", "key": "height",
+                                           "value": 900}]}))
+    win.files["config.toml"].widget.insert("end", "\n# a note")
+    other.buttons["apply"].invoke()
+    ed.root.update()
+    assert other.state == "stale" and "height = 900" not in text_of(ed, "config.toml")

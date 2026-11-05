@@ -67,7 +67,8 @@ FAILED: Final = "Claude Code stopped: {reason}"
 NO_ANSWER: Final = "it ended without an answer"
 # Claude Code's own instructions for the pane (on the command line: no cmd.exe specials).
 PANE_NOTE: Final = ("You are working inside the AI Assistant pane of vn-engine Studio. "
-                    "propose_edit shows each change to the author as a card they can apply. "
+                    "propose_edit and propose_settings show each change to the author as a card they "
+                    "can apply. "
                     "You cannot change files yourself. Keep answers short and plain.")
 TEST_PROMPT: Final = "Reply with the single word OK."
 CHILD_TIMEOUT_S: Final = 120                # Test connection only

@@ -9,7 +9,8 @@ BANNED = ("tkinter", "pygame", "engine.runtime", "engine.app", "engine.meta",
           "engine.tools.check")
 NETWORK = ("socket", "ssl", "http", "urllib")
 EDITOR_ALLOWED = {"checker", "document", "scenes", "scriptedit", "files", "config_help", "cleanup",
-                  "assist", "dbmodel", "declarations"}
+                  "assist", "dbmodel", "declarations",
+                  "tomlpatch"}           # propose_settings: Game settings' config.toml writer
 
 
 def _imports(path: Path) -> list[str]:

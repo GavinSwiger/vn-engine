@@ -45,7 +45,8 @@ SHOWN_MEMBERS: Final = 20                        # "{first 20 refs}" (01 §6.6)
 
 # 01 §6.6.
 BAD_SELECTOR: Final = "{value} isn't something the assistant can read. {noun}: {members}"
-NOT_EDITABLE: Final = "The assistant can only change script files (.vns in script/)."
+NOT_EDITABLE: Final = ("propose_edit changes only script files (.vns in script/). Change "
+                       "config.toml with propose_settings, by section and key.")
 SCRIPT_FILES: Final = "Script files"
 # Argument faults (01 §4.4: "Unknown tool, bad arguments → error text to the model").
 NOT_AN_OBJECT: Final = "The arguments must be an object."

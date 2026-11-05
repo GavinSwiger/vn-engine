@@ -35,7 +35,14 @@ def _test_doc() -> StatementDoc:
 
 
 def test_primer_is_01_7_3_verbatim_and_holds_the_needle():
-    assert PRIMER == " ".join(PRIMER_AS_WRITTEN.split("\n"))
+    # 01 §7.3's paragraph first; then (2026-11-04) how the engine works and where the
+    # settings and guides are, so a connected agent starts with the right picture.
+    first, mechanics, settings = PRIMER.split("\n\n")
+    assert first == " ".join(PRIMER_AS_WRITTEN.split("\n"))
+    assert "`call` visits one and comes back" in mechanics and "`persistent.x`" in mechanics
+    for tool in ("settings_reference", "propose_settings", "engine_docs", "run_check"):
+        assert f"`{tool}`" in settings
+    assert len(PRIMER.split()) <= 320
     assert PRIMER.startswith(PRIMER_NEEDLE)
     assert build_reference().startswith(PRIMER + "\n")
 
@@ -134,6 +141,6 @@ def test_parse_docs_cut_text():
 
 def test_doc_index_is_cached_and_tolerates_a_missing_file(monkeypatch, tmp_path):
     assert reference.doc_index() is reference.doc_index()
-    monkeypatch.setattr(reference, "docs_path", lambda: tmp_path / "missing.md")
+    monkeypatch.setattr(reference, "docs_path", lambda file=None: tmp_path / "missing.md")
     assert doc_topics() == ()
     assert doc_section("menu") is None

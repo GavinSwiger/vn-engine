@@ -63,7 +63,7 @@ from engine.tools.assistant.chat import (
     Working,
     chat_total_text,
 )
-from engine.tools.assistant.edits import rebase
+from engine.tools.assistant.edits import rebase, verify_file
 from engine.tools.assistant.keystore import Slot
 from engine.tools.assistant.providers import CLAUDE_CODE, COMPATIBLE, PANE_NAMES, errors
 from engine.tools.assistant.reference import build_reference
@@ -520,6 +520,14 @@ class AssistWiring:
         proposal = card.proposal
         plans: dict[str, FilePlan] = {}
         for file in proposal.files:
+            if file.settings is not None:           # propose_settings: config.toml only
+                live = self._assist_config_text()
+                moved = rebase(file, live) if live is not None else None
+                if file.ref != CONFIG_REF or moved is None:
+                    self._assist_stale(card)        # changed since: never rebased
+                    return
+                plans[file.ref] = moved
+                continue
             if not _script_ref(file.ref):
                 self._assist_stale(card)            # never: the tool layer refuses these
                 return
@@ -553,7 +561,15 @@ class AssistWiring:
             self.refresh_project()
         plan = Plan(proposal.summary, tuple(plans[f.ref] for f in proposal.files))
         positions = self._assist_positions()
-        if not self.apply_plan(plan, lambda texts: verify(plan, texts, positions=positions)):
+        scripts = Plan(proposal.summary, tuple(plans[f.ref] for f in proposal.files
+                                               if f.settings is None))
+        settings = [f for f in proposal.files if f.settings is not None]
+
+        def fits(texts: Any) -> bool:
+            """``scriptedit.verify`` for scripts; ``tomlpatch.verify`` for config.toml."""
+            return (not scripts.files or verify(scripts, texts, positions=positions)) and                 all(verify_file(f, texts.get(f.ref, "")) for f in settings)
+
+        if not self.apply_plan(plan, fits):
             self._assist_remove(created)
             self._assist_stale(card)
             return
@@ -676,6 +692,11 @@ class AssistWiring:
         index of exactly the live text exists, else ``edits.rebase``. Files that aren't
         open and have no index are tested at Apply (no read here)."""
         for file in card.proposal.files:
+            if file.settings is not None:           # config.toml: unchanged, or stale
+                live = self._assist_config_text()
+                if live is None or rebase(file, live) is None:
+                    return True
+                continue
             if file.new:
                 if file.ref in self.refs or file.ref in self.files:
                     return True                     # made since the proposal
@@ -692,6 +713,14 @@ class AssistWiring:
             if found:
                 return True
         return False
+
+    def _assist_config_text(self) -> str | None:
+        """config.toml's live editor text (opening it when needed), or None."""
+        try:
+            record = self.record_for(CONFIG_REF)
+        except Exception:  # noqa: BLE001  (no config.toml: the card goes Stale)
+            return None
+        return record.widget.get("1.0", "end-1c") if record.editable else None
 
     def _assist_live(self, ref: str, *, read: bool = True
                      ) -> tuple[str | None, scenes.SceneIndex | None]:
@@ -740,8 +769,9 @@ class AssistWiring:
         view = self.story_map
         card = self._assist_newest()
         shown = view._shown_rows
-        if card is None or shown is None or view.layout is None:
-            self.assist_clear_preview()
+        if card is None or shown is None or view.layout is None or any(
+                f.settings is not None for f in card.proposal.files):
+            self.assist_clear_preview()             # a settings change draws no boxes
             return
         key = (id(card), view.painter.layout is not None, *(
             (f.ref, id(self.scene_indexes.get(f.ref)), self._stamp_of(f.ref),

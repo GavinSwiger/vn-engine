@@ -92,7 +92,8 @@ SUBPACKAGE_ALLOWED: dict[str, tuple[str, ...]] = {"engine.tools.check": ("engine
 # (``LAZY_ONLY``); the other rows already refuse ``tools``.
 ASSISTANT = "engine.tools.assistant"
 ASSISTANT_EDITOR = ("checker", "document", "scenes", "scriptedit", "files", "config_help",
-                    "assist", "dbmodel", "declarations", "cleanup")
+                    "assist", "dbmodel", "declarations", "cleanup",
+                    "tomlpatch")           # 2026-11-04: propose_settings writes config.toml
 SUBPACKAGES[("tools", "assistant")] = {"core", "script"}
 SUBPACKAGE_ALLOWED[ASSISTANT] = (*(f"engine.tools.editor.{m}" for m in ASSISTANT_EDITOR),
                                  "engine.tools.build.procs")

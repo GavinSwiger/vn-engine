@@ -62,6 +62,14 @@ since the assistant wrote the change, Apply refuses and offers **Ask again**.
 A change that adds or changes Python code (a `$` line, `define`, `default`, a condition)
 shows a warning. Its check runs without the game's code, which runs only after you apply.
 
+The assistant can change your game's settings too. It names a setting and a value, never
+`config.toml` text, and Studio writes it the way **Game settings** does: comments and layout
+stay, and a value the setting doesn't take is refused. It can also look up every setting
+there is, and read these guides.
+
+New games come with `AGENTS.md` and `CLAUDE.md`: notes that tell an AI app (Claude Code
+and others) how to work with the game. A build leaves them out.
+
 ## What is sent
 
 The first time you use a provider, Studio asks before it sends anything. What it sends: the

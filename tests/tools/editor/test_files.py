@@ -578,6 +578,9 @@ def test_ac28_new_game_from_the_starter(tmp_path, monkeypatch):
         assert config["game"] == {"id": slugify(name), "title": name, "version": "0.1.0"}
         main = (folder / "script" / "main.vns").read_text().splitlines()
         assert main[0] == "label start:" and len(main) == 3
+        # 2026-11-04: notes for AI agents, CLAUDE.md importing AGENTS.md.
+        assert "propose_settings" in (folder / "AGENTS.md").read_text(encoding="utf-8")
+        assert (folder / "CLAUDE.md").read_text(encoding="utf-8").strip() == "@AGENTS.md"
         for group in ASSET_GROUPS:
             assert (folder / group.folder).is_dir() and not os.path.isjunction(
                 folder / group.folder)

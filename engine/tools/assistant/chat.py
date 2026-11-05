@@ -92,6 +92,9 @@ ACTIVITY: Final = {
     "game_settings": "Read the game settings",
     "run_check": "Checked the game",
     "propose_edit": "Proposed a change",
+    "propose_settings": "Proposed a settings change",
+    "settings_reference": "Read the settings list",
+    "engine_docs": "Read a guide",
 }
 
 STATUS_DONE: Final = "done"
@@ -140,7 +143,7 @@ def activity_text(name: str, result: ToolText, proposal: Proposal | None = None)
     if result.is_error:
         reason = one_line(result.text.split("\n", 1)[0], 160)
         return TRIED.format(tool=one_line(name, 60), reason=reason)
-    if name == "propose_edit" and proposal is not None:
+    if name in ("propose_edit", "propose_settings") and proposal is not None:
         lines = check_lines(proposal)
         if lines:
             first = lines[0].rstrip(".:")

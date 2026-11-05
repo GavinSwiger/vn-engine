@@ -59,6 +59,9 @@ def test_ac06_no_tool_output_holds_the_game_path_or_user_name(tmp_path, monkeypa
              "search_scripts": {"text": "the"}, "story_map": {}, "scene": {"label": "club"},
              "names": {"kind": "character"}, "lookup": {"kind": "character", "name": "hana"},
              "game_settings": {}, "run_check": {}, "propose_edit": CHANGE,
+             "settings_reference": {"search": "window"}, "engine_docs": {"guide": "database"},
+             "propose_settings": {"summary": "Wider", "changes": [
+                 {"section": "window", "key": "width", "value": 1600}]},
              "apply_edit": {"id": "nope"}, "undo_apply": {}}
     assert set(calls) == {spec["name"] for spec in TOOL_SPECS}
     for name, args in calls.items():

@@ -30,6 +30,7 @@ Imports ``engine.core``, ``engine.script``, the pure editor modules ``document``
 and ``scriptedit``, and its own package.
 """
 
+import os
 import secrets
 import stat
 from collections import OrderedDict, deque
@@ -40,9 +41,10 @@ from typing import Final
 from engine.core import safefile
 from engine.core.errors import AssetRefError
 from engine.core.paths import GamePaths, RealDir
+from engine.script.assetgroups import CONFIG_REF
 from engine.script.limits import SCRIPT_FILE_MAX_BYTES
 from engine.script.messages import format_message
-from engine.tools.assistant.edits import Proposal, ProposalFile
+from engine.tools.assistant.edits import Proposal, ProposalFile, verify_file
 from engine.tools.assistant.refs import ToolError, check_keys, new_ref_problem, one_line
 from engine.tools.assistant.textout import ToolText
 from engine.tools.assistant.workspace import DiskWorkspace, bytes_sha, read_disk
@@ -110,6 +112,8 @@ class _Refused(Exception):
 
 def _folder(paths: GamePaths, ref: str) -> RealDir:
     folder_ref = ref.rpartition("/")[0]
+    if ref == CONFIG_REF:                   # propose_settings: the game folder itself
+        return RealDir("", paths.root)
     paths.invalidate_listings()
     try:
         found = paths.real_dir(folder_ref)
@@ -120,14 +124,28 @@ def _folder(paths: GamePaths, ref: str) -> RealDir:
     return found
 
 
+def _plain_config(target: Path) -> bool:
+    """``config.toml`` is a regular file (not a link) whose real path is its own."""
+    try:
+        if not stat.S_ISREG(target.lstat().st_mode):
+            return False
+        return os.path.normcase(os.path.realpath(target)) == os.path.normcase(str(target))
+    except OSError:
+        return False
+
+
 def _existing(paths: GamePaths, ref: str) -> tuple[Path, safefile.ReadResult, int | None]:
     """(F) and (E): the listed regular file ``ref`` read once (bytes and ``fstat`` stamp)."""
     folder = _folder(paths, ref)
     name = ref.rpartition("/")[2]
-    listing = paths.list_real(folder.ref)
-    if listing is None or name not in listing.files:
-        raise _Refused(NOT_OWN.format(ref=one_line(ref)))
     target = folder.path / name
+    if ref == CONFIG_REF:
+        if not _plain_config(target):       # Studio's own rule (document.open_config)
+            raise _Refused(NOT_OWN.format(ref=one_line(ref)))
+    else:
+        listing = paths.list_real(folder.ref)
+        if listing is None or name not in listing.files:
+            raise _Refused(NOT_OWN.format(ref=one_line(ref)))
     read = safefile.read_regular(target, SCRIPT_FILE_MAX_BYTES)
     if read.kind is safefile.ReadKind.TOO_LARGE:
         raise _Refused(format_message("E05", (ref,)))
@@ -160,7 +178,7 @@ def _prepare(paths: GamePaths, file: ProposalFile) -> _Ready:
         raise _Refused(exc.text) from None
     if bytes_sha(data) != file.base_sha:
         raise _Refused(CHANGED.format(file=shown))
-    if not verify(Plan("", (file.plan,)), {file.ref: doc.text}):
+    if not verify_file(file, doc.text):      # config.toml: tomlpatch's own gate
         raise _Refused(UNSAFE_NOW.format(file=shown))
     try:
         result = encode(doc, "\n".join(apply_lines(doc.text.split("\n"), file.plan.edits)))
