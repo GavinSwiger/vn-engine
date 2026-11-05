@@ -87,7 +87,9 @@ def new_game_from_menu(ed, tmp_path: Path, monkeypatch) -> tuple[Path, list[dict
             read(dialog)
         finally:
             if dialog.winfo_exists():       # never leave a modal dialog waiting
-                dialog.ask_buttons[0].event_generate("<Return>")
+                # Next, as its button does: a made-up Return key goes to whichever window
+                # has the keyboard, which may be another test's when they run in parallel.
+                dialog.ask_pick(0)
 
     def read(dialog) -> None:
         texts = []

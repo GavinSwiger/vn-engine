@@ -113,6 +113,7 @@ def ask_start_from(parent: tk.Misc) -> str | None:
     dialog.bind("<Escape>", lambda _e: pick(1))
     dialog.protocol("WM_DELETE_WINDOW", lambda: pick(1))
     dialog.ask_buttons = buttons        # type: ignore[attr-defined]  (tests read them)
+    dialog.ask_pick = pick              # type: ignore[attr-defined]  (tests answer with it)
     dialogs._run(parent, dialog, buttons[0])
     return result[0]
 
