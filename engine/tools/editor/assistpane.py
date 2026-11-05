@@ -501,6 +501,17 @@ class AssistPane:
 
     # --- Modes ---------------------------------------------------------------------------------
 
+    def set_empty_reason(self, reason: str | None) -> None:
+        """The empty state's words: ``reason`` alone with Set up AI… (the Claude plan's
+        Claude Code isn't installed), or None for the API key text and Connect an AI app."""
+        self.empty_text.configure(text=reason if reason is not None else EMPTY_TEXT)
+        for widget in (self.empty_mcp, self.connect_button):
+            if reason is None and not widget.winfo_manager():
+                widget.pack(anchor="w", fill="x" if widget is self.empty_mcp else "none",
+                            pady=(self.px(8), 0) if widget is self.connect_button else 0)
+            elif reason is not None:
+                widget.pack_forget()
+
     def show_empty(self, empty: bool) -> None:
         """The empty state (no key) or the chat. A chat with content stays shown."""
         if empty and self.has_content():
@@ -825,7 +836,9 @@ class AssistPane:
         """The pane's fixed texts as shown (tests read it)."""
         out = [HEADING.upper(), NEW_CHAT, str(self.model_label.cget("text"))]
         if self.is_empty_state():
-            out += [EMPTY_TEXT, SET_UP, EMPTY_MCP, CONNECT_MENU]
+            out += [str(w.cget("text")) for w in (self.empty_text, self.set_up_button,
+                                                    self.empty_mcp, self.connect_button)
+                    if w.winfo_manager()]
         out += [str(self.send_button.cget("text")), str(self.footer.cget("text"))]
         return out
 

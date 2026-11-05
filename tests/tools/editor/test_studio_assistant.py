@@ -177,6 +177,29 @@ def test_ac_f48_31_no_key_shows_the_empty_state_and_sends_nothing(studio, tmp_pa
     assert pane.input_text() == "Add a choice."                  # the text is kept
 
 
+
+def test_the_claude_plan_is_set_up_when_claude_code_is_installed(studio, tmp_path, ai,
+                                                                  monkeypatch):
+    """With Claude Code (the author's plan) there is no key: the chat shows when the
+    program is installed, and else the empty state says only that (2026-11-04)."""
+    from engine.tools.assistant.providers import CLAUDE_CODE, claudecode
+    made, _backend, _transports = ai()
+    prefs_store.save(prefs_store.Prefs(provider=CLAUDE_CODE), made.folder)
+    monkeypatch.setattr(claudecode, "find_claude", lambda which=None: "C:/bin/claude.exe")
+    ed = studio(make_game(tmp_path), mapped=True)
+    win = ed.win
+    win.toggle_assistant()
+    ed.root.update()
+    pane = win.assist_pane
+    assert not pane.is_empty_state()
+    assert assistpane.EMPTY_TEXT not in pane.texts()
+    monkeypatch.setattr(claudecode, "find_claude", lambda which=None: None)
+    win.assist_new_chat()
+    ed.root.update()
+    assert pane.is_empty_state()
+    assert claudecode.NOT_INSTALLED in pane.texts() and "Set up AI…" in pane.texts()
+    assert "Connect an AI app…" not in pane.texts()
+
 # --- Consent first; the Sent line from the tool record ------------------------------------------
 
 def test_consent_first_then_the_answer_and_the_sent_line(studio, tmp_path, ai, monkeypatch):

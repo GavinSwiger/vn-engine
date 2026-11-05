@@ -219,13 +219,26 @@ class AssistWiring:
         known = session.key_known and session.key_slot == slot
         if slot is not None and not known:
             self._assist_load_key(slot)
+        self._assist_show_state()
+
+    def _assist_show_state(self) -> None:
+        """The chat, or the empty state with the words for what is missing. With the
+        Claude plan the only thing to set up is Claude Code itself, so it says that, not
+        "an API key" and "Connect an AI app" (2026-11-04)."""
+        from engine.tools.assistant.providers.claudecode import NOT_INSTALLED
+        plan = session_for(self).target().provider == CLAUDE_CODE
+        self.assist_pane.set_empty_reason(NOT_INSTALLED if plan else None)
         self.assist_pane.show_empty(not self._assist_configured())
 
     def _assist_configured(self) -> bool:
-        """A request could go out: a compatible server (a key is optional), or a key for
-        the current provider. Until the key load answers, the empty state shows."""
+        """A request could go out: Claude Code installed (the author's plan: no key), a
+        compatible server (a key is optional), or a key for the current provider. Until the
+        key load answers, the empty state shows."""
         session = session_for(self)
         target = session.target()
+        if target.provider == CLAUDE_CODE:
+            from engine.tools.assistant.providers.claudecode import find_claude
+            return find_claude() is not None
         if target.provider == COMPATIBLE:
             return target.error is None
         return session.key is not None and session.key_slot == slot_of(target)
@@ -378,7 +391,7 @@ class AssistWiring:
         self.assist_clear_preview()                 # F58 PR-15
         self.assist_pane.clear()
         self.assist_pane.set_total(chat_total_text(0))
-        self.assist_pane.show_empty(not self._assist_configured())
+        self._assist_show_state()
 
     def _assist_drop_run(self) -> None:
         self.assist_run = None
