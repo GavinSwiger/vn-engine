@@ -293,3 +293,45 @@ def test_ac29_dialogs_show_file_names_only(studio, studio_game, tmp_path):
         assert "vn_user_7f3a" not in text and str(tmp_path) not in text and "\\" not in text
     assert logging.getLogger().handlers == handlers
     assert not [p for p in os.listdir(studio_game) if p.endswith(".log")]
+
+
+def test_right_click_in_the_editor_goes_to_definition(studio, studio_game, monkeypatch):
+    """2026-11-04: right-click a name (or Ctrl+click it) to go where it is made."""
+    from engine.tools.editor import editormenu as em
+    from engine.tools.editor.checker import NameEntry
+    patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
+    ed = studio(studio_game, mapped=True)
+    win = ed.win
+    win.check_names = {"label": (NameEntry("bridge", "script/ch2.vns", 8),),
+                       "character": (NameEntry("hana", "script/main.vns", 2),)}
+    win.open_file("script/main.vns")
+    text = win.text
+    ed.root.update()
+
+    def menu_at(index: str) -> dict[str, bool]:
+        text.mark_set("insert", index)
+        menu = win.editor_menu(text)          # what Shift+F10 or a right-click posts
+        return {menu.entrycget(i, "label"): window.entry_enabled(menu, i)
+                for i in range(menu.index("end") + 1) if menu.type(i) == "command"}
+
+    bound = ed.root.bind_class(win._editor_bindtag)
+    assert {"<Button-3>", "<Shift-Key-F10>"} <= set(bound)
+    assert menu_at("8.10") == {"Go to scene bridge": True, em.CUT: False, em.COPY: False,
+                               em.PASTE: True, em.SELECT_ALL: True}
+    win.last_editor_menu.invoke(0)
+    assert win.current.ref == "script/ch2.vns" and text is not win.text
+    assert win.text.index("insert") == "8.0"
+    # Nothing to go to: the entry is there, dimmed.
+    win.open_file("script/main.vns")
+    assert menu_at("4.2")["Go to definition"] is False
+    # The picture in ``show hana happy`` opens in the File preview.
+    assert "Show picture hana happy" in menu_at("5.12")
+    win.last_editor_menu.invoke(0)
+    assert win.current_tab() == "asset"
+    # Ctrl+click on the speaker's name.
+    win.open_file("script/main.vns")
+    text.see("6.5")
+    ed.root.update()
+    x, y, _w, _h = text.bbox("6.5")
+    text.event_generate(f"<{win.mod}-Button-1>", x=x + 1, y=y + 1)
+    assert win.text.index("insert") == "2.0"

@@ -52,6 +52,11 @@ class EditorKeys:
               for key, action in (("<Up>", "up"), ("<Down>", "down"), ("<Prior>", "prior"),
                                   ("<Next>", "next"))),
             ((f"<{mod}-space>",), lambda _e: brk(self.complete), EDITOR),
+            # 2026-11-04: the right-click menu (Go to definition, the clipboard) and
+            # Ctrl+click to go to what a name names (``editormenu``).
+            (("<Button-3>", "<Shift-F10>", "<App>")
+             + (("<Button-2>",) if mod == "Command" else ()), self.editor_context, EDITOR),
+            ((f"<{mod}-Button-1>",), self.editor_click_definition, EDITOR),
             (("<KeyPress>",), self._after_key, EDITOR),
             (("<FocusOut>",), self._on_editor_focus_out, EDITOR),
             (both("z"), lambda e: self._undo_or_redo(e), EDITOR),

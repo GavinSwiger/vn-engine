@@ -67,7 +67,8 @@ def test_ac_f47_24_new_game_sample_and_empty(tmp_path):
     assert set(made) == set(expected) | {"config.toml", ".studio/studio.json"}
     assert all(made[ref] == data for ref, data in expected.items())
     shipped = {p.relative_to(SAMPLE).as_posix() for p in SAMPLE.rglob("*") if p.is_file()}
-    assert shipped - {"config.toml.in"} == set(expected) - {"config.toml"}
+    # AGENTS.md and CLAUDE.md come from engine/data/agent-notes (2026-11-04).
+    assert shipped - {"config.toml.in"} == set(expected) - {"config.toml", *files.AGENT_NOTES}
     config = tomllib.loads(made["config.toml"].decode("utf-8"))
     assert config["game"] == {"id": slugify(name), "title": name, "version": "0.1.0"}
     assert studiostate.read_state(game) == studiostate.StudioState(guide_open=True,
@@ -112,6 +113,7 @@ def test_ac_f47_24_new_game_sample_and_empty(tmp_path):
     got = {ref: data for ref, data in tree(empty).items() if data is not None}
     assert got == {"config.toml": files.starter_config("empty game"),
                    "script/main.vns": (STARTER / "script" / "main.vns").read_bytes(),
+                   **files.agent_notes(),
                    ".studio/studio.json": studiostate.encode_state(
                        studiostate.StudioState(guide_open=True))}
     assert {ref for ref, data in tree(empty).items() if data is None} == {

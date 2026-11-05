@@ -136,6 +136,7 @@ from engine.tools.editor.checkwiring import (  # re-exported: tests read window.
     check_summary,
 )
 from engine.tools.editor.editorkeys import EditorKeys
+from engine.tools.editor.editormenu import EditorMenu
 from engine.tools.editor.fileactions import (  # re-exported: tests read window.<NAME>
     ADD_BUTTON,
     CLASH_BUTTONS,
@@ -336,8 +337,8 @@ class OpenFile:
         return self.doc is not None and self.doc.dirty
 
 
-class EditorWindow(StudioMenus, EditorKeys, FileActions, CheckWiring, RunWiring, MapWiring,
-                   AssistWiring, GuideWiring, DockWiring, TabChoice):
+class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring, RunWiring,
+                   MapWiring, AssistWiring, GuideWiring, DockWiring, TabChoice):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""

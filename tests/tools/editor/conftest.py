@@ -192,7 +192,8 @@ def try_link_file(link: Path, target: Path) -> bool:
 STUDIO_MODULES = ("window", "fileactions", "checkwiring", "runwiring", "mapwiring", "database",
                   "dbcleanup",
                   "animpanel",
-                  "dbmore", "dbgallery", "dbextras", "dbreplays", "dbachievements", "studiomenus", "editorkeys", "settingsview")
+                  "dbmore", "dbgallery", "dbextras", "dbreplays", "dbachievements", "studiomenus", "editorkeys", "settingsview",
+                  "editormenu")
 
 
 def patch_studio(monkeypatch, name: str, value) -> None:
