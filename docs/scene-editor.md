@@ -126,6 +126,9 @@ inside the double quotes.
 - Ctrl+S: [save](hot-reload.md). Ctrl+Shift+S: save all. Ctrl+Shift+B: [Build game](build-game.md).
 - Ctrl+O: Open game… Ctrl+N: new script file. Ctrl+Shift+O: Add files…
 - F2, Delete: rename or delete the selected **Project** file.
+- Right-click a **Project** row (or Shift+F10): **Open in File Explorer** (**Reveal in
+  Finder** on a Mac) shows a file selected in its folder, or opens a folder. A group
+  whose folder doesn't exist yet opens the game folder. Rename… and Delete are there too.
 - Ctrl+Space: completion. Ctrl+G: Find scene.
 - Ctrl+1, Ctrl+2, Ctrl+3, Ctrl+4, Ctrl+5, Ctrl+6: Editor, Story map,
   [Database](database.md), [Game settings](game-settings.md) (or **File ▸ Game settings**),

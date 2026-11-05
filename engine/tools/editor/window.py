@@ -588,6 +588,7 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
             self.tree.bind(key, self._focus_editor)
         self.tree.bind("<F2>", lambda _e: self._break(self.rename_selected))
         self.tree.bind("<Delete>", lambda _e: self._break(self.delete_selected))
+        self._bind_project_menu()
 
     def _build_status_bar(self) -> None:
         """F45 01 §6.5 (amended 2026-11-02): the game folder, the check's counts and message,

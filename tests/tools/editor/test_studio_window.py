@@ -272,6 +272,59 @@ def test_ac26_a_missing_game_folder_turns_file_operations_off(studio, studio_gam
     assert ed.dialogs == []
 
 
+# --- The project panel's right-click menu: Open in File Explorer --------------------------
+
+def test_reveal_command_per_system(tmp_path):
+    from engine.tools.editor import fileactions as fa
+    file, folder = tmp_path / "a b" / "x.png", tmp_path / "a b"
+    assert fa.reveal_command(file, True, "win32") == f'explorer /select,"{file}"'
+    assert fa.reveal_command(folder, False, "win32") == f'explorer "{folder}"'
+    assert fa.reveal_command(file, True, "darwin") == ["open", "-R", str(file)]
+    assert fa.reveal_command(folder, False, "darwin") == ["open", str(folder)]
+    assert fa.reveal_command(file, True, "linux") == ["xdg-open", str(folder)]
+
+
+def test_right_click_menu_shows_rows_in_the_file_manager(studio, studio_game, monkeypatch):
+    from engine.tools.editor import fileactions as fa
+    launched: list = []
+    patch_studio(monkeypatch, "CONTEXT_MENUS_POST", False)
+    patch_studio(monkeypatch, "launch_file_manager", launched.append)
+    ed = studio(studio_game)
+    root = studio_game.resolve()
+
+    def menu_for(ref: str) -> dict[str, bool]:
+        select(ed, ref)
+        ed.win.project_context()                    # Shift+F10 on the selected row
+        menu = ed.win.last_project_menu
+        return {menu.entrycget(i, "label"): window.entry_enabled(menu, i)
+                for i in range(menu.index("end") + 1) if menu.type(i) == "command"}
+
+    # A file is selected in its folder; Rename and Delete are on for it.
+    assert menu_for("images/hana/happy.png") == {
+        fa.REVEAL_LABEL: True, fa.RENAME_ITEM: True, fa.DELETE_ITEM: True}
+    ed.win.reveal_selected()
+    assert launched[-1] == fa.reveal_command(root / "images" / "hana" / "happy.png", True)
+
+    # A folder opens; Rename and Delete are dimmed.
+    assert menu_for("images/hana") == {
+        fa.REVEAL_LABEL: True, fa.RENAME_ITEM: False, fa.DELETE_ITEM: False}
+    ed.win.reveal_selected()
+    assert launched[-1] == fa.reveal_command(root / "images" / "hana", False)
+
+    # A group whose folder doesn't exist yet opens the game folder.
+    select(ed, "minigames")
+    ed.win.reveal_selected()
+    assert launched[-1] == fa.reveal_command(root, False)
+
+    # The file manager failing to start is said, not raised.
+    def broken(command):
+        raise OSError("no file manager")
+    patch_studio(monkeypatch, "launch_file_manager", broken)
+    select(ed, "config.toml")
+    ed.win.reveal_selected()
+    assert ed.dialogs[-1] == ("error", fa.REVEAL_FAILED)
+
+
 # --- AC-F45-29 (Tk): nothing names the user ------------------------------------------------
 
 def test_ac29_dialogs_show_file_names_only(studio, studio_game, tmp_path):

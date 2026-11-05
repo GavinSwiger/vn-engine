@@ -1,4 +1,19 @@
 {
   "studio_map": 1,
-  "boxes": {}
+  "boxes": {
+    "bridge": [360, 220],
+    "bridge_talk": [660, 80],
+    "draw_fortune": [440, 0],
+    "festival_end": [840, 380],
+    "festival_shed": [440, 120],
+    "hana_file": [180, 260],
+    "hana_testimony": [660, 140],
+    "lantern_release": [860, 200],
+    "lantern_stall": [440, 60],
+    "promise": [700, 540],
+    "river_end": [860, 280],
+    "riverbank": [220, 80],
+    "shed_room": [660, 0],
+    "start": [0, 0]
+  }
 }

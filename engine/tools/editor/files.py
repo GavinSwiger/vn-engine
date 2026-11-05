@@ -39,7 +39,7 @@ from typing import Literal
 from engine.core import safefile
 from engine.core.audiosniff import FORMAT_NAMES, matches, refused_signature
 from engine.core.constants import IMAGE_MAX_PIXELS, IMAGE_MAX_SIDE
-from engine.core.errors import AssetRefError
+from engine.core.errors import AssetMissing, AssetRefError
 from engine.core.imageheader import image_dimensions
 from engine.core.paths import (GamePaths, NotReal, RealDir, check_ref, engine_data_dir,
                                is_meta_name, slugify)
@@ -455,6 +455,28 @@ def _group_node(paths: GamePaths, group: AssetGroup) -> tuple[TreeNode, bool]:
         folder.count = sum(1 if child.kind == "file" else child.count
                            for child in folder.children)
     return top, truncated
+
+
+def reveal_target(paths: GamePaths, ref: str) -> tuple[Path, bool] | Refusal:
+    """What the system's file manager shows for the project row ``ref``: ``(path, True)``
+    selects a file in its folder; ``(path, False)`` opens a folder. A row that isn't on the
+    disk (a group whose folder doesn't exist yet) opens its nearest folder that is, at
+    worst the game folder. Only contained paths (``resolve``) are ever named."""
+    if not root_present(paths):
+        return Refusal(GAME_GONE)
+    current = ref
+    while current:
+        try:
+            path = paths.resolve(current)
+        except (AssetMissing, AssetRefError):
+            current = current.rpartition("/")[0]
+            continue
+        if path.is_dir():
+            return path, False
+        if path.is_file():
+            return path, True
+        current = current.rpartition("/")[0]
+    return paths.root, False
 
 
 # --- Add (§7.5 Add, PR-F45-02) --------------------------------------------------------------

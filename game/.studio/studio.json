@@ -1,5 +1,8 @@
 {
   "guide_open": false,
   "played": true,
-  "sample": false
+  "sample": false,
+  "assistant_open": true,
+  "panes": {"docks": {"assistant": "bottom", "guide": "right", "help": "bottom", "problems": "bottom", "project": "left"}, "hidden": ["help", "problems", "project"], "locked": false, "order": ["project", "problems", "help", "guide", "assistant"]},
+  "tabs": {"hidden": ["asset", "database", "map", "settings"]}
 }

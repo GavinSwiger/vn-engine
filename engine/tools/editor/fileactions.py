@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import queue
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from collections.abc import Callable, Sequence
@@ -31,7 +32,8 @@ from engine.tools.editor.dialogs import (
     show_info,
 )
 from engine.tools.editor.document import retarget
-from engine.tools.editor.views import entry_enabled, set_entry_enabled
+from engine.tools.editor.views import (MESSAGE_ID, entry_enabled, menu_command,
+                                       set_entry_enabled)
 from engine.tools.editor.studiolook import line_of
 
 ADD_BUTTON = "Add files…"
@@ -47,6 +49,13 @@ RENAME_BUTTONS = ("Rename", "Cancel")
 DELETE_BUTTONS = ("Delete", "Cancel")
 DELETE_DEFAULT = 1                      # a destructive button is never the default (UI-F45-06)
 ADD_POLL_MS = 50
+# The project panel's right-click menu: show the row in the system's file manager.
+REVEAL_LABEL = {"win32": "Open in File Explorer",
+                "darwin": "Reveal in Finder"}.get(sys.platform, "Open Containing Folder")
+REVEAL_FAILED = "The file manager couldn't be opened."
+RENAME_ITEM = "Rename…"
+DELETE_ITEM = "Delete"
+CONTEXT_MENUS_POST = True               # tests set False: tk_popup would wait for a click
 NEW_GAME_TITLE = "New game"             # F47 PR-F47-25: Start from, then the folder
 NEW_GAME_NEXT = "Choose a folder…"
 OPEN_NOT_GAME = ("“{name}” isn't a game folder: it has no script folder. Choose the folder "
@@ -127,9 +136,98 @@ def launch_studio(folder: Path) -> None:
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
 
 
+def reveal_command(path: Path, select: bool, platform: str = sys.platform) -> list[str] | str:
+    """The command that shows ``path`` in the file manager: a file selected in its folder
+    (``select``), or a folder opened. Windows gets one command line, because Explorer
+    parses ``/select,`` itself; Windows paths can't hold ``"``, so quoting is safe."""
+    if platform == "win32":
+        return f'explorer /select,"{path}"' if select else f'explorer "{path}"'
+    if platform == "darwin":
+        return ["open", "-R", str(path)] if select else ["open", str(path)]
+    return ["xdg-open", str(path.parent if select else path)]
+
+
+def launch_file_manager(command: list[str] | str) -> None:
+    """Start the file manager without waiting (a seam: tests record the command)."""
+    subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL)
+
+
 class FileActions:
     """File ▸ New game…, New script file, Add files…, Rename and Delete, and whether they
-    are enabled (off while the game folder can't be found, AC-F45-26)."""
+    are enabled (off while the game folder can't be found, AC-F45-26); the project panel's
+    right-click menu."""
+
+    def _bind_project_menu(self) -> None:
+        tree = self.tree
+        tree.bind("<Button-3>", self.project_context)
+        if self.mod == "Command":                   # macOS: Button-2 is the right button
+            tree.bind("<Button-2>", self.project_context)
+        for key in ("<Shift-F10>", "<App>", "<Menu>"):
+            try:
+                tree.bind(key, self.project_context)
+            except tk.TclError:                     # a key name this Tk doesn't know
+                pass
+
+    def project_menu(self) -> tk.Menu:
+        """The menu for the selected row: show it in the file manager, then Rename… and
+        Delete (dimmed for rows they don't apply to)."""
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label=REVEAL_LABEL, command=self.reveal_selected)
+        ref = self.project_view.selected()
+        movable = (ref is not None and self.file_ops_enabled()
+                   and self._fixed(ref) is None)
+        menu.add_separator()
+        menu.add_command(label=RENAME_ITEM, accelerator="F2",
+                         command=menu_command(menu, RENAME_ITEM, self.rename_selected))
+        menu.add_command(label=DELETE_ITEM, accelerator="Delete",
+                         command=menu_command(menu, DELETE_ITEM, self.delete_selected))
+        set_entry_enabled(menu, RENAME_ITEM, movable)
+        set_entry_enabled(menu, DELETE_ITEM, movable)
+        self.last_project_menu = menu       # tests read it
+        return menu
+
+    def project_context(self, event: tk.Event | None = None) -> str:
+        """Button-3 on a row (it is selected first), Shift+F10 or the Menu key."""
+        tree = self.tree
+        if event is not None and event.type == tk.EventType.ButtonPress:
+            row = tree.identify_row(event.y)
+            if not row or row == MESSAGE_ID:
+                return "break"
+            if self.project_view.selected() != row:
+                tree.selection_set(row)         # opens it, as a left click would
+            tree.focus(row)
+            x, y = event.x_root, event.y_root
+        else:
+            row = self.project_view.selected()
+            if row is None:
+                return "break"
+            box = tree.bbox(row)
+            x = tree.winfo_rootx() + (box[0] + 40 if box else 20)
+            y = tree.winfo_rooty() + (box[1] + box[3] // 2 if box else 20)
+        tree.focus_set()
+        menu = self.project_menu()
+        if CONTEXT_MENUS_POST:
+            try:
+                menu.tk.call("tk_popup", menu, x, y)
+            finally:
+                menu.grab_release()
+        return "break"
+
+    def reveal_selected(self) -> None:
+        """Show the selected row in the system's file manager: a file selected in its
+        folder, a folder opened."""
+        ref = self.project_view.selected()
+        if self.closed or ref is None:
+            return
+        target = files.reveal_target(self.paths, ref)
+        if isinstance(target, files.Refusal):
+            show_error(self.root, target.text)
+            return
+        try:
+            launch_file_manager(reveal_command(*target))
+        except OSError:
+            show_error(self.root, REVEAL_FAILED)
 
     def _set_file_ops(self, enabled: bool) -> None:
         state = "normal" if enabled else "disabled"
