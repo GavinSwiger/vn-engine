@@ -32,6 +32,7 @@ from engine.script.messages import show
 from engine.script.statement_docs import StatementDoc
 from engine.tools.editor import assist, formdialogs, forms, minigameview, scenes, scriptedit
 from engine.tools.editor.eventsview import EventsView
+from engine.tools.editor.scenepreview import opening_stage
 from engine.tools.editor.minigamedata import ASK_NAME_FORM, MINIGAME_FORM
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, Row
 from engine.tools.editor.scenes import Key, SceneIndex, SceneRead, Span
@@ -103,6 +104,7 @@ class StoryEditor:
         if index is None or self.key not in index.starts:
             self.view.set_rows((), title="")
             self.view.set_reach(())
+            self.show_preview(None)
             return
         assert self.ref is not None and self.key is not None
         self.start = index.starts[self.key]
@@ -121,6 +123,7 @@ class StoryEditor:
         self.read, self.rows = read, rows
         keep = self.view.index if self.view.rows == rows else None
         self.show_reach()
+        self.show_preview(self._chunk_lines(index))
         self.view.set_rows(rows, title=self.key[0], where=f"{show(self.ref)}:{self.start}",
                            stale=self.stale, select=keep)
 
@@ -130,6 +133,57 @@ class StoryEditor:
         scene = self.key[0] if self.key else None
         found = result.reach.get(scene, ()) if result is not None and scene else ()
         self.view.set_reach(found)
+
+    def show_preview(self, lines: list[str] | None) -> None:
+        """The scene's opening shot over the side pane (``scenepreview``), drawn again when
+        another scene is shown or its stage lines change; hidden with no scene."""
+        preview = getattr(self.win, "scene_preview", None)
+        if preview is None:
+            return
+        if lines is None:
+            self._preview_key = None
+            preview.show(None)
+            preview.frame.grid_remove()
+            return
+        stage = opening_stage(lines)
+        if stage.carried:                       # no background of its own: the way in's
+            lead, came_from = self._lead_in()
+            if lead:
+                stage = opening_stage(lines, lead, came_from)
+        if self.key != getattr(self, "_preview_key", None):
+            self._preview_key = self.key
+            self.form_assets()                  # pictures added since are found
+            preview.show(stage)
+        elif stage != preview.stage:
+            preview.show(stage)
+        preview.frame.grid()
+
+    def _lead_in(self) -> tuple[list[str], str | None]:
+        """``scenepreview.lead_in`` for the shown scene, over the last check's arrows and
+        the scripts' texts (unsaved edits included)."""
+        from engine.tools.editor import declarations as dec
+        from engine.tools.editor.database import script_texts
+        from engine.tools.editor.scenepreview import lead_in
+        result = getattr(self.win, "check_result", None)
+        links = getattr(result, "links", None) or ()
+        if not links or self.key is None:
+            return [], None
+        texts = script_texts(self.win)
+        places = dec.label_places(texts)
+        starts: dict[str, list[int]] = {}
+        for ref, line in places.values():
+            starts.setdefault(ref, []).append(line)
+
+        def scene_lines(name: str) -> tuple[list[str], int] | None:
+            place = places.get(name)
+            if place is None:
+                return None
+            ref, start = place
+            lines = texts[ref].splitlines()
+            later = [line for line in starts[ref] if line > start]
+            return lines[start - 1:(min(later) - 1 if later else len(lines))], start
+
+        return lead_in(self.key[0], links, scene_lines)
 
     def _index(self) -> SceneIndex | None:
         """The shown file's index, with the shown scene parsed."""

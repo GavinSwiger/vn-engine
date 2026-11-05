@@ -34,6 +34,7 @@ from engine.tools.editor.document import ScriptDocument, open_document
 from engine.tools.editor.syntax import PLAIN_COLOR, indent_unit
 from engine.tools.editor.eventsview import EventsView
 from engine.tools.editor.storyeditor import StoryEditor, apply_edits
+from engine.tools.editor.scenepreview import ScenePreview
 from engine.tools.editor.storymap import (
     Box,
     COLUMN_STEP,
@@ -241,7 +242,7 @@ class MapWiring:
         px = self._px
         side = self.side_frame = ttk.Frame(self.map_split)
         side.columnconfigure(0, weight=1)
-        side.rowconfigure(1, weight=1)
+        side.rowconfigure(2, weight=1)
         self.side_book = ttk.Notebook(side, takefocus=0, style="Tabless.TNotebook")
         self.events_view = EventsView(self.side_book, fonts=self.fonts, scale=self.scale)
         script = self.script_page = ttk.Frame(self.side_book)
@@ -255,7 +256,13 @@ class MapWiring:
             font=self.fonts["body"], scale=self.scale)
         head = self.side_tabs.frame
         head.grid(row=0, column=0, sticky="ew")
-        self.side_book.grid(row=1, column=0, sticky="nsew")
+        # The scene's opening shot, over both pages (``scenepreview``; 2026-11-04).
+        self.scene_preview = ScenePreview(side, self, scale=self.scale,
+                                          font=self.fonts.get("small"))
+        self.scene_preview.frame.grid(row=1, column=0, sticky="ew",
+                                      padx=px(PANEL_INSET), pady=(px(8), px(6)))
+        self.scene_preview.frame.grid_remove()
+        self.side_book.grid(row=2, column=0, sticky="nsew")
         self.side_book.bind("<<NotebookTabChanged>>", self._on_side_tab_changed, add="+")
         self.side_close_button = ttk.Button(head, text=SIDE_CLOSE, width=3, takefocus=0,
                                             style="Chrome.Ghost.TButton",
@@ -628,7 +635,7 @@ class MapWiring:
         peer = self.side_text
         assert peer is not None
         self._place_jump(peer, max(1, min(box.line, line_of(peer.index("end-1c")))))
-        if self.side_tab == "events" and self.story is not None:
+        if self.story is not None:          # Events' rows, and the opening shot on both tabs
             self.story.show(record.ref, box.name)
         self.show_side_tab(self.side_tab)   # F46 C1: the tab last chosen in this window
         view = self.story_map

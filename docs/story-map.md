@@ -41,8 +41,11 @@ The basics of the map (box marks, arrow styles, the Outline) are in
 
 ## The Events tab
 
-Click a box to open the scene beside the map. The side pane has two tabs, **Events** and
-**Script** (the text itself); Ctrl+E switches between them. Events lists what happens in the
+Click a box to open the scene beside the map. Above it, **OPENING SHOT** sketches what the
+player sees first: the background and the characters on their positions, before the first
+line of text. A scene with no `scene` line shows the background it carries on with, and
+names the scene that set it. The side pane has two tabs, **Events** and **Script** (the text
+itself); Ctrl+E switches between them. Events lists what happens in the
 scene, one row per line: *Say*, *Show character*, *Background*, *Choice* and so on. A line
 Studio has no form for shows as a **Script** row with its text; `$ pass` shows as `(nothing)`.
 
