@@ -123,6 +123,43 @@ def get_spec(word: str) -> StatementSpec | None:
     return _REGISTRY.get(word)
 
 
+# ADR-0010 rule 3: a statement word that is not reserved (F63 ``clock``, and later ``send``,
+# ``open``…) is that statement only as the first word of its own line and only when
+# ``claims(raw)`` says the line is written as the statement; otherwise the line stays what it
+# was (dialogue by a character of that name). ``no_text`` (rule 4) words a line that starts
+# with the word, has no quoted text, and isn't claimed: given the ``NoText`` and whether the
+# game defines that name, it returns the ``Diagnostic`` (None: F02's E71/E30a/E30b).
+@dataclass(frozen=True)
+class PositionalWord:
+    spec: StatementSpec
+    claims: Callable[[RawStatement], bool]
+    no_text: "Callable[[NoText, bool], Diagnostic | None] | None" = None
+
+
+_POSITIONAL: dict[str, PositionalWord] = {}
+
+
+def register_positional(word: PositionalWord) -> None:
+    """Add a positional statement word (``ValueError`` if reserved or already added)."""
+    name = word.spec.word
+    if name in STATEMENT_WORDS or name in _POSITIONAL:
+        raise ValueError(f"{name!r} is reserved or already a positional word")
+    _POSITIONAL[name] = word
+
+
+def spec_for(raw: RawStatement, word: str) -> StatementSpec | None:
+    """The spec of the statement ``raw`` (whose first word is ``word``, "" for none) is: a
+    reserved word's, else a positional word's when it claims the line, else None."""
+    if not word:
+        return None
+    spec = _REGISTRY.get(word)
+    if spec is None:
+        positional = _POSITIONAL.get(word)
+        if positional is not None and positional.claims(raw):
+            return positional.spec
+    return spec
+
+
 def registered_words() -> frozenset[str]:
     return frozenset(_REGISTRY)
 
@@ -141,6 +178,7 @@ def scoped_registry() -> Iterator[None]:
     from engine.script import rollback, routes, statement_docs
 
     saved = dict(_REGISTRY)
+    saved_positional = dict(_POSITIONAL)
     saved_docs = statement_docs._snapshot()
     saved_targets = dict(routes.LOCK_TARGETS)
     saved_skips = list(rollback.ATTACH_SKIPS)
@@ -149,6 +187,8 @@ def scoped_registry() -> Iterator[None]:
     finally:
         _REGISTRY.clear()
         _REGISTRY.update(saved)
+        _POSITIONAL.clear()
+        _POSITIONAL.update(saved_positional)
         statement_docs._restore(saved_docs)
         routes.LOCK_TARGETS.clear()
         routes.LOCK_TARGETS.update(saved_targets)
@@ -215,7 +255,13 @@ class Collected:
 
 
 def resolve_no_text(item: NoText, defined_names: set[str] | dict) -> Diagnostic:
-    """E71 if the name is defined, else E30a with a statement-word suggestion, else E30b."""
+    """E71 if the name is defined, else E30a with a statement-word suggestion, else E30b.
+    A positional word's ``no_text`` decides first (ADR-0010 rule 4)."""
+    positional = _POSITIONAL.get(item.word)
+    if positional is not None and positional.no_text is not None:
+        diagnostic = positional.no_text(item, item.name in defined_names)
+        if diagnostic is not None:
+            return diagnostic
     if item.name in defined_names:
         code, args = "E71", (item.word, item.rest)
     else:
@@ -702,5 +748,6 @@ del _spec
 __all__ = [
     "Collected", "NoText", "ParseContext", "StatementSpec", "TAIL_PY_ALL", "Uses",
     "assignment_target", "condition_of", "get_spec", "line_body", "misplaced_args", "register",
-    "registered_words", "resolve_no_text", "scoped_registry", "tail_for",
+    "registered_words", "register_positional", "PositionalWord", "spec_for",
+    "resolve_no_text", "scoped_registry", "tail_for",
 ]

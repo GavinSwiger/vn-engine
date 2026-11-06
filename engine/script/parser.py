@@ -38,11 +38,11 @@ from engine.script.limits import SCRIPT_MAX_BLOCK_DEPTH, SCRIPT_YIELD_LINES
 from engine.script.nodes import If, IfBranch, Label, Node, ScriptFile, Statement
 from engine.script.statements import (
     ParseContext,
-    get_spec,
     misplaced_args,
     parse_dialogue,
     parse_narration,
     parse_python_line,
+    spec_for,
     tail_for,
 )
 from engine.script.words import (MODIFIER_WORDS, SHOW_MODIFIER_WORDS, STATEMENT_WORDS,
@@ -166,7 +166,7 @@ class _Parser:
             node = parse(raw, ctx)
         else:
             word = raw.word if raw.head == HEAD_WORD else ""
-            node = self.parse_one(raw, get_spec(word) if word else None)
+            node = self.parse_one(raw, spec_for(raw, word))
         own_error = raw.flush(ctx.sink)
         if own_error:
             ctx.uses.clear()
@@ -191,7 +191,7 @@ class _Parser:
         ctx = self.ctx
         ctx.statement_count += 1
         word = raw.word if raw.head == HEAD_WORD else ""
-        spec = get_spec(word) if word else None
+        spec = spec_for(raw, word)
         is_branch = spec is not None and word in ("elif", "else")
         if not is_branch:
             state.close_chain()
@@ -322,7 +322,7 @@ class _Parser:
                 raw.pending.clear()
                 continue
             word = raw.word if raw.head == HEAD_WORD else ""
-            spec = get_spec(word) if word else None
+            spec = spec_for(raw, word)
             ctx.raw = raw
             ctx.depth = SCRIPT_MAX_BLOCK_DEPTH + 1          # F22 I-4: never depth 0 here
             ctx.file = self.file
