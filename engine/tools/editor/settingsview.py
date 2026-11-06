@@ -43,6 +43,7 @@ from typing import Any
 
 from engine.core.schemes import DEFAULT_SCHEME, SCHEMES
 from engine.script.assetgroups import CONFIG_REF
+from engine.tools.editor import kitmodel as km
 from engine.tools.editor import schememodel as scm
 from engine.tools.editor import settingsmodel as sm
 from engine.tools.editor import tomlpatch
@@ -62,6 +63,7 @@ from engine.tools.editor.fieldwidgets import (
     _Field,
 )
 from engine.tools.editor.helperhub import CANT_PLAY, ThumbLoader, hub_for
+from engine.tools.editor.kitpage import KitPage
 from engine.tools.editor.schemecards import SchemeCards
 from engine.tools.editor.scriptedit import STALE, Refuse
 from engine.tools.editor.theme import PANE_DRAG, ROLES, THEME
@@ -102,6 +104,7 @@ INTRO: Mapping[str, str] = {
     "extras": "The Extras screen players open from the title: the gallery of pictures "
               "they've seen, the music room's songs, and more.",
     sm.SCHEMES: scm.INTRO,
+    sm.KITS: km.INTRO,                                              # F60
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
     sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
                "the story says so (a Game UI line). A playthrough look changes the title "
@@ -256,6 +259,7 @@ class SettingsPane:
         self.look: tuple[str, str] | None = None    # W9: the look the Looks page shows
         self.scheme_pick: str | None = None         # F49: the card picked, not yet applied
         self.scheme_cards: SchemeCards | None = None
+        self.kit_page: KitPage | None = None        # F60: the Kit page, while shown
 
         style = ttk.Style(self.root)
         style.configure("Caption.TLabel", background=THEME["editor.background"],
@@ -365,6 +369,9 @@ class SettingsPane:
             return
         if self.page.key == sm.SCHEMES and self.scheme_cards is not None:
             self.scheme_cards.widget.focus_set()
+            return
+        if self.page.key == sm.KITS and self.kit_page is not None:      # F60
+            self.kit_page.widget.focus_set()
             return
         for item in self.shown_fields.values():
             if item.widget is not None:
@@ -534,6 +541,8 @@ class SettingsPane:
                 self._show_value(item)
         if self.page.key == sm.SCHEMES:
             self._show_schemes()
+        if self.page.key == sm.KITS and self.kit_page is not None:      # F60
+            self.kit_page.show()
         if self.page.preview and self.shown:
             self._schedule_preview()
 
@@ -604,6 +613,9 @@ class SettingsPane:
             return
         if self.page.key == sm.SCHEMES:
             self._build_schemes(body)
+            return
+        if self.page.key == sm.KITS:                                    # F60
+            self.kit_page = KitPage(self, body)
             return
         for section in self.page.sections:
             self._build_section(body, section)

@@ -43,7 +43,11 @@ def fit_text(text: str, width: int, measure: Callable[[str], int]) -> str:
 
 class SchemeCards:
     """The grid of ``cards`` in ``parent``; ``widget`` is its canvas. ``selected`` is the
-    picked card's id, ``in_use`` the id whose card says "In use" (None: none)."""
+    picked card's id, ``in_use`` the id whose card says "In use" (None: none). A subclass
+    (F60's ``kitcards``) changes the card size and draws its own ``_draw_card``."""
+
+    card_width = CARD_WIDTH
+    card_height = CARD_HEIGHT
 
     def __init__(self, parent: tk.Misc, cards: Sequence[Card], *, scale: float,
                  fonts: dict[str, tkfont.Font], selected: str | None, in_use: str | None,
@@ -61,7 +65,7 @@ class SchemeCards:
         background = THEME["editor.background"]
         self.widget = self.canvas = tk.Canvas(
             parent, background=background, highlightthickness=0, borderwidth=0,
-            takefocus=1, height=self._px(CARD_HEIGHT), width=self._px(CARD_WIDTH))
+            takefocus=1, height=self._px(self.card_height), width=self._px(self.card_width))
         canvas = self.canvas
         canvas.bind("<Configure>", lambda e: self._fit(e.width), add="+")
         canvas.bind("<Button-1>", self._click, add="+")
@@ -83,7 +87,7 @@ class SchemeCards:
 
     def _fit(self, width: int) -> None:
         """Wrap the cards to ``width`` px (at least one a row)."""
-        step = self._px(CARD_WIDTH + GAP)
+        step = self._px(self.card_width + GAP)
         columns = max(1, (width - 2 * FOCUS_OUT + self._px(GAP)) // step)
         if columns != self.columns:
             self.columns = columns
@@ -96,9 +100,9 @@ class SchemeCards:
     def card_box(self, index: int) -> tuple[int, int, int, int]:
         """Card ``index``'s ``(x0, y0, x1, y1)`` on the canvas."""
         row, column = divmod(index, self.columns)
-        x0 = FOCUS_OUT + column * self._px(CARD_WIDTH + GAP)
-        y0 = FOCUS_OUT + row * self._px(CARD_HEIGHT + GAP)
-        return x0, y0, x0 + self._px(CARD_WIDTH), y0 + self._px(CARD_HEIGHT)
+        x0 = FOCUS_OUT + column * self._px(self.card_width + GAP)
+        y0 = FOCUS_OUT + row * self._px(self.card_height + GAP)
+        return x0, y0, x0 + self._px(self.card_width), y0 + self._px(self.card_height)
 
     def index_at(self, x: int, y: int) -> int | None:
         """The card under canvas point ``(x, y)``, or None (a gap, or past the last)."""
@@ -117,7 +121,7 @@ class SchemeCards:
         """Draw every card (selection, "In use" and the focus outline as they are now)."""
         canvas = self.canvas
         canvas.delete("all")
-        height = self.rows * self._px(CARD_HEIGHT + GAP) - self._px(GAP) + 2 * FOCUS_OUT
+        height = self.rows * self._px(self.card_height + GAP) - self._px(GAP) + 2 * FOCUS_OUT
         if int(canvas.cget("height")) != height:
             canvas.configure(height=height)
         try:
