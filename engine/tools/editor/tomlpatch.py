@@ -16,6 +16,8 @@ plan (``verify``) against the live editor text before applying it as one undo st
   line, or right under its header; with no header, ``[section]`` and the key are appended.
 - Remove ("Use default"): the key's lines go; the header stays (unless ``drop_empty`` and
   nothing but blank lines would stay under it).
+- The text's end: an edit that reaches it keeps the text's ending (a final break when it
+  had one, never a pile of blank lines), so config.toml keeps exactly one final newline.
 - Refused (``scriptedit.Refuse``): a broken or too large document, a key that isn't a
   ``config_schema`` setting, a value its validator refuses, and shapes this writer can't
   change safely: a key inside an inline table or an array of tables (``[[…]]``), or a key
@@ -490,6 +492,7 @@ def plan_set(text: str, section: str, key: str, value: object, *, title: str | N
                 edit = LineEdit(last + 1, last, new_lines)
             at = edit.first + len(new_lines) - 1
             select = (at, len(key_line) - len(literal), len(key_line))
+    edit, guards = _keep_end(lines, edit, guards)
     plan = TomlPlan(title, ref, section, key, wanted, (edit,), guards, select)
     return plan if verify(plan, text) else Refuse(UNSAFE)
 
@@ -513,8 +516,33 @@ def plan_remove(text: str, section: str, key: str, *, title: str | None = None,
     if drop_empty:
         first, last = _with_empty_header(index, lines, path[:-1], first, last)
     guards = tuple((n, lines[n - 1]) for n in range(first, last + 1))
-    plan = TomlPlan(title, ref, section, key, None, (LineEdit(first, last, ()),), guards)
+    edit, guards = _keep_end(lines, LineEdit(first, last, ()), guards)
+    plan = TomlPlan(title, ref, section, key, None, (edit,), guards)
     return plan if verify(plan, text) else Refuse(UNSAFE)
+
+
+def _keep_end(lines: Sequence[str], edit: LineEdit, guards: tuple[tuple[int, str], ...]
+              ) -> tuple[LineEdit, tuple[tuple[int, str], ...]]:
+    """``edit`` (and its guards) widened, when only blank lines follow it, so the text keeps
+    its ending: one final break if it had one (an empty last line), else none, and no blank
+    lines left piled up at the end. So a table appended and then removed again gives back
+    the text as it was, and config.toml keeps exactly one final newline."""
+    if any(line.strip() for line in lines[max(0, edit.last):]):   # text after it: not the end
+        return edit, guards
+    out = apply_lines(list(lines), (edit,))
+    while out and not out[-1].strip():
+        out.pop()
+    if not out or (len(lines) > 1 and lines[-1] == ""):
+        out.append("")
+    same = 0
+    while same < min(len(out), edit.first - 1) and lines[same] == out[same]:
+        same += 1
+    widened = LineEdit(same + 1, len(lines), tuple(out[same:]))
+    if widened == LineEdit(edit.first, edit.last, tuple(edit.lines)):
+        return edit, guards
+    seen = dict(guards)
+    seen.update((n, lines[n - 1]) for n in range(same + 1, len(lines) + 1))
+    return widened, tuple(sorted(seen.items()))
 
 
 def _with_empty_header(index: _Index, lines: Sequence[str], section: Path_, first: int,

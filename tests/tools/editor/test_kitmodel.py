@@ -63,7 +63,7 @@ def test_apply_changes_one_plan():
     text = '[game]\ntitle = "x"\n'
     both = km.apply_changes("horror", True, {})
     assert both == (("theme", "kit", "horror"), ("theme", "preset", "blood_moon"))
-    assert plan(text, both).endswith('[theme]\nkit = "horror"\npreset = "blood_moon"')
+    assert plan(text, both).endswith('[theme]\nkit = "horror"\npreset = "blood_moon"\n')
     assert km.apply_changes("horror", False, {}) == (("theme", "kit", "horror"),)
     # Only what differs; the kit in use with its scheme writes nothing.
     found = {"theme.kit": "horror", "theme.preset": "blood_moon"}

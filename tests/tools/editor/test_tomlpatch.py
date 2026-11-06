@@ -196,3 +196,20 @@ def test_ac_f42_14_build_details_one_plan_strict_parse_back():
         refused = tp.plan_changes(EXAMPLE, [("window", "icon", ref)])
         assert isinstance(refused, Refuse) and refused.text.startswith("[window] icon must")
     assert tp.plan_changes(EXAMPLE, [("game", "version", "0.1.0")]) is None
+
+
+def test_the_text_keeps_its_ending_when_a_table_is_added_and_removed():
+    """A table appended and removed again (Devices, Database > Meters) gives back the text
+    as it was: a final newline stays the one final newline, none stays none."""
+    def run(text, value):
+        plan = tp.plan_changes(text, [("device.radio", "header_text", value)], drop_empty=True)
+        assert isinstance(plan, tp.TomlPlan) and tp.verify(plan, text)
+        return "\n".join(apply_lines(text.split("\n"), plan.edits))
+    for text in ('[game]\ntitle = "x"\n', '[game]\ntitle = "x"', ""):
+        added = run(text, "Static")
+        assert added.endswith('header_text = "Static"' + ("\n" if text.endswith("\n") else ""))
+        assert run(added, None) == text
+    # Blank lines piled at the end go when an edit reaches it: one final newline is left.
+    added = run('[game]\ntitle = "x"\n\n[device.radio]\nheader_text = "a"\n\n\n', "b")
+    assert added == '[game]\ntitle = "x"\n\n[device.radio]\nheader_text = "b"\n'
+    assert run(added, None) == '[game]\ntitle = "x"\n'

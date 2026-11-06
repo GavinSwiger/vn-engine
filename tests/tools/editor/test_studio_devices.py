@@ -62,8 +62,8 @@ def test_devices_page_marks_the_kit_device_and_writes_one_undo_step(studio, tmp_
     pigeon.inputs["arrive_text"].var.set("A grey bird lands on the sill.")
     pigeon.inputs["arrive_text"]._done()
     ed.root.update()
-    assert config_text(ed).endswith(
-        '[device.pigeon]\narrive_text = "A grey bird lands on the sill."')
+    assert config_text(ed).endswith(                               # the end kept
+        '[device.pigeon]\narrive_text = "A grey bird lands on the sill."\n')
     pigeon = ed.win.settings.devices_page.cards["pigeon"]
     assert texts(pigeon, "notice_text") == ["A grey bird lands on the sill."]
     assert str(pigeon.rows["arrive_text"].default.cget("state")) == "normal"
@@ -92,7 +92,7 @@ def test_devices_page_marks_the_kit_device_and_writes_one_undo_step(studio, tmp_
     ed.win.settings.devices_page.cards["radio"].rows["header_text"].default.invoke()
     ed.root.update()
     assert "[device.radio]" not in config_text(ed)
-    assert config_text(ed).rstrip() == before.rstrip()
+    assert config_text(ed) == before                    # with its final newline
 
 
 def test_each_card_previews_its_look_in_the_scheme(studio, tmp_path, helper):

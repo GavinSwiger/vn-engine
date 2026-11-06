@@ -59,7 +59,7 @@ def test_calendar_page_edits_and_previews(studio, tmp_path, helper):
     page.add_part("Small hours")
     ed.root.update()
     assert config_text(ed).endswith(
-        '[calendar]\nparts = ["Dusk", "Midnight", "Small hours", "Witching hour", "Dawn"]')
+        '[calendar]\nparts = ["Dusk", "Midnight", "Small hours", "Witching hour", "Dawn"]\n')
     page = ed.win.settings.calendar_page
     assert page.parts_list.curselection() == (2,)
     assert page.move_part(-1) and page.parts_list.curselection() == (1,)

@@ -125,7 +125,7 @@ def test_w9_game_ui_rows_and_looks_model():
     assert sm.new_look_problem("style", "river", text) is None
     section, key, value = sm.new_look_change("style", "river", found)
     plan = tomlpatch.plan_set(text, section, key, value)
-    assert isinstance(plan, tomlpatch.TomlPlan) and plan.edits[0].lines[-2:] == (
-        "[style.river.theme.textbox]", 'fill_color = "#FFF4F8"')
+    assert isinstance(plan, tomlpatch.TomlPlan) and plan.edits[0].lines[-3:] == (
+        "[style.river.theme.textbox]", 'fill_color = "#FFF4F8"', "")     # the end kept
     assert sm.text_only("playthrough.<N>.title_entries") is None
     assert sm.on_looks_page("playthrough.<N>.title_entries")
