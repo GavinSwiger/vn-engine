@@ -167,7 +167,8 @@ def test_ac_f47_40_positions_canvas_drags_markers_and_writes_stage_positions(
     assert db.selected_row().detail == "Moved"
     assert db.stage.points["left"] == (x, y)
     assert db.form.fields["x"].value == x and db.form.fields["y"].value == y
-    assert ed.win.files[CONFIG_REF].dirty
+    assert not ed.win.files[CONFIG_REF].dirty                   # saved at once (first-game fix)
+    assert (game / CONFIG_REF).read_text("utf-8").rstrip("\n") == config().rstrip("\n")
 
     # A drop on the floor writes x alone (y 720 is the bottom edge).
     x, y = drag("left", (300, 715))

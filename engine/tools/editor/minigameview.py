@@ -40,6 +40,7 @@ from engine.tools.editor import declplan, declrename, files
 from engine.tools.editor import tablepanel as tp
 from engine.tools.editor import minigamedata as mg
 from engine.tools.editor.dialogs import ask, ask_text, show_error
+from engine.tools.editor.formsave import apply_saved
 from engine.tools.editor.scriptedit import STALE, FilePlan, LineEdit, Plan, Refuse
 from engine.tools.editor.theme import ROLES, THEME
 from engine.tools.editor.views import EmptyState, panel_header
@@ -324,7 +325,7 @@ class Store:
                 show_error(self.win.root, made.text)
                 return False
             self.win.refresh_project()
-        if not self.win.apply_plan(plan.plan, lambda texts: mg.verify(plan, texts)):
+        if not apply_saved(self.win, plan.plan, lambda texts: mg.verify(plan, texts)):
             show_error(self.win.root, STALE)
             return False
         self.win._update_marks()
@@ -378,7 +379,7 @@ class Store:
                 if tuple(lines[one.first - 1:one.last]) != one.lines:
                     return False
             return True
-        if not self.win.apply_plan(plan, verify):
+        if not apply_saved(self.win, plan, verify):
             show_error(self.win.root, STALE)
             return False
         self.win._update_marks()

@@ -51,6 +51,7 @@ from engine.tools.editor.fieldwidgets import (
     ToggleField,
 )
 from engine.tools.editor.formdialogs import pick_scene
+from engine.tools.editor.formsave import apply_saved
 from engine.tools.editor.scriptedit import STALE, UNSAFE, Ask, Refuse
 from engine.tools.editor.settingsview import LongTextField
 from engine.tools.editor.stagecanvas import STAGE_H, STAGE_W, StageCanvas
@@ -361,8 +362,8 @@ class MoreCategories(MeterSetup):
             return False
         assert isinstance(plan, tomlpatch.TomlPlan)
         tp = plan
-        if not self.win.apply_plan(tp.as_plan(),
-                                   lambda texts: tomlpatch.verify(tp, texts[CONFIG_REF])):
+        if not apply_saved(self.win, tp.as_plan(),
+                           lambda texts: tomlpatch.verify(tp, texts[CONFIG_REF])):
             show_error(self.root, STALE)
             self.refresh()
             return False
@@ -529,7 +530,7 @@ class MoreCategories(MeterSetup):
                 self.refresh()
                 return False
         rename = result
-        if not self.win.apply_plan(rename.plan, lambda now: declrename.verify_rename(
+        if not apply_saved(self.win, rename.plan, lambda now: declrename.verify_rename(
                 rename, now, positions)):
             show_error(self.root, STALE)
             self.refresh()

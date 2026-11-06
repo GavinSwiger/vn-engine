@@ -4,7 +4,9 @@ The **Database** tab in Studio (Ctrl+3) is where you make the game's characters,
 sounds, variables, meters, codex entries, routes, transitions and stage positions without
 typing script lines. Pick a category on the left, then an entry in the list; its form is on
 the right. A field is applied when you press Enter or leave it, and Ctrl+Z in the script
-file takes it back. **+ New** adds an entry: new declarations go into
+file takes it back. Studio saves each file a change touches right away; a file with your own
+unsaved typing in it stays unsaved until Ctrl+S or Play, so half-written text is never saved
+for you. **+ New** adds an entry: new declarations go into
 `script/database.vns`, which Studio makes (and includes from `main.vns`) the first time;
 positions go into `config.toml`.
 

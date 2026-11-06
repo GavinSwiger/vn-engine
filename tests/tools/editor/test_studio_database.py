@@ -182,11 +182,14 @@ def test_ac_f47_07_first_declaration_makes_database_vns_and_one_include(studio, 
     db = open_database(ed, "character")
     ed.answers.append("Rin")
     db.new_entry()
-    assert (game / DB_REF).read_bytes() == declplan.DATABASE_TEXT.encode("utf-8")
+    # First-game fix: the Database saves the files it changed.
     assert text_of(ed, DB_REF) == (declplan.DATABASE_HEADER
                                    + '\ndefine rin = Character("Rin", color="#e06c9f")')
     assert text_of(ed, files.MAIN_REF) == 'include "database.vns"\n' + main_before.rstrip("\n")
-    assert ed.win.files[DB_REF].dirty and ed.win.files[files.MAIN_REF].dirty
+    assert (game / DB_REF).read_text("utf-8").rstrip("\n") == text_of(ed, DB_REF)
+    assert (game / files.MAIN_REF).read_text("utf-8").rstrip("\n") == text_of(ed,
+                                                                               files.MAIN_REF)
+    assert not ed.win.files[DB_REF].dirty and not ed.win.files[files.MAIN_REF].dirty
     assert db.selected_row().text == "Rin"
     assert ed.dialogs == [("text", "Name of the new character, as players will see it:", "",
                            None, None)]
@@ -427,6 +430,7 @@ def test_ac_f47_52_rename_everywhere_on_a_used_character(studio, tmp_path):
     buttons = [w for w in _descendants(db.form_frame) if isinstance(w, tk.ttk.Button)
                and str(w.cget("text")) == "Rename…"]
     assert buttons                                  # shown though Hana is used
+    main_before = text_of(ed, "script/main.vns")
     ed.answers[:] = ["hanako", 0]                   # the new name, then Rename
     buttons[0].invoke()
     ed.root.update()
@@ -441,10 +445,10 @@ def test_ac_f47_52_rename_everywhere_on_a_used_character(studio, tmp_path):
     assert "    show hana happy at left with dissolve" in main      # the picture's name
     assert "hana " not in main.replace("show hana", "")
     assert db.selected_row().entry.name == "hanako"
+    assert (game / "script/main.vns").read_text("utf-8").removesuffix("\n") == main
     for ref in ("script/main.vns", DB_REF):          # one Ctrl+Z per file undoes it
         ed.win.files[ref].widget.edit_undo()
-    assert text_of(ed, "script/main.vns") == \
-        (game / "script/main.vns").read_text("utf-8").removesuffix("\n")
+    assert text_of(ed, "script/main.vns") == main_before
     assert "define hana = " in text_of(ed, DB_REF)
 
 

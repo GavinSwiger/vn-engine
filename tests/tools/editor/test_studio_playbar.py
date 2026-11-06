@@ -25,6 +25,8 @@ pytestmark = pytest.mark.tk
 class FakeGame:
     """Stands in for ``PreviewRunner``: records each argv and each stop."""
 
+    state = PreviewState.NOT_RUNNING        # read by a save's hot reload (F39)
+
     def __init__(self) -> None:
         self.argvs: list[list[str]] = []
         self.events: list[PreviewEvent] = []

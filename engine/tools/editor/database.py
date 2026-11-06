@@ -81,6 +81,7 @@ from engine.tools.editor.dbmore import (
 )
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.document import ScriptDocument, open_document
+from engine.tools.editor.formsave import apply_saved
 from engine.tools.editor.fieldwidgets import (
     AssetPicker,
     ChoiceField,
@@ -1483,7 +1484,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
                 show_error(self.root, made.text)
                 return False
             self.win.refresh_project()
-        if not self.win.apply_plan(plan.plan, lambda texts: declplan.verify_decl(plan, texts)):
+        if not apply_saved(self.win, plan.plan,
+                           lambda texts: declplan.verify_decl(plan, texts)):
             show_error(self.root, STALE)
             self.refresh()
             return False
