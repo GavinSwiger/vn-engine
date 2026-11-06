@@ -241,6 +241,8 @@ _docs_cache: dict[str, tuple[tuple, DocIndex]] = {}
 # covers). The same files as Studio's Help ▸ Guides (``editor.guides.GUIDES``; a test keeps
 # the two in step), so a connected agent can read what the author can.
 GUIDES: Final[tuple[tuple[str, str, str], ...]] = (
+    ("first-game", "first-game.md",
+     "a beginner's walk through making a whole game in Studio, step by step"),
     ("script-language", "script-language.md",
      "every statement, how scenes, choices, variables, saves and rollback work"),
     ("studio", "scene-editor.md", "Studio: files, checks, writing help, playing a scene"),

@@ -18,6 +18,7 @@ GUIDE_NO_VIEWER = ("Couldn't open the guide “{title}”. Open docs/{name} in t
 
 # (menu label, file in docs/), in the order a game maker needs them.
 GUIDES: tuple[tuple[str, str], ...] = (
+    ("Your first game", "first-game.md"),
     ("Script language", "script-language.md"),
     ("Studio", "scene-editor.md"),
     ("Story map", "story-map.md"),
