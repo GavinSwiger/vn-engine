@@ -156,7 +156,7 @@ class Codex:
     ``_hold``, so a ``CodexAdded`` is released with the burst (F03 I-3)."""
 
     __slots__ = ("index", "_store", "_hold", "dev", "log", "_held", "_counts", "_state",
-                 "_items", "_tips", "_tips_gen", "w141_warned")
+                 "_items", "_tips", "_tips_gen", "w141_warned", "_bar")
 
     def __init__(self, index: CodexIndex, store: PersistentStore,
                  hold: Callable[[Command], None], *, dev: bool = False,
@@ -168,6 +168,7 @@ class Codex:
         self.log = log if log is not None else _story_log
         self._held: list[str] = []
         self._counts: dict[str, int] = {}           # F64: held name -> count (absent: 1)
+        self._bar = False                           # F64 round 2: show hotbar
         self._state: ItemsState | None = EMPTY_ITEMS
         self._items: tuple[str, ...] | None = ()
         self._tips: tuple[str, ...] = ()
@@ -219,7 +220,17 @@ class Codex:
         entry = self.index.money
         return None if entry is None else (entry, self.count(entry.name))
 
+    def bar_shown(self) -> bool:
+        """F64 round 2: ``show hotbar`` is in force (story state, saved with the items)."""
+        return self._bar
+
     # Changing --------------------------------------------------------------------------------
+
+    def set_bar(self, shown: bool) -> None:
+        """F64 round 2: ``show hotbar`` / ``hide hotbar``."""
+        if self._bar != bool(shown):
+            self._bar = bool(shown)
+            self._state = None
 
     def _entry(self, name: object, kind: str) -> CodexEntry:
         entry = self.index.get(name)
@@ -308,13 +319,15 @@ class Codex:
             held = tuple(self._held)
             counts = self._counts
             numbers = tuple(counts.get(n, 1) for n in held) if counts else ()
-            state = self._state = ItemsState(held, numbers) if held else EMPTY_ITEMS
+            state = self._state = (ItemsState(held, numbers, self._bar)
+                                   if held or self._bar else EMPTY_ITEMS)
         return state
 
     def new_game(self) -> None:
         """New Game: no items (before the first default, 04 §7.4)."""
         self._held = []
         self._counts = {}
+        self._bar = False
         self._state = EMPTY_ITEMS
         self._items = ()
 
@@ -344,7 +357,7 @@ class Codex:
         numbers = tuple(counts) if any(n != 1 for n in counts) else ()
         if tuple(held) == saved.held and numbers == saved.counts:
             return saved
-        return ItemsState(tuple(held), numbers) if held else EMPTY_ITEMS
+        return ItemsState(tuple(held), numbers, saved.bar) if held or saved.bar             else EMPTY_ITEMS
 
     def install(self, held: "tuple[str, ...] | ItemsState") -> None:
         """Make ``held`` (from ``merged``, or a ``state()`` to put back) the held list:
@@ -353,10 +366,12 @@ class Codex:
         if type(held) is ItemsState:
             self._held = list(held.held)
             self._counts = {n: c for n, c in zip(held.held, held.counts) if c != 1}
+            self._bar = held.bar
             self._state = held
         else:
             self._held = list(held)                         # type: ignore[arg-type]
             self._counts = {}
+            self._bar = False
             self._state = None
         self._items = None
 

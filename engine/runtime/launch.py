@@ -56,6 +56,7 @@ from engine.script.clockshow import picture_warnings
 from engine.script.diagnostics import ScriptError, ScriptWarning
 from engine.script.messages import format_message
 from engine.script.nodes import Define, PersistentDefault
+from engine.script import hotbar as hotbar_mod
 from engine.script.program import Program
 from engine.script.routes import PERSISTENT_VIEWS
 from engine.script.suggest import suggest
@@ -283,6 +284,8 @@ class LaunchJob:
             self.program.iter_statements(), self._index.tags))                # W304
         for error in self._check.errors:                # F09 C5
             self._add(error)
+        self._warnings += tuple(hotbar_mod.picture_warnings(  # F64 round 2: W309
+            self.program.iter_statements(), self._index.tags))
         return True
 
     def _phase_audio(self) -> bool:

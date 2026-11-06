@@ -209,6 +209,7 @@ from engine.runtime import flowchart as flowchart_mod
 from engine.runtime import fourthwall as fourthwall_mod
 from engine.runtime import gallery as gallery_mod
 from engine.runtime import glitch as glitch_mod
+from engine.runtime import itemuse as itemuse_mod
 from engine.runtime import menu as menu_mod
 from engine.runtime import metafiles as metafiles_mod
 from engine.runtime import minigame as minigame_mod
@@ -258,6 +259,7 @@ from engine.script.choicepresent import PresentOption
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.codex import CodexLock
+from engine.script.hotbar import HotbarShow
 from engine.script.flowchart import Flowchart
 from engine.script.fourthwall import CrashEffect, TitleEffect
 from engine.script.glitch import Effect
@@ -1105,7 +1107,8 @@ class Interpreter:
         if self.waiting_for is not None:
             self.finish_wait()
         elif type(current) is nodes.Say:
-            _on_advance(self, Advance(current.sid))
+            if not itemuse_mod.forward_use(self, current):      # F64: a remembered use
+                _on_advance(self, Advance(current.sid))
         elif type(current) is Menu:
             key = t.remembered_pick(current.sid)
             if key is not None:                             # F64: with the item shown
@@ -1206,7 +1209,8 @@ class Interpreter:
         return GameState(                                   # 4.
             position=stmt.sid,
             position_at=(stmt.label, stmt.path),
-            call_stack=tuple((c.sid, (c.label, c.path)) for c in call_stack),
+            call_stack=tuple((itemuse_mod.frame_sid(c), (c.label, c.path))   # F64: a use's
+                             for c in call_stack),                           # line is marked
             variables=MappingProxyType(variables),
             dice=self.core.state,
             identity_scheme=self.program.identity_scheme,
@@ -1492,7 +1496,9 @@ class Interpreter:
             return RestoreOutcome(RestoreResult.POSITION_NOT_FOUND)
         call_stack: list[Call] = []
         for sid, hint in state.call_stack:
-            call = self._find(sid, hint, use_hints, checkpoint=False)
+            call = (itemuse_mod.find_frame(self, sid, hint, use_hints)    # F64: a use's line
+                    if itemuse_mod.is_frame(sid)
+                    else self._find(sid, hint, use_hints, checkpoint=False))
             if call is None:
                 return RestoreOutcome(RestoreResult.POSITION_NOT_FOUND)
             call_stack.append(call)  # type: ignore[arg-type]
@@ -1932,6 +1938,8 @@ register_executor(Lock, endings_mod.run_lock)
 # F21: lock/unlock tip|item (runtime/codex.py), beside F19's, once, at import (07 I-4). Not a
 # checkpoint type.
 register_executor(CodexLock, codex_mod.run_codex_lock)
+# F64 round 2: show hotbar / hide hotbar (runtime/itemuse.py). Not a checkpoint type.
+register_executor(HotbarShow, itemuse_mod.run_hotbar_show)
 # F23: minigame (runtime/minigame.py), a checkpoint type like the menu (04 §4.2, 07 I-6).
 register_executor(Minigame, minigame_mod.run_minigame, present=minigame_mod.present_minigame,
                   check=minigame_mod.minigame_position_ok)
@@ -1987,6 +1995,7 @@ register_event(StepBack, rollback_mod.on_step_back)         # F14 (04 §7.3)
 register_event(StepForward, rollback_mod.on_step_forward)   # F14 (04 §7.4)
 register_event(MinigameDone, minigame_mod.on_minigame_done)  # F23 (04 §5.4)
 register_event(MinigameUsed, minigame_mod.on_minigame_used)  # F23 (04 §7.5)
+register_event(itemuse_mod.UseItem, itemuse_mod.on_use_item)  # F64 round 2: Use
 
 
 def story_variables(G: dict, reserved: Iterable[str]) -> dict[str, object]:

@@ -25,6 +25,9 @@ amount), E437 (``count``/``money`` on a tip), E438 (the count's range).
 **F64 round 2 (the shop).** ``price <n>`` (0 to ``ITEM_COUNT_MAX``, items only, anywhere after
 the title) is the price ``minigame shop`` asks when its stock names no price (E437's ``price``
 form on a tip, E438's ``price`` form for the number).
+**F64 round 2 (Use).** ``use <scene>`` (items only, anywhere after the title) names the
+label a Use button runs as a call between lines (``runtime/itemuse.py``). The scene is a
+jump target: E43 for a scene no label has; E41/E41b/E64 for its name; E437 on a tip.
 Messages: E250 (shape), E252 (lengths and tags), F04's image-name codes for ``image``, F05's
 tag codes in a paragraph, E60–E64 for a name. The whole-game checks (E251, E253, E254,
 W140, W142) are ``checks.py``'s; ``Program.codex`` and ``Program.codex_categories`` are
@@ -61,6 +64,7 @@ WORD_IMAGE: Final = "image"
 WORD_COUNT: Final = "count"               # F64: lock item coin "Coins" count 0 to 999
 WORD_MONEY: Final = "money"               # F64: the purse's item
 WORD_PRICE: Final = "price"               # F64 round 2: the default shop price
+WORD_USE: Final = "use"                   # F64 round 2: the scene Use runs
 WORD_TO: Final = "to"
 KINDS: Final[tuple[str, ...]] = (WORD_TIP, WORD_ITEM)
 NAME_MAX: Final = 64                      # code points (E252)
@@ -72,6 +76,9 @@ TIPS_MAX: Final = 1_000                   # tip declarations in a story (E254)
 ITEMS_MAX: Final = 1_000                  # item declarations in a story (E254)
 CATEGORIES_MAX: Final = 24                # categories, the defaults included (E254)
 ITEM_COUNT_MAX: Final = 999_999           # F64: the most of one item a player can hold
+# The words after a declaration's title (``in`` before ``image``; a picture's words stop at
+# any of the others).
+_DECL_WORDS: Final = (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY, WORD_PRICE, WORD_USE)
 # The ``[words]`` key of each kind's default category (01 §6).
 DEFAULT_WORDS: Final[dict[str, str]] = {WORD_TIP: "codex_tips", WORD_ITEM: "codex_items"}
 
@@ -106,6 +113,7 @@ class CodexEntry:
     counted: bool = False                 # F64: declared with ``count`` (shown as "×n")
     money: bool = False                   # F64: the purse's item
     price: int | None = None              # F64 round 2: the shop's default price
+    use: str | None = None                # F64 round 2: the scene Use runs (a label)
 
 
 @dataclass(slots=True, kw_only=True)
@@ -122,6 +130,7 @@ class CodexEntryDecl(Node):
     count: int | None = None              # F64: ``count``'s most held; None: a plain item
     money: bool = False                   # F64: ``money``
     price: int | None = None              # F64 round 2: ``price <n>``
+    use: str | None = None                # F64 round 2: ``use <label>``
 
 
 @dataclass(slots=True, kw_only=True)
@@ -202,14 +211,15 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
     count: int | None = None
     money = False
     price: int | None = None
+    use: str | None = None
     seen: set[str] = set()
     while at < len(chunks):
         chunk = chunks[at]
         word = chunk.text if chunk.kind == WORD else ""
-        if word in seen or word not in (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY, WORD_PRICE)                 or (word == WORD_IN and WORD_IMAGE in seen):     # F21: in before image
+        if word in seen or word not in _DECL_WORDS                 or (word == WORD_IN and WORD_IMAGE in seen):     # F21: in before image
             break
         seen.add(word)
-        if word in (WORD_COUNT, WORD_MONEY, WORD_PRICE) and kind != WORD_ITEM:
+        if word in (WORD_COUNT, WORD_MONEY, WORD_PRICE, WORD_USE) and kind != WORD_ITEM:
             ctx.error("E437", word, name)
             return None
         if word == WORD_IN:
@@ -225,7 +235,7 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
             stop = at + 1
             while (stop < len(chunks) and chunks[stop].kind != TEXT
                    and not any(_is_word(chunks[stop], w)
-                               for w in (WORD_IN, WORD_COUNT, WORD_MONEY, WORD_PRICE))):
+                               for w in _DECL_WORDS if w != WORD_IMAGE)):
                 stop += 1
             image = _image_name(ctx, WORD_IMAGE, raw, chunks[at + 1:stop])
             if image is None:
@@ -244,6 +254,11 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
                 ctx.error("E438", "price", written, name, ITEM_COUNT_MAX)
                 return None
             at += 2
+        elif word == WORD_USE:
+            use = _use_target(ctx, raw, chunks, at + 1)
+            if use is None:
+                return None
+            at += 2
         else:
             money = True
             at += 1
@@ -255,7 +270,27 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
     return CodexEntryDecl(file=raw.file, line=raw.line, end_line=raw.end_line,
                           column=raw.column, kind=kind, name=name, title=title,
                           category=category, image=image, count=count, money=money,
-                          price=price)
+                          price=price, use=use)
+
+
+def _use_target(ctx: ParseContext, raw: RawStatement, chunks: list[_Chunk],
+                at: int) -> str | None:
+    """F64 round 2: ``use``'s scene: one label name (E41 for none, E41b in quotes, E64 for a
+    bad one). Recorded as a jump target, so a scene no label has is E43 (did-you-mean)."""
+    if at >= len(chunks) or chunks[at].kind not in (WORD, TEXT):
+        ctx.error("E41", WORD_USE)
+        return None
+    chunk = chunks[at]
+    if chunk.kind == TEXT:
+        ctx.error("E41b", WORD_USE, _string(raw, chunk))
+        return None
+    problem = check_name(chunk.text)
+    if problem is not None:
+        ctx.error(problem[0], *problem[1])
+        return None
+    target = canonical_name(chunk.text)
+    ctx.uses.append(("target", target, ctx.place()))
+    return target
 
 
 def _whole(written: str) -> int | None:
@@ -474,7 +509,8 @@ def build_entries(decls: Iterable[CodexEntryDecl]
             image=decl.image, paragraphs=decl.paragraphs, sid=decl.sid,
             file=decl.file.ref, line=decl.line,
             cap=decl.count if decl.count is not None else 1,
-            counted=decl.count is not None, money=decl.money, price=decl.price))
+            counted=decl.count is not None, money=decl.money, price=decl.price,
+            use=decl.use))
     return tuple(entries), tuple(categories.values())
 
 
@@ -489,10 +525,11 @@ DOCS: Final = (
     StatementDoc(
         WORD_LOCK, "Codex entry", "Declarations",
         'lock tip|item <name> "title" [in "category"] [count [0 to <n>]] [money] '
-        '[price <n>] [image <name>]',
+        '[price <n>] [use <scene>] [image <name>]',
         "Declares a codex tip, kept across playthroughs, or an item, kept in this "
         "playthrough, with its text under it. An item with count can be held many times; "
-        "money shows it at the top of the bag; price is what a shop asks by default.",
+        "money shows it at the top of the bag; price is what a shop asks by default; use "
+        "gives it a Use button that runs that scene.",
         # An item, so the doc game's dev load gives no W142 (a tip no unlock tip line names).
         'lock item red_lantern "Red Lantern" in "Things":\n    "Bought at Daichi\'s stall."',
         DOCS_HEADING, "F21", fields=("red_lantern", "Red Lantern", "Things")),
@@ -528,7 +565,7 @@ def register_words() -> None:
 register_declaration(CodexEntryDecl, lambda node: "codex:" + node.name)  # type: ignore[attr-defined]
 register_words()
 
-__all__ = ["ITEM_COUNT_MAX", "WORD_COUNT", "WORD_MONEY", "CATEGORIES_MAX", "CATEGORY_MAX", "CodexCategory", "CodexEntry", "CodexEntryDecl",
+__all__ = ["ITEM_COUNT_MAX", "WORD_COUNT", "WORD_MONEY", "WORD_USE", "CATEGORIES_MAX", "CATEGORY_MAX", "CodexCategory", "CodexEntry", "CodexEntryDecl",
            "CodexLock", "DEFAULT_WORDS", "DOCS", "DOCS_HEADING", "ITEMS_MAX", "ITEM_TARGET", "KINDS",
            "NAME_MAX", "PARAGRAPHS_MAX", "PARAGRAPH_MAX", "TIPS_MAX", "TIP_TARGET",
            "TITLE_MAX", "build_entries", "codex_body", "parse_codex_decl", "parse_codex_lock",

@@ -99,18 +99,25 @@ class ItemsState:
 
     F64: ``counts`` holds how many of each held name (parallel to ``held``, each at least 1);
     ``()`` means one of each. JSON adds ``"counts": [n, …]`` only when some count isn't 1, so
-    a save from before F64 (no ``counts``) loads as one of each held item."""
+    a save from before F64 (no ``counts``) loads as one of each held item.
+
+    F64 round 2: ``bar`` is whether ``show hotbar`` put the hotbar on screen; JSON adds
+    ``"bar": true`` only then, so older saves load with it hidden."""
 
     held: tuple[str, ...] = ()
     counts: tuple[int, ...] = ()
+    bar: bool = False
 
     def count_of(self, index: int) -> int:
         return self.counts[index] if self.counts else 1
 
     def to_json(self) -> dict[str, Value]:
+        out: dict[str, Value] = {"held": list(self.held)}
         if self.counts and any(n != 1 for n in self.counts):
-            return {"held": list(self.held), "counts": list(self.counts)}
-        return {"held": list(self.held)}
+            out["counts"] = list(self.counts)
+        if self.bar:
+            out["bar"] = True
+        return out
 
     @staticmethod
     def from_json(obj: object) -> "ItemsState":
@@ -118,7 +125,7 @@ class ItemsState:
         ``ITEMS_HELD_MAX`` different names, each ``points.saved_name_ok`` (F22's saved-name
         check, shared: no live word set, F21 07 I-8). Anything else is
         ``StateInvalid("items")``, never echoing the input."""
-        if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts"}:
+        if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts", "bar"}:
             raise StateInvalid("items")
         held = obj["held"]
         if type(held) is not list or len(held) > ITEMS_HELD_MAX:
@@ -133,7 +140,12 @@ class ItemsState:
                 raise StateInvalid("items")
             if any(n != 1 for n in found):
                 counts = tuple(found)
-        return ItemsState(tuple(held), counts) if held else EMPTY_ITEMS
+        bar = obj.get("bar", False)         # F64 round 2: only ever written as true
+        if bar is not True and "bar" in obj:
+            raise StateInvalid("items")
+        if not held and not bar:
+            return EMPTY_ITEMS
+        return ItemsState(tuple(held), counts, bar)
 
 
 EMPTY_ITEMS: Final = ItemsState()

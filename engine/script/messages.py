@@ -3494,6 +3494,9 @@ def _e437(word: str = "count", name: str = "lanterns") -> str:
     if word == "price":
         return (f"tip {name} can't have a price: only an item can be sold, e.g. lock item "
                 'tea "Jasmine Tea" price 5.')
+    if word == "use":                                       # F64 round 2: Use
+        return (f"tip {name} can't be used: only an item has a Use button, e.g. lock item "
+                'tea "Jasmine Tea" use drink_tea.')
     return (f"tip {name} can't have a count: a tip is known or not. Only items have counts, "
             'e.g. lock item coin "Coins" count 0 to 999.')
 

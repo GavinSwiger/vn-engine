@@ -20,6 +20,7 @@ its own: it only fills in what the author left unset.
   and ``ITEMS_MONEY`` (the money word: Gold, Credits; "" for none), from ``ITEM_WORDS``.
   ``bag_words(config)`` gives ``(bag, money)``: ``[codex] bag_word`` / ``money_word`` when
   set, else the kit's, else "" (the page's own "Items", the money item's own title).
+  Round 2: ``ITEMS_HOTBAR``, the hotbar's name (Belt, Pockets; ``hotbar_word``).
 
 Pure data, read-only; imports only ``core``.
 """
@@ -172,9 +173,16 @@ ITEM_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
     "scifi": ("Cargo", "Credits"),
     "letters": ("Keepsakes", "Stamps"),
 })
+# F64 round 2: the hotbar's name per kit (``ITEMS_HOTBAR``), shown in the bag beside Use.
+ITEMS_HOTBAR: Final = "hotbar"
+HOTBAR_WORDS: Final[Mapping[str, str]] = MappingProxyType({
+    "romance": "Pocket", "horror": "Pockets", "mystery": "Pockets", "fantasy": "Belt",
+    "cozy": "Apron", "scifi": "Quick slots", "letters": "Desk",
+})
 KITS = MappingProxyType({  # type: ignore[misc]
     id_: replace(k, items=MappingProxyType({ITEMS_BAG: ITEM_WORDS[id_][0],
-                                            ITEMS_MONEY: ITEM_WORDS[id_][1]}))
+                                            ITEMS_MONEY: ITEM_WORDS[id_][1],
+                                            ITEMS_HOTBAR: HOTBAR_WORDS[id_]}))
     for id_, k in KITS.items()})
 
 
@@ -248,6 +256,17 @@ def bag_words(config: Any) -> tuple[str, str]:
     return out[0], out[1]
 
 
-__all__ = ["ITEMS_BAG", "ITEMS_MONEY", "ITEM_WORDS", "bag_words",
+def hotbar_word(config: Any) -> str:
+    """F64 round 2: the hotbar's name: ``[hotbar] word``, else the kit's, else ""."""
+    own = getattr(getattr(config, "hotbar", None), "word", "")
+    if isinstance(own, str) and own.strip():
+        return own.strip()
+    found = kit_of(config)
+    word = found.items.get(ITEMS_HOTBAR, "") if found is not None else ""
+    return word if isinstance(word, str) else ""
+
+
+__all__ = ["HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY", "ITEM_WORDS",
+           "bag_words", "hotbar_word",
            "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
            "meter_label", "meter_look"]

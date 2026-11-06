@@ -129,7 +129,8 @@ class Timeline:
     interpreter; the App also empties it at shutdown."""
 
     __slots__ = ("depth", "states", "cursor", "shown", "block_pending", "replay", "replaying",
-                 "refused", "landings", "matches", "defer_release", "_dropped")
+                 "refused", "landings", "matches", "defer_release", "_dropped", "_use",
+                 "_uses")
 
     def __init__(self, depth: int) -> None:
         assert type(depth) is int and 0 <= depth <= DEPTH_MAX, "depth outside 0..1000"
@@ -145,6 +146,10 @@ class Timeline:
         self.matches = 0
         self.defer_release = False
         self._dropped: list[GameState] = []
+        # F64 round 2: the item a use started since the last step (``note_use``), and, per
+        # kept step reached through a use, that item (by the state's id, with the state).
+        self._use: str | None = None
+        self._uses: dict[int, tuple[GameState, str]] = {}
 
     @property
     def dropped(self) -> int:
@@ -186,6 +191,8 @@ class Timeline:
         self.block_pending = False
         self.replay = 0
         self.replaying = False
+        self._use = None
+        self._uses.clear()
 
     def record(self, state: "GameState") -> bool:
         """Checkpoint step 4b (§7.2): keep ``state`` (the object itself, TR-F14-01) as the
@@ -199,7 +206,11 @@ class Timeline:
         self.block_pending = False
         states = self.states
         nxt = self.cursor + 1
+        use, self._use = self._use, None
         if nxt < len(states) and same_step(state, states[nxt]):
+            found = self._uses.pop(id(states[nxt]), None)       # F64: keep a use's mark
+            if use is None and found is not None:
+                use = found[1]
             states[nxt] = state
             self.cursor = nxt
             self.matches += 1
@@ -209,6 +220,8 @@ class Timeline:
             states.append(state)
             self.cursor = len(states) - 1
             matched = False
+        if use is not None:
+            self._mark_use(state, use)
         if wall and self.cursor > 0:
             drop = self.cursor
             self._let_go(states[:drop])
@@ -223,6 +236,26 @@ class Timeline:
             self.shown -= extra
         return matched
 
+    def note_use(self, item: str) -> None:
+        """F64 round 2: a use of ``item`` started; the next step recorded is its."""
+        self._use = item
+
+    def _mark_use(self, state: "GameState", item: str) -> None:
+        uses = self._uses
+        if len(uses) >= 2 * (self.depth + 1):             # forget steps no longer kept
+            kept = {id(s) for s in self.states}
+            for key in [k for k in uses if k not in kept]:
+                del uses[key]
+        uses[id(state)] = (state, item)
+
+    def remembered_use(self) -> str | None:
+        """F64 round 2: the item whose use led to the remembered next step, or None."""
+        nxt = self.cursor + 1
+        if self.cursor < 0 or nxt >= len(self.states):
+            return None
+        found = self._uses.get(id(self.states[nxt]))
+        return found[1] if found is not None and found[0] is self.states[nxt] else None
+
     def land(self, state: "GameState", snapshot: "GameState") -> None:
         """A back landing committed (restore's step 6 with ``landing``): the kept step
         ``state`` (the object ``on_step_back`` restored, at or before the shown step) becomes
@@ -232,6 +265,10 @@ class Timeline:
         while i >= 0 and states[i] is not state:
             i -= 1
         assert i >= 0, "a landing restores a kept step at or before the current one"
+        found = self._uses.pop(id(state), None)              # F64: the mark stays with it
+        if found is not None:
+            self._uses[id(snapshot)] = (snapshot, found[1])
+        self._use = None
         states[i] = snapshot
         self.cursor = self.shown = i
         self.landings += 1

@@ -57,6 +57,7 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    6i. F62 round 2: ``show meter`` / ``hide meter`` (``showmeter.py``): E233, W291–W293.
    6j. F63: ``clock`` lines and ``clock.<value>`` uses (``clock.py``): E431–E434,
    W300–W303.
+   6k. F64 round 2: ``[hotbar] items`` against the usable items (``hotbar.py``): W308.
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
    summary line.
@@ -1503,6 +1504,8 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
                                              inp.meter_config)      # W300–W303
     out.warnings += choicecheck.check_story(inp.nodes)              # F59: W294 (retry)
     out.warnings += choicepresent.check_story(inp.nodes, sink.add)  # F64: E447, W310
+    from engine.script import hotbar as hotbar_checks               # F64 round 2: W308
+    out.warnings += hotbar_checks.check_story(inp.nodes, inp.meter_config)
     yield
     if not inp.checks_skipped:
         out.warnings += yield from _iter_w42(collected)

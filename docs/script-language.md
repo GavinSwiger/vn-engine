@@ -873,6 +873,32 @@ as "Coins ×30".
 `[codex] bag_word` and `money_word` in config.toml change them for your game. Without a kit
 or a word, the tab is "Items" and the money shows its own title.
 
+**Using items.**
+
+```
+lock item tea "Jasmine Tea" in "Things" count 0 to 5 use drink_tea
+
+label drink_tea:
+    lock item tea                 # using takes one only if the scene says so
+    "Warmth spreads through your hands."
+    return
+```
+
+- **`use drink_tea`** (anywhere after the title, items only) gives the item a **Use** button
+  in the bag. Pressing it runs the scene `drink_tea` like a `call`: when the scene returns,
+  the story goes on with the line after the one the player was reading. Using takes nothing
+  by itself; a scene that uses an item up says `lock item tea`.
+- **When an item can be used:** only while the story waits for a click at a line, with the
+  whole line shown. Never at a menu, in a minigame, during a `pause` or a chapter card, or
+  while another item's scene runs. Then the Use button is greyed out, and a hotbar key says
+  "Not now". To make an item work only in some places, check in its scene: `if not
+  in_cellar:` / `"Not here."` / `return`.
+- **Saves and going back.** A use is a step of the story like any other: going back from the
+  scene's first line returns to the line where the item was used, with the item back, and
+  going forward again uses it again. Saves made inside the scene load there.
+- `use` is a word only there, so it stays free as a name. The scene must be a label
+  (did-you-mean on a typo).
+
 **Rolling back** past `unlock item` takes the item away again, and scrolling forward gives
 it back without a second notice. A tip stays, so a condition on `codex.tips` can turn out
 differently when the player goes forward again; then the lines ahead are played afresh.
@@ -920,6 +946,7 @@ each changed under `[words]`.
 | `there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock`. |
 | `the amount in unlock item coin is a whole number from 1 to 999,999, but found "0". Write e.g. unlock item coin 3.` / `lock item coin takes a number after the name, but found "all". …` / `a tip is given or forgotten all at once, so unlock tip lanterns takes no number. …` | Write a whole number after an item's name, or none; to take some away, use `lock item`. |
 | `tip lanterns can't have a count: a tip is known or not. …` / `tip lanterns can't be the money: …` | Only items have `count` and `money`. |
+| `tip lanterns can't be used: only an item has a Use button, …` / `use needs the name of a label, e.g. use bridge.` / `there is no label named "drink_te". Did you mean "drink_tea"?` | Write `use` and a scene's label name on an item's declaration. |
 | `a count always starts at 0, so write count 0 to 999 (or count 999) …` / `the most of coin a player can hold is a whole number from 1 to 999,999, but found "0". …` | Write `count`, `count 999` or `count 0 to 999`. |
 | `gold and coin (script/items.vns, line 1) are both marked money, but the bag shows one purse. Remove money from one of them.` | Keep `money` on one item. |
 | `there is no item named "coins". Did you mean "coin"? …` / `"lanterns" is a tip, not an item, so it has no count. …` / `items.count needs an item's name in quotes, e.g. items.count("coin"), not 3.` | Count a declared item by its name in quotes. (Also while playing, when the name is computed.) |
@@ -931,6 +958,51 @@ each changed under `[words]`.
 | `the category "festival" differs from "Festival" (script/codex.vns, line 1) only in capitals or spaces, so they show as two tabs. Use one spelling.` (warning, dev runs) | Spell the category one way. |
 | `tip river_god is declared, but no unlock tip river_god line names it, so players get it only if code unlocks it.` (warning, dev runs) | Add an `unlock tip` line, or remove the tip. |
 | `lock item brass_key does nothing here, because the player doesn't have it.` (warning, dev runs) | Check for the item first: `if "brass_key" in codex.items:`. |
+
+### show hotbar, hide hotbar
+
+`show hotbar` puts quick slots for usable items in a corner of the screen; `hide hotbar`
+takes them away.
+
+```
+lock item match "Matches" count 0 to 3 use strike_match
+
+label cellar:
+    unlock item match 3
+    show hotbar
+    "It's pitch dark down here."
+```
+
+```toml
+[hotbar]
+slots = 4                       # 4 to 8 slots; the number keys 1 to 4 use them
+items = ["match", "potion"]     # which item each slot holds; empty: automatic
+place = "bottom_left"           # the corner
+word = "Belt"                   # its name in the bag; empty: the kit's, else Hotbar
+```
+
+- Each slot shows the item's picture (else its first letters), its number key, and for a
+  counted item how many the player holds. A slot whose item the player doesn't hold is empty.
+- **Using a slot:** press its number key (1 to 8), click it, or on a gamepad press X, move
+  with left and right and press A (B or X again leaves the slots). The rule is the Use
+  button's: only while the story waits at a fully shown line; otherwise "Not now" shows.
+- **Which items:** `[hotbar] items` names them slot by slot. Without it the slots fill with
+  the held items that have a Use scene, in the order the player got them.
+- It stays on screen, across scenes, until `hide hotbar`. Saves keep it, going back restores
+  it, and New Game starts without it. Like shown meters it hides with the text box, under
+  menus and during minigames, and fades in and out (cuts with Reduce motion).
+- The corner is `[hotbar] place` (`top_left`, `top_right`, `bottom_left` or
+  `bottom_right`), else the bottom left, above the text box. A genre kit names it in the bag
+  ("Belt" in Fantasy, "Pockets" in Horror and Mystery); `[hotbar] word` changes the name.
+- `show hotbar` and `hide hotbar` mean the hotbar only with nothing else on the line.
+  `show hotbar at center` or `hide hotbar with dissolve` still show and hide a picture
+  called hotbar; a game with such a picture gets a warning at each bare line.
+
+| Message | Fix |
+|---|---|
+| `[hotbar] items names potoin, but no item has that name. Did you mean "potion"?` (warning) | Use an item's name from its `lock item` line. |
+| `[hotbar] items names item key, which has no Use scene, so its slot could never be used. …` (warning) | Add `use` and a scene to the item, or take it off the list. |
+| `show hotbar shows the hotbar now, not your picture hotbar. …` (warning, when the game starts) | Add where it goes (`show hotbar at center`), or rename the picture. |
 
 ### lock gallery, unlock gallery
 ```

@@ -1635,6 +1635,13 @@ class WordsConfig:
     # the "…"), and the picker's pick button.
     present_choice: str = _word("Show an item…")
     present_pick: str = _word("Show")
+    # F64 round 2: the bag's Use button, what a refused use says, and the hotbar's name when
+    # neither [hotbar] word nor the kit gives one.
+    codex_use: str = _word("Use", doc="the bag's button that uses the chosen item")
+    use_not_now: str = _word("Not now", doc="the notice when an item can't be used at this "
+                                            "moment, such as during a menu")
+    hotbar: str = _word("Hotbar", doc="the quick slots' name in the bag beside Use, when "
+                                      "neither the hotbar settings nor the genre name them")
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
     # heading), the box and panel words, the reasons, and the jump questions. Drafted by the
     # F20 designers, for vn-narrative-designer.
@@ -1953,6 +1960,53 @@ class CodexConfig:
         OneLine(BAG_WORD_MAX, why="the money's name at the top of the bag"),
         "what the money is called at the top of the bag, such as Gold or Credits; when "
         "empty, the genre's word, else the money item's own title"))
+
+
+# --- [hotbar] (F64 round 2: the hotbar's quick slots) -----------------------------------------
+
+HOTBAR_SLOTS_MIN = 4
+HOTBAR_SLOTS_MAX = 8                     # number keys 1 to 8
+HOTBAR_ITEM_NAME_MAX = 64                # = codex.NAME_MAX
+
+
+class HotbarItems(Validator):
+    """``[hotbar] items``: at most ``HOTBAR_SLOTS_MAX`` different item names, each 1 to 64
+    letters, digits and _ (not starting with a digit), stored as a tuple. Whether each names
+    an item with a Use scene is checked with the story (W308)."""
+
+    _NAME = re.compile(rf"(?!\d)\w{{1,{HOTBAR_ITEM_NAME_MAX}}}")
+    expected = (f"a list of at most {HOTBAR_SLOTS_MAX} different item names, e.g. "
+                '["potion", "match"]')
+
+    def check(self, value: object) -> object:
+        if (type(value) is list and len(value) <= HOTBAR_SLOTS_MAX
+                and all(type(name) is str and self._NAME.fullmatch(name) for name in value)
+                and len(set(value)) == len(value)):
+            return tuple(value)
+        raise ValueProblem
+
+
+@dataclass(frozen=True)
+class HotbarConfig:
+    """``[hotbar]`` (F64 round 2): the quick slots ``show hotbar`` puts in a corner. ``slots``
+    how many (number keys 1 to ``slots``); ``items`` which item each slot holds, in order
+    (empty: the held items that have a Use scene, in bag order); ``place`` the corner (None:
+    bottom left); ``word`` its name (empty: the kit's, else "Hotbar").
+    Presentation only: the runtime never reads it."""
+    slots: int = field(default=4, metadata=spec(IntRange(HOTBAR_SLOTS_MIN, HOTBAR_SLOTS_MAX),
+        "how many quick slots the hotbar has, from 4 to 8; players press 1, 2, 3 and so on "
+        "to use them"))
+    items: tuple[str, ...] = field(default=(), metadata=spec(HotbarItems(),
+        "which item each slot holds, in order; when empty, the items the player holds "
+        "that have a Use scene, in the order they were found"))
+    place: str | None = field(default=None, metadata=spec(
+        Choice(*CORNER_PLACES, labels={p: p.replace("_", " ").capitalize()
+                                       for p in CORNER_PLACES}),
+        "which corner of the screen the hotbar sits in; when not set, the bottom left"))
+    word: str = field(default="", metadata=spec(
+        OneLine(BAG_WORD_MAX, why="the hotbar's name"),
+        "what the hotbar is called in the bag, such as Belt or Pockets; when empty, the "
+        "genre's word, else Hotbar"))
 
 
 @dataclass(frozen=True)
@@ -2290,6 +2344,7 @@ class Config:
     auto: AutoConfig = field(default_factory=AutoConfig)                # F15
     chapter: ChapterConfig = field(default_factory=ChapterConfig)       # F18
     rollback: RollbackConfig = field(default_factory=RollbackConfig)    # F14
+    hotbar: HotbarConfig = field(default_factory=HotbarConfig)          # F64 round 2
     codex: CodexConfig = field(default_factory=CodexConfig)             # F21
     flowchart: FlowchartConfig = field(default_factory=FlowchartConfig) # F20
     gallery: GalleryConfig = field(default_factory=GalleryConfig)       # F34
@@ -2333,6 +2388,7 @@ SECTIONS: dict[str, type] = {
     "auto": AutoConfig,
     "chapter": ChapterConfig,
     "rollback": RollbackConfig,
+    "hotbar": HotbarConfig,                                             # F64 round 2
     "codex": CodexConfig,
     "flowchart": FlowchartConfig,
     "gallery": GalleryConfig,
@@ -2368,6 +2424,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "auto": "how long auto-advance waits",
     "chapter": "chapter auto-saves and save names",
     "rollback": "going back through the story",
+    "hotbar": "the quick slots for usable items that show hotbar puts on screen",
     "codex": "the codex of tips and items",
     "flowchart": "the Flowchart page",
     "gallery": "the gallery of special pictures players have seen, on the Extras screen",
