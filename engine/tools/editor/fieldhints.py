@@ -85,9 +85,11 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
                         "gets the message.",
              "look": "How this one arrives, if not the contact's usual way: a pigeon, a "
                      "letter, a phone, a radio, a terminal or a voice in your head.",
-             "arrives": "When it reaches the Inbox: now, after some days of story time "
-                        "(clock lines move it), or after the story enters some more scenes.",
-             "after": "How many days or scenes it takes to arrive (1 or more).",
+             "arrives": "When it reaches the Inbox: now, after some days or parts of the "
+                        "day of story time (clock lines move it), or after the story "
+                        "enters some more scenes.",
+             "after": "How many days, parts of the day or scenes it takes to arrive (1 or "
+                      "more).",
              "replies": "Answers the player can pick in the Inbox, split with /, such as "
                         "I'll be there. / Not this year. Empty: no reply. The story reads "
                         "the pick with inbox.reply(\"invite\")."},

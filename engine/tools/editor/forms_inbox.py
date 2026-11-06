@@ -5,17 +5,23 @@ Why this module exists: ``send invite from hana`` and ``open inbox`` are story l
 author inserts where a letter arrives and where the story stops to read it. **Send** has
 the **Message** (a define the check child lists as a ``message`` name: text, or a list of
 lines), the **Contact** (a ``lock contact`` name) and an optional **Look** that overrides
-the contact's (``send … on pigeon``); round 3 adds **Arrives** (now, after some days or
-after some scenes) with **How many**, and **Replies**, the answers the player can pick,
-split with / (written as the line's ``ask "…" "…"``; a message whose define ends with an
-ask keeps it there). **Open** has **Open at**: the Inbox's newest thread, or the newest
-that came by one look. The Events row says it in words ("invite from hana, after 1 day,
-replies: Yes / No", "the Inbox, newest by pigeon").
+the contact's (``send … on pigeon``); round 3 adds **Arrives** (now, after some days, after
+some parts of the day or after some scenes) with **How many**, and **Replies**, the answers
+the player can pick, split with / (written as the line's ``ask "…" "…"``; a message whose
+define ends with an ask keeps it there). **Open** has **Open at**: the Inbox's newest
+thread, or the newest that came by one look. The Events row says it in words ("invite from
+hana, after 1 day, replies: Yes / No", "the Inbox, newest by pigeon").
 
 Pure Python: ``engine.script`` and ``forms`` only; no Tk (ADR-0008). ``forms._line_forms``
 imports this module inside the function, as this one imports ``forms``.
+
+"After some parts of the day" is offered only when the game's ``[calendar] parts`` names
+two or more (the check child's ``day_part`` names; ``arrives_field``), or the line already
+says ``after N parts``.
 """
 
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Final
 
 from engine.script.inbox import (LOOKS, REPLIES_MAX, WORD_INBOX, OpenStep, SendStep,
@@ -25,8 +31,11 @@ from engine.tools.editor.forms import CommandForm, Field, Values, _tokens
 
 _LOOK_SHOWN: Final = ("Phone", "Letters", "Pigeon", "Radio", "Terminal", "Mind")
 SEND_LOOKS: Final = ("", *LOOKS)
-ARRIVES: Final = ("", "days", "scenes")
-_ARRIVES_SHOWN: Final = ("Now", "After some days", "After some scenes")
+ARRIVES: Final = ("", "days", "parts", "scenes")
+_ARRIVES_SHOWN: Final = ("Now", "After some days", "After some parts of the day",
+                         "After some scenes")
+PARTS: Final = "parts"
+DAY_PART_KIND: Final = "day_part"         # the check child's [calendar] parts
 REPLY_SPLIT: Final = "/"
 OPEN_AT: Final = (WORD_INBOX, *LOOKS)
 
@@ -36,9 +45,11 @@ def _read_send(node: Statement, code: str) -> dict[str, str] | None:
         return None
     if node.written() != " ".join(_tokens(code) or ()):
         return None                                     # written another way: script row
-    count = node.after_days or node.after_scenes
+    count = node.after_days or node.after_parts or node.after_scenes
+    arrives = ("days" if node.after_days else PARTS if node.after_parts
+               else "scenes" if node.after_scenes else "")
     return {"message": node.message, "contact": node.contact, "look": node.device or "",
-            "arrives": "days" if node.after_days else "scenes" if node.after_scenes else "",
+            "arrives": arrives,
             "after": str(count) if count else "",
             "replies": f" {REPLY_SPLIT} ".join(node.replies)}
 
@@ -54,14 +65,27 @@ def replies_of(text: str) -> tuple[str, ...]:
     return tuple(out[:REPLIES_MAX])
 
 
-def _after(values: Values) -> tuple[int | None, int | None]:
+def _after(values: Values) -> tuple[int | None, int | None, int | None]:
+    """``(days, scenes, parts)`` for ``after_words``."""
     arrives = values.get("arrives", "").strip()
-    if arrives not in ("days", "scenes"):
-        return None, None
+    if arrives not in ARRIVES[1:]:
+        return None, None, None
     written = values.get("after", "").strip()
     count = int(written) if written.isdigit() and len(written) <= 4 else 1
     count = max(1, count)
-    return (count, None) if arrives == "days" else (None, count)
+    if arrives == "days":
+        return count, None, None
+    return (None, None, count) if arrives == PARTS else (None, count, None)
+
+
+def arrives_field(field: Field, names: Mapping[str, Sequence[str]], value: str) -> Field:
+    """Send's Arrives pick for this game: without "After some parts of the day" unless
+    the game's ``[calendar] parts`` names two or more, or ``value`` is already parts."""
+    if field.key != "arrives" or names.get(DAY_PART_KIND) or value == PARTS:
+        return field
+    keep = [i for i, option in enumerate(field.options) if option != PARTS]
+    return replace(field, options=tuple(field.options[i] for i in keep),
+                   shown=tuple(field.shown[i] for i in keep))
 
 
 def _write_send(values: Values) -> str:
@@ -95,7 +119,7 @@ SEND: Final = CommandForm(
            shown=("The contact's", *_LOOK_SHOWN), optional=True),
      Field("arrives", "Arrives", "pick", options=ARRIVES, shown=_ARRIVES_SHOWN,
            optional=True),
-     Field("after", "How many (days or scenes)", "number", optional=True),
+     Field("after", "How many (days, parts or scenes)", "number", optional=True),
      Field("replies", "Replies (split with /)", "text", optional=True)),
     _read_send, _write_send, _summary_send)
 
@@ -126,5 +150,5 @@ OPEN: Final = CommandForm(
 
 FORMS: Final[tuple[CommandForm, ...]] = (SEND, OPEN)
 
-__all__ = ["ARRIVES", "FORMS", "OPEN", "OPEN_AT", "REPLY_SPLIT", "SEND", "SEND_LOOKS",
-           "replies_of"]
+__all__ = ["ARRIVES", "DAY_PART_KIND", "FORMS", "OPEN", "OPEN_AT", "REPLY_SPLIT", "SEND",
+           "SEND_LOOKS", "arrives_field", "replies_of"]

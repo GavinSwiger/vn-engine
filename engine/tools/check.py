@@ -734,6 +734,16 @@ def _message_names(ctx: CheckContext) -> Iterable[NameRow] | None:
     return rows
 
 
+def _day_part_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F65: the parts of the day ``[calendar] parts`` sets, when it sets two or more
+    (Insert ▸ Messages ▸ Send offers "After some parts of the day" only then)."""
+    calendar = getattr(ctx.config, "calendar", None)
+    parts = getattr(calendar, "parts", None)
+    if not isinstance(parts, tuple) or len(parts) < 2:
+        return None
+    return [(part, None, None) for part in parts]
+
+
 def _python_tree(source: str, mode: str) -> ast.AST | None:
     try:
         return ast.parse(source, mode=mode)
@@ -1199,6 +1209,7 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "variable": _variable_names,            # F47: each default, at its line
     "contact": _contact_names,              # F65 round 2: each lock contact
     "message": _message_names,              # F65 round 2: defines send can deliver
+    "day_part": _day_part_names,            # F65: [calendar] parts (Send's Arrives)
     "character_use": _uses("character_use"),   # F47: each line a character speaks or is named
     "image_use": _uses("image_use"),        # F47: each scene/show line (and say attributes)
     "audio_use": _uses("audio_use"),        # F47: each audio line, and Character blips

@@ -39,6 +39,10 @@ _NOW = {"arrives": "", "after": "", "replies": ""}
      {"message": "late", "contact": "ren", "look": "radio", "arrives": "scenes", "after": "2",
       "replies": "On my way. / Start without me."},
      "late from ren, by radio, after 2 scenes, replies: On my way. / Start without me."),
+    # After some parts of the day.
+    (SEND, "send late from ren after 2 parts",
+     {"message": "late", "contact": "ren", "look": "", "arrives": "parts", "after": "2",
+      "replies": ""}, "late from ren, after 2 parts"),
     (OPEN, "open inbox", {"at": "inbox"}, "the Inbox"),
     (OPEN, "open pigeon", {"at": "pigeon"}, "the Inbox, newest by pigeon"),
 ])
@@ -78,7 +82,7 @@ def test_send_form_round_3_fields():
     assert keys[3:] == ["arrives", "after", "replies"]
     assert all(form_hint("send", key) for key in keys)
     assert [f.shown_for(o) for f in SEND.fields[3:4] for o in f.options] == [
-        "Now", "After some days", "After some scenes"]
+        "Now", "After some days", "After some parts of the day", "After some scenes"]
     # Forgiving input: a missing or bad count is 1, "Now" drops the count, replies are
     # trimmed, deduplicated, at most four, with quotes made plain.
     base = {"message": "invite", "contact": "hana", "look": ""}
@@ -87,8 +91,51 @@ def test_send_form_round_3_fields():
     assert SEND.write({**base, "arrives": "scenes", "after": "0"}) == \
         "send invite from hana after 1 scene"
     assert SEND.write({**base, "arrives": "", "after": "3"}) == "send invite from hana"
+    assert SEND.write({**base, "arrives": "parts", "after": "x"}) == (
+        "send invite from hana after 1 part")
     assert replies_of(' Yes /No/ yes/Yes / say "hi" /a/b ') == ("Yes", "No", "yes", "say 'hi'")
     line = SEND.write({**base, "replies": "Yes/No"})
     assert line == 'send invite from hana ask "Yes" "No"'
     parsed = parse_text(template(S=line))
     assert parsed.errors == [] and SEND.read(first_say(parsed), line)["replies"] == "Yes / No"
+
+
+def test_parts_are_offered_only_with_calendar_parts():
+    from types import SimpleNamespace
+
+    from engine.tools.check import NAME_SOURCES
+    from engine.tools.editor.forms_inbox import arrives_field
+    arrives = SEND.fields[3]
+    without = arrives_field(arrives, {}, "")
+    assert without.options == ("", "days", "scenes")
+    assert without.shown == ("Now", "After some days", "After some scenes")
+    assert arrives_field(arrives, {"day_part": ["Day", "Night"]}, "") is arrives
+    assert arrives_field(arrives, {}, "parts") is arrives       # a line that already says so
+    assert arrives_field(SEND.fields[0], {}, "") is SEND.fields[0]
+    # The check child lists [calendar] parts when it names two or more.
+    names = NAME_SOURCES["day_part"]
+    ctx = SimpleNamespace(config=SimpleNamespace(calendar=SimpleNamespace(
+        parts=("Morning", "Evening"))))
+    assert [row[0] for row in names(ctx)] == ["Morning", "Evening"]
+    for parts in (None, ("Day",)):
+        ctx = SimpleNamespace(config=SimpleNamespace(calendar=SimpleNamespace(parts=parts)))
+        assert names(ctx) is None
+
+
+@pytest.mark.tk
+def test_the_send_dialog_offers_parts_only_with_calendar_parts():
+    tk = pytest.importorskip("tkinter")
+    from engine.tools.editor import formdialogs as fd
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no display")
+    try:
+        for names, value, offered in (({}, "", 3), ({"day_part": ["Day", "Night"]}, "", 4),
+                                      ({}, "parts", 4)):
+            start = fd.new_values(SEND) | {"arrives": value}
+            dialog = fd.FormDialog(root, SEND, start, names=names)
+            assert len(dialog.widgets["arrives"].cget("values")) == offered, (names, value)
+            dialog.dialog.destroy()
+    finally:
+        root.destroy()

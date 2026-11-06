@@ -475,6 +475,9 @@ class FormDialog:
                                   style="Dialog.TCheckbutton")
             return box, var
         var = tk.StringVar(parent, value=value)
+        if self.form.key == "send":                     # F65: parts only with [calendar] parts
+            from engine.tools.editor.forms_inbox import arrives_field
+            field = arrives_field(field, names, value)
         if field.kind == "pick" and field.shown:
             return self._shown_pick(parent, field, var), var
         if field.kind == "pick":
