@@ -39,6 +39,7 @@ from engine.runtime.nvl import EMPTY_NVL, NvlState
 from engine.runtime.points import EMPTY_POINTS, PointsState, saved_name_ok
 from engine.runtime.rollback import ROLLBACK_ON, RollbackState
 from engine.runtime.stage import EMPTY_STAGE, StageInvalid, StageState
+from engine.runtime.triggers import EMPTY_TRIGGERS, TriggerState, triggers_json
 from engine.runtime.ui import EMPTY_UI, UiState
 from engine.runtime.values import (Unsaveable, Value, freeze_untrusted, new_item_budget,
                                    plain_copy, same_value)
@@ -55,7 +56,7 @@ _REQUIRED_KEYS: Final = frozenset(("format", "identity_scheme", "position", "cal
 _OPTIONAL_KEYS: Final = frozenset(("stage", "audio", "choices", "history", "chapter",
                                    "points", "rollback", "nvl", "items", "minigame", "flow",
                                    "glitch", "window_title", "ui_style", "save_block",
-                                   "load_block", "clock"))
+                                   "load_block", "clock", "triggers"))
 # later features: one key each (F04, F08, F07, F13, F18, F22, F14, F17, F21, F23, F20, F28,
 # F30); F32's ``ui`` is three keys (its 04 §3, C6)
 ITEMS_HELD_MAX: Final = 1_000               # F21: names in a saved ``items`` (declared + hidden)
@@ -182,6 +183,7 @@ class GameState:
     window_title: str | None = None         # F30 (04 §3): None is ``[game] title``
     ui: UiState = EMPTY_UI                  # F32 (04 §3): no style, nothing blocked
     clock: ClockState = EMPTY_CLOCK         # F63: the calendar's start (runtime/clock.py)
+    triggers: TriggerState = EMPTY_TRIGGERS  # F65 trigger core: none armed or retired
 
     def __post_init__(self) -> None:
         if type(self.variables) is dict:    # a builder's private dict
@@ -226,7 +228,8 @@ class GameState:
             "flow": self.flow.to_json(),                        # F20: always written
             "glitch": self.glitch.to_json(),                    # F28: always written
         } | _title_json(self.window_title) | self.ui.to_json() \
-            | clock_json(self.clock)                            # F30, F32, F63: only when set
+            | clock_json(self.clock) | triggers_json(self.triggers)   # F30, F32, F63, F65:
+                                                                    # only when set
 
     def save_problem(self) -> str | None:
         """F11 C11: a reason word (``^[a-z_]{1,40}$``) if this state, written out and read
@@ -435,6 +438,10 @@ def _from_json(obj: object) -> GameState:
     if "clock" in obj:
         clock = ClockState.from_json(obj["clock"])          # StateInvalid("clock") only
 
+    triggers = EMPTY_TRIGGERS               # F65: a state from before the trigger core
+    if "triggers" in obj:                   # StateInvalid("triggers") only
+        triggers = TriggerState.from_json(obj["triggers"])
+
     ui = UiState.from_json(obj)             # F32: absent keys are EMPTY_UI; StateInvalid with
                                             # the key's name only
     return GameState(position=position, position_at=position_at, call_stack=call_stack,
@@ -442,7 +449,7 @@ def _from_json(obj: object) -> GameState:
                      identity_scheme=scheme, stage=stage, audio=audio, choices=choices,
                      history=history, chapter=chapter, points=points, rollback=rollback,
                      nvl=nvl, items=items, minigame=minigame, flow=flow, glitch=glitch,
-                     window_title=window_title, ui=ui, clock=clock)
+                     window_title=window_title, ui=ui, clock=clock, triggers=triggers)
 
 
 def _sid_entry(entry: object, reason: str) -> tuple[str, Hint]:
