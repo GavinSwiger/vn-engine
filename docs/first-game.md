@@ -74,8 +74,9 @@ vn-engine. You can look around it any time. Next you make a game of your own.
 2. The **New game** window asks where to **Start from**. Keep **A short sample story
    (recommended)** picked. It gives you two characters, two places, music, a choice and two
    endings to learn from.
-3. Click **Choose a folder…**. Pick an empty folder, or type a new folder name such as
-   `night-bakery`, and confirm.
+3. Click **Choose a folder…**. Pick an empty folder, or make one: click **New folder** at
+   the top of that window, type a name such as `night-bakery`, press Enter, then click
+   **Select Folder**.
 
 
 You should see a second Studio window open on your new game. The first window stays open;

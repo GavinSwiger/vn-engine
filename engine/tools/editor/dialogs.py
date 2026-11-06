@@ -84,7 +84,8 @@ def _games_folder() -> dict[str, str]:
 
 
 def ask_directory(parent: tk.Misc) -> Path | None:
-    """New game…: the OS folder dialog (a new folder name may be typed). None if cancelled."""
+    """New game…: the OS folder dialog (its New folder button makes one; Windows refuses a
+    typed name that doesn't exist yet). None if cancelled."""
     picked = filedialog.askdirectory(parent=parent, title="New game folder", mustexist=False,
                                      **_games_folder())
     return Path(picked) if picked else None
