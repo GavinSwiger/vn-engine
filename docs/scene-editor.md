@@ -49,7 +49,7 @@ The **Problems** panel lists each problem. Click a row (or Enter) to jump to its
 window, checks only read your files, so opening a downloaded game runs none of its code.
 After that, checks also run your `define` and `default` lines, as the game does.
 
-Some checks need the game window, so they are shown on Preview only: text warnings, chapter
+Some checks need the game window, so they are shown on Preview only: text-fit warnings, chapter
 card colors (W111), and loading minigames.
 
 ## Writing help

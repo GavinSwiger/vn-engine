@@ -182,9 +182,10 @@ def test_ac_f47_07_first_declaration_makes_database_vns_and_one_include(studio, 
     db = open_database(ed, "character")
     ed.answers.append("Rin")
     db.new_entry()
-    # First-game fix: the Database saves the files it changed.
+    # First-game fixes: the color is shaded to read on the name plate (#e06c9f is 2.6:1 on
+    # Sakura's), and the Database saves the files it changed.
     assert text_of(ed, DB_REF) == (declplan.DATABASE_HEADER
-                                   + '\ndefine rin = Character("Rin", color="#e06c9f")')
+                                   + '\ndefine rin = Character("Rin", color="#ca618f")')
     assert text_of(ed, files.MAIN_REF) == 'include "database.vns"\n' + main_before.rstrip("\n")
     assert (game / DB_REF).read_text("utf-8").rstrip("\n") == text_of(ed, DB_REF)
     assert (game / files.MAIN_REF).read_text("utf-8").rstrip("\n") == text_of(ed,
@@ -197,7 +198,7 @@ def test_ac_f47_07_first_declaration_makes_database_vns_and_one_include(studio, 
     ed.answers.append("Kai")                    # the include is added once only
     db.new_entry()
     assert text_of(ed, files.MAIN_REF).count('include "database.vns"') == 1
-    assert text_of(ed, DB_REF).endswith('define kai = Character("Kai", color="#4f8fd8")')
+    assert text_of(ed, DB_REF).endswith('define kai = Character("Kai", color="#4b88cd")')
 
     # One undo step per file per action.
     ed.win.files[DB_REF].widget.edit_undo()

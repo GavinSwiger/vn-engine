@@ -4142,7 +4142,7 @@ game start; the rest stop the launch.
 | `text_color must be a color: …` / `character names are shown exactly as written, …` | Fix the `Character` option; names take no tags. |
 | `{var=player_nmae} shows a variable that no default or define sets, …` (warning) | Fix the name, or add a `default`. |
 | `this line needs 2 text boxes at text size 28, …` (warning, dev runs) | Split the line if you want to choose the break. |
-| `hana's name color #f4d0dc is hard to read on the name plate …` (warning, dev runs) | Pick a color with more contrast. |
+| `hana's name color #f4d0dc is hard to read on the name plate …` (warning W41, dev runs and the check) | Pick a color with more contrast. |
 | `config.toml: [theme.textbox] text_font "fonts/Lora-Regular.tff" doesn't exist, so the built-in font is used. …` (warning) | Fix the path. |
 
 ### Python

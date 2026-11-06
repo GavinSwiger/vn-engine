@@ -24,7 +24,10 @@ one ``done``, each event split into lines of at most 1 MiB and 5,000 items.
   first Preview, Save, or Check in that window. The names that need launch values
   (``character``, defined transitions) are then not sent.
 - **Not checked here** (``07`` I-8): ``app``-only launch checks (F05/F17's text check, F18's
-  W111, F23's plugin load). They show on Preview.
+  W111, F23's plugin load). They show on Preview. Except W41 (first-game fix, 2026-11-06): a
+  character's name or text color that is hard to read on the text box in the game's color
+  scheme is worked out after the launch phase with ``runtime/textcontrast`` (no pygame), at
+  the ``define``, so Studio's Problems lists it.
 
 - **Lint** (F41 ``04`` §7.3). When the story loaded with no error at all, ``tools/lint.py``'s
   findings (W237–W242) go to Studio as names rows (``unreached``, ``unused_*``), never as
@@ -91,6 +94,7 @@ from engine.runtime.gamesources import audio_files, game_has, image_source
 from engine.runtime.images import ImageIndex, build_index
 from engine.runtime.launch import LaunchJob, LaunchResult
 from engine.runtime.limits import IMAGE_SCAN_MAX_DEPTH
+from engine.runtime.textcontrast import character_warnings
 from engine.runtime.transitions import TransitionDef
 from engine.script import LoadOptions, load_story
 from engine.script.audio import PLAYABLE_EXTS, PlayAudio, QueueMusic, StopAudio, Voice
@@ -404,6 +408,23 @@ def problem_item(severity: str, code: str, source: str, text: str, file: str | N
 def _error_item(error: UserFacingError, source: str, severity: str = "error") -> dict:
     return problem_item(severity, getattr(error, "code", ""), source, error.message,
                         error.file, error.line, error.column)
+
+
+def _w41_items(program: Program, namespace: Mapping[str, object],
+               config: Config) -> list[dict]:
+    """W41 for each define that made a ``Character`` (an alias doesn't warn twice), at the
+    define's line: the game's own dev launch check (``app/text_check``), on the theme the
+    color scheme gives (``config.theme.textbox``)."""
+    out: list[dict] = []
+    theme = config.theme.textbox
+    for define in program.defines:
+        c = namespace.get(define.name)
+        if type(c) is not Character or c.define_name != define.name:
+            continue
+        for text in character_warnings(define.name, c, theme):
+            out.append(problem_item("warning", "W41", "launch", text, define.file.ref,
+                                    define.line, None))
+    return out
 
 
 def _config_warning(text: str) -> dict:
@@ -1325,6 +1346,9 @@ class CheckJob:
                          for warning in launch.warnings]
             counts["error"] += max(launch.error_count, len(launch.errors))
             counts["warning"] += len(launch.warnings)
+            contrast = _w41_items(program, namespace, config)
+            problems += contrast
+            counts["warning"] += len(contrast)
 
         context = CheckContext(paths, config, program, launch, namespace, counts["error"])
         try:

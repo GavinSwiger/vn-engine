@@ -10,10 +10,12 @@ for you. **+ New** adds an entry: new declarations go into
 `script/database.vns`, which Studio makes (and includes from `main.vns`) the first time;
 positions go into `config.toml`.
 
-- **Characters**: the name shown, its colour, the text colour and italics, the character's
-  **Looks** (the pictures in `images/<name>/`; **+ Add looks…** copies more in; a click on
-  one sets up its [blinking and talking](#blinking-and-talking)), and the
-  **Voice blip** (a sound with ▶, how often it plays, its pitch and volume).
+- **Characters**: the name shown, its colour (a new character's is shaded to read on the
+  name plate in your color scheme; one that's hard to read is a warning in Problems), the
+  text colour and italics, the character's **Looks** (the pictures in `images/<name>/`;
+  **+ Add looks…** copies more in; a click on one sets up its
+  [blinking and talking](#blinking-and-talking)), and the **Voice blip** (a sound with ▶,
+  how often it plays, its pitch and volume).
 - **Pictures**: backgrounds, each character's looks, and colour backgrounds
   (`image bg night = "#102040"`), as thumbnails. Turn on **In the gallery** to put a
   picture in the [gallery](#gallery) (`lock gallery cg festival "Festival"`); its

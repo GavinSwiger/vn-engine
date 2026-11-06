@@ -19,7 +19,9 @@ Faces (§7.6), ``custom`` = a usable ``text_font``:
 
 The contrast function (WCAG 2.x, I-6) serves W41, W44 (``TextLaunchCheck``, F05 step 7),
 and the UI-F05-05 tests: colors are blended in sRGB as drawn, per channel
-``round(fg × a + bg × (1 − a))``, and pure black and pure white bound every backdrop.
+``round(fg × a + bg × (1 − a))``, and pure black and pure white bound every backdrop. It and
+W41's ``character_warnings`` live in ``runtime/textcontrast.py`` (re-exported here), so
+Studio's check child gives the same W41 without pygame.
 
 Dev runs only (§7.8): ``install_textbox`` warns W44 when ``[theme.textbox]`` text on its own
 box is hard to read, and ``TextLaunchCheck`` runs after the launch phase, in the story load
@@ -101,6 +103,9 @@ from engine.runtime.fourthwall import (identity_hits, identity_nodes,   # F30 W1
                                        name_line, name_nodes)
 from engine.runtime.nvl import Nvl                 # F17 07 I-8: the statement, through runtime
 from engine.runtime.text import format_value
+from engine.runtime.textcontrast import (  # noqa: F401  (re-exported: chapters, choices, ui_contrast)
+    BLACK, NAME_MIN_RATIO, TEXT_MIN_RATIO, WHITE, box_contrast, character_warnings, composite,
+    contrast_ratio, relative_luminance)
 from engine.ui.blips import BlipPlayer
 from engine.ui.builtin.textbox_screen import TextboxLook, TextboxScreen
 
@@ -110,11 +115,6 @@ if TYPE_CHECKING:
     from engine.render.spriteanim import SpriteAnimator
 
 RGB = tuple[int, int, int]
-BLACK: RGB = (0, 0, 0)
-WHITE: RGB = (255, 255, 255)
-
-NAME_MIN_RATIO: Final = 3.0               # SR-F05-24: names (24 units and up)
-TEXT_MIN_RATIO: Final = 4.5               # SR-F05-24, 27: body text
 # Defines or statements per step (§7.8): about 2 ms of lines (AC-F02-63: a slice ends at most
 # one step late, and a busy machine can make one step several times slower).
 TEXT_CHECK_CHUNK: Final = 50
@@ -127,37 +127,6 @@ FOURTHWALL_CHUNK: Final = 1_000           # F30: nodes per step of the W189/W190
 _log = get_logger("text")
 _choice_log = get_logger("choice")        # F07 W47 (07 I-11)
 _script_log = get_logger("script")        # F30 W190
-
-
-# --- Contrast (UI-F05-05, W41, W44) -----------------------------------------------------------
-
-def _channel(c: int) -> float:
-    s = c / 255
-    return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
-
-
-def relative_luminance(color: RGB) -> float:
-    r, g, b = color
-    return 0.2126 * _channel(r) + 0.7152 * _channel(g) + 0.0722 * _channel(b)
-
-
-def contrast_ratio(a: RGB, b: RGB) -> float:
-    """WCAG 2.x contrast of two opaque colors (1.0 to 21.0)."""
-    high, low = sorted((relative_luminance(a), relative_luminance(b)), reverse=True)
-    return (high + 0.05) / (low + 0.05)
-
-
-def composite(fg: RGB, opacity: float, bg: RGB) -> RGB:
-    """``fg`` at ``opacity`` over ``bg``, per channel in sRGB as drawn."""
-    return tuple(round(f * opacity + b * (1 - opacity)) for f, b in zip(fg, bg))  # type: ignore
-
-
-def box_contrast(text: RGB, fill: RGB, opacity: float) -> tuple[float, str]:
-    """The worse contrast of ``text`` on the box composited over pure black and over pure
-    white, and that backdrop's word (``"black"`` or ``"white"``)."""
-    over_black = contrast_ratio(text, composite(fill, opacity, BLACK))
-    over_white = contrast_ratio(text, composite(fill, opacity, WHITE))
-    return (over_black, "black") if over_black <= over_white else (over_white, "white")
 
 
 # --- Faces (§7.6) -------------------------------------------------------------------------------
@@ -392,27 +361,6 @@ def nvl_character_warning(who: str, c: Character, look: NvlLook) -> str | None:
     if ratio >= NAME_MIN_RATIO:
         return None
     return format_message("W100", ("character", who, color, ratio))
-
-
-def character_warnings(who: str, c: Character, theme: "TextboxTheme") -> list[str]:
-    """W41 for one ``Character``, without the place: its name color on the plate (only when
-    it has a plate: a name, or ``name_from``) and its ``text_color`` on the box."""
-    out = []
-    color = c.color
-    if type(color) is str and (c.name_from is not None or c.name):
-        tab = theme.name_tab
-        ratio, _ = box_contrast(hex_rgb(color), tab.fill_color, tab.fill_opacity)
-        if ratio < NAME_MIN_RATIO:
-            out.append(format_message("W41", ("name", who, color, ratio,
-                                              rgb_hex(tab.fill_color))))
-    text_color = c.options.get("text_color")
-    if type(text_color) is str:
-        ratio, backdrop = box_contrast(hex_rgb(text_color), theme.fill_color,
-                                       theme.fill_opacity)
-        if ratio < TEXT_MIN_RATIO:
-            out.append(format_message("W41", ("text", who, text_color, ratio, backdrop,
-                                              rgb_hex(theme.fill_color))))
-    return out
 
 
 _DEFINES, _LINES, _WALL, _DONE = range(4)

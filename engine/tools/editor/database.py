@@ -1564,8 +1564,14 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         shown = answer[0].strip()
         name = dec.script_name(shown, taken)
         count = sum(1 for d in self.decls if d.kind == dec.CHARACTER)
+        # First-game fix: the next color, shaded until it reads on the game's name plate
+        # (W41's 3:1) in its color scheme, so the game never warns about Studio's pick.
+        from engine.tools.editor import namecolors, stagestills
+        fill, opacity = namecolors.plate_of(self.win.paths.root,
+                                            stagestills.config_of(self.win))
         values = {dec.NAME: shown, **dec.OPTION_DEFAULTS,
-                  "color": NEW_COLORS[count % len(NEW_COLORS)]}
+                  "color": namecolors.readable(NEW_COLORS[count % len(NEW_COLORS)], fill,
+                                               opacity)}
         self.select_category(db.CATEGORY_CHARACTER)
         return self._write(declplan.plan_new(dec.CHARACTER, name, values, self.texts),
                            select=f"c:{name}")
