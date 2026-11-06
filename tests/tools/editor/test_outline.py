@@ -153,6 +153,7 @@ from tests.tools.editor.test_studio_window import studio, tab  # noqa: E402,F401
 @pytest.mark.tk
 def test_ac_f45_54_outline_tab_and_map_drawing(studio, studio_game, monkeypatch):
     ed = studio(studio_game, mapped=True)
+    ed.story_map.set_pictures(False)                  # F45's boxes (3.1: "Compact")
     opened = []
     monkeypatch.setattr(ed.outline_view, "on_open", lambda f, n: opened.append((f, n)))
     ed.win.check_names = NAMES
