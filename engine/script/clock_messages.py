@@ -2,7 +2,7 @@
 (``script/clock.py``, parse), E431–E434 and W300–W303 (``clock.check_story``), run E435
 (``runtime/clock.py``). ``clock.py`` adds them to ``messages.TEMPLATES`` when it is imported, so
 ``messages.py`` itself needs no edit. Every template formats with no arguments (the message
-tests call each with its defaults). W304 is spare.
+tests call each with its defaults). Round 2: W304 (``clockshow.picture_warnings``, launch).
 """
 
 from collections.abc import Callable, Sequence
@@ -158,9 +158,16 @@ def _w303(day: int = 40, last: int = 30) -> str:
             "clock.days_left() is already 0 there.")
 
 
+def _w304(line: str = "show clock") -> str:
+    return (f"{line} puts the story clock in the corner, not your picture \"clock\". To show "
+            f"the picture, say where or how ({line} at center, {line} with dissolve), or "
+            "rename the picture.")
+
+
 TEMPLATES: dict[str, Callable[..., str]] = {
     "E428": _e428, "E429": _e429, "E430": _e430, "E431": _e431, "E432": _e432, "E433": _e433,
     "E434": _e434, "E435": _e435, "W300": _w300, "W301": _w301, "W302": _w302, "W303": _w303,
+    "W304": _w304,
 }
 
 __all__ = ["TEMPLATES"]

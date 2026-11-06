@@ -4,6 +4,8 @@ Why this module exists: ``clock next``, ``clock next day`` and ``clock go to …
 time (``script/clock.py``). One form covers the three: **Move** picks which, and for "go to"
 **Day or date** (a number, or a date such as 31 October) and **Part of the day** say where.
 The Events row says it in words ("next part of the day", "go to day 7, Evening").
+Round 2: **Show clock** and **Hide clock** (``show clock`` / ``hide clock``,
+``script/clockshow.py``), forms with no fields.
 
 Pure Python: ``engine.script`` and ``forms`` only; no Tk (ADR-0008). ``forms._line_forms``
 imports this module inside the function, as this one imports ``forms``.
@@ -12,6 +14,7 @@ imports this module inside the function, as this one imports ``forms``.
 from typing import Final
 
 from engine.script.clock import ClockStep
+from engine.script.clockshow import ClockShow
 from engine.script.nodes import Statement
 from engine.tools.editor.forms import CommandForm, Field, Values, _tokens
 
@@ -71,6 +74,21 @@ FORM: Final = CommandForm(
      Field("part", "Part of the day (for Go to)", "text", optional=True)),
     _read, _write, _summary)
 
-FORMS: Final[tuple[CommandForm, ...]] = (FORM,)
+def _shown(shown: bool):
+    word = "show" if shown else "hide"
 
-__all__ = ["FORM", "FORMS", "MOVES"]
+    def read(node: Statement, code: str) -> dict[str, str] | None:
+        if not isinstance(node, ClockShow) or node.shown is not shown                 or _tokens(code) != [word, "clock"]:
+            return None
+        return {}
+    return CommandForm(f"{word}_clock", f"{word.capitalize()} clock",
+                       f"{word.capitalize()} clock", ((word, f"{word} clock"),), ClockShow, (),
+                       read, lambda _values: f"{word} clock", lambda _values: "")
+
+
+SHOW_CLOCK: Final = _shown(True)
+HIDE_CLOCK: Final = _shown(False)
+
+FORMS: Final[tuple[CommandForm, ...]] = (FORM, SHOW_CLOCK, HIDE_CLOCK)
+
+__all__ = ["FORM", "FORMS", "HIDE_CLOCK", "MOVES", "SHOW_CLOCK"]

@@ -79,7 +79,8 @@ history in a save (only ``driver.checkpoint()`` is saved). F20's second writer o
 delay these writes (the pending count is F11's own). F23 (``04`` §7.8):
 ``set_minigame_title_provider`` (asked first, with the waiting minigame's name, for the
 description of a save made while the state waits at a minigame); the thumbnail comes from
-the shell's ``set_thumbnail_source``.
+the shell's ``set_thumbnail_source``. F63 round 2: ``set_clock_provider`` (the story clock's
+"Day 4, Evening", put before the description).
 
 F20 (``07`` I-3): ``load_state`` is steps 4–6 on a state already read (the slot load is
 ``read_slot_full`` + it; a flowchart jump passes ``fresh_menu``, ``before_commit``, and
@@ -273,6 +274,7 @@ class SaveService:
         self._load_listeners: list[Callable[[], None]] = []
         self._chapter_provider: Callable[[GameState], str | None] | None = None
         self._minigame_title: Callable[[str], str | None] | None = None      # F23 §7.8
+        self._clock_provider: Callable[[GameState], str | None] | None = None  # F63
         # Auto-saves (§7.8 steps 1–4): seconds of play since the last auto-save, the last
         # checkpoint looked at, the last one auto-saved, and F18's one-checkpoint request.
         self.autosave_interval = config.saves.autosave_interval
@@ -464,6 +466,7 @@ class SaveService:
         chapter = self._chapter(state)
         title = self._minigame_title_of(state)
         description = title if title is not None else fmt.describe(state, chapter)
+        description = self._with_clock(state, description)                   # F63
         if chapter is not None:
             chapter = chapter[:limits.DESCRIPTION_MAX]       # as the encoder writes it
         meta = SaveMeta(seq=seq, saved_at=saved_at,
@@ -486,6 +489,15 @@ class SaveService:
             return None
         title = provider(waiting.name)
         return title if type(title) is str and title.strip() else None
+
+    def _with_clock(self, state: GameState, description: str) -> str:
+        """F63 round 2: "Day 4, Evening · <description>" when the clock provider gives the
+        story time (a game that uses the clock), else ``description``."""
+        provider = self._clock_provider
+        moment = provider(state) if provider is not None else None
+        if type(moment) is not str or not moment.strip():
+            return description
+        return f"{moment} · {description}" if description else moment
 
     def _chapter(self, state: GameState) -> str | None:
         """F18's chapter for the description and meta (``set_chapter_provider``): a
@@ -975,6 +987,11 @@ class SaveService:
         state waits at (from the live registry; None for an unregistered name). Asked
         before F18's chapter and the newest line; None clears it."""
         self._minigame_title = fn
+
+    def set_clock_provider(self, fn: "Callable[[GameState], str | None] | None") -> None:
+        """F63 round 2: ``fn(state)`` is the story time of a save's checkpoint in words
+        ("Day 4, Evening"), put before its description; None (or a blank): nothing."""
+        self._clock_provider = fn
 
     def set_chapter_provider(self, fn: "Callable[[GameState], str | None] | None") -> None:
         """F18: ``fn(state)`` names the chapter of a save's checkpoint (a non-blank ``str``

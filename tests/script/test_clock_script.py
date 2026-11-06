@@ -38,10 +38,10 @@ def test_the_three_statements(row, action, day, text, part):
 def test_clock_stays_a_name_and_a_speaker():
     # ADR-0010 rule 3: dialogue by a character clock, and clock as a variable or picture
     for row in ('clock "Tick."', 'clock happy "Tick."', 'clock next "Tick."',
-                "$ clock = 3", "show clock"):
+                "$ clock = 3", "show clock at left"):
         parsed, node = _stmt(row)
         assert parsed.errors == [] and type(node) is not ClockStep, row
-    assert type(_stmt("show clock")[1]) is Show
+    assert type(_stmt("show clock at left")[1]) is Show     # round 2: bare show clock isn't
 
 
 @pytest.mark.parametrize("row,code,part", [

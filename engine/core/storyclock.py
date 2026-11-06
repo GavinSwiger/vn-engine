@@ -9,6 +9,9 @@ called?"), so the arithmetic lives once, here, as pure data.
 - ``Calendar``: the parts of the day, weekday names, optional months (name, days) and seasons,
   where day 1 falls in the week, the year and the seasons, the day the clock starts on, an
   optional ``last_day``, and the wording of a date (``day_text``, fields such as ``{day}``).
+  Round 2: ``day_card`` (a card at each new day, on unless ``[calendar] day_card = false``),
+  ``place`` (the status corner of ``show clock``) and ``moment`` ("Day 4, Evening", for save
+  slots).
 - ``calendar_of(config)``: the game's calendar, ``[calendar]`` > kit > defaults, and the
   problems found on the way (``CalendarProblem``; the story checks give W301 for each).
 - ``Calendar.find_date(text, on_or_after)``: the day a written date names ("31 October",
@@ -42,6 +45,7 @@ SEASONS_MAX: Final = 12
 NAME_MAX: Final = 30                    # code points of one part, weekday, month or season
 DAYS_IN_MAX: Final = 400                # days in one month or season
 TEXT_MAX: Final = 60                    # code points of ``start`` and ``day_text``
+DEFAULT_CLOCK_PLACE: Final = "top_right"  # F63 round 2: show clock's corner with no kit
 
 # The fields a date's wording may use, and which calendars have them.
 TEXT_FIELDS: Final = ("day", "weekday", "month", "month_day", "season", "season_day")
@@ -84,6 +88,8 @@ class Calendar:
     first_season_day: int = 0
     last_day: int | None = None
     day_text: str = ""
+    day_card: bool = True
+    place: str = DEFAULT_CLOCK_PLACE
     _year: int = field(default=0, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -149,6 +155,13 @@ class Calendar:
         """``day`` in words (``wording`` with the fields filled in)."""
         values = self.fields(day)
         return _FIELD_RE.sub(lambda m: values.get(m.group(1), m.group(0)), self.wording())
+
+    def moment(self, day: int, part: int) -> str:
+        """A day and part of the day in words, for save slots: "Day 4, Evening" (" · "
+        between them when the date has a comma of its own: "Spring, day 4 · Evening")."""
+        date = self.date(day)
+        name = self.parts[min(max(part, 0), len(self.parts) - 1)]
+        return f"{date}{' · ' if ',' in date else ', '}{name}"
 
     # Written dates -------------------------------------------------------------------------
 
@@ -287,7 +300,10 @@ def calendar_of(config: Any) -> tuple[Calendar, list[CalendarProblem]]:
     calendar = Calendar(parts=tuple(parts), weekdays=tuple(weekdays), months=months,
                         seasons=tuple(seasons), season_days=own("season_days") or SEASON_DAYS,
                         last_day=own("last_day"),
-                        day_text=own("day_text") or (dress.day_text if dress else ""))
+                        day_text=own("day_text") or (dress.day_text if dress else ""),
+                        day_card=own("day_card") is not False,
+                        place=own("place") or (dress.place if dress is not None
+                                               else DEFAULT_CLOCK_PLACE))
     calendar = _with_start(calendar, start, problems)
     text = own("day_text")
     if text:
@@ -327,5 +343,6 @@ def _with_start(calendar: Calendar, start: object, problems: list[CalendarProble
 
 
 __all__ = ["Calendar", "CalendarProblem", "DateProblem", "DAY_MAX", "DAYS_IN_MAX",
+           "DEFAULT_CLOCK_PLACE",
            "DEFAULT_CALENDAR", "DEFAULT_PARTS", "MONTHS", "MONTHS_MAX", "NAME_MAX", "PARTS_MAX", "SEASONS_MAX",
            "SEASON_DAYS", "TEXT_FIELDS", "TEXT_MAX", "WEEKDAYS", "WEEKDAYS_MAX", "calendar_of"]

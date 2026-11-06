@@ -12,8 +12,9 @@ from tests.script.helpers import first_say, parse_text, template
 def test_insert_time_offers_the_three_lines():
     groups = dict(insert_menu())
     titles = [doc.title for doc in groups["Time"]]
-    assert titles == ["Next part of the day", "Next day", "Go to a day"]
-    assert all(form_for_doc(doc) is FORM for doc in groups["Time"])
+    assert titles == ["Next part of the day", "Next day", "Go to a day", "Show the clock",
+                      "Hide the clock"]                 # round 2: show clock, hide clock
+    assert all(form_for_doc(doc) is FORM for doc in groups["Time"][:3])
     assert "clock" not in missing_forms()
     assert help_for("    clock go to day 3").title == "Go to a day"
     assert help_for("clock next").title == "Next part of the day"

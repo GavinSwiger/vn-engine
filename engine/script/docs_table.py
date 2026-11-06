@@ -123,6 +123,15 @@ ROWS: tuple[StatementDoc, ...] = (
         "Takes meters off the screen. They keep their values.",
         "hide meter friendship", "show meter, hide meter", "F62", fields=("friendship",),
         names=("meter",)),
+    # F63 round 2: show clock / hide clock (``clockshow.py``), in Time after the clock lines.
+    StatementDoc(
+        "show", "Show the clock", "Time", "show clock",
+        "Puts the day and the part of the day in a corner of the screen. It stays, and saves "
+        "keep it, until hide clock.", "show clock", "show clock, hide clock", "F63"),
+    StatementDoc(
+        "hide", "Hide the clock", "Time", "hide clock",
+        "Takes the clock off the screen. Story time keeps going.", "hide clock",
+        "show clock, hide clock", "F63"),
     StatementDoc(
         "at", "Position", "Stage", "at <position> | at <x> [<y>]",
         "Where a shown sprite stands: left, center, right, a named position, or numbers.",

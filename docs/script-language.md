@@ -1910,10 +1910,48 @@ last_day = 30                  # clock.days_left() counts down to it
 # seasons = ["Spring", "Summer", "Autumn", "Winter"]
 # season_days = 28
 # day_text = "{weekday}, day {day}"   # also {month}, {month_day}, {season}, {season_day}
+# day_card = false             # no date card at a new day
+# place = "top_left"           # the corner show clock uses
 ```
 
 The clock changing is also a hook other features build on (messages that arrive after a few
 days, for example): each `clock` line that moves time tells them once.
+
+#### The day card
+
+When a `clock` line starts a new day, the date fills the screen for a moment, worded as
+`clock.date` is ("Day 4", "Night 3", "Spring, day 4"), then the story goes on. It works like
+a chapter card: it fades in and out in the chapter card's colors (`[theme.chapter]`, which
+follow the color scheme), a click skips it, skipping passes it, and Reduce motion makes the
+fades cuts. A new part of the same day shows no card. Turn it off with
+`[calendar] day_card = false`.
+
+Save slots of a game that uses the clock start with the story time: "Day 4, Evening ·
+Hana: See you tomorrow."
+
+### show clock, hide clock
+
+`show clock` puts the date and the part of the day in a corner of the screen; `hide clock`
+takes it away.
+
+```
+label monday:
+    show clock
+    "The bell rings."
+    clock next                     # the corner changes to the next part at once
+```
+
+- It shows the date as `clock.date` words it, with the part of the day under it, and
+  changes the moment a `clock` line moves time (with a short pulse, none with Reduce
+  motion).
+- It stays on screen, across scenes, until `hide clock`. Saves keep it, going back restores
+  it, and New Game starts without it. Like shown meters, it hides with the text box, under
+  menus and during minigames.
+- The corner is `[calendar] place` (`top_left`, `top_right`, `bottom_left` or
+  `bottom_right`), else the kit's (the corner its meters don't use), else the top right.
+- `show clock` and `hide clock` mean the clock only with nothing else on the line.
+  `show clock at left` or `hide clock with dissolve` still show and hide a picture called
+  clock. A game with a picture called clock gets a warning at each bare `show clock`.
 
 | Message | Fix |
 |---|---|
@@ -1928,6 +1966,7 @@ days, for example): each `clock` line that moves time tells them once.
 | `clock.part is never "night": no part of the day is called that, …` (warning) | Match the name exactly: `"Night"`. |
 | `[calendar] start "Fooday 9" isn't a date this calendar can read, …` (warning) | Use a day number or a date the calendar has. |
 | `this goes to day 40, after [calendar] last_day (30), …` (warning) | Raise `last_day`, or go to an earlier day. |
+| `show clock puts the story clock in the corner, not your picture "clock". …` (warning) | To show the picture, add where or how (`show clock at center`), or rename the picture. |
 
 ---
 

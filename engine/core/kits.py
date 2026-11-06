@@ -62,11 +62,13 @@ class ClockDress:
     """A kit's story clock (F63): the ``parts`` of the day, ``day_text`` (how a date is
     worded, with fields such as ``{day}``; see ``storyclock.TEXT_FIELDS``), and, when the
     genre counts time that way, ``seasons`` or ``months`` (True: the twelve months). Each
-    gives way to ``[calendar]`` (``storyclock.calendar_of``)."""
+    gives way to ``[calendar]`` (``storyclock.calendar_of``). F63 round 2: ``place``, the
+    status corner ``show clock`` puts the clock in (the corner the kit's meters don't use)."""
     parts: tuple[str, ...]
     day_text: str
     seasons: tuple[str, ...] = ()
     months: bool = False
+    place: str = "top_right"
 
 
 @dataclass(frozen=True)
@@ -100,7 +102,7 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
             _m("courage", "Courage", 0, 10, 3,
                ("Shy", 0), ("Brave", 5), ("Fearless", 9)),
         )), clock=ClockDress(("Morning", "Lunch", "After school", "Evening"),
-                             "{weekday}, day {day}")),
+                             "{weekday}, day {day}", place="top_left")),
     Kit("horror", "Horror",
         "Blood-dark colors, and a sanity bar that drains as the night goes on.",
         "blood_moon", MeterDress("bar", "top_left", (
@@ -118,7 +120,7 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                ("Doubted", 0), ("Heard", 4), ("Trusted", 8)),
             _m("clues", "Clues", 0, 20, 0),
         )), clock=ClockDress(("Morning", "Afternoon", "Evening", "Small hours"),
-                             "Day {day} of the case")),
+                             "Day {day} of the case", place="top_left")),
     Kit("fantasy", "Fantasy",
         "Parchment and gold, with renown to earn and stamina to spend.",
         "high_fantasy", MeterDress("pips", "top_left", (
@@ -154,7 +156,7 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
             _m("hope", "Hope", 0, 10, 5,
                ("Despairing", 0), ("Waiting", 4), ("Hopeful", 8)),
         )), clock=ClockDress(("Morning post", "Evening post"), "{month_day} {month}",
-                             months=True)),
+                             months=True, place="top_left")),
 )})
 
 # F64: the kits' ``items`` sections (bag name, money word), filled in after the rows above so

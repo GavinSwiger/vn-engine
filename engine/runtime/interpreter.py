@@ -253,6 +253,7 @@ from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
 from engine.script.choicecheck import CheckRoll
 from engine.script.clock import ClockStep
+from engine.script.clockshow import ClockShow
 from engine.script.choicepresent import PresentOption
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
@@ -1918,6 +1919,8 @@ register_executor(PointsChange, points_mod.run_points)
 register_executor(MeterShow, points_mod.run_meter_show)
 # F63: clock next / next day / go to (runtime/clock.py). Not a checkpoint type.
 register_executor(ClockStep, clock_mod.run_clock)
+# F63 round 2: show clock / hide clock (runtime/clock.py). Not a checkpoint type.
+register_executor(ClockShow, clock_mod.run_clock_show)
 # F14 (04 §6.3): rollback block|off|on|fixed.
 register_executor(Rollback, rollback_mod.run_rollback)
 # F17 (04 §7.1): nvl on|off|clear (runtime/nvl.py). Not a checkpoint type.

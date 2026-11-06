@@ -2212,6 +2212,14 @@ class CalendarConfig:
         OneLine(storyclock.TEXT_MAX, why="how a date is written"),
         "how a date is written, with fields in curly brackets such as day, weekday, month "
         "and season; when not set, the genre's wording, or Day and the number"))
+    day_card: bool | None = field(default=None, metadata=spec(Bool(),            # round 2
+        "show a card with the date each time a new day starts, like a chapter card; when "
+        "not set, on"))
+    place: str | None = field(default=None, metadata=spec(
+        Choice(*CORNER_PLACES, labels={p: p.replace("_", " ").capitalize()
+                                       for p in CORNER_PLACES}),
+        "which corner of the screen show clock puts the day and the part of the day in; "
+        "when not set, the genre's corner, or the top right"))
 
 
 # --- [meter.<name>] (F62 round 2, specs/F62-visible-meters) ---------------------------------

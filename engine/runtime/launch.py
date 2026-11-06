@@ -52,6 +52,7 @@ from engine.runtime.modules import ModuleRefused
 from engine.runtime.stage_check import StageCheck
 from engine.runtime.namespace import build_namespace, dice_core, persistent_store, running_slot
 from engine.runtime.values import kind_words
+from engine.script.clockshow import picture_warnings
 from engine.script.diagnostics import ScriptError, ScriptWarning
 from engine.script.messages import format_message
 from engine.script.nodes import Define, PersistentDefault
@@ -278,7 +279,8 @@ class LaunchJob:
                                      locate=source.locate if source.game_folder else None)
         if not self._check.step():
             return False
-        self._warnings = self._check.warnings
+        self._warnings = self._check.warnings + tuple(picture_warnings(   # F63 round 2:
+            self.program.iter_statements(), self._index.tags))                # W304
         for error in self._check.errors:                # F09 C5
             self._add(error)
         return True

@@ -16,7 +16,8 @@ from tests.runtime.conftest import round_trip
 from tests.runtime.effects_story import launched, story_game, take_all
 
 CARD = Calendar(parts=("Morning", "After school", "Evening", "Night"), months=(
-    ("March", 31), ("April", 30), ("May", 31)), first_year_day=31, last_day=30)
+    ("March", 31), ("April", 30), ("May", 31)), first_year_day=31, last_day=30,
+    day_card=False)                     # round 2's day card: tests/runtime/test_clock_round2.py
 
 
 def _start(program, calendar=None):
@@ -88,7 +89,7 @@ def test_lines_move_the_clock_and_conditions_read_it(tmp_path, heard):
 
 def test_saves_loads_rollback_and_new_game(tmp_path, heard):
     lines = ['"One."', "clock next", '"Two."', "clock next day", '"Three."']
-    interp = _start(story_game(tmp_path, lines))
+    interp = _start(story_game(tmp_path, lines), Calendar(day_card=False))
     take_all(interp)
     one = interp.checkpoint()
     assert one.clock == EMPTY_CLOCK and "clock" not in one.to_json()   # as before F63
