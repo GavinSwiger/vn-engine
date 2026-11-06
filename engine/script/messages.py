@@ -4322,6 +4322,9 @@ def _e276(form: str = "result", *args: object) -> str:
         if problem == "amount":
             what = (f"a change to meter {show_name(str(meter))} by {show(str(shown))}, but a "
                     "change is a whole number from -1,000,000,000 to 1,000,000,000")
+        elif problem == "count":                          # F64 round 2: give/take n
+            what = (f"a change to item {show_name(str(meter))} by {show(str(shown))}, but an "
+                    "item's change is a whole number from 1 to 999,999")
         elif problem == "name":
             what = "a change whose name isn't text"
         else:

@@ -20,7 +20,8 @@ from engine.minigames.bundled.gift_giving import GiftGiving            # F54
 from engine.minigames.bundled.ask_text import AskText                  # F52
 from engine.minigames.bundled.cipher_note import CipherNote            # F55
 from engine.minigames.bundled.terminal import Terminal                 # F56
+from engine.minigames.bundled.shop import Shop                         # F64 round 2
 
 BUNDLED: tuple[type, ...] = (PoemGame, PresentEvidence, PhoneChat, PuzzleRoom, Heartbeat,
                              CodeLock, StayStill, HandGame, GiftGiving, AskText,
-                             CipherNote, Terminal)
+                             CipherNote, Terminal, Shop)

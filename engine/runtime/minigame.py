@@ -70,6 +70,7 @@ from engine.runtime.rollback import CHAIN_STOPS, ROLLBACK_PAUSES
 from engine.runtime.values import (KEY, KIND, TOO_DEEP, Unsaveable, Value, freeze,
                                    freeze_untrusted, kind_words, new_item_budget, plain_copy,
                                    same_value)
+from engine.script.codex import ITEM_COUNT_MAX
 from engine.script.messages import format_message
 from engine.script.minigame import Minigame
 from engine.script.suggest import suggest
@@ -230,10 +231,13 @@ def story_names(interp: "Interpreter") -> StoryNames:
             else:
                 tip_categories.append((key, tuple(e.name for e in index.tips
                                                   if e.category is category)))
+        money = index.money                                    # F64 round 2: the shop
         names = interp._story_names = StoryNames(
             meters=tuple(interp.points.names()), items=tuple(e.name for e in index.items),
             tips=tuple(e.name for e in index.tips), item_categories=tuple(categories),
-            tip_categories=tuple(tip_categories))
+            tip_categories=tuple(tip_categories),
+            money=money.name if money is not None else None,
+            prices=tuple((e.name, e.price) for e in index.items if e.price is not None))
     return names
 
 
@@ -244,7 +248,11 @@ def start_command(interp: "Interpreter", m: Minigame, wait: MinigameWait, *, run
     points = interp.points
     meters = tuple(MeterView(name, points.get(name), points.spec(name).low,
                              points.spec(name).high) for name in points.names())
-    base = MinigameBase(meters, interp.codex.items(), interp.codex.tips())
+    codex = interp.codex
+    items = codex.items()
+    counts = tuple(codex.count(name) for name in items)       # F64 round 2
+    base = MinigameBase(meters, items, codex.tips(),
+                        counts if any(n != 1 for n in counts) else ())
     return StartMinigame(m.sid, run, wait.name, wait.args, wait.seed, base, m.skippable,
                          restored, story_names(interp))
 
@@ -659,6 +667,10 @@ def _checked_changes(interp: "Interpreter", m: Minigame, changes: object,
                 raise _change_error(m, file, "name")
             if type(verb) is not str or verb not in _VERBS:
                 raise _change_error(m, file, "kind")
+            amount = change.amount                      # F64 round 2: give/take n
+            if type(amount) is not int or not 1 <= amount <= ITEM_COUNT_MAX \
+                    or (verb == "unlock_tip" and amount != 1):
+                raise _change_error(m, file, "count", name, repr(amount)[:40])
             kind, word = _VERBS[verb]
             entry = index.get(name)
             if entry is None:
@@ -700,9 +712,9 @@ def apply(interp: "Interpreter", m: Minigame, ev: MinigameDone) -> "Step":
         if type(change) is MeterChange:
             points.change(change.name, change.op, change.amount)
         elif change.verb == "give":                     # type: ignore[union-attr]
-            codex.give(change.name)
+            codex.give(change.name, change.amount)      # type: ignore[union-attr]
         elif change.verb == "take":                     # type: ignore[union-attr]
-            codex.take(change.name)
+            codex.take(change.name, change.amount)      # type: ignore[union-attr]
         else:
             codex.unlock_tip(change.name)
     if m.target is not None:                            # 3.
@@ -765,14 +777,25 @@ class MinigameLedger:
     amounts within ±10⁹), checks the name, appends to ``changes`` (at most 1,000), then
     updates the preview: meters clamp like ``Points.change``, ``give`` appends, ``take``
     removes, ``unlock_tip`` adds. The runtime re-applies ``changes`` through the real
-    ``Points``/``Codex`` at acceptance; nothing here touches the story."""
+    ``Points``/``Codex`` at acceptance; nothing here touches the story.
+
+    **Counts (F64 round 2, API 1.5).** The preview keeps each held item's count (from
+    ``base.counts``); ``give(name, n)``/``take(name, n)`` (``n`` an exact ``int`` from 1 to
+    999,999, else E436's text as E275) step it exactly as ``Codex.give``/``take`` will: up
+    to ``cap(name)`` (the item's most; 1 for a plain item), down to 0, where the name goes.
+    ``count(name)`` and ``most(name)`` read them (F21's E253 for a name that isn't an
+    item)."""
 
     def __init__(self, base: MinigameBase, *, check_meter: Callable[[str], object],
-                 check_entry: Callable[[str, str], object], game: str = "") -> None:
+                 check_entry: Callable[[str, str], object], game: str = "",
+                 cap: Callable[[str], int] | None = None) -> None:
         self._specs = {m.name: (m.low, m.high) for m in base.meters}
         self._names = tuple(m.name for m in base.meters)
         self._values = {m.name: m.value for m in base.meters}
         self._items = list(base.items)
+        counts = base.counts if len(base.counts) == len(base.items) else ()
+        self._counts = {name: n for name, n in zip(base.items, counts) if n != 1}
+        self._cap = cap if cap is not None else (lambda name: 1)     # held or not
         self._tips = list(base.tips)
         self._check_meter = check_meter
         self._check_entry = check_entry
@@ -826,15 +849,39 @@ class MinigameLedger:
     def set(self, name: object, n: object) -> int:
         return self._meter_request(name, "=", n)
 
-    def give(self, name: object) -> None:
-        self._codex_request("give", name)
-        if name not in self._items:
-            self._items.append(name)                                 # type: ignore[arg-type]
+    def count(self, name: object) -> int:
+        """F64 round 2: how many of item ``name`` the preview holds (0: none)."""
+        text = self._item_name(name)
+        if text not in self._items:
+            return 0
+        return self._counts.get(text, 1)
 
-    def take(self, name: object) -> None:
-        self._codex_request("take", name)
-        if name in self._items:
-            self._items.remove(name)                                 # type: ignore[arg-type]
+    def most(self, name: object) -> int:
+        """F64 round 2: the most of item ``name`` a player can hold (1: a plain item)."""
+        return self._cap(self._item_name(name))
+
+    def give(self, name: object, n: object = 1) -> None:
+        amount = self._amount("unlock", name, n)
+        self._codex_request("give", name, amount)
+        text: str = name                                             # type: ignore[assignment]
+        if text not in self._items:
+            self._items.append(text)
+            now = min(self._cap(text), amount)
+        else:
+            now = min(self._cap(text), self._counts.get(text, 1) + amount)
+        self._set_count(text, now)
+
+    def take(self, name: object, n: object = 1) -> None:
+        amount = self._amount("lock", name, n)
+        self._codex_request("take", name, amount)
+        text: str = name                                             # type: ignore[assignment]
+        if text in self._items:
+            left = self._counts.get(text, 1) - amount
+            if left <= 0:
+                self._items.remove(text)
+                self._counts.pop(text, None)
+            else:
+                self._set_count(text, left)
 
     def unlock_tip(self, name: object) -> None:
         self._codex_request("unlock_tip", name)
@@ -842,6 +889,35 @@ class MinigameLedger:
             self._tips.append(name)                                  # type: ignore[arg-type]
 
     # Internals ------------------------------------------------------------------------------
+
+    def _set_count(self, name: str, n: int) -> None:
+        if n == 1:
+            self._counts.pop(name, None)
+        else:
+            self._counts[name] = n
+
+    def _amount(self, word: str, name: object, n: object) -> int:
+        """F64 round 2: ``n`` of a give or take, an exact ``int`` from 1 to 999,999; else
+        E436's number form (as E275, at the plugin's line)."""
+        if type(n) is int and 1 <= n <= ITEM_COUNT_MAX:
+            return n
+        shown = short_value(n) if type(n) in (bool, int, float) else kind_words(n)
+        raise RequestError("E275", format_message("E436", (
+            "number", word, self._text_name(name), shown, ITEM_COUNT_MAX)))
+
+    def _item_name(self, name: object) -> str:
+        """An item's name for a read (``count``, ``most``): F21's checks, E253's texts."""
+        text = self._text_name(name)
+        from engine.runtime.codex import UnknownEntry, WrongKind    # below the interpreter
+        try:
+            self._check_entry(text, ITEM_KIND)
+        except UnknownEntry as e:
+            raise RequestError("E253", format_message("E253", (
+                "unknown", ITEM_KIND, text, e.suggestion))) from None
+        except WrongKind as e:
+            raise RequestError("E253", format_message("E253", (
+                "kind", text, e.kind, ITEM_KIND, "unlock"))) from None
+        return text
 
     def _text_name(self, name: object) -> str:
         if type(name) is not str:
@@ -881,7 +957,7 @@ class MinigameLedger:
         self._values[text] = value
         return value
 
-    def _codex_request(self, verb: str, name: object) -> None:
+    def _codex_request(self, verb: str, name: object, amount: int = 1) -> None:
         text = self._text_name(name)
         kind, word = _VERBS[verb]
         from engine.runtime.codex import UnknownEntry, WrongKind    # below the interpreter
@@ -893,7 +969,7 @@ class MinigameLedger:
         except WrongKind as e:
             raise RequestError("E253", format_message("E253", (
                 "kind", text, e.kind, kind, word))) from None
-        self._append(CodexChange(verb, text))                        # type: ignore[arg-type]
+        self._append(CodexChange(verb, text, amount))                # type: ignore[arg-type]
 
 
 def codex_error_text(e: Exception) -> str:

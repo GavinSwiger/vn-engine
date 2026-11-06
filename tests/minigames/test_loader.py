@@ -310,11 +310,11 @@ def test_a_game_plugin_replaces_a_bundled_one(game, load, one_bundled):
 
 
 def test_newer_minor_is_e278(game, load):
-    write(game, "minigames/x.py", plugin("x", body="    api = '1.5'\n"))
+    write(game, "minigames/x.py", plugin("x", body="    api = '1.6'\n"))
     loaded = load(game)
     assert loaded.codes == ["E278"]
-    assert loaded.errors == ["minigames/x.py needs minigame API 1.5, but this engine has 1.4. "
-                             "Update the engine, or use a version of the plugin made for 1.4."]
+    assert loaded.errors == ["minigames/x.py needs minigame API 1.6, but this engine has 1.5. "
+                             "Update the engine, or use a version of the plugin made for 1.5."]
 
 
 @pytest.mark.parametrize("version", ["1.0", "1"])

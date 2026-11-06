@@ -104,7 +104,7 @@ def test_a_returned_outcome_is_a_copy(sigs):
 
 
 def test_version_exports_and_closest():
-    assert api.API_VERSION == (1, 4) and messages.ENGINE_API == "1.4"      # F52
+    assert api.API_VERSION == (1, 5) and messages.ENGINE_API == "1.5"      # F64 round 2
     assert {"StoryNames", "closest"} <= set(api.__all__)
     assert api.StoryNames is StoryNames
     for written, expected in (("sayory", "sayori"), ("Yuri", "yuri"), ("zzz", None)):
@@ -122,7 +122,8 @@ def test_ac_f25_18_item_categories_field():
     bare = StoryNames((), (), ())
     assert bare.item_categories == ()
     assert [f.name for f in dataclasses.fields(StoryNames)] == [
-        "meters", "items", "tips", "item_categories", "tip_categories"]      # F55: + tips
+        "meters", "items", "tips", "item_categories", "tip_categories",     # F55: + tips
+        "money", "prices"]                                                  # F64 round 2
     cats = (("Evidence", ("brass_key", "festival_map")), ("codex_items", ("shrine_photo",)))
     full = StoryNames(("credibility",), ("brass_key", "festival_map", "shrine_photo"), (),
                       cats)

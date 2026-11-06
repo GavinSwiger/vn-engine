@@ -30,6 +30,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from engine.app.codex import AppCodexPort
+from engine.core.kits import bag_words
 from engine.core.settings_schema import TIMING_LEVELS
 from engine.minigames.context import PlayerSettings
 from engine.minigames.host import HostPorts, MinigameHost
@@ -147,6 +148,7 @@ def install_minigames(app: "App", interp: "Interpreter",
         textbox=app.textbox, stage=app.stage_screen,
         settings=lambda: player_settings(app), focused=lambda: bool(app.focused),
         viewport=viewport, tables=tables,
+        money_word=lambda: bag_words(app.config)[1],                  # F64 round 2: the shop
         main_thread=registry.main_thread if registry is not None else threading.get_ident())
     host = MinigameHost(ports)
     app.minigame_host = host

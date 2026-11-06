@@ -11,10 +11,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Literal
 
-API_VERSION: Final = (1, 4)          # 1.1: check_story, outcome_for (F24 A1; F23 I-19)
+API_VERSION: Final = (1, 5)          # 1.1: check_story, outcome_for (F24 A1; F23 I-19)
 #                                      1.2: register_achievement_hook (F37 §5.3)
 #                                      1.3: PlayerSettings.timing_assist, timed (F50)
 #                                      1.4: TextField (F52)
+#                                      1.5: item counts (F64 round 2: count, most, n)
 # Plugin unit stems, names inside a package, and minigame names (SEC-F23-02). Use
 # ``fullmatch`` only: ``match`` with ``$`` would accept a trailing newline.
 PLUGIN_NAME_RE: Final = re.compile(r"[a-z][a-z0-9_]{0,39}", re.ASCII)
@@ -51,8 +52,11 @@ class MeterChange:
 
 @dataclass(frozen=True, slots=True)
 class CodexChange:
+    """``give``/``take`` an item (``amount`` of it: F64 round 2, 1 to 999,999; 1 before), or
+    ``unlock_tip`` (``amount`` always 1)."""
     verb: Literal["give", "take", "unlock_tip"]
     name: str
+    amount: int = 1
 
 
 Change = MeterChange | CodexChange
@@ -82,6 +86,10 @@ class StoryNames:
     # F55 (additive, like ``item_categories``): one entry per tip category, ``(category key,
     # tip names)``; the key is the author's text, or ``"codex_tips"`` for the default one.
     tip_categories: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    # F64 round 2 (additive): the item marked ``money`` (None: no purse), and each item
+    # declared with ``price <n>``, ``(name, price)`` in declaration order.
+    money: str | None = None
+    prices: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

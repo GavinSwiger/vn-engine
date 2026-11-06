@@ -176,9 +176,12 @@ class CodexPort(Protocol):
     def tips(self) -> tuple[str, ...]: ...
     def items(self) -> tuple[str, ...]: ...
     def has(self, kind: str, name: str | None = None) -> bool: ...
-    def give(self, name: str) -> object: ...
-    def take(self, name: str) -> object: ...
+    def give(self, name: str, n: int = 1) -> object: ...
+    def take(self, name: str, n: int = 1) -> object: ...
     def unlock_tip(self, name: str) -> object: ...
+    def count(self, name: str) -> int: ...          # API 1.5 (F64 round 2)
+    def most(self, name: str) -> int: ...
+    def money_word(self) -> str: ...
     def title(self, name: str) -> str:
         """(F27 A9; F23 SPEC I-21) A declared item's or tip's title, held or not. Not
         exactly a ``str``: ``TypeError``; undeclared: F21's ``UnknownEntry`` (the host
@@ -243,7 +246,8 @@ class PointsHandle(ThreadBound):
 
 class CodexHandle(ThreadBound):
     """``ctx.codex``: reads include pending changes; ``give``, ``take``, ``unlock_tip`` are
-    requests kept in the ledger; ``title`` (F27 A9) reads a declared title."""
+    requests kept in the ledger; ``title`` (F27 A9) reads a declared title. API 1.5 (F64
+    round 2): ``count``, ``most``, ``money_word``, and ``n`` on ``give``/``take``."""
 
     __slots__ = ("_port",)
 
@@ -260,11 +264,11 @@ class CodexHandle(ThreadBound):
     def has(self, kind, name=None):
         return self._port.has(kind, name)
 
-    def give(self, name):
-        return self._port.give(name)
+    def give(self, name, n=1):
+        return self._port.give(name, n)
 
-    def take(self, name):
-        return self._port.take(name)
+    def take(self, name, n=1):
+        return self._port.take(name, n)
 
     def unlock_tip(self, name):
         return self._port.unlock_tip(name)
@@ -273,6 +277,19 @@ class CodexHandle(ThreadBound):
         """(F27 A9) A declared item's or tip's title, held or not; the port refuses a
         non-``str`` or undeclared name (E275). A read: no ledger request."""
         return self._port.title(name)
+
+    def count(self, name):
+        """(API 1.5) How many of item ``name`` the player holds, this session's changes
+        included; 0 when none. A read: no ledger request."""
+        return self._port.count(name)
+
+    def most(self, name):
+        """(API 1.5) The most of item ``name`` a player can hold (1 without ``count``)."""
+        return self._port.most(name)
+
+    def money_word(self):
+        """(API 1.5) The bag's word for the money, as the bag page shows it."""
+        return self._port.money_word()
 
 
 class DiceHandle(ThreadBound):

@@ -504,6 +504,7 @@ class MinigameBase:
     meters: tuple[MeterView, ...]
     items: tuple[str, ...]
     tips: tuple[str, ...]
+    counts: tuple[int, ...] = ()     # F64 round 2: parallel to ``items``; (): one of each
 
 
 @dataclass(frozen=True, slots=True)

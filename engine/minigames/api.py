@@ -1,4 +1,4 @@
-"""The public minigame plugin API, version 1.4 (F23 ``04`` §4.3; ADR-0009).
+"""The public minigame plugin API, version 1.5 (F23 ``04`` §4.3; ADR-0009).
 
 Why this module exists: a plugin in ``game/minigames/`` subclasses ``Minigame``, declares
 its name, arguments, and outcomes as class attributes, and calls ``register(cls)``. Plugins
@@ -30,6 +30,20 @@ keyboard for gamepads). Under API 1.4 or later the engine owns SDL text input: i
 while a ``TextField`` is focused, and the plugin never sees raw ``TEXTINPUT`` (the host's
 router gives text and editing keys to the focused field before ``handle_event``). A plugin
 below 1.4 keeps text input on while it is on top, as before (F52 07 I-9).
+
+API 1.5 (F64 round 2) adds item counts, the one narrow way a minigame reads and changes how
+many of an item the player holds: ``ctx.codex.count(name)`` (the preview's count, 0 when
+none), ``ctx.codex.most(name)`` (the most a player can hold; 1 for an item declared without
+``count``), ``ctx.codex.give(name, n)`` / ``ctx.codex.take(name, n)`` and the outcome helpers
+``give(name, n)`` / ``take(name, n)``, with ``n`` an exact ``int`` from 1 to 999,999 (default
+1, so every older call is unchanged), and ``ctx.codex.money_word()`` (the bag's money word:
+``[codex] money_word``, else the genre kit's, else the money item's title; "" with no money
+item). ``ctx.story.money`` names the item marked ``money`` and ``ctx.story.prices`` lists each
+item's ``price``. The same rules as every other change (SR-F23): exact ``str`` names that the
+story declares as items (E253), an exact ``int`` amount in range (else E275 with E436's text),
+at most 1,000 requests a session, and nothing reaches the story until the minigame finishes:
+the runtime re-applies the changes through ``unlock item``/``lock item``'s own rules (up to
+the item's most, never below 0), so a save, a load, rollback and Skip Game stay exact.
 """
 
 import keyword
@@ -69,6 +83,7 @@ if TYPE_CHECKING:
 
 TITLE_MAX = 200                      # SEC-F23-07: heading and title, code points
 AMOUNT_MAX = 1_000_000_000           # SEC-F23-06: |amount| of a meter change
+COUNT_MAX = 999_999                  # API 1.5: n of one give or take (ITEM_COUNT_MAX)
 # Story variable names (no leading "_"): the saved form (``runtime/minigame.py``,
 # SEC-F23-05(a)) refuses any other, so a declared one could never be restored (F23 s2).
 _ARG_NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}", re.ASCII)
@@ -158,12 +173,14 @@ def set_points(name: str, n: int) -> MeterChange:
     return MeterChange(name, "=", n)
 
 
-def give(name: str) -> CodexChange:
-    return CodexChange("give", name)
+def give(name: str, n: int = 1) -> CodexChange:
+    """Give ``n`` of item ``name`` (API 1.5: ``n`` from 1 to 999,999; 1 before)."""
+    return CodexChange("give", name, n)
 
 
-def take(name: str) -> CodexChange:
-    return CodexChange("take", name)
+def take(name: str, n: int = 1) -> CodexChange:
+    """Take ``n`` of item ``name`` (API 1.5: ``n`` from 1 to 999,999; 1 before)."""
+    return CodexChange("take", name, n)
 
 
 def unlock_tip(name: str) -> CodexChange:
@@ -253,8 +270,11 @@ def _change(change: object, subject: str) -> Change:
             return MeterChange(name, op, amount)                    # type: ignore[arg-type]
     elif t is CodexChange:
         verb, name = change.verb, change.name                       # type: ignore[union-attr]
-        if type(verb) is str and verb in _CODEX_VERBS and type(name) is str:
-            return CodexChange(verb, name)                          # type: ignore[arg-type]
+        n = change.amount                                           # type: ignore[union-attr]
+        if (type(verb) is str and verb in _CODEX_VERBS and type(name) is str
+                and type(n) is int and 1 <= n <= COUNT_MAX
+                and (n == 1 or verb != "unlock_tip")):
+            return CodexChange(verb, name, n)                       # type: ignore[arg-type]
     raise DeclarationError(messages.e273_bad_change(subject))
 
 
@@ -439,7 +459,7 @@ def register_achievement_hook(hook: object) -> object:
     return hook
 
 
-__all__ = ["API_VERSION", "Arg", "CodexChange", "CodexFilter", "Context", "MeterChange",
+__all__ = ["API_VERSION", "Arg", "COUNT_MAX", "CodexChange", "CodexFilter", "Context", "MeterChange",
            "Minigame", "MinigameThreadError", "Outcome", "PickAction", "PlayerSettings",
            "PluginEvent", "StoryNames", "TextField", "TokenDecl", "add_points", "closest",
            "give", "register", "register_achievement_hook", "set_points", "take", "unlock_tip"]

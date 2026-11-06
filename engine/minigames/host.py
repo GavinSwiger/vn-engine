@@ -195,6 +195,7 @@ class HostPorts:
     settings: Callable[[], PlayerSettings] | None = None
     focused: Callable[[], bool] = lambda: True
     viewport: Callable[[], tuple[int, int] | None] = lambda: None
+    money_word: Callable[[], str] = lambda: ""     # F64 round 2: [codex] money_word > kit
     tables: PluginTables | None = None
     text: TextServices | None = None               # F52: None → the shell's ``text``
     main_thread: int = field(default_factory=threading.get_ident)
@@ -237,11 +238,13 @@ class LedgerCodexPort(ThreadBound):
     """The plugin's codex port and F21's view port over one session's ledger (04 §4.3,
     §7.3; F25 A6, F27 A9). Every public method and property checks the thread."""
 
-    __slots__ = ("_ledger", "_index", "_is_read", "_mark_read", "_picture", "_locked")
+    __slots__ = ("_ledger", "_index", "_is_read", "_mark_read", "_picture", "_locked",
+                 "_money_word")
 
     def __init__(self, main: int, ledger: MinigameLedger, index: Any, *,
                  is_read: Callable[[str], bool], mark_read: Callable[[str], object],
-                 picture: Callable[[str], object], show_locked: bool) -> None:
+                 picture: Callable[[str], object], show_locked: bool,
+                 money_word: Callable[[], str] = lambda: "") -> None:
         super().__init__(main)
         self._ledger = ledger
         self._index = index
@@ -249,6 +252,7 @@ class LedgerCodexPort(ThreadBound):
         self._mark_read = mark_read
         self._picture = picture
         self._locked = bool(show_locked)
+        self._money_word = money_word
 
     # -- F21's view port --
 
@@ -284,11 +288,25 @@ class LedgerCodexPort(ThreadBound):
 
     # -- requests --
 
-    def give(self, name):
-        return self._ledger.give(name)
+    def give(self, name, n=1):
+        return self._ledger.give(name, n)
 
-    def take(self, name):
-        return self._ledger.take(name)
+    def take(self, name, n=1):
+        return self._ledger.take(name, n)
+
+    def count(self, name):
+        return self._ledger.count(name)
+
+    def most(self, name):
+        return self._ledger.most(name)
+
+    def money_word(self):
+        """(API 1.5) ``HostPorts.money_word()``, else the money item's title, else ""."""
+        word = self._money_word()
+        if type(word) is str and word:
+            return word
+        money = getattr(self._index, "money", None)
+        return money.title if money is not None else ""
 
     def unlock_tip(self, name):
         return self._ledger.unlock_tip(name)
@@ -523,7 +541,8 @@ class MinigameHost:
             self.ports.stop_skip()                            # PR-F23-23
         sig = entry.sig
         ledger = MinigameLedger(cmd.base, check_meter=self.ports.check_meter,
-                                check_entry=self.ports.check_entry, game=sig.name)
+                                check_entry=self.ports.check_entry, game=sig.name,
+                                cap=self._cap)
         scope = FocusScope(on_change=self._focus_sound)
         own = self.plugin_look(entry)
         s = Session(cmd, entry, look, ledger, scope, own.title, own)
@@ -541,7 +560,8 @@ class MinigameHost:
         index = self.ports.index()
         codex = LedgerCodexPort(main, ledger, index, is_read=self.ports.is_read,
                                 mark_read=self.ports.mark_read, picture=self.ports.picture,
-                                show_locked=self.ports.show_locked)
+                                show_locked=self.ports.show_locked,
+                                money_word=self.ports.money_word)
         s.ctx = Context(main, port=_SessionPort(self, s), args=thaw(cmd.args),
                         points=LedgerPoints(ledger), codex=codex, dice=make_dice(core),
                         theme=ThemePort(shell.theme.cfg, own.tokens, sig.name),
@@ -586,6 +606,12 @@ class MinigameHost:
             s.phase = Phase.OPENING
         if s.finished:
             self.begin_close(s)
+
+    def _cap(self, name: str) -> int:
+        """F64 round 2: the most of a declared item a player can hold (the ledger's ``cap``;
+        its name is checked first)."""
+        entry = self.ports.index().get(name)
+        return getattr(entry, "cap", 1) if entry is not None else 1
 
     def _focus_sound(self, w: object) -> None:
         self.shell.play_ui(self.shell.theme.cfg.button.focus_sound)
