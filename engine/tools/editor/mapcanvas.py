@@ -30,6 +30,10 @@ touches only what ``storymap.relayout``'s ``LayoutDiff`` names:
   hover, click and drag ignore them.
 - The **scroll region only grows** (``extent``); ``items_of(name)`` replaces the ``box{i}``
   tags in tests (R4).
+- **Pictures** (Studio UX 3.1, ``set_pictures``): the same layout drawn stretched by
+  ``mapsketch.PICTURE_STRETCH``; each box is a sketch of its opening shot over its name and a
+  short line, and ``sketcher`` (``mapsketch.SketchPainter``) draws the sketches of the boxes
+  in view on idle.
 """
 
 import time
@@ -40,6 +44,8 @@ from tkinter import font as tkfont
 from typing import Final
 
 from engine.tools.editor.livemap import MARK_PROPOSED, MARK_REMOVED, GlowKey, Preview
+from engine.tools.editor.mapsketch import (
+    PICTURE_STRETCH, PLACEHOLDER, TEXT_GAP, SketchPainter, detail_text, thumb_rect)
 from engine.tools.editor.storymap import (
     BOX_HEIGHT, BOX_WIDTH, MARK_BLOCKED, MARK_DELETES_SAVES, MARK_ENDING, MARK_START, Box,
     EdgeKey, LayoutDiff, MapLayout, chip_center, chip_text, curve_points, relayout)
@@ -124,6 +130,7 @@ class BoxItems:
     name: int | None = None
     where: int | None = None
     marks: int | None = None
+    thumb: int | None = None                    # Pictures: the sketch's ground
 
 
 class MapPainter:
@@ -157,6 +164,9 @@ class MapPainter:
         self._measures: dict[tuple[str, str], int] = {}
         self._old: dict[str, tuple[float, float]] = {}   # removed boxes' corners (ghosts)
         self._old_edges: dict[EdgeKey, list[float]] = {}
+        self.pictures = False                            # Studio UX 3.1: picture boxes
+        self.stretch = (1.0, 1.0)
+        self.sketcher = SketchPainter(self, clock=clock)
 
     # -- Geometry ------------------------------------------------------------------------------
 
@@ -167,13 +177,25 @@ class MapPainter:
             self.dpi = dpi
         self._measures.clear()
 
+    def set_pictures(self, on: bool) -> None:
+        """Picture boxes (3.1) or Compact; the caller draws again."""
+        self.pictures = bool(on)
+        self.stretch = PICTURE_STRETCH if on else (1.0, 1.0)
+
     def corner(self, x: float, y: float) -> tuple[float, float]:
         m, s = MAP_MARGIN * self.dpi, self.scale
-        return m + x * s, m + y * s
+        kx, ky = self.stretch
+        return m + x * s * kx, m + y * s * ky
+
+    def box_size(self) -> tuple[float, float]:
+        """A box's size on the canvas now (Pictures: stretched)."""
+        return (BOX_WIDTH * self.scale * self.stretch[0],
+                BOX_HEIGHT * self.scale * self.stretch[1])
 
     def rect_of(self, box: Box) -> tuple[float, float, float, float]:
         x0, y0 = self.corner(box.x, box.y)
-        return x0, y0, x0 + BOX_WIDTH * self.scale, y0 + BOX_HEIGHT * self.scale
+        w, h = self.box_size()
+        return x0, y0, x0 + w, y0 + h
 
     def box_rect(self, name: str) -> tuple[float, float, float, float] | None:
         """Box ``name``'s rectangle on the canvas, or None when it isn't shown."""
@@ -187,8 +209,8 @@ class MapPainter:
         a, b = layout.boxes[edge.src], layout.boxes[edge.dst]
         assert layout.ends is not None
         return curve_points(self.rect_of(a), self.rect_of(b), (k + 1) / (n + 1),
-                            bend=20 * self.scale, loop=edge.src == edge.dst,
-                            end=layout.ends.get(index))
+                            bend=20 * self.scale * self.stretch[0],
+                            loop=edge.src == edge.dst, end=layout.ends.get(index))
 
     def measure(self, font: tkfont.Font, text: str) -> int:
         key = (str(font), text)
@@ -248,6 +270,7 @@ class MapPainter:
         self.boxes, self.edges, self.chips, self.owner = {}, {}, {}, {}
         self.glows, self.lit, self.preview_items, self.markers = {}, {}, [], {}
         self.pending_lines.clear()
+        self.sketcher.clear()
         self.layout = None
 
     def draw(self, layout: MapLayout) -> None:
@@ -269,6 +292,7 @@ class MapPainter:
         self.markers["chips"] = canvas.create_line(0, 0, 0, 0, state="hidden")
         self.markers["ring"] = canvas.create_line(0, 0, 0, 0, state="hidden")
         self._grow(layout)
+        self.sketcher.schedule()
 
     # -- Incremental ---------------------------------------------------------------------------
 
@@ -332,6 +356,7 @@ class MapPainter:
                 self.pending_lines[name] = None
         self._paint_lines(LINES_PER_PAINT)
         self._grow(layout)
+        self.sketcher.schedule()
         return True
 
     # -- Boxes ---------------------------------------------------------------------------------
@@ -343,6 +368,8 @@ class MapPainter:
         return where
 
     def _draw_box(self, box: Box, *, layer: bool = False) -> BoxItems:
+        if self.pictures:
+            return self._draw_picture_box(box, layer=layer)
         canvas, s, name = self.canvas, self.scale, box.name
         x0, y0, x1, y1 = self.rect_of(box)
         line = max(1, round(self.dpi))
@@ -418,6 +445,98 @@ class MapPainter:
                 self.put(item, "boxes")
         self.boxes[name] = found
         return found
+
+    def _frame(self, box: Box, rect: tuple[float, float, float, float]) -> BoxItems:
+        """A box's rectangle, an ending's inner border and the start bar."""
+        canvas, s = self.canvas, self.scale
+        x0, y0, x1, y1 = rect
+        line = max(1, round(self.dpi))
+        tags = (TAG_BOX,)
+        ending = MARK_ENDING in box.marks
+        item = canvas.create_rectangle(x0, y0, x1, y1, fill=BOX_FILL, width=line, tags=tags,
+                                       outline=ENDING_COLOR if ending else BOX_OUTLINE)
+        found = BoxItems(item, [item])
+        if ending:
+            inset = 3 * s
+            found.items.append(canvas.create_rectangle(x0 + inset, y0 + inset, x1 - inset,
+                                                       y1 - inset, outline=ENDING_COLOR,
+                                                       width=line, tags=tags))
+        if MARK_START in box.marks:
+            found.items.append(canvas.create_rectangle(
+                x0 + line, y0 + line, x0 + line + max(2, round(START_BAR * s)), y1,
+                fill=START_COLOR, outline="", tags=tags))
+        return found
+
+    def detail_line(self, box: Box, sketch: object = None) -> str:
+        """A picture box's second line ("Chapter 2 · 62 lines"), cut to fit."""
+        room = int(self.box_size()[0] - 2 * MAP_PAD * self.scale)
+        return elide(detail_text(box.chapter, sketch), room,  # type: ignore[arg-type]
+                     lambda t: self.measure(self.detail_font, t))
+
+    def _draw_picture_box(self, box: Box, *, layer: bool = False) -> BoxItems:
+        """Studio UX 3.1: the sketch's ground (the sketch itself is ``sketcher``'s), the
+        name with its marks (or Flowchart title) beside it, then the short line; the
+        minigame and warning tags stay under the box. File and line are the tooltip's."""
+        canvas, s, name = self.canvas, self.scale, box.name
+        rect = self.rect_of(box)
+        x0, y0, x1, y1 = rect
+        pad = MAP_PAD * s
+        tags = (TAG_BOX,)
+        found = self._frame(box, rect)
+        items = found.items
+        tx0, ty0, tx1, ty1 = thumb_rect(rect, s)
+        found.thumb = canvas.create_rectangle(tx0, ty0, tx1, ty1, fill=PLACEHOLDER,
+                                              outline="", tags=tags)
+        items.append(found.thumb)
+        top = ty1 + TEXT_GAP * s
+        found.name = canvas.create_text(x0 + pad, top, anchor="nw", text=name,
+                                        font=self.name_font, fill=PLAIN_COLOR, tags=tags)
+        items.append(found.name)
+        box_marks = tuple(m for m in box.marks if m not in (MARK_DELETES_SAVES, MARK_BLOCKED))
+        room = int(x1 - x0 - 3 * pad - self.measure(self.name_font, name))
+        side = ", ".join(box_marks) if box_marks else (
+            f"“{box.scene}”" if box.scene is not None else "")
+        side = elide(side, room, lambda t: self.measure(self.detail_font, t)) if side else ""
+        if side:
+            item = canvas.create_text(x1 - pad, top, anchor="ne", text=side,
+                                      font=self.detail_font, fill=MUTED, tags=tags)
+            items.append(item)
+            if box_marks:
+                found.marks = item
+        found.where = canvas.create_text(x0 + pad, y1 - 4 * s, anchor="sw",
+                                         text=self.detail_line(box), font=self.detail_font,
+                                         fill=MUTED, tags=tags)
+        items.append(found.where)
+        self._tags_under(box, x0, y1, items)
+        for item in items:
+            self.owner[item] = ("box", name)
+            if layer:
+                self.put(item, "boxes")
+        self.boxes[name] = found
+        self.sketcher.put_known(box, found, layer=layer)
+        return found
+
+    def _tags_under(self, box: Box, x0: float, y1: float, items: list[int]) -> None:
+        """The small warning and minigame tags under a picture box (the row gap)."""
+        canvas, s, tags = self.canvas, self.scale, (TAG_BOX,)
+        tag_x = x0
+        under = []
+        if MARK_BLOCKED in box.marks:
+            under.append((f"⚠ {MARK_BLOCKED}", WARNING_COLOR))
+        if MARK_DELETES_SAVES in box.marks:
+            under.append((f"⚠ {MARK_DELETES_SAVES}", WARNING_COLOR))
+        under += [(f"▶ {game}", MINIGAME_COLOR) for game in box.minigames[:2]]
+        for text, color in under:
+            item = canvas.create_text(tag_x + 4 * s, y1 + 3 * s, anchor="nw", text=text,
+                                      font=self.detail_font, fill=color, tags=tags)
+            width = self.measure(self.detail_font, text)
+            height = self.detail_font.metrics("linespace")
+            items.append(item)
+            items.append(canvas.create_rectangle(tag_x + s, y1 + 3 * s - 1,
+                                                 tag_x + 7 * s + width,
+                                                 y1 + 3 * s + height + 1, outline=color,
+                                                 tags=tags))
+            tag_x = tag_x + 10 * s + width
 
     def outline(self, name: str, color: str, width: int) -> None:
         """Box ``name``'s border (selection, hover, drop target), by stored id."""
@@ -538,8 +657,8 @@ class MapPainter:
     def _paint_line(self, name: str) -> None:
         self.pending_lines.pop(name, None)
         found = self.boxes.get(name)
-        if found is None or found.where is None or self.layout is None:
-            return
+        if found is None or found.where is None or self.layout is None or self.pictures:
+            return                                      # Pictures: file:line is the tip's
         j = self.layout.index_of(name)
         if j is None:
             return
@@ -570,8 +689,8 @@ class MapPainter:
     def _grow(self, layout: MapLayout) -> None:
         """The scroll region covers the drawing and never shrinks (PR-08)."""
         margin = MAP_MARGIN * self.dpi
-        width = 2 * margin + layout.width * self.scale
-        height = 2 * margin + layout.height * self.scale
+        width = 2 * margin + layout.width * self.scale * self.stretch[0]
+        height = 2 * margin + layout.height * self.scale * self.stretch[1]
         chips = self.canvas.bbox(TAG_CHIP)
         if chips:
             width, height = max(width, chips[2] + margin), max(height, chips[3] + margin)
@@ -638,8 +757,8 @@ class MapPainter:
             if spot is None:
                 return
             x0, y0 = self.corner(*spot)
-            item = canvas.create_rectangle(x0, y0, x0 + BOX_WIDTH * self.scale,
-                                           y0 + BOX_HEIGHT * self.scale, outline=color,
+            w, h = self.box_size()
+            item = canvas.create_rectangle(x0, y0, x0 + w, y0 + h, outline=color,
                                            width=max(1, round(self.dpi)), dash=DASH)
         else:
             points = self._old_edges.get(what)          # type: ignore[arg-type]

@@ -34,6 +34,7 @@ from engine.tools.editor.document import ScriptDocument, open_document
 from engine.tools.editor.syntax import PLAIN_COLOR, indent_unit
 from engine.tools.editor.eventsview import EventsView
 from engine.tools.editor.storyeditor import StoryEditor, apply_edits
+from engine.tools.editor.mapsketch import MapStills, SketchImages, SketchSource
 from engine.tools.editor.scenepreview import ScenePreview
 from engine.tools.editor.storymap import (
     Box,
@@ -211,6 +212,15 @@ class MapWiring:
         view.on_context = lambda kind, what, x, y: self.map_context(kind, what, x, y)
         view.on_hold = self._map_held
         view.on_line = self._map_said
+        # Studio UX 3.1: picture boxes (the author's choice, every game) and their sketches.
+        sketcher = view.painter.sketcher
+        sketcher.source = SketchSource(self, view)
+        sketcher.images = SketchImages(self, view.canvas, sketcher.image_ready)
+        sketcher.still = MapStills(self, view.canvas, sketcher.source.form_assets,
+                                   lambda: sketcher.schedule(stills=True))
+        view.on_pictures = lambda on: self.save_studio_state(map_pictures=on)
+        view.set_pictures(uiprefs.value("map_pictures") is not False)
+        self.on_check_done.append(lambda _result: sketcher.source.assets_changed())
         # F58 PR-12, 13: Follow changes and Reduce motion, per game in studio.json; the
         # OS's reduce-motion setting is read once, off the Tk thread (it may take 1 s).
         state = studiostate.read_state(self.paths.root)
@@ -315,6 +325,7 @@ class MapWiring:
         if self.closed or not self._map_dirty or self._iconic():
             return                              # F58 PR-21: minimised, nothing is drawn
         self._map_dirty = False
+        self.story_map.sketches_changed()       # 3.1: on idle, the sketches in view
         labels, links, stale = self.map_data()
         if throttle:
             stale = stale & self.story_map.out_of_date

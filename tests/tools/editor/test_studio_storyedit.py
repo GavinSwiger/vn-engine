@@ -44,8 +44,12 @@ def lanterns(tmp_path) -> Path:
     return game
 
 
-def studio_l(studio, game: Path):
+def studio_l(studio, game: Path, *, compact: bool = True):
+    """Studio L on the map; ``compact``: F45's small boxes (these tests measure them;
+    Studio UX 3.1's picture boxes are ``test_map_pictures.py``'s)."""
     ed = studio(game, mapped=True)
+    if compact:
+        ed.story_map.set_pictures(False)
     result = CheckResult(problems=(), problem_total=0, names={"label": L_LABELS},
                          links=L_LINKS, loaded=True, serial=ed.win.edit_serial, seconds=0.1)
     ed.win.apply_check_events([CheckEvent(CheckState.DONE, result.serial, result)])

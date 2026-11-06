@@ -193,6 +193,7 @@ def test_ac41_the_help_pane_follows_the_cursor(studio, studio_game):
 
 def test_ac43_the_story_map_view(studio, studio_game):
     ed = studio(studio_game, mapped=True)
+    ed.story_map.set_pictures(False)                  # F45's boxes (3.1: "Compact")
     ed.win.check_names = {"label": S_LABELS}
     ed.win.check_links = S_LINKS
     ed.press(ed.text, "<Control-Key-2>")

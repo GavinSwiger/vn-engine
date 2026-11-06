@@ -231,3 +231,63 @@ def test_budget_table():
     print("\n" + map_budget.table(rows))
     missed = [row.label for row in rows if row.misses()]
     print("MISSES (> 30 % over 04's estimate):", "; ".join(missed) if missed else "none")
+
+
+# --- Studio UX 3.1: picture boxes at 300 scenes ------------------------------------------------
+
+def test_pictures_one_scene_layout_draw_and_sketches():
+    """Pictures: AC-14's one-scene change within its 16 ms, the idle sketch pass included;
+    each sketch pass draws only the boxes in view; asking for stills never blocks."""
+    from engine.tools.editor.mapsketch import Sketch
+    from tests.perf.map_budget import map_view
+    n = 300
+    root = _root()
+    try:
+        view = map_view(root)
+        view.set_pictures(True)
+        sketcher = view.painter.sketcher
+        figures = ((0.25, "#FF8080"), (0.75, "#80C0FF"))
+        sketcher.source = lambda box: Sketch(9, "#203040", None, figures)
+        asked: list = []
+        sketcher.still = lambda box, sketch, w, h: asked.append((box.name, w, h))
+        labels, links = gen.labels(n), gen.links(n)
+        a = time.perf_counter()
+        view.set_data(labels, links, False)
+        root.update()
+        print(f"\n3.1 Pictures {n}: first draw with sketches {(time.perf_counter() - a) * 1000:.1f} ms")
+        shown = len(sketcher.visible_boxes())
+        assert 0 < len(sketcher.drawn) <= shown
+        src, dst = f"s{n // 2}", f"s{(n // 2 + 7) % n}"
+        extra = type(links[0])(src, dst, "jump", REF, jump_line(n), None)
+        times = []
+        for i in range(6):
+            now = links + [extra] if i % 2 == 0 else links
+            a = time.perf_counter()
+            view.set_data(labels, now, False)
+            view.sketches_changed()
+            root.update_idletasks()
+            times.append((time.perf_counter() - a) * 1000)
+        med = statistics.median(times[1:])
+        print(f"3.1 Pictures {n}: one-scene layout + draw + sketch pass, median of 5: {med:.1f} ms")
+        assert med <= ONE_SCENE_MS[n]
+        # Every sketch in view drawn again from nothing (a zoom), in idle slices.
+        a = time.perf_counter()
+        view.zoom_by(1)
+        root.update_idletasks()
+        redraw = (time.perf_counter() - a) * 1000
+        print(f"3.1 Pictures {n}: zoom redraw with {len(sketcher.drawn)} sketches {redraw:.1f} ms")
+        # Stills: asked for the boxes in view only, at box size, without waiting.
+        a = time.perf_counter()
+        view._rested()
+        root.update_idletasks()
+        stills = (time.perf_counter() - a) * 1000
+        print(f"3.1 Pictures {n}: stills asked for {len(asked)} boxes in {stills:.1f} ms")
+        assert 0 < len(asked) <= len(sketcher.visible_boxes())
+        from engine.tools.editor.mapsketch import THUMB_HEIGHT, THUMB_INSET
+        s = view._scale()
+        w = round(view.painter.box_size()[0] - 2 * THUMB_INSET * s)
+        assert all(abs(aw - w) <= 1 and abs(ah - THUMB_HEIGHT * s) <= 1
+                   for _name, aw, ah in asked)
+        assert stills <= ONE_SCENE_MS[n]
+    finally:
+        root.destroy()

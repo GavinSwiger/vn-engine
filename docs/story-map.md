@@ -8,6 +8,12 @@ The basics of the map (box marks, arrow styles, the Outline) are in
 
 ## Boxes
 
+- **Pictures or Compact** (on the map's toolbar): in **Pictures** each box shows a sketch of
+  its opening shot (the background, and each character as a figure in their name colour)
+  above its name and a short line such as "Chapter 2 · 62 lines". Rest the pointer on a box
+  for its file and line. When the map is still for a moment, the boxes in view swap the
+  sketch for the game's own picture. **Compact** shows small boxes with the file and line,
+  handy for a very large story. Studio remembers your choice for every game.
 - **Scroll the map:** the arrow keys or W A S D (Shift: further), the mouse wheel, or the
   scroll bars. Ctrl+arrows go from box to box.
 - **Move a box:** drag it. It snaps to a 20 px grid; hold Shift for no snap. With a box

@@ -44,6 +44,8 @@ from engine.tools.editor.files import ProjectTree, Refusal, TreeNode
 from engine.tools.editor.livemap import (
     FOLLOW_CHANGES, FileRows, GlowSet, MapDelta, MapModel, Pins, glow_items, s5)
 from engine.tools.editor.mapcanvas import MapPainter
+from engine.tools.editor.mapsketch import TIP_DELAY_MS
+from engine.script.messages import show
 from engine.tools.editor.storymap import (
     BOX_HEIGHT,
     BOX_WIDTH,
@@ -680,6 +682,9 @@ CHORD_STATE = 0x4 | {"win32": 0x20000, "darwin": 0x8 | 0x10}.get(sys.platform, 0
 TIDY_UP = "Tidy up"                     # F46 design §6.2 toolbar; one map step
 MOVE_TITLE = "Move box"
 NEW_SCENE_BUTTON = "+ New scene"        # F46 design §6.1 toolbar
+PICTURES_BUTTON = "Pictures"            # Studio UX 3.1: each box shows its opening shot
+COMPACT_BUTTON = "Compact"              # F45's small boxes
+MAP_IDLE_MS = 700                       # 3.1: the map rests this long before stills come
 SELECT_COLOR = THEME["map.selected"]    # F46: selected box / arrow, drop target, drag line
 HANDLE_COLOR = THEME["map.handle"]
 HANDLE_PX = 8                           # F46: the arrow handle on a hovered box's right edge
@@ -820,6 +825,16 @@ class StoryMapView:
         self.tidy_button = ttk.Button(self.filter, text=TIDY_UP, takefocus=0,
                                       style="Ghost.TButton", command=self.tidy_up)
         self.tidy_button.pack(side="left", padx=(0, round(12 * scale)))
+        # Studio UX 3.1: Pictures or Compact, one pressed (the window keeps the choice).
+        self.pictures = False
+        self.on_pictures: Callable[[bool], None] | None = None
+        self.look_buttons = {
+            on: ttk.Button(self.filter, text=text, style="Ghost.TButton",
+                           command=lambda on=on: self.set_pictures(on, notify=True))
+            for on, text in ((True, PICTURES_BUTTON), (False, COMPACT_BUTTON))}
+        self.look_buttons[True].pack(side="left")
+        self.look_buttons[False].pack(side="left", padx=(0, round(12 * scale)))
+        self._show_look()
         ttk.Label(self.filter, text="File:").pack(side="left", padx=(0, round(8 * scale)))
         zero = max(1, tkfont.nametofont("TkDefaultFont", root=parent).measure("0"))
         self.file_choice = ttk.Combobox(self.filter, state="readonly",
@@ -947,6 +962,9 @@ class StoryMapView:
         self.message = ""
         self.drag: _Drag | None = None
         self.moving: _Drag | None = None        # Move box mode (G3)
+        self._tip: list[int] = []               # 3.1: a picture box's file:line tooltip
+        self._tip_id: str | None = None
+        self._idle_id: str | None = None        # 3.1: the map at rest (stills)
         self._shifted: dict[int, tuple[float, float]] = {}
         self._incident: dict[int, list[int]] = {}   # box → its edges (found when dragged)
         self._drag_id: str | None = None
@@ -1166,6 +1184,7 @@ class StoryMapView:
             return
         surface = str(canvas.cget("background"))
         for name in names if len(names) <= FADE_IN_MAX else ():
+            painter.sketcher.paint_name(name)   # 3.1: the sketch grows with its box
             found = painter.boxes.get(name)
             if found is not None:
                 key = ("map-box", name)
@@ -1392,13 +1411,113 @@ class StoryMapView:
         return self.zoom / 100 * self.dpi
 
     def box_rect(self, index: int) -> tuple[float, float, float, float]:
-        """Box ``index``'s rectangle on the canvas at the current zoom."""
+        """Box ``index``'s rectangle on the canvas at the current zoom (3.1: Pictures
+        stretches the layout, ``MapPainter.stretch``)."""
         assert self.layout is not None
         box = self.layout.boxes[index]
         x, y = self._shifted.get(index, (box.x, box.y))     # F46: a box being moved
         s = self._scale()
-        x0, y0 = MAP_MARGIN * self.dpi + x * s, MAP_MARGIN * self.dpi + y * s
-        return x0, y0, x0 + BOX_WIDTH * s, y0 + BOX_HEIGHT * s
+        kx, ky = self.painter.stretch
+        x0, y0 = MAP_MARGIN * self.dpi + x * s * kx, MAP_MARGIN * self.dpi + y * s * ky
+        return x0, y0, x0 + BOX_WIDTH * s * kx, y0 + BOX_HEIGHT * s * ky
+
+    # --- Pictures (Studio UX 3.1) -----------------------------------------------------------
+
+    def _show_look(self) -> None:
+        for on, button in self.look_buttons.items():
+            button.configure(style="Secondary.TButton" if on == self.pictures
+                             else "Ghost.TButton")
+
+    def set_pictures(self, on: bool, *, notify: bool = False) -> None:
+        """Picture boxes or Compact (the toolbar switch): everything drawn again, the
+        focused box kept in view. ``notify``: tell the window (it remembers the choice)."""
+        on = bool(on)
+        if on == self.pictures and self.painter.pictures == on:
+            return
+        self.pictures = on
+        self.painter.set_pictures(on)
+        self._show_look()
+        self._hide_tip()
+        still = self.painter.sketcher.still
+        if not on and hasattr(still, "cancel"):
+            still.cancel()                      # Compact wants no stills
+        if self.layout is not None:
+            self.draw()
+            if self.focused is not None:
+                self.see(self.focused)
+        if notify and self.on_pictures is not None:
+            self.on_pictures(on)
+
+    def sketches_changed(self) -> None:
+        """The scripts changed (3.1): the sketches in view are checked again on idle."""
+        source = self.painter.sketcher.source
+        if source is not None and hasattr(source, "changed"):
+            source.changed()
+        self.painter.sketcher.schedule()
+        self._rest()
+
+    def _rest(self) -> None:
+        """The map moved or changed: once it rests ``MAP_IDLE_MS``, the boxes in view ask
+        for the game's own stills (3.1 "Real stills"; never while a gesture holds it)."""
+        if not self.pictures or self.painter.sketcher.still is None:
+            return
+        if self._idle_id is not None:
+            try:
+                self.canvas.after_cancel(self._idle_id)
+            except tk.TclError:
+                pass
+        self._idle_id = self.canvas.after(MAP_IDLE_MS, self._rested)
+
+    def _rested(self) -> None:
+        self._idle_id = None
+        try:
+            shown = self.canvas.winfo_viewable()
+        except tk.TclError:
+            return
+        if not self.pictures or not shown:
+            return                              # hidden: asked again when it shows
+        if self.holding:
+            self._rest()
+            return
+        self.painter.sketcher.schedule(stills=True)
+
+    def _show_tip(self, index: int) -> None:
+        """A picture box's tooltip: its file and line (and Flowchart title), under it."""
+        self._tip_id = None
+        self._hide_tip()
+        if not self.pictures or self.layout is None or index >= len(self.layout.boxes):
+            return
+        box = self.layout.boxes[index]
+        parts = [f"{show(box.file)}:{box.line}" if box.file is not None else ""]
+        if box.scene is not None:
+            parts.append(f"“{box.scene}”")
+        text = " · ".join(p for p in parts if p)
+        if not text:
+            return
+        canvas, k = self.canvas, self.dpi
+        x0, _y0, _x1, y1 = self.box_rect(index)
+        pad = round(6 * k)
+        item = canvas.create_text(x0 + pad, y1 + round(6 * k) + pad, anchor="nw", text=text,
+                                  font=self.legend_font, fill=THEME["foreground"],
+                                  tags=("tip",))
+        left, top, right, bottom = canvas.bbox(item)
+        back = canvas.create_rectangle(left - pad, top - pad // 2, right + pad,
+                                       bottom + pad // 2, fill=THEME["widget.background"],
+                                       outline=THEME["widget.border"], tags=("tip",))
+        canvas.tag_raise(back)
+        canvas.tag_raise(item)
+        self._tip = [back, item]
+
+    def _hide_tip(self) -> None:
+        if self._tip_id is not None:
+            try:
+                self.canvas.after_cancel(self._tip_id)
+            except tk.TclError:
+                pass
+            self._tip_id = None
+        for item in self._tip:
+            self.canvas.delete(item)
+        self._tip = []
 
     def items_of(self, name: str) -> tuple[int, ...]:
         """Box ``name``'s canvas items (F58 I-10: tests' replacement for the old index
@@ -1413,6 +1532,7 @@ class StoryMapView:
         self._settle()
         self._drop_field()
         self._drop_handle()
+        self._hide_tip()
         if self.link is not None and self.link.line is not None:
             canvas.delete(self.link.line)
         self._shifted = {}
@@ -1444,9 +1564,9 @@ class StoryMapView:
         if len(found.boxes) == 1 and not found.edges and found.hidden == 0 \
                 and self.file is None:
             # PR-F46-27: under the start box, the canvas still usable around it.
+            below = round(MAP_MARGIN * s + self.painter.box_size()[1] + 24 * s)
             self.start_only.frame.place(in_=canvas, relx=0, rely=0, relwidth=1, relheight=1,
-                                        y=round((MAP_MARGIN + BOX_HEIGHT + 24) * s),
-                                        height=-round((MAP_MARGIN + BOX_HEIGHT + 24) * s))
+                                        y=below, height=-below)
             self.start_only.shown = True
         else:
             self.start_only.hide()
@@ -1479,6 +1599,7 @@ class StoryMapView:
             self._paint_box(index)
         self._draw_ring()
         self.stick_names()
+        self._rest()
 
     def _outline(self, index: int) -> tuple[str, int]:
         """Box ``index``'s border: 2 px accent while selected or a drop target (F46), the
@@ -1557,8 +1678,8 @@ class StoryMapView:
         edge = self.layout.edges[index]
         k, n = self.layout.ports[index]
         return curve_points(self.box_rect(edge.src), self.box_rect(edge.dst), (k + 1) / (n + 1),
-                            bend=20 * self._scale(), loop=edge.src == edge.dst,
-                            end=(self.layout.ends or {}).get(index))
+                            bend=20 * self._scale() * self.painter.stretch[0],
+                            loop=edge.src == edge.dst, end=(self.layout.ends or {}).get(index))
 
     @staticmethod
     def curve_at(points: Sequence[float], t: float) -> tuple[float, float]:
@@ -1597,13 +1718,22 @@ class StoryMapView:
             setter(first, last)
             self.stick_names()
             self.painter.drain_visible()        # F58 Q4: texts scrolled into view
+            self._scrolled()
         return scrolled
 
     def _yscrolled(self, setter: Callable[[str, str], None]) -> Callable[[str, str], None]:
         def scrolled(first: str, last: str) -> None:
             setter(first, last)
             self.painter.drain_visible()
+            self._scrolled()
         return scrolled
+
+    def _scrolled(self) -> None:
+        """3.1: the sketches of what scrolled into view, and the stills once it rests."""
+        if self.pictures:
+            self._hide_tip()
+            self.painter.sketcher.schedule()
+            self._rest()
 
     def stick_names(self) -> None:
         """A box cut by the map's left edge (scrolled, e.g. after the side pane opened)
@@ -1655,6 +1785,9 @@ class StoryMapView:
         self._paint_box(old)
         self._paint_box(index)
         self._drop_handle()
+        self._hide_tip()
+        if index is not None and self.pictures:     # 3.1: file and line, after a rest
+            self._tip_id = self.canvas.after(TIP_DELAY_MS, lambda i=index: self._show_tip(i))
         if index is not None and self.layout is not None and index < len(self.layout.boxes):
             x0, y0, x1, y1 = self.box_rect(index)
             line = max(1, round(self.dpi))
@@ -1857,8 +1990,9 @@ class StoryMapView:
             return
         drag.moved = True
         s = self._scale()
-        self._show_at(drag.box, (max(0.0, drag.origin[0] + dx / s),
-                                 max(0.0, drag.origin[1] + dy / s)))
+        kx, ky = self.painter.stretch
+        self._show_at(drag.box, (max(0.0, drag.origin[0] + dx / (s * kx)),
+                                 max(0.0, drag.origin[1] + dy / (s * ky))))
 
     def _show_at(self, index: int, place: tuple[float, float]) -> None:
         """Draw box ``index`` with its corner at ``place`` (100 %) while it is moved: its
@@ -1930,7 +2064,8 @@ class StoryMapView:
             (self.on_open_tab if drag.tab else self.on_open)(self.layout.boxes[drag.box])
             return
         s = self._scale()
-        x, y = round(drag.origin[0] + dx / s), round(drag.origin[1] + dy / s)
+        kx, ky = self.painter.stretch
+        x, y = round(drag.origin[0] + dx / (s * kx)), round(drag.origin[1] + dy / (s * ky))
         self.move_to(drag.box, (x, y) if event.state & 0x0001 else snap((x, y)))
 
     def _escape(self, _event: tk.Event | None = None) -> str | None:
@@ -2062,8 +2197,9 @@ class StoryMapView:
         """Window point (``x``, ``y``) as a map place at 100 % (never below 0)."""
         canvas, s = self.canvas, self._scale()
         margin = MAP_MARGIN * self.dpi
-        return (max(0, round((canvas.canvasx(x) - margin) / s)),
-                max(0, round((canvas.canvasy(y) - margin) / s)))
+        kx, ky = self.painter.stretch
+        return (max(0, round((canvas.canvasx(x) - margin) / (s * kx))),
+                max(0, round((canvas.canvasy(y) - margin) / (s * ky))))
 
     def _new_scene(self, place: tuple[int, int] | None) -> None:
         if self.on_new_scene is not None:
