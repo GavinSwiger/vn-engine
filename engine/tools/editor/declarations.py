@@ -38,6 +38,9 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
   [hidden] [when <condition>]``, one line): values ``{"title", "description", "image",
   "hidden", "when"}`` (``ACHIEVEMENT_KEYS``; ``when`` the condition as written, None: given
   only by an ``unlock achievement`` line). ``achievement_uses(texts)`` finds those lines.
+- F65 round 3: ``CONTACT`` (``lock contact n "Title" [on <look>] [image <picture>]``, one
+  line): values ``{"title", "device", "image"}`` (``CONTACT_KEYS``; ``device`` None: the
+  game's default look). Contacts have names of their own (``send … from n``).
 - Titles and categories are values as shown (``{{`` read as ``{``, written back doubled);
   codex paragraphs are kept as written (their ``{b}``/``{i}``/``{color}`` tags stay).
 - ``CHARACTER_OPTIONS`` is Studio's own copy of the runtime's option table, in doc order with
@@ -75,6 +78,9 @@ from engine.script.codex import ITEM_COUNT_MAX
 from engine.script.codex import TITLE_MAX as CODEX_TITLE_MAX
 from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.gallery import TITLE_MAX as GALLERY_TITLE_MAX
+from engine.script.inbox import LOOKS as CONTACT_LOOKS
+from engine.script.inbox import NAME_MAX as CONTACT_NAME_MAX
+from engine.script.inbox import TITLE_MAX as CONTACT_TITLE_MAX
 from engine.script.gallery import VERSIONS_MAX as GALLERY_VERSIONS_MAX
 from engine.script.musicroom import TITLE_MAX as TRACK_TITLE_MAX
 from engine.script.musicroom import TRACKS_MAX
@@ -110,8 +116,10 @@ GALLERY: Final = "gallery"        # lock gallery <picture> "Title" … : (F34)
 TRACK: Final = "track"            # lock track n "Title" file "…" [open | until a, b] (F35)
 REPLAY: Final = "replay"          # lock replay <scene> "Title" [image …] [to …] … : (F36)
 ACHIEVEMENT: Final = "achievement"  # lock achievement n "Title" … [hidden] [when …] (F37)
+CONTACT: Final = "contact"        # lock contact n "Title" [on <look>] [image …] (F65)
 EDITABLE_KINDS: Final = frozenset((CHARACTER, COLOR, VARIABLE, PERSISTENT, METER, TIP, ITEM,
-                                   ROUTE, TRANSITION, GALLERY, TRACK, REPLAY, ACHIEVEMENT))
+                                   ROUTE, TRANSITION, GALLERY, TRACK, REPLAY, ACHIEVEMENT,
+                                   CONTACT))
 # Kinds one form switches between (``declplan.plan_edit``'s ``kind``): the Variables form's
 # "Remembered across playthroughs" and the Codex form's Tips / Items.
 SWAPS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
@@ -121,7 +129,7 @@ _NAMESPACES: Final[Mapping[str, str]] = MappingProxyType({   # kinds sharing one
     CHARACTER: "python", DEFINE: "python", VARIABLE: "python", TRANSITION: "python",
     PERSISTENT: "persistent", METER: "points", TIP: "codex", ITEM: "codex", ROUTE: "route",
     COLOR: "image", IMAGE: "image", GALLERY: "gallery", TRACK: "track",
-    REPLAY: "replay", ACHIEVEMENT: "achievement"})
+    REPLAY: "replay", ACHIEVEMENT: "achievement", CONTACT: "contact"})
 
 # Meters (design §4.3): the values of a points declaration. None: not written (no range: the
 # engine's ±1,000,000,000; no start: 0, or low when 0 is outside the range).
@@ -134,6 +142,9 @@ CODEX_INDENT: Final = "    "
 
 # Gallery (F34): the title as shown and the versions (picture names) in written order.
 GALLERY_KEYS: Final = ("title", "versions")
+
+# Contacts (F65 round 3): the shown name, the device look (None: the game's) and the picture.
+CONTACT_KEYS: Final = ("title", "device", "image")
 _GALLERY_LINE = re.compile(r"[ \t]+(lock|unlock)[ \t]+gallery[ \t]+([^\n#\"]+?)[ \t]*(?:#.*)?$")
 
 # Music room (F35 SPEC §3): the title as shown, the file inside audio/ as written, ``open``
@@ -1218,6 +1229,12 @@ def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None
             name = _name_token(tokens[2])
             return None if name is None else Decl(REPLAY, name, ref, first, last, None)
         return Decl(REPLAY, replay[0], ref, first, last, replay[1])
+    if tokens is not None and len(tokens) >= 3 and tokens[:2] == ["lock", CONTACT]:
+        name = _name_token(tokens[2])
+        if name is None:
+            return None
+        values = _contact_read(tokens[3:]) if count == 1 and last == first else None
+        return Decl(CONTACT, name, ref, first, last, values)
     if tokens is None or len(tokens) < 3 or tokens[0] != "lock" \
             or tokens[1] not in (TIP, ITEM, ROUTE, TRACK):
         return None
@@ -1232,6 +1249,68 @@ def _lock_read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None
         return Decl(ROUTE, name, ref, first, last, values)
     values = _codex_read(tokens[3:], lines[count:]) if count == 1 else None
     return Decl(tokens[1], name, ref, first, last, values)
+
+
+# --- Contacts (F65 round 3) ---
+
+def contact_ok(values: Mapping[str, object]) -> bool:
+    """True when ``values`` (``CONTACT_KEYS``) can be written as a ``lock contact`` line the
+    game reads back the same: a plain shown name of 1 to 40 characters (single spaces), a
+    known look or None, and image words or None."""
+    title, device, image = values.get("title"), values.get("device"), values.get("image")
+    if type(title) is not str or not title or title != " ".join(title.split()) \
+            or len(title) > CONTACT_TITLE_MAX:
+        return False
+    if device is not None and device not in CONTACT_LOOKS:
+        return False
+    return image is None or (type(image) is str and _image_name(image) == image)
+
+
+def _contact_read(tokens: list[str]) -> dict[str, object] | None:
+    """A contact line's tokens after its name as values (None: Edit as script)."""
+    title = _title_token(tokens[0]) if tokens else None
+    if title is None:
+        return None
+    device: str | None = None
+    image: str | None = None
+    seen: set[str] = set()
+    i = 1
+    while i < len(tokens):
+        word = tokens[i]
+        if word not in ("on", "image") or word in seen:
+            return None
+        seen.add(word)
+        if word == "on":
+            if i + 1 >= len(tokens) or tokens[i + 1] not in CONTACT_LOOKS:
+                return None
+            device, i = tokens[i + 1], i + 2
+            continue
+        stop = i + 1
+        while stop < len(tokens) and tokens[stop] != "on":
+            stop += 1
+        words = tokens[i + 1:stop]
+        if not words or any(w in (",", ":") or w.startswith('"') for w in words):
+            return None
+        image = _image_name(" ".join(words))
+        if image is None:
+            return None
+        i = stop
+    values: dict[str, object] = {"title": " ".join(title.split()), "device": device,
+                                 "image": image}
+    return values if contact_ok(values) else None
+
+
+def contact_line(name: str, values: Mapping[str, object]) -> str:
+    """``lock contact <name> "Title" [on <look>] [image <picture>]``. Raises ValueError for
+    values it can't write."""
+    if not contact_ok(values):
+        raise ValueError("bad contact")
+    line = f"lock contact {name} {quote(written_text(str(values['title'])))}"
+    if values.get("device") is not None:
+        line += f" on {values['device']}"
+    if values.get("image") is not None:
+        line += f" image {values['image']}"
+    return line
 
 
 # --- Transitions (F09 Dissolve, Fade, Mask) ---
@@ -1568,6 +1647,8 @@ def line_for(kind: str, name: str, values: Mapping[str, object]) -> str:
         return track_line(name, values)
     if kind == ACHIEVEMENT:
         return achievement_line(name, values)
+    if kind == CONTACT:
+        return contact_line(name, values)
     if kind == TRANSITION:
         return f"define {name} = {transition_call(values)}"
     if kind in (TIP, ITEM):
@@ -1617,6 +1698,8 @@ def name_problem(name: str, kind: str = CHARACTER) -> bool:
         return _meter_name(name) != name
     if kind in (TIP, ITEM) and len(name) > CODEX_NAME_MAX:
         return True
+    if kind == CONTACT and len(name) > CONTACT_NAME_MAX:
+        return True
     if kind == TRANSITION and name in BUILTIN_TRANSITION_NAMES:
         return True
     return check_name(name) is not None or name.lower() in MODIFIER_WORDS
@@ -1629,7 +1712,7 @@ def script_name(shown: str, taken: Collection[str], kind: str = CHARACTER) -> st
     A ``COLOR`` name is one image word after ``bg ``."""
     fallback = {COLOR: "color", VARIABLE: "variable", PERSISTENT: "variable",
                 ROUTE: "route", TIP: "tip", ITEM: "item", METER: "meter", TRACK: "track",
-                ACHIEVEMENT: "achievement",
+                ACHIEVEMENT: "achievement", CONTACT: "contact",
                 TRANSITION: "transition", POSITION: "position"}.get(kind, "character")
     base = _slug(shown) or fallback
     if base[0].isdigit():
@@ -1673,6 +1756,7 @@ __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX
            "ACHIEVEMENT", "ACHIEVEMENT_CONDITION_MAX", "ACHIEVEMENT_DESCRIPTION_MAX",
            "ACHIEVEMENT_KEYS", "ACHIEVEMENT_TITLE_MAX", "achievement_line", "achievement_ok",
            "achievement_uses", "condition_ok",
+           "CONTACT", "CONTACT_KEYS", "CONTACT_LOOKS", "contact_line", "contact_ok",
            "literal_text", "replay_lines", "replay_ok", "replay_uses", "scene_title",
            "start_value_ok",
            "find", "gallery_lines", "gallery_ok", "gallery_title", "gallery_uses",

@@ -32,6 +32,7 @@ field, no OK button). The ``.vns`` text stays the only truth: every write is a
   live in ``dbreplays.ReplaysCategory``.
 - F37-S3: **Achievements** (after Scene replays) lives in
   ``dbachievements.AchievementsCategory``.
+- F65 round 3: **Contacts** (after Codex) lives in ``dbcontacts.ContactsCategory``.
 - F31: **Character files** (the originals in ``files/``, + Add…, a text preview) lives
   in ``dbmeta.MetaFilesCategory``.
 - F41-W2: **Clean up** (last; what each check's linter found unused or not reached, with
@@ -60,6 +61,7 @@ from engine.tools.editor import declrename
 from engine.tools.editor import declplan, fieldhints, files
 from engine.tools.editor.animpanel import FRAME_PX, LookPanel
 from engine.tools.editor.dbachievements import ABOUT_ACHIEVEMENTS, AchievementsCategory
+from engine.tools.editor.dbcontacts import ABOUT_CONTACTS, ContactsCategory
 from engine.tools.editor.dbcleanup import ABOUT_CLEANUP, CleanupCategory
 from engine.tools.editor.dbextras import ABOUT_MUSIC, MusicRoomCategory
 from engine.tools.editor.dbgallery import ABOUT_GALLERY, GalleryCategory
@@ -109,7 +111,9 @@ ALL_CATEGORIES = (db.CATEGORY_CHARACTER, db.CATEGORY_PICTURE, db.CATEGORY_GALLER
                                    db.CATEGORY_SOUND)),
                   *(key for p2 in db.P2_CATEGORIES        # F36: Scene replays after Endings
                     for key in ((p2, db.CATEGORY_REPLAY, db.CATEGORY_ACHIEVEMENT)
-                                if p2 == db.CATEGORY_ENDING else (p2,))),
+                                if p2 == db.CATEGORY_ENDING else
+                                (p2, db.CATEGORY_CONTACT) if p2 == db.CATEGORY_CODEX
+                                else (p2,))),
                   db.CATEGORY_META, db.CATEGORY_CLEANUP)       # F41: Clean up last
 TITLES: Mapping[str, str] = {key: db.CATEGORY_TITLES[key] for key in ALL_CATEGORIES}
 # Lower-cased titles, built rather than spelled: "characters" as a literal belongs only to
@@ -131,6 +135,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     db.CATEGORY_META: ABOUT_META,
     db.CATEGORY_REPLAY: ABOUT_REPLAYS,
     db.CATEGORY_ACHIEVEMENT: ABOUT_ACHIEVEMENTS,
+    db.CATEGORY_CONTACT: ABOUT_CONTACTS,
     db.CATEGORY_CLEANUP: ABOUT_CLEANUP,
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
@@ -256,7 +261,8 @@ class _Form:
 
 
 class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCategory,
-                   AchievementsCategory, MetaFilesCategory, CleanupCategory):
+                   AchievementsCategory, ContactsCategory, MetaFilesCategory,
+                   CleanupCategory):
     """The Database tab of ``win`` (an ``EditorWindow``): ``frame`` is the notebook page."""
 
     def __init__(self, win: Any, parent: tk.Misc) -> None:
@@ -443,6 +449,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.rows[db.CATEGORY_MUSIC_ROOM] = self._track_rows()
         self.rows[db.CATEGORY_REPLAY] = self._replay_rows()
         self.rows[db.CATEGORY_ACHIEVEMENT] = self._achievement_rows()
+        self.rows[db.CATEGORY_CONTACT] = self._contact_rows()          # F65 round 3
         self.rows[db.CATEGORY_META] = self._meta_rows()
         self.rows[db.CATEGORY_CLEANUP] = self._cleanup_rows()     # last: finds the others'
         for key in ALL_CATEGORIES:
@@ -822,6 +829,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             return (self.category, row.iid, entry.kind, self._replay_key(entry, shape))
         if entry.kind == dec.ACHIEVEMENT:                       # F37: Achievements
             return (self.category, row.iid, entry.kind, self._achievement_key(entry, shape))
+        if entry.kind == dec.CONTACT:                           # F65: Contacts
+            return (self.category, row.iid, entry.kind, self._contact_key(entry, shape))
         if entry.kind == db.META_FILE:                          # F31: Character files
             return (self.category, row.iid, entry.kind, self._meta_key(row, shape))
         more = self._p2_key(entry, shape)
@@ -860,6 +869,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self._replay_form(row, key)
         elif entry.kind == dec.ACHIEVEMENT:
             self._achievement_form(row, key)
+        elif entry.kind == dec.CONTACT:
+            self._contact_form(row, key)
         elif entry.kind == db.META_FILE:
             self._meta_form(row, key)
         else:
@@ -1496,6 +1507,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.new_replay()
         elif self.category == db.CATEGORY_ACHIEVEMENT:
             self.new_achievement()
+        elif self.category == db.CATEGORY_CONTACT:
+            self.new_contact()
         elif self.category == db.CATEGORY_META:
             self.add_meta_files()
         elif self.category == db.CATEGORY_CLEANUP:
@@ -1643,6 +1656,9 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
 
     def show_uses(self, entry: db.Entry) -> None:
         """Show uses: the lines in the Problems panel, each a link to its line."""
+        if entry.kind == dec.CONTACT:                           # from its send lines
+            self.show_contact_uses(entry)
+            return
         places = db.use_places(self.names, self._use_kind(entry), entry.name)
         items = []
         for ref, line in places:
@@ -1690,6 +1706,8 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
             self.delete_replay(entry)
         elif entry.kind == dec.ACHIEVEMENT:
             self.delete_achievement(entry)
+        elif entry.kind == dec.CONTACT:
+            self.delete_contact(entry)
         elif entry.editable:
             self.delete_entry(entry, lambda: self._delete_decl(entry))
 

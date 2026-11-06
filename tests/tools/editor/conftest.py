@@ -200,7 +200,7 @@ def try_link_file(link: Path, target: Path) -> bool:
 STUDIO_MODULES = ("window", "fileactions", "checkwiring", "runwiring", "mapwiring", "database",
                   "dbcleanup",
                   "animpanel",
-                  "dbmore", "dbmeters", "dbgallery", "dbextras", "dbreplays", "dbachievements", "studiomenus", "editorkeys", "settingsview",
+                  "dbmore", "dbmeters", "dbgallery", "dbextras", "dbreplays", "dbachievements", "dbcontacts", "studiomenus", "editorkeys", "settingsview",
                   "editormenu", "paletteimport")
 
 

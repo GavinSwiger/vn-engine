@@ -17,7 +17,8 @@ change.", then apply one ``scriptedit.Plan`` (one undo step per file).
 - **Statement slots**: who speaks (a say line's first word), ``points n …``,
   ``lock|unlock tip|item n``, ``with n``, ``at n``, ``minigame … into n``, ``{var=n}`` and
   ``{username=n}`` tags, and the declaration itself. Positions also move their
-  ``[stage.positions]`` key in config.toml (``tomlpatch``).
+  ``[stage.positions]`` key in config.toml (``tomlpatch``). F65 round 3: a contact is
+  ``lock contact n`` and ``send … from n``; a message (a data set) is ``send n from …``.
 - **A character's pictures stay where they are**: renaming one without ``image_tag`` writes
   ``image_tag="<old>"``, so ``show old smile`` and its ``images/old/`` folder keep working.
 - **All or nothing**: a file that names the old name and can't be read whole (a parse
@@ -41,6 +42,7 @@ from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.codex import CodexLock
 from engine.script.diagnostics import DiagnosticSink
 from engine.script.effects import WithClause
+from engine.script.inbox import ContactDecl, SendStep
 from engine.script.messages import show
 from engine.script.minigame import Minigame
 from engine.script.nodes import Define, Default, PersistentDefault, PyCode, Say, ScriptFile
@@ -63,7 +65,7 @@ from engine.tools.editor.tomlpatch import TomlPlan
 DATA: Final = "data"          # a minigame data set: define n = [...] / {...}
 CONFIG_REF: Final = "config.toml"
 RENAMABLE: Final = frozenset((dec.CHARACTER, dec.VARIABLE, dec.PERSISTENT, dec.METER, dec.TIP,
-                              dec.ITEM, dec.TRANSITION, dec.POSITION, DATA))
+                              dec.ITEM, dec.TRANSITION, dec.POSITION, dec.CONTACT, DATA))
 _PYTHON_KINDS: Final = frozenset((dec.CHARACTER, dec.VARIABLE, dec.TRANSITION, DATA))
 
 ASK: Final = "Rename `{old}` to `{new}`?"
@@ -74,6 +76,8 @@ REMEMBERED_NOTE: Final = ("What the game remembered from earlier playthroughs ke
                           "name, so `{new}` starts again from its starting value.")
 CODEX_NOTE: Final = ("Players who already unlocked it keep the old name, so they'll see it "
                      "locked again until the story unlocks it.")
+CONTACT_NOTE: Final = ("Messages already in older saves stay in the thread with the same "
+                       "name shown.")
 PICTURES_NOTE: Final = "Its pictures stay in images/{old}/."
 ROUTE_REFUSED: Final = ("A route is named after its scene. Rename the scene on the Story map "
                         "and change the route's lines in the text.")
@@ -81,7 +85,7 @@ BUILTIN_REFUSED: Final = "`{name}` is a built-in position, so it keeps its name.
 CANT_RENAME: Final = "Studio can't rename this one. Change it in the text."
 NOTES: Final[Mapping[str, str]] = MappingProxyType({
     dec.VARIABLE: SAVES_NOTE, dec.METER: SAVES_NOTE, dec.PERSISTENT: REMEMBERED_NOTE,
-    dec.TIP: CODEX_NOTE, dec.ITEM: CODEX_NOTE})
+    dec.TIP: CODEX_NOTE, dec.ITEM: CODEX_NOTE, dec.CONTACT: CONTACT_NOTE})
 
 _SINK_LIMIT: Final = 10_000
 _DEPTH: Final = 12
@@ -321,6 +325,12 @@ def _slot_spans(obj: object, line: int, end: int, kind: str, old: str, new: str,
         return _regex_spans(lines, line, line, rf"(?<!\w)with[ \t]+{w}", new)
     if kind == dec.POSITION and isinstance(obj, At) and obj.name == old:
         return _regex_spans(lines, line, end, rf"(?<!\w)at[ \t]+{w}", new)
+    if kind == dec.CONTACT and isinstance(obj, ContactDecl) and obj.name == old:
+        return _regex_spans(lines, line, line, rf"^[ \t]*lock[ \t]+contact[ \t]+{w}", new)
+    if kind == dec.CONTACT and isinstance(obj, SendStep) and obj.contact == old:
+        return _regex_spans(lines, line, line, rf"(?<!\w)from[ \t]+{w}", new)
+    if kind == DATA and isinstance(obj, SendStep) and obj.message == old:
+        return _regex_spans(lines, line, line, rf"^[ \t]*send[ \t]+{w}", new)
     return []
 
 
@@ -503,5 +513,6 @@ def verify_rename(rename: RenamePlan, texts: Mapping[str, str],
 
 
 __all__ = ["ASK", "BUILTIN_REFUSED", "CANT_RENAME", "CODEX_NOTE", "CONFIG_REF", "DATA",
-           "NOTES", "PICTURES_NOTE", "PLACES", "REMEMBERED_NOTE", "RENAMABLE", "ROUTE_REFUSED",
-           "SAVES_NOTE", "RenamePlan", "Span", "file_spans", "plan_rename", "verify_rename"]
+           "CONTACT_NOTE", "NOTES", "PICTURES_NOTE", "PLACES", "REMEMBERED_NOTE", "RENAMABLE",
+           "ROUTE_REFUSED", "SAVES_NOTE", "RenamePlan", "Span", "file_spans", "plan_rename",
+           "verify_rename"]

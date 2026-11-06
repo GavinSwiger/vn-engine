@@ -168,7 +168,7 @@ SECONDS_DEFAULTS = {dec.DISSOLVE: 0.5, dec.FADE: 1.0, dec.MASK: 1.0}
 CODEX_PREFIX = {dec.TIP: "t:", dec.ITEM: "i:"}
 PREFIXES = {dec.CHARACTER: "c:", dec.VARIABLE: "v:", dec.COLOR: "k:", dec.PERSISTENT: "pv:",
             dec.METER: "m:", dec.TIP: "t:", dec.ITEM: "i:", dec.ROUTE: "r:",
-            dec.TRANSITION: "x:"}
+            dec.TRANSITION: "x:", dec.CONTACT: "ct:"}
 READ_ONLY = (db.CATEGORY_CHAPTER,)      # no + New
 IMAGE_GROUPS = ("images", "gui")
 

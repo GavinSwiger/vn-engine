@@ -64,6 +64,7 @@ CATEGORY_GALLERY: Final = "gallery"        # F34-W4: after Pictures (database.AL
 CATEGORY_MUSIC_ROOM: Final = "music_room"  # F35-S3: after Sounds (database.ALL_CATEGORIES)
 CATEGORY_REPLAY: Final = "replay"          # F36-W4: after Endings & routes (ALL_CATEGORIES)
 CATEGORY_ACHIEVEMENT: Final = "achievement"  # F37-S3: after Scene replays (ALL_CATEGORIES)
+CATEGORY_CONTACT: Final = "contact"        # F65 round 3: after Codex (dbcontacts)
 CATEGORY_META: Final = "meta_file"         # F31 originals in files/: last (dbmeta)
 CATEGORY_CLEANUP: Final = "cleanup"        # F41: Clean up, after every other (W2: dbcleanup)
 P2_CATEGORIES: Final = (CATEGORY_METER, CATEGORY_CODEX, CATEGORY_ENDING, CATEGORY_CHAPTER,
@@ -75,6 +76,7 @@ CATEGORY_TITLES: Final[Mapping[str, str]] = {
     CATEGORY_TRANSITION: "Transitions", CATEGORY_POSITION: "Positions",
     CATEGORY_GALLERY: "Gallery", CATEGORY_MUSIC_ROOM: "Music room",
     CATEGORY_REPLAY: "Scene replays", CATEGORY_ACHIEVEMENT: "Achievements",
+    CATEGORY_CONTACT: "Contacts",
     CATEGORY_META: "Character files", CATEGORY_CLEANUP: "Clean up"}
 # The "{things}" of each P2 category's empty state (§6.4 "No {things} yet").
 EMPTY_THINGS: Final[Mapping[str, str]] = {
@@ -82,7 +84,8 @@ EMPTY_THINGS: Final[Mapping[str, str]] = {
     CATEGORY_CHAPTER: "chapters", CATEGORY_TRANSITION: "transitions",
     CATEGORY_POSITION: "positions", CATEGORY_GALLERY: "gallery pictures",
     CATEGORY_MUSIC_ROOM: "tracks", CATEGORY_REPLAY: "scene replays",
-    CATEGORY_ACHIEVEMENT: "achievements", CATEGORY_META: "character files"}
+    CATEGORY_ACHIEVEMENT: "achievements", CATEGORY_CONTACT: "contacts",
+    CATEGORY_META: "character files"}
 REMEMBERED: Final = "Remembered across playthroughs"
 TIPS: Final = "Tips"
 ITEMS: Final = "Items"
@@ -541,7 +544,7 @@ __all__ = ["BACKGROUND", "BUILT_IN", "CATEGORIES", "CATEGORY_CLEANUP",
            "CATEGORY_CHAPTER", "CATEGORY_CHARACTER",
            "CATEGORY_CODEX", "CATEGORY_ENDING", "CATEGORY_GALLERY", "CATEGORY_META", "CATEGORY_METER",
            "CATEGORY_MUSIC_ROOM", "CATEGORY_PICTURE", "CATEGORY_REPLAY", "replay_entries",
-           "CATEGORY_ACHIEVEMENT", "achievement_entries",
+           "CATEGORY_ACHIEVEMENT", "achievement_entries", "CATEGORY_CONTACT",
            "CATEGORY_POSITION", "CATEGORY_SOUND", "CATEGORY_TITLES", "CATEGORY_TRANSITION",
            "CATEGORY_VARIABLE", "CHAPTERS_HINT", "DELETE_REFUSED", "EDIT_AS_SCRIPT",
            "EMPTY_HINT", "EMPTY_THINGS", "EMPTY_TITLE", "ENDINGS_HINT", "Entry", "ITEMS", "META_FILE",
