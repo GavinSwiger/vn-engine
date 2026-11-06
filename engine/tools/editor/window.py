@@ -632,6 +632,9 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
     def refresh_database(self) -> None:
         if not self.closed:
             self.database.refresh()
+            minigames = getattr(self.database, "minigames", None)
+            if minigames is not None:
+                minigames.refresh_if_stale()
 
     def _build_settings_tab(self) -> tk.Widget:
         """F47 W4: Game settings (``settingsview.SettingsPane``)."""

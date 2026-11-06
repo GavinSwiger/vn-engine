@@ -2129,6 +2129,7 @@ class MinigamePane:
         self.showing = False
         self.last_menu: tk.Menu | None = None
         self._refresh_id: str | None = None
+        self.stale = False                          # missed a refresh while hidden
         win.on_check_done.append(lambda _result: self._schedule())
 
     @property
@@ -2136,9 +2137,18 @@ class MinigamePane:
         return self.showing
 
     def _schedule(self) -> None:
+        """Refresh after a check while the Database tab shows; hidden, mark it stale and
+        let ``refresh_if_stale`` (the tab's ``on_show``) read it then (v1, finding 1)."""
         if self.win.closed or self._refresh_id is not None:
             return
+        if not self.database.shown:
+            self.stale = True
+            return
         self._refresh_id = self.root.after_idle(lambda: self.refresh(keep_editor=True))
+
+    def refresh_if_stale(self) -> None:
+        if self.stale:
+            self.refresh(keep_editor=True)
 
     def show(self) -> None:
         if self.showing:
@@ -2199,6 +2209,7 @@ class MinigamePane:
         self._refresh_id = None
         if self.win.closed:
             return
+        self.stale = False
         self.store.read()
         sets = self.listed()
         try:
@@ -2371,7 +2382,10 @@ def attach(database: Any) -> MinigamePane:
     pane.compact(database.compact)
     database.cat_tree.bind("<<TreeviewSelect>>", lambda _e: pane.on_category(), add="+")
     database.minigames = pane
-    pane.refresh()
+    if database.shown:
+        pane.refresh()
+    else:
+        pane.stale = True                   # read when the Database is first shown
     return pane
 
 

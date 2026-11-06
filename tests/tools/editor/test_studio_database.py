@@ -175,6 +175,30 @@ def test_ac_f47_04_database_tab_categories_counts_empty_states_uses_and_search(
         assert db2.empty.button.cget("text") == "+ New"
 
 
+def test_a_check_skips_the_hidden_database_and_it_catches_up_when_shown(studio, tmp_path):
+    """v1 finding 1: a finished check doesn't read the Database or Minigame data while the
+    Database tab is hidden; showing the tab reads both once."""
+    game = sample_game(tmp_path)
+    ed = studio(game, mapped=True)
+    win, db = ed.win, ed.win.database
+    ed.root.update()
+    assert win.current_tab() == "editor"
+    reads: list[str] = []
+    real_refresh, real_mg = db.refresh, db.minigames.refresh
+    db.refresh = lambda *a, **k: (reads.append("database"), real_refresh(*a, **k))[1]
+    db.minigames.refresh = lambda *a, **k: (reads.append("minigames"), real_mg(*a, **k))[1]
+    apply_check(ed, game)
+    ed.root.update()
+    assert reads == [] and db.minigames.stale
+    win.show_tab(win.tab_index("database"))
+    ed.root.update()
+    assert "database" in reads and reads.count("minigames") == 1
+    assert not db.minigames.stale and db.cat_tree.set("minigame", "count") == "0"
+    reads.clear()
+    apply_check(ed, game)                       # shown: refreshed after the check
+    assert "database" in reads and reads.count("minigames") == 1
+
+
 def test_ac_f47_07_first_declaration_makes_database_vns_and_one_include(studio, tmp_path):
     game = files.new_game(tmp_path / "blank", template=files.TEMPLATE_EMPTY)
     main_before = (game / "script" / "main.vns").read_text("utf-8")

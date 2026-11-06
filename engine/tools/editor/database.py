@@ -383,7 +383,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.sound_status = ""
         self._listening = False
         self.game_now: tuple[str, ttk.Frame, ttk.Label, ttk.Button] | None = None   # F40
-        win.on_check_done.append(lambda _result: self._schedule_refresh())
+        win.on_check_done.append(lambda _result: self._check_done())
         win.notebook.bind("<<NotebookTabChanged>>", lambda _e: self._on_tab_changed(),
                           add="+")
         self.cat_tree.selection_set(self.category)
@@ -431,6 +431,13 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         if self.win.closed or self._refresh_id is not None:
             return
         self._refresh_id = self.root.after_idle(self.refresh)
+
+    def _check_done(self) -> None:
+        """A check finished: refresh now while the Database shows. Hidden, it waits: the
+        tab's ``on_show`` (``refresh_database``) reads everything again when it is shown,
+        so a long story pays nothing for a page nobody looks at (v1 review, finding 1)."""
+        if self.shown:
+            self._schedule_refresh()
 
     def refresh(self, select: str | None = None) -> None:
         """Read the scripts and the check again; rebuild the counts, the list and the form
