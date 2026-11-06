@@ -52,6 +52,7 @@ _TIMEOUT = re.compile(r"[ \t]+(timeout)(?=[ \t]*:)")      # F51, between a choic
 _CHECK = re.compile(r"[ \t]+(check)(?=[ \t]+\w)")          # F59, after a choice's text
 _RANKS = re.compile(r"[ \t](ranks)(?=[ \t]+\")")           # F62, on a points line (ADR-0010)
 _BRANCH = re.compile(r"(success|failure)[ \t]*:[ \t]*(?:#|$)")   # F59, under a check
+_PRESENT = re.compile(r"present(?=[ \t]*:|[ \t]+if[ \t(])")    # F64, in a menu (ADR-0010)
 _CLOCK = re.compile(r"clock[ \t]+(next|go)\b")          # F63: a statement only here (ADR-0010)
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
@@ -89,7 +90,8 @@ def color_spans(line: str) -> list[Span]:
         if check is not None:                       # F59: "text" check logic hard:
             spans.append((check.start(1), check.end(1), TAG_KEYWORD))
             pos = check.end(1)
-    elif word is not None and _BRANCH.match(line, start):      # F59: success: / failure:
+    elif word is not None and (_BRANCH.match(line, start)      # F59: success: / failure:
+                               or _PRESENT.match(line, start)):  # F64: present:
         spans.append((word.start(), word.end(), TAG_KEYWORD))
         pos = word.end()
     elif word is not None and word.group() in STATEMENT_WORDS:

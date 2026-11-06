@@ -95,6 +95,7 @@ from engine.runtime.transitions import TransitionDef
 from engine.script import LoadOptions, load_story
 from engine.script.audio import PLAYABLE_EXTS, PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.choicecheck import ChoiceCheck
+from engine.script.choicepresent import Reaction
 from engine.script.codex import CodexLock
 from engine.script.effects import BUILTIN_TRANSITION_NAMES, WithClause
 from engine.script.points import PointsChange
@@ -931,6 +932,8 @@ class _UseWalk:
                 self.add("meter_use", name, ref, line)
         elif isinstance(obj, CodexLock):
             self.add("codex_use", obj.name, ref, line)
+        elif isinstance(obj, Reaction) and obj.item is not None:   # F64: present: <item>:
+            self.add("codex_use", obj.item, ref, line)
         elif isinstance(obj, Lock) and obj.kind == "route":
             self.add("route_use", obj.name, ref, line)
         elif isinstance(obj, WithClause):

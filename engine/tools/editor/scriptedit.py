@@ -32,6 +32,7 @@ from typing import Any, Final
 
 from engine.script.flowchart import Flowchart
 from engine.script.labelgraph import LINK_RULES, LabelLink
+from engine.script.choicepresent import PresentOption
 from engine.script.menu import MENU_MAX_CHOICES, Menu
 from engine.script.messages import show
 from engine.script.nodes import Call, If, Jump, PythonLine, Return, Statement
@@ -420,7 +421,8 @@ def plan_add_arrow(scene: SceneRead, lines: Sequence[str], start: int, target: s
         return at.plan("Make a choice", [at.edit(last.span.first, last.span.last, block)],
                        made, then=(THEN_CHOICE_TEXT, target))
     if isinstance(node, Menu):
-        options = [scene.blocks[b] for b in _branches(scene, last.path)]
+        options = [scene.blocks[b] for b in _branches(scene, last.path)
+                   ][:len(node.choices)]                     # F64: not present:
         if options and all(_choice_ends_in_jump(scene, b) for b in options):
             if len(options) >= MENU_MAX_CHOICES:
                 return Refuse(TOO_MANY_CHOICES)
@@ -681,6 +683,8 @@ def _python_places(at: _At, old: str) -> list[int]:
             continue
         conditions = (node.branches if isinstance(node, If)       # type: ignore[union-attr]
                       else node.choices if isinstance(node, Menu) else ())
+        if isinstance(node, Menu) and node.present is not None:      # F64: present if …
+            conditions = (*conditions, node.present)
         for item in conditions:
             if item.condition is not None and _names(item.condition.source, old):
                 found.append(at.abs(item.line))
@@ -946,7 +950,8 @@ def plan_form(scene: SceneRead, lines: Sequence[str], start: int, row: Any,
     forms = _forms()
     kind, index = _row_target(scene, row)
     if forms is not None and isinstance(values, forms.ChoiceValues):
-        if row.stmt is None or not isinstance(scene.statements[row.stmt].node, Menu):
+        if row.stmt is None or not isinstance(scene.statements[row.stmt].node,
+                                              (Menu, PresentOption)):    # F64
             return None
         patches = forms.choice_patches(scene, row.stmt, lines[start - 1:], values, unit=unit)
         if isinstance(patches, str):

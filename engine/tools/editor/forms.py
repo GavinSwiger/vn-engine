@@ -27,6 +27,9 @@ what it read, or the row stays a plain Script row. Pure: no Tk.
   checked option gets ``success:`` (its target) and ``failure:`` (``$ pass``); a check added
   to an option wraps its lines under ``success:``; removing one is refused
   (``CHECK_REMOVE_TEXT``). Events show a check's lines under "On success"/"On failure".
+  F64: "Accept an item" (``ChoiceValues.present``, ``formpresent``): the menu's
+  ``present:`` option with a reaction per item and one for any other item; Events show it
+  under the choices, each reaction as "Shows <item>".
 
 Lines here are chunk-relative, as ``scenes`` gives them: ``lines[k - 1]`` is chunk line ``k``
 (the label line is 1).
@@ -52,7 +55,8 @@ from engine.script.points import PointsChange
 from engine.script.stage import Hide, Scene, Show
 from engine.script.statement_docs import StatementDoc, all_docs
 from engine.script.statements import ParseContext
-from engine.tools.editor import conditions, scenes
+from engine.tools.editor import conditions, formpresent, scenes
+from engine.tools.editor.formpresent import PresentValues
 from engine.tools.editor.scenes import SceneRead, Span
 
 Values = Mapping[str, str]
@@ -223,6 +227,7 @@ class ChoiceValues:
     question: str = ""
     choices: tuple[ChoiceItem, ...] = ()
     time: str = ""
+    present: PresentValues | None = None      # F64: "Accept an item"
 
 
 @dataclass(frozen=True, slots=True)
@@ -920,6 +925,18 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
             out.append(Row(index, block, depth, f'"{_one_line(choice.text)}"', summary,
                            CHOICE_FORM, None, "header"))
             continue
+        if task[0] == "present":                                # F64: Accept an item
+            _, index, block, depth = task
+            option = scene.statements[index].node
+            summary = "" if option.condition is None else _condition(option.condition.source)
+            out.append(Row(index, block, depth, formpresent.ACCEPT_ITEM, summary, CHOICE_FORM,
+                           None))
+            continue
+        if task[0] == "reaction":                               # F64: Shows <item>
+            _, index, block, depth, item = task
+            out.append(Row(index, block, depth, formpresent.reaction_word(item), "",
+                           CHOICE_FORM, None, "header"))
+            continue
         if task[0] == "failure":                                # F59
             _, index, block, depth = task
             out.append(Row(index, block, depth, CHECK_FAILURE, "", None, None, "header"))
@@ -953,8 +970,12 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
             if node.time is not None:                           # F51 (01 §7.2, 07 I-8)
                 summary += time_summary(node.time_text)
             out.append(Row(index, block, depth, CHOICE.word, summary, CHOICE_FORM, None))
-            for b, choice in zip(branches(index), node.choices):
+            inner = branches(index)
+            for b, choice in zip(inner, node.choices):
                 children += [("choice", index, b, depth + 1, choice), ("block", b, depth + 2, 0)]
+            if node.present is not None and len(inner) > len(node.choices):     # F64
+                children += formpresent.rows_for(scene, index, inner[len(node.choices)],
+                                                 depth + 1, branches)
         elif isinstance(node, If):
             out.append(form_row(index, block, depth, found, 0) if found is not None
                        else script_row(index, block, depth, read.head))
@@ -1012,7 +1033,9 @@ def _goes(scene: SceneRead, members: Sequence[int]) -> tuple[str | None, bool]:
 
 
 def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
-    """The Choice form's values for the menu at ``scene.statements[stmt]``."""
+    """The Choice form's values for the menu at ``scene.statements[stmt]`` (F64: or at its
+    present option)."""
+    stmt = formpresent.menu_index(scene, stmt)
     node = scene.statements[stmt].node
     if not isinstance(node, Menu):
         return None
@@ -1029,10 +1052,11 @@ def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
                                 timeout=choice.timeout, check=check, had_check=bool(check)))
     question = node.question
     time = node.time_text if node.time is not None else ""
+    present = formpresent.read_present(scene, stmt)                 # F64
     if question is None:
-        return ChoiceValues(choices=tuple(items), time=time)
+        return ChoiceValues(choices=tuple(items), time=time, present=present)
     return ChoiceValues(question.speaker or "", " ".join(question.attributes), question.text,
-                        tuple(items), time)
+                        tuple(items), time, present)
 
 
 def choice_summary(item: ChoiceItem) -> str:
@@ -1082,6 +1106,11 @@ def choice_problems(values: ChoiceValues) -> str | None:
         return CHECK_REMOVE_TEXT
     if any(item.check and not check_ok(item.check) for item in values.choices):
         return CHECK_BAD_TEXT
+    problem = formpresent.present_problems(values.present)          # F64
+    if problem is not None:
+        return problem
+    if len(values.choices) + (values.present is not None) > MENU_MAX_CHOICES:
+        return CHOICE_LIMIT_TEXT
     if not values.time:
         return None
     marked = [item for item in values.choices if item.timeout]
@@ -1135,6 +1164,8 @@ def choice_lines(values: ChoiceValues, indent: str, unit: str) -> list[str]:
                                        "text": values.question}))
     for item in values.choices:
         out += [inner + _header_code(item, timed), *_new_block(item, inner + unit, unit)]
+    if values.present is not None:                                  # F64
+        out += formpresent.new_lines(values.present, inner, unit)
     return out
 
 
@@ -1166,10 +1197,11 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     lines and added or removed choices are written; reordered choices swap whole units
     verbatim. ``ChoiceItem.old`` ties a choice to the one it was read as (None: new).
     ``unit``: the file's nesting step, used only when no choice block shows one."""
+    stmt = formpresent.menu_index(scene, stmt)                      # F64
     old = read_choice(scene, stmt)
     if old is None:
         return []
-    if len(new.choices) > MENU_MAX_CHOICES:
+    if len(new.choices) + (new.present is not None) > MENU_MAX_CHOICES:
         return CHOICE_LIMIT_TEXT
     if not new.choices:
         return CHOICE_EMPTY_TEXT
@@ -1179,7 +1211,7 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     read = scene.statements[stmt]
     menu = read.node
     assert isinstance(menu, Menu)
-    blocks = [scene.blocks[i] for i in _choice_blocks(scene, stmt)]
+    blocks = [scene.blocks[i] for i in _choice_blocks(scene, stmt)][:len(menu.choices)]
     heads = [b.head for b in blocks if b.head is not None]
     choice_indent = _indent(lines[heads[0].first - 1]) if heads else read.indent + unit
     block_indent = next((b.indent for b in blocks if b.indent), choice_indent + unit)
@@ -1235,18 +1267,9 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
 
     def goes_patch(block, was: ChoiceItem, item: ChoiceItem) -> list[Patch]:
         """The patch that makes old choice block ``block`` go where ``item`` goes."""
-        out: list[Patch] = []
-        if was.in_text or item.in_text or item.goes == was.goes:
-            return out
-        members = block.members
-        last = scene.statements[members[-1]]
-        _, comment = code_of(lines[last.head.first - 1:last.head.last])
-        if item.goes is None and len(members) > 1:        # drop the jump, keep the rest
-            out.append(Patch(last.span.first, last.span.last, ()))
-        else:
-            out.append(Patch(last.head.first, last.head.last,
-                             (last.indent + _target_code(item.goes) + comment,)))
-        return out
+        if item.in_text:
+            return []
+        return _goes_patch_lines(scene, lines, block, was.goes, was.in_text, item.goes)
 
     # The choices: the kept ones fill the old units' places in their new order.
     olds = [item.old for item in new.choices if item.old is not None]
@@ -1286,9 +1309,33 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
             pending = []
         place = blocks[slot_of[item.old]].unit
         anchor = (place.last if place is not None else anchor - 1) + 1
+    found = formpresent.present_patch(scene, stmt, lines, old.present, new.present,
+                                      choice_indent=choice_indent, step=step)   # F64
+    if isinstance(found, str):
+        return found
+    if found is not None and found[0] == 0:            # a new option: after the choices
+        pending += found[2]
+    elif found is not None:
+        patches.append(Patch(*found))
     if pending:
         patches.append(Patch(anchor, anchor - 1, tuple(pending)))
     return _merge(patches)
+
+
+def _goes_patch_lines(scene: SceneRead, lines: Sequence[str], block, was_goes: str | None,
+                      was_in_text: bool, goes: str | None) -> list[Patch]:
+    """The patch that makes ``block`` (a choice's, or F64 a reaction's) go to ``goes``
+    instead of ``was_goes``: its last ``jump`` or ``$ pass`` line changed (a ``jump`` after
+    other lines is dropped for "continues here")."""
+    if was_in_text or goes == was_goes or not block.members:
+        return []
+    members = block.members
+    last = scene.statements[members[-1]]
+    _, comment = code_of(lines[last.head.first - 1:last.head.last])
+    if goes is None and len(members) > 1:                 # drop the jump, keep the rest
+        return [Patch(last.span.first, last.span.last, ())]
+    return [Patch(last.head.first, last.head.last,
+                  (last.indent + _target_code(goes) + comment,))]
 
 
 __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "CONTINUES",
