@@ -44,6 +44,7 @@ from typing import Any
 from engine.core.schemes import DEFAULT_SCHEME, SCHEMES
 from engine.script.assetgroups import CONFIG_REF
 from engine.tools.editor import calendarmodel as cm
+from engine.tools.editor import devicemodel as dvm
 from engine.tools.editor import kitmodel as km
 from engine.tools.editor import schememodel as scm
 from engine.tools.editor import settingsmodel as sm
@@ -65,6 +66,7 @@ from engine.tools.editor.fieldwidgets import (
 )
 from engine.tools.editor.helperhub import CANT_PLAY, ThumbLoader, hub_for
 from engine.tools.editor.calendarpage import CalendarPage
+from engine.tools.editor.devicepage import DevicesPage
 from engine.tools.editor.kitpage import KitPage
 from engine.tools.editor.schemecards import SchemeCards
 from engine.tools.editor.scriptedit import STALE, Refuse
@@ -108,6 +110,7 @@ INTRO: Mapping[str, str] = {
     sm.SCHEMES: scm.INTRO,
     sm.KITS: km.INTRO,                                              # F60
     sm.CALENDAR: cm.INTRO,                                          # F63
+    sm.DEVICES: dvm.INTRO,                                          # F65 round 3
     sm.ALL_SETTINGS: "Every setting in config.toml. Type to find one.",
     sm.LOOKS: ("A style changes the text box, choices, full-screen text and quick menu while "
                "the story says so (a Game UI line). A playthrough look changes the title "
@@ -264,6 +267,7 @@ class SettingsPane:
         self.scheme_cards: SchemeCards | None = None
         self.kit_page: KitPage | None = None        # F60: the Kit page, while shown
         self.calendar_page: CalendarPage | None = None   # F63: the Calendar page
+        self.devices_page: DevicesPage | None = None     # F65 round 3: the Devices page
 
         style = ttk.Style(self.root)
         style.configure("Caption.TLabel", background=THEME["editor.background"],
@@ -549,6 +553,8 @@ class SettingsPane:
             self.kit_page.show()
         if self.page.key == sm.CALENDAR and self.calendar_page is not None:   # F63
             self.calendar_page.show()
+        if self.page.key == sm.DEVICES and self.devices_page is not None:     # F65 round 3
+            self.devices_page.show()
         if self.page.preview and self.shown:
             self._schedule_preview()
 
@@ -625,6 +631,9 @@ class SettingsPane:
             return
         if self.page.key == sm.CALENDAR:                                # F63
             self.calendar_page = CalendarPage(self, body)
+            return
+        if self.page.key == sm.DEVICES:                                 # F65 round 3
+            self.devices_page = DevicesPage(self, body)
             return
         for section in self.page.sections:
             self._build_section(body, section)

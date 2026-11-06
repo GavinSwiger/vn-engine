@@ -11,8 +11,8 @@ from tests.fakes.username import no_real_username  # noqa: F401  (name guard)
 def test_ac16_p1_pages_and_all_settings_reach_every_key():
     shown = sm.pages()
     assert [p.title for p in shown if p.key not in (*sm.P2_PAGES, sm.LOOKS)] == [
-        "Game", "Color scheme", "Kit", "Title screen", "Text box", "Calendar",
-        "Content warning", "All settings"]             # F49: Color scheme is second; F60, F63
+        "Game", "Color scheme", "Kit", "Title screen", "Text box", "Calendar", "Devices",
+        "Content warning", "All settings"]   # F49: Color scheme is second; F60, F63, F65
     assert [f.path for f in sm.page("game").fields] == [
         "game.title", "game.version", "window.width", "window.height", "window.fullscreen",
         "window.icon"]
