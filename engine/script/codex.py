@@ -22,6 +22,9 @@ still before ``image``; a picture's words stop at ``in``, ``count``, ``money``).
 <name> <n>`` adds ``n`` and ``lock item <name> <n>`` takes ``n`` (never below 0); no number is
 1, as before. ``count`` and ``money`` are words only there (ADR-0010). Messages: E436 (the
 amount), E437 (``count``/``money`` on a tip), E438 (the count's range).
+**F64 round 2 (the shop).** ``price <n>`` (0 to ``ITEM_COUNT_MAX``, items only, anywhere after
+the title) is the price ``minigame shop`` asks when its stock names no price (E437's ``price``
+form on a tip, E438's ``price`` form for the number).
 Messages: E250 (shape), E252 (lengths and tags), F04's image-name codes for ``image``, F05's
 tag codes in a paragraph, E60–E64 for a name. The whole-game checks (E251, E253, E254,
 W140, W142) are ``checks.py``'s; ``Program.codex`` and ``Program.codex_categories`` are
@@ -57,6 +60,7 @@ WORD_IN: Final = "in"
 WORD_IMAGE: Final = "image"
 WORD_COUNT: Final = "count"               # F64: lock item coin "Coins" count 0 to 999
 WORD_MONEY: Final = "money"               # F64: the purse's item
+WORD_PRICE: Final = "price"               # F64 round 2: the default shop price
 WORD_TO: Final = "to"
 KINDS: Final[tuple[str, ...]] = (WORD_TIP, WORD_ITEM)
 NAME_MAX: Final = 64                      # code points (E252)
@@ -101,6 +105,7 @@ class CodexEntry:
     cap: int = 1                          # F64: the most held (1: a plain item)
     counted: bool = False                 # F64: declared with ``count`` (shown as "×n")
     money: bool = False                   # F64: the purse's item
+    price: int | None = None              # F64 round 2: the shop's default price
 
 
 @dataclass(slots=True, kw_only=True)
@@ -116,6 +121,7 @@ class CodexEntryDecl(Node):
     paragraphs: tuple[TaggedText, ...] = ()
     count: int | None = None              # F64: ``count``'s most held; None: a plain item
     money: bool = False                   # F64: ``money``
+    price: int | None = None              # F64 round 2: ``price <n>``
 
 
 @dataclass(slots=True, kw_only=True)
@@ -195,14 +201,15 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
     image: str | None = None
     count: int | None = None
     money = False
+    price: int | None = None
     seen: set[str] = set()
     while at < len(chunks):
         chunk = chunks[at]
         word = chunk.text if chunk.kind == WORD else ""
-        if word in seen or word not in (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY)                 or (word == WORD_IN and WORD_IMAGE in seen):     # F21: in before image
+        if word in seen or word not in (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY, WORD_PRICE)                 or (word == WORD_IN and WORD_IMAGE in seen):     # F21: in before image
             break
         seen.add(word)
-        if word in (WORD_COUNT, WORD_MONEY) and kind != WORD_ITEM:
+        if word in (WORD_COUNT, WORD_MONEY, WORD_PRICE) and kind != WORD_ITEM:
             ctx.error("E437", word, name)
             return None
         if word == WORD_IN:
@@ -218,7 +225,7 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
             stop = at + 1
             while (stop < len(chunks) and chunks[stop].kind != TEXT
                    and not any(_is_word(chunks[stop], w)
-                               for w in (WORD_IN, WORD_COUNT, WORD_MONEY))):
+                               for w in (WORD_IN, WORD_COUNT, WORD_MONEY, WORD_PRICE))):
                 stop += 1
             image = _image_name(ctx, WORD_IMAGE, raw, chunks[at + 1:stop])
             if image is None:
@@ -229,6 +236,14 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
             if found is None:
                 return None
             count, at = found
+        elif word == WORD_PRICE:
+            written = chunks[at + 1].text if at + 1 < len(chunks) else ""
+            number = at + 1 < len(chunks) and chunks[at + 1].kind == NUMBER
+            price = _whole(written) if number else None
+            if price is None or price > ITEM_COUNT_MAX:
+                ctx.error("E438", "price", written, name, ITEM_COUNT_MAX)
+                return None
+            at += 2
         else:
             money = True
             at += 1
@@ -239,7 +254,8 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
         count = ITEM_COUNT_MAX                       # money is always counted
     return CodexEntryDecl(file=raw.file, line=raw.line, end_line=raw.end_line,
                           column=raw.column, kind=kind, name=name, title=title,
-                          category=category, image=image, count=count, money=money)
+                          category=category, image=image, count=count, money=money,
+                          price=price)
 
 
 def _whole(written: str) -> int | None:
@@ -458,7 +474,7 @@ def build_entries(decls: Iterable[CodexEntryDecl]
             image=decl.image, paragraphs=decl.paragraphs, sid=decl.sid,
             file=decl.file.ref, line=decl.line,
             cap=decl.count if decl.count is not None else 1,
-            counted=decl.count is not None, money=decl.money))
+            counted=decl.count is not None, money=decl.money, price=decl.price))
     return tuple(entries), tuple(categories.values())
 
 
@@ -473,10 +489,10 @@ DOCS: Final = (
     StatementDoc(
         WORD_LOCK, "Codex entry", "Declarations",
         'lock tip|item <name> "title" [in "category"] [count [0 to <n>]] [money] '
-        '[image <name>]',
+        '[price <n>] [image <name>]',
         "Declares a codex tip, kept across playthroughs, or an item, kept in this "
         "playthrough, with its text under it. An item with count can be held many times; "
-        "money shows it at the top of the bag.",
+        "money shows it at the top of the bag; price is what a shop asks by default.",
         # An item, so the doc game's dev load gives no W142 (a tip no unlock tip line names).
         'lock item red_lantern "Red Lantern" in "Things":\n    "Bought at Daichi\'s stall."',
         DOCS_HEADING, "F21", fields=("red_lantern", "Red Lantern", "Things")),

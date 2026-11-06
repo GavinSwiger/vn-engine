@@ -610,6 +610,9 @@ def codex_ok(values: Mapping[str, object]) -> bool:
         return False
     if money not in (None, False, True):
         return False
+    price = values.get("price")                                      # F64 round 2
+    if price is not None and (type(price) is not int or not 0 <= price <= ITEM_COUNT_MAX):
+        return False
     return all(type(p) is str and len(p) <= CODEX_PARAGRAPH_MAX for p in text)  # type: ignore[union-attr]
 
 
@@ -630,10 +633,16 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
     image: str | None = None
     count: int | None = None
     money = False
-    while i < len(rest) and rest[i] in ("count", "money", "image"):    # F64: count, money
+    price: int | None = None
+    while i < len(rest) and rest[i] in ("count", "money", "image", "price"):  # F64
         word = rest[i]
         if word == "money" and not money:
             money, i = True, i + 1
+        elif word == "price" and price is None:                      # F64 round 2
+            if i + 1 >= len(rest) or not (rest[i + 1].isascii() and rest[i + 1].isdigit()
+                                          and len(rest[i + 1]) <= 9):
+                return None
+            price, i = int(rest[i + 1]), i + 2
         elif word == "count" and count is None:
             i += 1
             if i + 2 < len(rest) and rest[i] == "0" and rest[i + 1] == "to":
@@ -649,7 +658,7 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
             count = found
         elif word == "image" and image is None:
             stop = i + 1
-            while stop < len(rest) and rest[stop] not in ("count", "money"):
+            while stop < len(rest) and rest[stop] not in ("count", "money", "price"):
                 stop += 1
             words = rest[i + 1:stop]
             if any(w in (",", ":") or w.startswith('"') for w in words):
@@ -681,6 +690,8 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
         values["count"] = count             # F21's four values
     if money:
         values["money"] = True
+    if price is not None:                   # F64 round 2: only when written
+        values["price"] = price
     return values if codex_ok(values) else None
 
 
@@ -693,13 +704,15 @@ def _count_number(token: str) -> int | None:
 
 
 def count_words(values: Mapping[str, object]) -> str:
-    """F64: `` count …`` and `` money`` as written after an item's head ("" for neither):
+    """F64: `` count …``, `` money`` and (round 2) `` price n`` as written after an item's head:
     ``count`` alone for the engine's most, ``count 0 to n`` otherwise."""
     count, money = values.get("count"), values.get("money") is True
     out = ""
     if count is not None and not (money and count == ITEM_COUNT_MAX):
         out += " count" if count == ITEM_COUNT_MAX else f" count 0 to {count}"
-    return out + (" money" if money else "")
+    out += " money" if money else ""
+    price = values.get("price")                                      # F64 round 2
+    return out + (f" price {price}" if type(price) is int else "")
 
 
 def codex_lines(kind: str, name: str, values: Mapping[str, object]) -> tuple[str, ...]:

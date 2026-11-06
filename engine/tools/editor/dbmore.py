@@ -145,6 +145,7 @@ LABEL_MOST = "Most held"
 LABEL_MONEY = "Money"
 COUNT_TEXT = "Can hold more than one"
 MONEY_TEXT = "This is the money"
+LABEL_PRICE = "Price"                    # F64 round 2: a shop's default price
 LABEL_HEADING = "Heading"
 LABEL_WHERE = "Where"
 LABEL_SECONDS = "Seconds"
@@ -207,6 +208,22 @@ def _ranks_hint(name: str, values: Mapping[str, object]) -> str:
     if not ranks:
         return RANKS_NONE
     return RANKS_HINT.format(name=name, label=ranks[-1][0])
+
+def _price_text(price: object) -> str:
+    """F64 round 2: the Price field's text ("" for no price)."""
+    return str(price) if type(price) is int else ""
+
+
+def _price_value(text: str) -> "int | None | bool":
+    """F64 round 2: the Price field's value: None (empty), a whole number 0 to the most an
+    item can hold, or False for anything else."""
+    text = text.strip().replace(",", "")
+    if not text:
+        return None
+    if text.isascii() and text.isdigit() and int(text) <= dec.ITEM_COUNT_MAX:
+        return int(text)
+    return False
+
 
 class MoreCategories(MeterSetup):
     """The P2 categories of ``database.DatabasePane`` (a mixin: it uses the pane's rows,
@@ -830,6 +847,7 @@ class MoreCategories(MeterSetup):
                 f["count"].set(now.get("count") is not None)
                 f["most"].set(int(now.get("count") or dec.ITEM_COUNT_MAX))
                 f["money"].set(now.get("money") is True)
+                f["price"].set(_price_text(now.get("price")))
             f["text"].set("\n\n".join(now.get("text") or ()))
             if "name" in f:
                 f["name"].set(entry.name)
@@ -850,6 +868,11 @@ class MoreCategories(MeterSetup):
         f["money"] = ToggleField(grid.frame, MONEY_TEXT, values.get("money") is True,
                                  on_change=lambda v: self._codex_money(entry, bool(v)))
         grid.row(LABEL_MONEY, f["money"].widget)
+        f["price"] = TextField(grid.frame, _price_text(values.get("price")), width=10,
+                               check=lambda t: _price_value(t) is not False,
+                               on_change=lambda v: self._edit(
+                                   entry, {"price": _price_value(str(v))}))
+        grid.row(LABEL_PRICE, f["price"].widget)
 
     def _codex_count(self, entry: db.Entry, on: bool) -> bool:
         """F64: Count on keeps (or sets) the most held; off makes a plain item again."""

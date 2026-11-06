@@ -3491,12 +3491,21 @@ def _e437(word: str = "count", name: str = "lanterns") -> str:
     if word == "money":
         return (f"tip {name} can't be the money: only an item can, e.g. lock item coin "
                 '"Coins" money.')
+    if word == "price":
+        return (f"tip {name} can't have a price: only an item can be sold, e.g. lock item "
+                'tea "Jasmine Tea" price 5.')
     return (f"tip {name} can't have a count: a tip is known or not. Only items have counts, "
             'e.g. lock item coin "Coins" count 0 to 999.')
 
 
 def _e438(form: str = "high", *args: object) -> str:
-    """``low`` (written, name); ``to`` (name); ``high`` (written, name, most)."""
+    """``low`` (written, name); ``to`` (name); ``high`` (written, name, most); ``price``
+    (written, name, most: F64 round 2)."""
+    if form == "price":
+        written, name, most = (args + ("", "tea", 999_999)[len(args):])[:3]
+        found = f'found "{show(str(written))}"' if str(written) else "found nothing"
+        return (f"the price of {show_name(str(name))} is a whole number from 0 to {_n(most)}, "
+                f"but {found}. Write e.g. price 5.")
     if form == "low":
         return ("a count always starts at 0, so write count 0 to 999 (or count 999) for the "
                 "most the player can hold.")

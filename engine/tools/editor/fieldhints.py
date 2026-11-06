@@ -229,6 +229,8 @@ DATABASE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
                  "have it or they don't.",
         "Most held": "The most players can carry. Giving more stops here.",
         "Money": "Shown at the top of the bag, as Coins ×30. One item can be the money.",
+        "Price": "What a shop asks for one, in the money. Empty: no price; a shop's stock "
+                 "can still set one (Database ▸ Minigame data ▸ Shops).",
     },
     ROUTE: {
         "Script name": _NAME,
