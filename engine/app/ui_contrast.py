@@ -35,6 +35,7 @@ from engine.core.logsetup import get_logger
 from engine.core.schemes import SCHEMES, scheme_colors
 from engine.render.nvllayout import nvl_look
 from engine.ui.builtin.flowchart_page import FOLLOWS, flow_color
+from engine.ui.statuscorner import CORNER_FOLLOWS, corner_token
 from engine.ui.theme import TEXT_ENTRY_FOLLOWS, UiTheme, text_entry_token
 
 _log = get_logger("ui")
@@ -84,6 +85,17 @@ def _own_text_entry(theme: UiTheme) -> bool:
                 "placeholder_color", "caret_color"))
 
 
+def _own_corner(theme: UiTheme) -> bool:
+    """F61: the author set a ``[theme.corner]`` color or its opacity. Otherwise its colors
+    are the text box's (checked there, at a lower opacity) and every scheme meets both
+    corner pairs (tests/ui/test_statuscorner.py), so one cause gives one warning."""
+    c = theme.cfg.corner
+    return c.fill_opacity != _CORNER_OPACITY or any(
+        getattr(c, key) is not None
+        for key in ("fill_color", "border_color", "text_color", "accent_color"))
+
+
+_CORNER_OPACITY: Final = ThemeConfig().corner.fill_opacity
 _BUTTON = "button.fill_opacity"
 _PANEL = "panel.fill_opacity"
 _QUICK = "quick_menu.fill_opacity"
@@ -165,6 +177,13 @@ PAIRS: Final[tuple[Pair, ...]] = (
          TEXT, "text field hints need", _own_text_entry),
     Pair("text_entry.caret_color", "text_entry.fill_color", "text_entry.fill_opacity", LARGE,
          "text cursors need", _own_text_entry),
+    # F61: the status corner's text and marks (a meter's fill) on its see-through panel;
+    # unset colors follow the text box (``CORNER_FOLLOWS``); checked once the author sets
+    # a corner color or its opacity. Drafted nouns.
+    Pair("corner.text_color", "corner.fill_color", "corner.fill_opacity", TEXT,
+         "status corner text needs", _own_corner),
+    Pair("corner.accent_color", "corner.fill_color", "corner.fill_opacity", LARGE,
+         "status corner marks need", _own_corner),
 )
 
 
@@ -192,7 +211,8 @@ LOOK_PAIRS: Final[tuple[Pair, ...]] = (
 # NVL tokens that follow the text box's when unset (``nvl_look``), and F52's text field
 # tokens that follow the button's (``ui.theme.TEXT_ENTRY_FOLLOWS``).
 _NVL_FOLLOWS: Final = {"nvl.fill_color": "textbox.fill_color",
-                       "nvl.text_color": "textbox.text_color", **TEXT_ENTRY_FOLLOWS}
+                       "nvl.text_color": "textbox.text_color", **TEXT_ENTRY_FOLLOWS,
+                       **CORNER_FOLLOWS}
 
 
 def _token(cfg: ThemeConfig, path: str) -> object:
@@ -205,6 +225,8 @@ def _token(cfg: ThemeConfig, path: str) -> object:
         return flow_color(cfg, path)
     if node is None and path in TEXT_ENTRY_FOLLOWS:
         return text_entry_token(cfg, path)
+    if node is None and path in CORNER_FOLLOWS:
+        return corner_token(cfg, path)
     if node is None and path in _NVL_FOLLOWS:
         return getattr(nvl_look(cfg), path.split(".", 1)[1])
     return node

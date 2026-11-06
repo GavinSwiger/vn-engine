@@ -195,7 +195,9 @@ FOLLOWING_TOKENS: Final[tuple[str, ...]] = (
     "minigame.fill_top_color", "minigame.fill_bottom_color",
     "choice.timer.fill_color", "choice.timer.track_color",          # F51 (C1)
     "text_entry.fill_color", "text_entry.border_color", "text_entry.text_color",   # F52
-    "text_entry.placeholder_color", "text_entry.caret_color")
+    "text_entry.placeholder_color", "text_entry.caret_color",
+    "corner.fill_color", "corner.border_color", "corner.text_color",              # F61
+    "corner.accent_color")
 
 # Tokens no scheme sets.
 NEUTRAL_TOKENS: Final[tuple[str, ...]] = (

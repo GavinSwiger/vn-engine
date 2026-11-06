@@ -118,6 +118,7 @@ def test_theme_areas():
         "flowchart",                                             # F20 s8
         "gallery",                                               # F34 W3
         "text_entry",                                            # F52 W1
+        "corner",                                                # F61
         "minigame", "plugin",                                    # F23 s5b
         "preset",                                                # F49 S1
         "kit",                                                   # F60

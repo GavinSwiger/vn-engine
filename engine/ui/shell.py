@@ -128,6 +128,7 @@ from engine.ui.nav import InputKind
 from engine.ui.notice import Kind, NoticeLayer, NoticeStyle, notice_style
 from engine.ui.paint import Painter
 from engine.ui.screen import Screen, ScreenStack
+from engine.ui.statuscorner import CornerStyle, StatusCorner, corner_style, reserved_areas
 from engine.ui.textrouting import TextServices
 from engine.ui.theme import F10_ENTRY_WORDS, UiTheme, Words, measure_with, warn_label_cuts
 
@@ -328,6 +329,11 @@ class GameShell:
             self._current_notice_style, measure_with(ports.assets, style.font),
             text_scale=self._painter.text_scale, reduce_motion=lambda: self.reduce_motion,
             play=self.play_ui)
+        # F61: the status corner (``ui/statuscorner.py``), drawn by ``draw_layer``.
+        self._corner_style = corner_style(theme)
+        self.corner = StatusCorner(
+            self._current_corner_style, lambda font: measure_with(ports.assets, font),
+            text_scale=self._painter.text_scale, reduce_motion=self._corner_reduce_motion)
 
     # -- MenuShell --
 
@@ -360,6 +366,7 @@ class GameShell:
             painter.styles = theme
             painter.invalidate()
             self._notice_style = notice_style(theme)
+            self._corner_style = corner_style(theme)
             for listener in self._look_listeners:
                 listener(theme)
 
@@ -371,6 +378,28 @@ class GameShell:
     def _current_notice_style(self) -> "NoticeStyle":
         self.sync_look()
         return self._notice_style
+
+    def _current_corner_style(self) -> CornerStyle:
+        self.sync_look()
+        return self._corner_style
+
+    def _corner_reduce_motion(self) -> bool:
+        """F61: the player's Reduce motion (the textbox's setting) or ``[effects] reduce``."""
+        textbox = self.ports.textbox
+        of = getattr(textbox, "reduce_motion", None)
+        return bool(of()) if callable(of) else self.reduce_motion
+
+    def corner_shown(self) -> bool:
+        """F61: the status corner is drawn now: in game with an in-game screen on top (not
+        under a menu, a page, a confirm, a fade, or the title), the say window drawn (not
+        hidden mode, not between scenes with no box; ADV or NVL), and no opaque screen above
+        the say window (a running minigame)."""
+        textbox = self.ports.textbox
+        if self._game_covered() or textbox is None or not getattr(textbox, "box_shown", False):
+            return False
+        screens = list(self.stack)
+        index = next((i for i, s in enumerate(screens) if s is textbox), None)
+        return index is not None and not any(s.opaque for s in screens[index + 1:])
 
     @property
     def stack(self) -> ScreenStack:
@@ -411,6 +440,7 @@ class GameShell:
         cue = self._cue
         if cue is not None:
             cue.update(dt, covered=self._game_covered(), reduce_motion=self.reduce_motion)
+        self.corner.update(dt)                      # F61: its fades
 
     def draw_layer(self, canvas: "Canvas") -> None:
         """``App.present``, after the screens and before the dev overlay: this frame's scene
@@ -423,6 +453,9 @@ class GameShell:
         if self._captures:
             self._serve_captures(canvas)
         self._clean = None                          # F30: this frame's only
+        if self.corner.keys() and self.corner_shown():   # F61, never in a capture
+            self.corner.draw(canvas, self.painter,
+                             reserved=reserved_areas(self.ports.textbox, self.quick_menu))
         cue = self._cue
         if cue is not None and not self._game_covered():
             cue.draw(canvas)

@@ -1297,6 +1297,32 @@ class TextEntryTheme:
     caret_color: RGB | None = _follow_color()         # button.marker.fill_color
 
 
+@dataclass(frozen=True)
+class CornerTheme:
+    """``[theme.corner]``: the status corner's small readouts (F61, ``ui/statuscorner.py``).
+    ``None`` follows the text box (``ui/statuscorner.CORNER_FOLLOWS``), so every color
+    scheme styles it: ``fill_color``, ``border_color``, ``text_color`` the box's;
+    ``accent_color`` the continue mark's (the scheme's accent). ``fill_opacity`` is its own,
+    0.90: a readout always sits over art, and every scheme's text and accent meet W67 on it
+    over black and white (at the box's 0.80 Pocket's text and Synthwave's accent don't).
+    Lengths are canvas units; ``text_size`` is scaled by the player's text size."""
+    fill_color: RGB | None = _follow_color()          # textbox.fill_color
+    fill_opacity: float = _opacity(0.90)
+    border_color: RGB | None = _follow_color()        # textbox.border_color
+    border_width: int = _length(2, 0, 8)
+    corner_radius: int = _length(12, 0, 28)
+    text_color: RGB | None = _follow_color()          # textbox.text_color
+    accent_color: RGB | None = field(default=None, metadata=spec(
+        _UI_COLOR, "the color of bars and marks inside, like a meter's fill"))
+    text_size: int = _length(24, 20, 36)
+    side_padding: int = _length(12, 4, 40)
+    top_padding: int = _length(8, 4, 40)
+    gap: int = _length(8, 0, 40)
+    margin: int = field(default=24, metadata=spec(
+        IntRange(0, 80), "the space from the edges of the screen"))
+    fade_ms: int = _length(150, 0, 1000)
+
+
 # --- [theme.minigame], [theme.plugin], [words.plugin] (F23 03-ui "Theme tokens", 04 §7.9, §12) --
 
 @dataclass(frozen=True)
@@ -1456,6 +1482,7 @@ class ThemeConfig:
     flowchart: FlowchartTheme = _table(FlowchartTheme)                  # F20
     gallery: GalleryTheme = _table(GalleryTheme)                        # F34
     text_entry: TextEntryTheme = _table(TextEntryTheme)                 # F52
+    corner: CornerTheme = _table(CornerTheme)                           # F61
     minigame: MinigameTheme = field(default_factory=MinigameTheme, metadata=spec(  # F23
         Table(MinigameTheme), "the frame around every minigame"))
     plugin: Mapping[str, RawPluginTable] = field(                       # F23 (raw, §7.9)
@@ -2217,6 +2244,7 @@ THEME_DOCS: Mapping[str, str] = MappingProxyType({
     "theme.flowchart.here": 'the "You are here" tab',
     "gallery": "the gallery page on the Extras screen",
     "text_entry": "text fields the player types into, and letter squares",
+    "corner": "small readouts in the corners of the screen, like meters",
     "placeholder_color": "the color of the hint shown while the field is empty",
     "caret_color": "the color of the blinking text cursor",
     "theme.gallery.caption": "the picture titles under the squares",
