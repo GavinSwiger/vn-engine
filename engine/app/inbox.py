@@ -38,6 +38,13 @@ opens with ``open inbox`` / ``open pigeon``.
   when the menu closes, the wait ends and the story goes on. While skipping, it passes like
   a fake crash does (PR-F30-16); with no shell or stage, or nothing to show (no ``send``
   line and nothing arrived yet), it ends at once.
+- Round 3, replies: the page's view is ``inbox_reply.reply_view(InboxView)``. The port
+  offers the newest waiting message's replies of a thread (``reply_options``), marks
+  threads that wait (``reply_waiting``), says whether a reply counts now (``can_reply``:
+  the story waits at a line or this ``open``) and posts ``ReplyMessage`` straight to the
+  interpreter (the menu holds the story's queue). An answered message shows the player's
+  reply as their line. Dev runs list the messages still on their way on the F3 overlay
+  ("message invite from hana: day 3").
 """
 
 from typing import TYPE_CHECKING, Final
@@ -47,7 +54,9 @@ from engine.core.kits import arrive_text, device_look, device_words
 from engine.runtime.codex import CodexCategory, CodexEntry
 from engine.runtime.commands import MessageArrived, OpenInbox, Span, Style, TaggedText, WaitDone
 from engine.runtime.images import ImageFile, SolidColor
-from engine.runtime.send import uses_send
+from engine.runtime.send import ReplyMessage, can_reply, uses_send
+from engine.runtime.send import pending as pending_messages
+from engine.ui.builtin.inbox_reply import reply_view
 from engine.ui.builtin.inbox_view import InboxView, ParaLook
 from engine.ui.builtin.kind_page import KindPage
 from engine.ui.devicelook import notice_skin
@@ -55,6 +64,8 @@ from engine.ui.menus import MenuEntry
 from engine.ui.nav import InputKind
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from engine.app.app import App
     from engine.runtime.codex import Codex
     from engine.runtime.images import ImageIndex
@@ -111,6 +122,9 @@ def _part(delivery: "Delivery", me: str, look: str, contact: str, config: object
                     if name else TaggedText((Span(line.text, plain),)), role))
     if signed:
         out.append((TaggedText((Span(f"— {contact}", ITALIC),)), "sign"))
+    reply = delivery.reply_text()                        # round 3: the player's answer
+    if reply:
+        out.append((TaggedText((Span(f"{me}: ", bold), Span(reply, plain))), "me"))
     return out
 
 
@@ -207,6 +221,34 @@ class AppInboxPort:
             return found.rgb
         return None
 
+    # Round 3: replies (``ui/builtin/inbox_reply.ReplyRow`` asks these). ``live`` gives the
+    # running interpreter and ``post`` sends it an event; ``install_inbox`` sets both.
+    live: "Callable[[], Interpreter | None]" = staticmethod(lambda: None)  # type: ignore
+    post: "Callable[[object], None] | None" = None
+
+    def _waiting(self, name: str) -> "Delivery | None":
+        """Thread ``name``'s newest delivery that waits for a reply, or None."""
+        thread = next((t for t in self.codex.inbox() if t.key == name), None)
+        if thread is None:
+            return None
+        return next((d for d in reversed(thread.parts) if d.waiting), None)
+
+    def reply_waiting(self, name: str) -> bool:
+        return self._waiting(name) is not None
+
+    def reply_options(self, name: str) -> tuple[tuple[str, str], ...]:
+        found = self._waiting(name)
+        return found.ask if found is not None else ()
+
+    def can_reply(self) -> bool:
+        interp = self.live()
+        return interp is not None and self.post is not None and can_reply(interp)
+
+    def reply(self, name: str, reply: str) -> None:
+        found = self._waiting(name)
+        if found is not None and self.post is not None:
+            self.post(ReplyMessage(found.key, reply))
+
     def newest(self, look: str | None) -> str | None:
         """The key of the newest thread (``look``: whose newest delivery came by it, else
         the newest of all), or None for an empty inbox."""
@@ -242,9 +284,22 @@ def install_inbox(app: "App", interp: "Interpreter",
     sends = uses_send(interp.program)
     pending: list[str | None] = [None]                 # the thread ``open`` shows first
 
+    def post(event: object) -> None:
+        """Round 3: a reply goes to the interpreter at once, not through the story's queue:
+        the game menu holds the story (no pump while it is open, F10 C3), but the page must
+        show the answer now and a save made next must keep it. It runs no author code and
+        moves no line (``runtime/send.on_reply``); what it releases waits for the pump."""
+        found = live()
+        if found is not None:
+            found.post(event)                           # type: ignore[arg-type]
+
+    port.live = live                                    # type: ignore[assignment]
+    port.post = post
+    view = reply_view(InboxView)
+
     def page(host) -> KindPage:
         select, pending[0] = pending[0], None
-        return KindPage(port, PAGE, select=select, view=InboxView)
+        return KindPage(port, PAGE, select=select, view=view)
 
     def on_arrived(cmd: MessageArrived) -> None:
         if shell is None or getattr(shell, "replay", None) is not None:
@@ -290,6 +345,9 @@ def install_inbox(app: "App", interp: "Interpreter",
 
     app.router.register(MessageArrived, on_arrived)
     app.router.register(OpenInbox, open_inbox)
+    providers = getattr(app, "overlay_lines", None)
+    if getattr(app, "dev", False) and providers is not None and sends:
+        providers.append(lambda: [f"message {line}" for line in pending_messages(live())])
     if shell is not None:
         shell.menus.add("game", MenuEntry(
             PAGE, page=page, visible=lambda: sends or bool(codex().deliveries()),
