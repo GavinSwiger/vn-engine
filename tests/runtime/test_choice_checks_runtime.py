@@ -1,7 +1,8 @@
 """F59 checks on choices at run time (SPEC §3): AC-F59-04 (the badge), 05 (the roll, the
 same after a rollback and a load), 06 (one try), 07 (headless)."""
 
-from engine.runtime.commands import Advance, Choose, Say, ShowMenu, StoryEnded
+from engine.runtime.commands import (Advance, CheckRolled, Choose, Say, ShowMenu, StoryEnded,
+                                     WaitDone)
 from engine.runtime.dice import Pcg32
 from engine.runtime.headless import run_headless
 from engine.runtime.interpreter import Interpreter, Status
@@ -51,10 +52,17 @@ def _at_menu(program, seed: int, **kwargs) -> Interpreter:
 
 
 def _pick(interp: Interpreter, n: int) -> list[str]:
+    """Pick choice ``n``; a check's roll is a story wait, ended as the screen ends it."""
     menu = interp.current
     interp.post(Choose(menu.sid, menu.choices[n].key))
     interp.run(10_000)
-    return _lines(interp.take_commands(ALL))
+    commands = interp.take_commands(ALL)
+    if interp.waiting_for is not None:
+        assert any(type(c) is CheckRolled for c in commands)
+        interp.post(WaitDone(interp.waiting_for))
+        interp.run(10_000)
+        commands += interp.take_commands(ALL)
+    return _lines(commands)
 
 
 def _expected(interp: Interpreter, value: int) -> str:

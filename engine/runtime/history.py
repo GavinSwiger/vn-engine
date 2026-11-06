@@ -4,7 +4,8 @@ Why this module exists: the lines read so far and the choices picked are a displ
 (architecture "Display records") kept in ``GameState.history``, so saves carry it and a
 restore or rollback trims it with no extra work. ``take_checkpoint`` step 2a records each
 line taken at a checkpoint (``add_line``) and F07's ``on_choose`` each accepted pick
-(``add_pick``); nothing else records. Restore, load, rollback, and hot reload only set it
+(``add_pick``); F59's roll adds its result as a nameless line (``add_note``); nothing else
+records. Restore, load, rollback, and hot reload only set it
 from the state, at the restore's commit (I-3).
 
 Shared, never copied per line: ``HistoryState`` and ``HistoryEntry`` are frozen, and a new
@@ -92,6 +93,13 @@ class HistoryState:
         if not text or text.isspace():
             return self
         return self._add(HistoryEntry("choice", pick.menu, "", _shown(text, TEXT_MAX)))
+
+    def add_note(self, sid: str, text: str) -> "HistoryState":
+        """F59: a nameless line the story didn't write (a check's roll, ``sid`` its
+        statement's). Blank text records nothing."""
+        if not text or text.isspace():
+            return self
+        return self._add(HistoryEntry("line", sid, "", _shown(text, TEXT_MAX)))
 
     def _add(self, entry: HistoryEntry) -> "HistoryState":
         entries = self.entries

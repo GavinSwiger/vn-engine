@@ -1,5 +1,5 @@
-"""Checks on choices (F59 SPEC): ``"text" check <meter> <difficulty>:`` with ``success:`` and
-``failure:`` lines under it.
+"""Checks on choices (F59 SPEC): ``"text" check <meter> <difficulty> [retry]:`` with
+``success:`` and ``failure:`` lines under it.
 
 Why this module exists: a checked choice needs its own small grammar (the check on the choice
 line, two branch blocks under it), a node the interpreter rolls at, and the odds rule the
@@ -13,22 +13,30 @@ Studio shows the same odds the player will see.
   difficulty; double six always succeeds, double one always fails.
 - ``parse_check`` (E408) and ``parse_check_block`` (E409; E12's ``success``/``failure``
   forms) are called by ``script/menu.py``. An unknown meter is F22's E233 (``checks.py``).
+- Retry (white) checks: ``retry`` after the difficulty (``ChoiceCheck.retry``). A failed one
+  comes back once its meter has changed since the try; a success retires it (the runtime's
+  ``menu._evaluate``). ``check_story`` gives W294 for a retry check on a meter no line
+  changes (after a failure it could never come back).
+- ``roll_text``: the roll as History keeps it (``Logic check: 9 vs 12, failure``).
 """
 
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from engine.script.diagnostics import Diagnostic
+from engine.script.diagnostics import Diagnostic, ScriptWarning
+from engine.script.identity import walk_block
 from engine.script.lexer import COLON, HEAD_WORD, NAME, RANK_BLOCK, RawStatement, Token
 from engine.script.limits import SCRIPT_MAX_BLOCK_DEPTH
-from engine.script.nodes import Statement
+from engine.script.messages import format_message
+from engine.script.nodes import Label, Node, PythonLine, Statement
 from engine.script.statements import ParseContext
 from engine.script.words import canonical_name, is_name
 
 WORD_CHECK: Final = "check"
 WORD_SUCCESS: Final = "success"
 WORD_FAILURE: Final = "failure"
+WORD_RETRY: Final = "retry"
 BRANCH_WORDS: Final = (WORD_SUCCESS, WORD_FAILURE)
 # The tiers, lowest first: a word an author may write, and the badge word for a number.
 TIERS: Final = (("trivial", 6), ("easy", 8), ("medium", 10), ("hard", 12), ("heroic", 14),
@@ -41,14 +49,16 @@ _FOUND_MAX: Final = 30
 
 @dataclass(frozen=True, slots=True)
 class ChoiceCheck:
-    """``check <meter> <difficulty>`` on a choice line: the canonical meter name, the
-    difficulty as a number, and the difficulty as written (a tier word or digits)."""
+    """``check <meter> <difficulty> [retry]`` on a choice line: the canonical meter name, the
+    difficulty as a number, the difficulty as written (a tier word or digits), and whether
+    a failed try may be retried once the meter changes."""
 
     meter: str
     difficulty: int
     written: str
     line: int
     column: int
+    retry: bool = False
 
 
 @dataclass(slots=True, kw_only=True)
@@ -112,9 +122,22 @@ def meter_title(name: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def badge(meter: str, value: int, difficulty: int) -> str:
-    """``[Logic · Medium · 58%]``."""
-    return f"[{meter_title(meter)} · {tier(difficulty)} · {odds(value, difficulty)}%]"
+def badge(meter: str, value: int, difficulty: int, *, waiting: bool = False) -> str:
+    """``[Logic · Medium · 58%]``; ``waiting`` (a failed retry check, locked until its meter
+    changes): ``[Logic · Medium · Retry once Logic changes]``."""
+    title = meter_title(meter)
+    if waiting:
+        return f"[{title} · {tier(difficulty)} · Retry once {title} changes]"
+    return f"[{title} · {tier(difficulty)} · {odds(value, difficulty)}%]"
+
+
+def roll_text(meter: str, a: int, b: int, value: int, difficulty: int) -> str:
+    """The roll as History keeps it: ``Logic check: 9 vs 12, failure`` (the dice plus the
+    meter against the difficulty; a double six or double one says so)."""
+    word = "success" if passes(a, b, value, difficulty) else "failure"
+    if a == b and a in (1, 6):
+        word += f" (double {'six' if a == 6 else 'one'})"
+    return f"{meter_title(meter)} check: {a + b + value} vs {difficulty}, {word}"
 
 
 def parse_difficulty(text: str) -> int | None:
@@ -129,9 +152,9 @@ def parse_difficulty(text: str) -> int | None:
     return None
 
 
-def check_code(meter: str, written: str) -> str:
-    """The script text of a check (Studio writes it): ``check logic medium``."""
-    return f"{WORD_CHECK} {meter} {written}"
+def check_code(meter: str, written: str, retry: bool = False) -> str:
+    """The script text of a check (Studio writes it): ``check logic medium [retry]``."""
+    return f"{WORD_CHECK} {meter} {written}" + (f" {WORD_RETRY}" if retry else "")
 
 
 # --- Parsing (called by script/menu.py) -----------------------------------------------------------
@@ -159,18 +182,20 @@ def parse_check(raw: RawStatement, ctx: ParseContext, words: Sequence[Token]) ->
         ctx.error("E408", "missing", name)
         return None
     level = words[2]
+    if level.kind == NAME and level.text == WORD_RETRY:
+        ctx.error("E408", "retry", name)                 # retry before the difficulty
+        return None
     difficulty = parse_difficulty(level.text) if level.kind == NAME else None
     if difficulty is None:
         ctx.error("E408", "bad", _found(raw, level))
         return None
-    if len(words) > 3:
-        extra = words[3]
-        if extra.kind == NAME and extra.text == "retry":
-            ctx.error("E408", "retry")
-        else:
-            ctx.error("E408", "left", f"{name} {level.text}", _found(raw, extra))
+    retry = len(words) > 3 and words[3].kind == NAME and words[3].text == WORD_RETRY
+    rest = 4 if retry else 3
+    if len(words) > rest:
+        written = f"{name} {level.text}" + (f" {WORD_RETRY}" if retry else "")
+        ctx.error("E408", "left", written, _found(raw, words[rest]))
         return None
-    return ChoiceCheck(name, difficulty, level.text, first.line, first.column)
+    return ChoiceCheck(name, difficulty, level.text, first.line, first.column, retry)
 
 
 def _branch_word(raw: RawStatement) -> str | None:
@@ -245,7 +270,49 @@ def parse_check_block(api, line: RawStatement, after: RawStatement | None, depth
                      branches=(success, found[WORD_FAILURE]))
 
 
+# --- Whole game: W294 -----------------------------------------------------------------------------
+
+def _changes(nodes: list[Node]) -> tuple[set[str], list[str]]:
+    """The meters a ``points`` change line names, and the source of every ``$`` line (a
+    ``points.add("x", 1)`` there may change one too)."""
+    from engine.script.points import PointsChange   # points.py sits above this module
+    changed: set[str] = set()
+    code: list[str] = []
+    for node in nodes:
+        if isinstance(node, Label):
+            for stmt, _ in walk_block(node.block):
+                if isinstance(stmt, PointsChange):
+                    changed.add(stmt.name)
+                elif isinstance(stmt, PythonLine):
+                    code.append(stmt.py.source)
+    return changed, code
+
+
+def check_story(nodes: Iterable[Node]) -> list[ScriptWarning]:
+    """W294 at each retry check whose meter no line changes: no ``points <meter>`` change
+    line, and no ``$`` line that mentions ``points`` and the meter's name."""
+    nodes = list(nodes)
+    checks: list[tuple[Statement, ChoiceCheck]] = []
+    for node in nodes:
+        if isinstance(node, Label):
+            for stmt, _ in walk_block(node.block):
+                if isinstance(stmt, CheckRoll) and stmt.check.retry:
+                    checks.append((stmt, stmt.check))
+    if not checks:
+        return []
+    changed, code = _changes(nodes)
+    out: list[ScriptWarning] = []
+    for stmt, check in checks:
+        meter = check.meter
+        if meter in changed or any("points" in c and meter in c for c in code):
+            continue
+        out.append(ScriptWarning(format_message("W294", (meter,)), code="W294",
+                                 file=stmt.file.ref, line=check.line))
+    return out
+
+
 __all__ = ["BRANCH_WORDS", "CheckBranch", "CheckRoll", "ChoiceCheck", "DIFFICULTY_MAX",
-           "DIFFICULTY_MIN", "TIERS", "TIER_VALUES", "WORD_CHECK", "badge", "check_code",
-           "meter_title", "odds", "parse_check", "parse_check_block", "parse_difficulty",
-           "passes", "success_count", "tier"]
+           "DIFFICULTY_MIN", "TIERS", "TIER_VALUES", "WORD_CHECK", "WORD_RETRY", "badge",
+           "check_code", "check_story", "meter_title", "odds", "parse_check",
+           "parse_check_block", "parse_difficulty", "passes", "roll_text", "success_count",
+           "tier"]

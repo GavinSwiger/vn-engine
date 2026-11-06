@@ -16,7 +16,12 @@ F59 (its SPEC §3): a checked choice's ``ShownChoice.check`` is its badge, from 
 value as the menu shows (and as it is restored). Once picked (its key in ``picks`` for this
 menu) it is left out or locked like a false condition: one try per playthrough. ``run_check``
 is ``CheckRoll``'s executor: two dice from the story's ``dice`` generator right after the
-pick, so a load or going back and picking again rolls the same.
+pick, so a load or going back and picking again rolls the same. The roll is kept on the pick
+(``Pick.roll``: the meter's value then and the result), a line goes to History
+(``roll_text``), and the story waits on a ``CheckRolled`` (the dice on screen, ``ROLL_S``;
+skipped like any wait, never held by F14's quiet re-run) before it enters the branch.
+A retry check (``ChoiceCheck.retry``) is out only while its last try failed and its meter
+still has the value of that try (its badge then says so); a success retires it.
 
 F20 (its ``04`` §7.6, 07 §3.3, I-2): a jump restores at a menu with ``fresh_waiting``, which
 checks the conditions again through the same loop as ``run_menu`` (``_evaluate``); F11 loads
@@ -34,19 +39,20 @@ registers ``run_menu``/``present_menu``/``check_position`` and ``on_choose``. Pu
 
 import re
 from dataclasses import dataclass, replace
+from functools import partial
 from typing import TYPE_CHECKING, Final
 
 from engine.core.logsetup import get_logger
 from engine.runtime import audio as audio_mod
 from engine.runtime import nvl as nvl_mod
 from engine.runtime import stage as stage_mod
-from engine.runtime.commands import (Choose, Command, EndVoice, ShowMenu, ShownChoice,
-                                     TaggedText)
+from engine.runtime.commands import (CheckRolled, Choose, Command, EndVoice, ShowMenu,
+                                     ShownChoice, TaggedText)
 from engine.runtime.commands import Say as SayCommand
 from engine.runtime.errors import StoryError, where
 from engine.runtime.limits import POSITION_MAX_CHARS
 from engine.runtime.text import resolve_tagged
-from engine.script.choicecheck import CheckRoll, badge, passes
+from engine.script.choicecheck import CheckRoll, badge, meter_title, passes, roll_text
 from engine.script.menu import Choice, Menu
 from engine.script.messages import format_message
 from engine.script.minigame import Minigame
@@ -59,6 +65,7 @@ if TYPE_CHECKING:
 PICKS_MAX: Final = 10_000              # TR-F07-08: past this the oldest pick drops
 PICK_TEXT_MAX: Final = 1_000           # Pick.text, "…"-cut
 PICK_QUESTION_MAX: Final = 2_000       # Pick.question, "…"-cut
+ROLL_S: Final = 1.3                    # F59: the dice on screen (tumble, land, the result)
 ELLIPSIS: Final = "…"
 
 _log = get_logger("choice")
@@ -67,14 +74,25 @@ _log = get_logger("choice")
 # --- The state (04 §4) ------------------------------------------------------------------------------
 
 @dataclass(frozen=True, slots=True)
+class Roll:
+    """F59: a checked choice's roll, kept on its pick: the meter's value at the try and
+    whether it passed (a failed retry check comes back once the meter differs)."""
+
+    value: int
+    ok: bool
+
+
+@dataclass(frozen=True, slots=True)
 class Pick:
     """One pick, in story order: the menu's sid, the choice's key, and the texts as shown
-    (plain: styles dropped, ``{var}`` values baked in, cut with "…")."""
+    (plain: styles dropped, ``{var}`` values baked in, cut with "…"). ``roll`` (F59): a
+    checked choice's roll, set right after the pick; None for any other choice."""
 
     menu: str
     choice: str
     text: str
     question: str | None
+    roll: Roll | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,12 +115,13 @@ class ChoiceState:
     waiting: MenuWait | None = None
 
     def to_json(self) -> dict[str, object]:
-        """``{"picks": [{"menu", "choice", "text", "question"}], "waiting": null |
-        {"pickable", "locked", "kept"}}``, fresh plain values (always written, 04 §4)."""
+        """``{"picks": [{"menu", "choice", "text", "question"[, "roll"]}], "waiting": null |
+        {"pickable", "locked", "kept"}}``, fresh plain values (always written, 04 §4). F59:
+        ``"roll": {"value", "ok"}`` only on a checked choice's pick, so older saves (and
+        saves without checks) keep their shape."""
         waiting = self.waiting
         return {
-            "picks": [{"menu": p.menu, "choice": p.choice, "text": p.text,
-                       "question": p.question} for p in self.picks],
+            "picks": [_pick_json(p) for p in self.picks],
             "waiting": None if waiting is None else {
                 "pickable": list(waiting.pickable), "locked": list(waiting.locked),
                 "kept": waiting.kept},
@@ -146,10 +165,21 @@ class ChoiceState:
 EMPTY_CHOICES: Final = ChoiceState()
 
 
+def _pick_json(p: Pick) -> dict[str, object]:
+    out: dict[str, object] = {"menu": p.menu, "choice": p.choice, "text": p.text,
+                              "question": p.question}
+    if p.roll is not None:
+        out["roll"] = {"value": p.roll.value, "ok": p.roll.ok}
+    return out
+
+
 # --- The JSON form (04 §4, §8 items 3–4) ------------------------------------------------------
 
 _CHOICES_KEYS: Final = frozenset(("picks", "waiting"))
 _PICK_KEYS: Final = frozenset(("menu", "choice", "text", "question"))
+_PICK_ROLL_KEYS: Final = _PICK_KEYS | {"roll"}            # F59
+_ROLL_KEYS: Final = frozenset(("value", "ok"))
+ROLL_VALUE_MAX: Final = 1_000_000_000                       # F22's POINTS_LIMIT
 _WAIT_KEYS: Final = frozenset(("pickable", "locked", "kept"))
 # ADR-0006: a statement's sid is "<label>/<12 hex>" or "<label>/<12 hex>~<n>"; a choice's key
 # (Addendum 1) is "<12 hex>" or "<12 hex>~<n>". Every saved sid and key has this shape.
@@ -196,7 +226,8 @@ def _choices_from_json(obj: object) -> ChoiceState:
     if type(raw_picks) is not list or len(raw_picks) > PICKS_MAX:
         raise _Invalid
     for entry in raw_picks:                 # shapes first, before any value is read
-        if type(entry) is not dict or entry.keys() != _PICK_KEYS:
+        if type(entry) is not dict or (entry.keys() != _PICK_KEYS
+                                       and entry.keys() != _PICK_ROLL_KEYS):
             raise _Invalid
     picks: list[Pick] = []
     for entry in raw_picks:
@@ -208,7 +239,8 @@ def _choices_from_json(obj: object) -> ChoiceState:
         if question is not None and (type(question) is not str
                                      or len(question) > PICK_QUESTION_MAX):
             raise _Invalid
-        picks.append(Pick(_sid(entry["menu"]), choice, text, question))
+        picks.append(Pick(_sid(entry["menu"]), choice, text, question,
+                          _roll(entry["roll"]) if "roll" in entry else None))
     waiting = None
     if raw_wait is not None:
         if type(raw_wait) is not dict or raw_wait.keys() != _WAIT_KEYS:
@@ -220,6 +252,16 @@ def _choices_from_json(obj: object) -> ChoiceState:
         kept = raw_wait["kept"]
         waiting = MenuWait(pickable, locked, None if kept is None else _sid(kept))
     return ChoiceState(tuple(picks), waiting)
+
+
+def _roll(value: object) -> Roll:
+    """F59: a saved ``{"value", "ok"}``: a whole number within F22's limit and a bool."""
+    if type(value) is not dict or value.keys() != _ROLL_KEYS:
+        raise _Invalid
+    number, ok = value["value"], value["ok"]
+    if type(number) is not int or abs(number) > ROLL_VALUE_MAX or type(ok) is not bool:
+        raise _Invalid
+    return Roll(number, ok)
 
 
 def plain_text(body: TaggedText) -> str:
@@ -250,7 +292,8 @@ def run_menu(interp: "Interpreter", stmt: Menu) -> "Step":
         if question.speaker is not None:
             stage_mod.apply_dialogue_words(interp, question, interp.G[question.speaker])
         attached = audio_mod.voice_attached(say) + (say,)
-    shown = _shown(interp, stmt, pickable, locked, restoring=False)  # 4.
+    shown = _shown(interp, stmt, pickable, locked, restoring=False,  # 4.
+                   picks=interp.choices.picks)
     kept = interp.kept_line
     line = "question" if question is not None else ("kept" if kept is not None else "none")
     cmd = ShowMenu(stmt.sid, shown, line, seconds=stmt.time,        # 5. F51
@@ -283,9 +326,9 @@ def _evaluate(interp: "Interpreter", stmt: Menu,
     checked choice already in ``picks`` for this menu counts as a false condition."""
     pickable: list[Choice] = []
     locked: list[Choice] = []
-    tried = _tried(stmt, picks) if any(c.check is not None for c in stmt.choices) else ()
+    tried = _tried(stmt, picks) if any(c.check is not None for c in stmt.choices) else {}
     for choice in stmt.choices:
-        if choice.check is not None and choice.key in tried:
+        if choice.check is not None and _out(interp, choice, tried.get(choice.key)):
             if interp.show_locked:
                 locked.append(choice)
             continue
@@ -302,28 +345,67 @@ def _evaluate(interp: "Interpreter", stmt: Menu,
     return pickable, locked
 
 
-def _tried(stmt: Menu, picks: tuple[Pick, ...]) -> frozenset[str]:
-    """F59: the keys picked at this menu so far in this playthrough."""
+def _tried(stmt: Menu, picks: tuple[Pick, ...]) -> dict[str, Pick]:
+    """F59: each key picked at this menu so far in this playthrough → its last pick."""
     sid = stmt.sid
-    return frozenset(pick.choice for pick in picks if pick.menu == sid)
+    return {pick.choice: pick for pick in picks if pick.menu == sid}
 
 
-def _badge(interp: "Interpreter", choice: Choice) -> str | None:
+def _value(interp: "Interpreter", meter: str) -> int | None:
+    try:
+        return interp.points.get(meter)
+    except KeyError:                        # F22's UnknownMeter: gone after a reload
+        return None
+
+
+def _out(interp: "Interpreter", choice: Choice, last: Pick | None) -> bool:
+    """F59: whether a checked choice is out (hidden, or locked with ``show_locked``): tried
+    once for a plain check; for a retry check, its last try failed and the meter still
+    has that try's value (a try with no roll kept counts as changed)."""
+    if last is None:
+        return False
+    check = choice.check
+    if check is None or not check.retry:
+        return True
+    roll = last.roll
+    if roll is None:
+        return False
+    return roll.ok or _value(interp, check.meter) == roll.value
+
+
+def _badge(interp: "Interpreter", choice: Choice, waiting: bool = False) -> str | None:
     """F59: a checked choice's badge from the meter's value now (None: not checked, or the
-    meter is gone after a reload)."""
+    meter is gone after a reload); ``waiting``: a failed retry check's locked badge."""
     check = choice.check
     if check is None:
         return None
-    try:
-        value = interp.points.get(check.meter)
-    except KeyError:
+    value = _value(interp, check.meter)
+    if value is None:
         return None
-    return badge(check.meter, value, check.difficulty)
+    return badge(check.meter, value, check.difficulty, waiting=waiting)
+
+
+def _checked_choice(interp: "Interpreter", stmt: CheckRoll) -> Pick | None:
+    """F59: the pick that entered ``stmt`` (always the last one: the roll runs right after
+    it), or None if the last pick isn't its choice."""
+    picks = interp.choices.picks
+    if not picks:
+        return None
+    last = picks[-1]
+    menu = interp.program.get(last.menu)
+    if type(menu) is not Menu:
+        return None
+    choice = next((c for c in menu.choices if c.key == last.choice), None)
+    if choice is None or not choice.block or choice.block[0] is not stmt:
+        return None
+    return last
 
 
 def run_check(interp: "Interpreter", stmt: CheckRoll) -> "Step":
-    """F59: roll two dice from the story's generator, add the meter, and enter the success
-    or the failure lines. Dev runs log the roll."""
+    """F59: roll two dice from the story's generator and add the meter; keep the roll on
+    the pick (``Pick.roll``) and a line in History; show the dice (``CheckRolled``, a story
+    wait of ``ROLL_S``); then enter the success or the failure lines. Dev runs log the
+    roll."""
     from engine.runtime.interpreter import Step  # below the interpreter
 
     check = stmt.check
@@ -336,26 +418,45 @@ def run_check(interp: "Interpreter", stmt: CheckRoll) -> "Step":
         _log.info("Check %s %s at %s, line %s: rolled %s + %s, + %s = %s: %s.", check.meter,
                   check.written, stmt.file.ref, check.line, a, b, value, a + b + value,
                   "success" if ok else "failure")
+    pick = _checked_choice(interp, stmt)
+    if pick is not None:
+        choices = interp.choices
+        interp.choices = ChoiceState(choices.picks[:-1] + (replace(pick, roll=Roll(value, ok)),),
+                                     choices.waiting)
+    interp.history = interp.history.add_note(
+        stmt.sid, roll_text(check.meter, a, b, value, check.difficulty))
     block = stmt.branches[0 if ok else 1].block
-    if block:
-        interp.current = block[0]
-        return Step.JUMPED
-    return Step.CONTINUE
+
+    def enter(i: "Interpreter") -> "Step | None":
+        if block:
+            i.current = block[0]
+            return Step.JUMPED
+        return None                         # on after the menu, as an empty branch did
+
+    stage_mod.flush_stage(interp)
+    return interp.begin_wait(stmt, seconds=ROLL_S, for_stage=False, then=enter,
+                             make=partial(CheckRolled, meter=meter_title(check.meter),
+                                          dice=(a, b), value=value,
+                                          difficulty=check.difficulty, ok=ok))
 
 
 def _shown(interp: "Interpreter", stmt: Menu, pickable: list[Choice], locked: list[Choice],
-           *, restoring: bool) -> tuple[ShownChoice, ...]:
+           *, restoring: bool, picks: tuple[Pick, ...] = ()) -> tuple[ShownChoice, ...]:
     """The shown choices in script order, bodies resolved (E170/E171 at the choice's
     line; restoring, W46 instead)."""
     unlocked = {id(c) for c in pickable}
     shut = {id(c) for c in locked}
+    tried = _tried(stmt, picks) if any(c.check is not None for c in stmt.choices) else {}
     out = []
     for choice in stmt.choices:
         if id(choice) in unlocked or id(choice) in shut:
             body = resolve_tagged(interp, choice.body, restoring=restoring, owner=stmt,
                                   line=choice.line)
+            last = tried.get(choice.key)
+            waiting = (id(choice) in shut and choice.check is not None and choice.check.retry
+                       and last is not None and last.roll is not None and not last.roll.ok)
             out.append(ShownChoice(choice.key, body, id(choice) in shut,
-                                   _badge(interp, choice)))
+                                   _badge(interp, choice, waiting)))
     return tuple(out)
 
 
@@ -490,7 +591,8 @@ def present_menu(interp: "Interpreter", stmt: Menu, state: "GameState") -> ShowM
     by_key = {c.key: c for c in stmt.choices}
     pickable = [by_key[k] for k in waiting.pickable]
     locked = [by_key[k] for k in waiting.locked]
-    shown = _shown(interp, stmt, pickable, locked, restoring=True)
+    shown = _shown(interp, stmt, pickable, locked, restoring=True,
+                   picks=state.choices.picks)
     attached: tuple[Command, ...] = ()
     question: str | None = None
     if stmt.question is not None:
@@ -516,7 +618,7 @@ def present_menu(interp: "Interpreter", stmt: Menu, state: "GameState") -> ShowM
 
 
 __all__ = ["ChoiceState", "ELLIPSIS", "EMPTY_CHOICES", "MENU_CHOICES_MAX", "MenuWait",
-           "PICKS_MAX",
+           "PICKS_MAX", "ROLL_S", "Roll",
            "PICK_QUESTION_MAX", "PICK_TEXT_MAX", "Pick", "check_position", "cut",
            "fresh_waiting", "on_choose", "plain_text", "present_menu", "restored_choices",
            "restored_kept_line", "run_check", "run_menu", "sid_ok"]

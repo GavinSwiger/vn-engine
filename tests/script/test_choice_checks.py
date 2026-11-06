@@ -81,7 +81,8 @@ def test_ac01_words_stay_free_as_variable_names(tmp_path):
     ('"A" check logic 0:', ("bad", "0")),
     ('"A" check 9 logic:', ("meter", "9 logic")),
     ('"A" check logic 9 now:', ("left", "logic 9", "now")),
-    ('"A" check logic 9 retry:', ("retry",)),
+    ('"A" check logic retry 9:', ("retry", "logic")),
+    ('"A" check logic 9 retry retry:', ("left", "logic 9 retry", "retry")),
 ])
 def test_ac02_e408_forms(tmp_path, line, args):
     assert _errors(tmp_path, CHECKED.replace(GATE, line)) == [

@@ -329,6 +329,21 @@ class StoryWait(Command):
     hide_box: bool
 
 
+@dataclass(frozen=True, slots=True)
+class CheckRolled(StoryWait):
+    """F59: a checked choice's roll, a story wait (``begin_wait(make=...)``) of ``seconds``
+    that shows two dice landing on ``dice``, the total (the dice plus ``value``) against
+    ``difficulty``, and the result; ``meter`` is the name as the badge shows it. A press
+    ends it early; skipping shows nothing. Handler: ``app/checkroll.show_roll`` (by MRO,
+    ``StageScreen``'s ``StoryWait`` handler until then)."""
+
+    meter: str = ""
+    dice: tuple[int, int] = (1, 1)
+    value: int = 0
+    difficulty: int = 0
+    ok: bool = False
+
+
 # --- F30 fourth-wall tricks (F30 04-technical.md §3, §4.3; 07 I-4) ---------------------------
 
 @dataclass(frozen=True, slots=True)
@@ -608,7 +623,7 @@ class RollbackView:
 
 
 __all__ = ["Advance", "AudioRestore", "BASE_STYLE", "BlipSpec", "Change", "ChapterStarted",
-           "Choose", "CodexAdded", "MeterNotice", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
+           "CheckRolled", "Choose", "CodexAdded", "MeterNotice", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
            "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MetaDelete", "MetaWrite", "MeterChange", "MeterView", "MinigameBase",
            "MinigameDone", "MinigameUsed", "NameMark", "NvlLine", "NvlPage", "PauseMark", "PlayMusic", "PlaySound", "PlayVoice", "PrefetchImages", "QueueMusic",
            "RollbackView", "Say", "Shake", "ShowMenu", "ShowStage", "ShownChoice", "Span",

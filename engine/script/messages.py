@@ -1812,7 +1812,7 @@ _TIER_WORDS = "trivial, easy, medium, hard, heroic, legendary or impossible"
 
 def _e408(form: str = "empty", *args: object) -> str:
     """``empty``; ``meter`` (found); ``missing`` (meter); ``bad`` (found); ``left`` (the
-    check as written, found); ``retry``."""
+    check as written, found); ``retry`` (meter: retry before the difficulty)."""
     if form == "meter":
         return (f"check takes a meter name first, then a difficulty, but found "
                 f"{show(str(args[0]))}. Write e.g. check logic medium")
@@ -1826,8 +1826,9 @@ def _e408(form: str = "empty", *args: object) -> str:
         return (f"check {show(str(args[0]))} takes nothing else before the : (an if may "
                 f"follow it), but found {show(str(args[1]))}.")
     if form == "retry":
-        return ("checks can't be retried yet: each check is tried once per playthrough. "
-                "Remove retry.")
+        meter = show(str(args[0])) if args else "logic"
+        return (f"retry goes after the difficulty: write check {meter} medium retry, or "
+                f"check {meter} 9 retry.")
     return ('check needs a meter and a difficulty, e.g. "Pick the lock" check logic medium:')
 
 
@@ -2897,7 +2898,7 @@ def _w290(label: str = "Closee", name: str = "hana", suggestion: str | None = No
 
 # F62 round 2 (specs/F62-visible-meters/SPEC.md "Round 2"): load E417, E418
 # (engine/script/showmeter.py, parse), W291–W293 (showmeter.check_story); E233 for an unknown
-# meter. E419 and W294 are spare.
+# meter. E419 is spare; F59's retry checks took W294 (choicecheck.check_story).
 
 def _e417(form: str = "name", word: str = "show", found: str = "hana,") -> str:
     """``name`` (what was found); ``modifier`` (the word); ``colon``."""
@@ -2933,6 +2934,14 @@ def _w292(name: str = "hana", look: str = "hearts") -> str:
     return (f"{show_name(name)} is shown as {look}, which needs a range, but its points line "
             f"has none, so it is shown as a number. Give it a range, e.g. points "
             f"{show_name(name)} 0 to 10.")
+
+
+def _w294(meter: str = "empathy") -> str:
+    """F59: a retry check on a meter no line changes."""
+    name = show_name(meter)
+    return (f"this check can be retried once {name} changes, but no line changes {name}, so "
+            f"after a failure it never comes back. Add a line such as points {name} += 1 "
+            "where the player earns it, or remove retry.")
 
 
 def _w293(image: str = "meter hana") -> str:
@@ -4853,6 +4862,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W291": _w291,
     "W292": _w292,
     "W293": _w293,
+    "W294": _w294,                      # F59 retry checks (choicecheck.check_story)
     # F14 rollback (04 §6.2): load E200–E203 (rollback.py), E204 (attach_fixed). Drafts (G3).
     "E200": lambda: (f"rollback needs one word after it: {_ROLLBACK_WORDS}. Write "
                      '"rollback block" to stop rollback here.'),
