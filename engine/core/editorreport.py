@@ -124,3 +124,19 @@ CONSOLE_VALUE_TEXT_MAX = 200            # one ``values`` value text
 CONSOLE_VALUES_MAX = 1_000              # names in one ``values`` answer; the rest are counted
 CONSOLE_SHOWN_MAX = 200                 # Studio shows at most this much of any event text
 CONSOLE_ANSWER_S = 2.0                  # Studio: no answer after this is "didn't answer"
+
+# --- Line reports: what the running game is doing (proposals 2.4 and 6.x foundation) -------
+# A dev run with ``--report-to-editor`` (``app/editor_link.py``, ``EditorLink.update``) also
+# writes, in the framing above:
+#   ``{"v":1,"event":"ending","id":NAME,"title":TITLE}``  each time an ``ending`` line runs
+#   ``{"v":1,"event":"at","file":REF,"line":N,"scene":LABEL}``  the line the story is on,
+#       when it changes, at most ``AT_PER_S`` a second (the newest place wins)
+# Exactly those keys; every string redacted and at most ``GAME_EVENT_TEXT_MAX`` characters.
+# Studio's side is ``tools/editor/preview.py`` (decode, ``PreviewRunner.game_events``) and
+# ``tools/editor/runwiring.py`` (``on_game_event``).
+ENDING_EVENT = "ending"
+AT_EVENT = "at"
+GAME_EVENTS = (ENDING_EVENT, AT_EVENT)
+AT_PER_S = 10
+GAME_EVENT_TEXT_MAX = 1_024             # an ending's id or title, a file ref, a scene name
+GAME_EVENTS_KEPT = 200                  # Studio keeps at most this many between two polls

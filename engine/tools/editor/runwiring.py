@@ -31,10 +31,25 @@ Database's **In the game now** asks for ``values`` and **Change…** sends ``set
 come through ``consoleclient.ConsoleTracker`` (one outstanding request per kind, 2 s) and
 show in the status bar's preview item for 5 s as ``Console: {text}``, escaped and cut to
 200 characters; Studio never acts on an answer's text.
+
+Line reports (what the running game is doing; ``core/editorreport.py``): subscribe with
+``win.on_game_event(callback)``, which returns a function that unsubscribes. Each poll tick
+(every ``POLL_INTERVAL_MS``) calls ``callback(kind, data)`` for every report the game sent
+since the last tick, oldest first, on the Tk main thread:
+
+- ``kind == "ending"``, ``data == {"id": "true_end", "title": "Together"}`` each time the
+  game runs an ``ending`` line (the ending's name and its title as shown);
+- ``kind == "at"``, ``data == {"file": "script/bridge.vns", "line": 14, "scene": "bridge"}``
+  when the story moves to another line, at most about 10 a second (the newest place wins).
+
+Only dev runs Studio starts send them (every Play is one). ``data`` is a fresh dict per
+call; its strings are the game's (redacted, at most 1,024 characters, untrusted): show them
+escaped. A callback that raises is logged and skipped; the others still run.
 """
 
 from __future__ import annotations
 
+import logging
 import tkinter as tk
 from collections.abc import Callable, Sequence
 from typing import Any
@@ -62,6 +77,8 @@ from engine.tools.editor.syntax import LABEL_LINE
 from engine.tools.editor.checkwiring import NO_PROBLEMS
 from engine.tools.editor.studiolook import TAG_JUMP, line_of, plural
 from engine.tools.editor.views import set_entry_enabled
+
+_log = logging.getLogger(__name__)
 
 STATUS_NOT_RUNNING = "Not running."
 STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_text(n)
@@ -460,6 +477,7 @@ class RunWiring:
         try:
             self.apply_events(self.runner.poll())
             self._poll_console()
+            self._poll_game_events()
             tab = self.current_tab()
             if tab == "map" or tab != self._scene_tab:      # a box chosen, or the tab left
                 self._scene_tab = tab
@@ -472,6 +490,29 @@ class RunWiring:
         finally:
             if not self.closed:
                 self._poll_id = self.root.after(POLL_INTERVAL_MS, self._poll_preview)
+
+    def on_game_event(self, callback: Callable[[str, dict], object]) -> Callable[[], None]:
+        """Call ``callback(kind, data)`` for each line report from the running game (see
+        the module docstring); returns the function that unsubscribes it."""
+        listeners = self.__dict__.setdefault("_game_listeners", [])
+        listeners.append(callback)
+
+        def unsubscribe() -> None:
+            if callback in listeners:
+                listeners.remove(callback)
+        return unsubscribe
+
+    def _poll_game_events(self) -> None:
+        """The line reports read this tick, to every ``on_game_event`` listener."""
+        read = getattr(self.runner, "game_events", None)
+        events = read() if callable(read) else []
+        listeners = self.__dict__.get("_game_listeners") or []
+        for event in events:
+            for callback in list(listeners):
+                try:
+                    callback(event.kind, dict(event.data))
+                except Exception:  # noqa: BLE001  (one listener never stops the others)
+                    _log.exception("A game event listener failed")
 
     def join_runner(self, runner: Any, on_events: Callable[[list], object]) -> None:
         """Poll ``runner`` (anything with ``poll() -> list`` and ``stop()``: F47's

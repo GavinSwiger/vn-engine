@@ -25,7 +25,7 @@ from engine.core.editorreport import RELOAD_MESSAGE
 from engine.persist import limits
 from engine.persist.saves import SLOT_NAME_RE
 from engine.tools.editor import hotreload as studio
-from engine.tools.editor.preview import EOF, STARTED, STATE, Report, read_child_output
+from engine.tools.editor.preview import EOF, GAME, STARTED, STATE, Report, read_child_output
 from engine.ui.builtin.content_warning import ContentWarningScreen
 from engine.ui.builtin.error import ErrorScreen
 from engine.ui.builtin.title_screen import TitleScreen
@@ -143,7 +143,7 @@ class Child:
         return self.session.apps[-1]
 
     def kinds(self) -> list[str]:
-        return [kind for kind, _ in self.events if kind != EOF]
+        return [kind for kind, _ in self.events if kind not in (EOF, GAME)]   # no line reports
 
     def frame(self):
         (frame,) = [payload for kind, payload in self.events if kind == STATE]

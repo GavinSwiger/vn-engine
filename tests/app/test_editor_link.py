@@ -33,7 +33,7 @@ from engine.script import ScriptErrorGroup
 from engine.script.diagnostics import ScriptError
 from engine.script.messages import format_message
 from engine.tools.editor import game_folder_problem
-from engine.tools.editor.preview import STARTED, Report, decode_report
+from engine.tools.editor.preview import GAME, STARTED, Report, decode_report
 from engine.ui.builtin.error import ErrorScreen
 from tests.tools.editor.conftest import R_SCRIPTS
 
@@ -338,7 +338,11 @@ def test_a_good_start_label_loads(tmp_path, user_roots, session, stdout):
     start = StartOptions(label="club_poem", values=(("sayo_points", 1),))
     assert launch(game, start=start) == 0
     assert session.apps[0].start is start
-    assert [decode_report(line) for line in lines_of(stdout)] == [STARTED]
+    reports = [decode_report(line) for line in lines_of(stdout)]
+    # A dev run also reports the line it is on (line reports): the start label's scene.
+    places = [r[1].data for r in reports if isinstance(r, tuple) and r[0] == GAME]
+    assert [r for r in reports if not isinstance(r, tuple)] == [STARTED]
+    assert places and places[0]["scene"] == "club_poem"
 
 
 def test_ac13_edit_and_run_give_the_same_text_for_an_empty_folder(tmp_path, user_roots,

@@ -206,6 +206,10 @@ def run_ending(interp: "Interpreter", stmt: Ending) -> "Step":
     phases and the story's end; ``seconds`` 0 ends the story at once. F30 (04 §6.1 step 2):
     a window title set by the script goes back to the game's first (``WindowTitle(None)``)."""
     interp.persistent.unlock(ENDING_KIND, stmt.name)
+    # Runtime-only, for Studio's line reports (``app/editor_link.py``): a fresh tuple per
+    # ending run, so a reader sees each one even when the story ends in the same step.
+    last = getattr(interp, "ending_reached", None)
+    interp.ending_reached = (last[0] + 1 if last else 1, stmt.name, stmt.title)
     clear_title(interp)
     if stmt.seconds == 0:
         return interp.end_story()
@@ -257,6 +261,8 @@ def register(interp: "Interpreter") -> None:
     routes = RouteIndex.build(interp.program, store)
     interp.endings = endings
     interp.routes = routes
+    if not hasattr(interp, "ending_reached"):
+        interp.ending_reached = None    # (count, name, title) of the last ending run
     store.register_kind(ENDING_KIND, known=endings.has, revocable=True)
     store.register_kind(ROUTE_KIND, known=routes.has, revocable=True)
 

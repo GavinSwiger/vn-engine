@@ -32,6 +32,12 @@ writers still flush). In error mode the place is the list ``fatal_hook`` kept wh
 screen came up (or the list a resume that hit ``DEFAULT_FAILED`` handed to ``keep``), so the
 next update resumes at the last line before the error.
 
+Line reports (dev runs only; ``core/editorreport.py`` "Line reports"): ``update`` also
+writes ``ending`` (the ending's id and title, each time an ``ending`` line runs: the
+interpreter's ``ending_reached``, set by ``runtime/endings.run_ending``) and ``at`` (the
+story's file, line and scene when it changes, coalesced to ``AT_PER_S`` a second, the newest
+place winning). Studio reads them through ``RunWiring.on_game_event``.
+
 Imports ``engine.core`` only (``04`` §2); ``engine_error_message`` is imported from
 ``app.app`` and F39's ``app.hot_reload`` when they are needed.
 """
@@ -39,10 +45,15 @@ Imports ``engine.core`` only (``04`` §2); ``engine_error_message`` is imported 
 import json
 import os
 import re
+import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, BinaryIO
 
 from engine.core.editorreport import (
+    AT_EVENT,
+    AT_PER_S,
+    ENDING_EVENT,
+    GAME_EVENT_TEXT_MAX,
     REPORT_MARKER,
     REPORT_MAX_BYTES,
     REPORT_MAX_ITEMS,
@@ -77,6 +88,12 @@ class EditorLink:
         self.reader: "StdinReader | None" = None
         self.kept: list[bytes] | None = []
         self.reloaded = False
+        # Line reports: the last ending run seen, the last place sent, and when the next
+        # ``at`` may go (``clock`` is for tests).
+        self.clock = time.monotonic
+        self._ending_seen: object = None
+        self._at_sent: tuple[str, int, str] | None = None
+        self._at_next = 0.0
 
     def story_started(self) -> None:
         """Writes ``started`` once; later calls do nothing."""
@@ -130,9 +147,17 @@ class EditorLink:
         self.kept = fatal_states(app)
 
     def update(self, app: "App") -> None:
-        """Once per frame in every mode: handle the messages read since the last frame."""
+        """Once per frame in every mode: the line reports (dev runs), then the messages
+        read since the last frame."""
+        if self.reloaded:
+            return
+        if getattr(app, "dev", False) and not getattr(app, "error_mode", False):
+            try:
+                self.report_story(app)
+            except Exception:
+                _log.debug("A line report could not be made", exc_info=True)
         reader = self.reader
-        if reader is None or self.reloaded:
+        if reader is None:
             return
         messages = reader.poll()
         if not messages:
@@ -152,6 +177,33 @@ class EditorLink:
                   else None)
         handle_messages(messages, error_mode=app.error_mode, notify=notify,
                         reload=lambda: self._reload(app), console=studio)
+
+    def report_story(self, app: object) -> None:
+        """The line reports for this frame: ``ending`` for an ending run since the last
+        frame, then ``at`` when the story's line changed and the last ``at`` is at least
+        1/``AT_PER_S`` s old (a skipped place is never sent; the newest one is)."""
+        story = getattr(app, "story", None)
+        interp = getattr(story, "interp", None) if story is not None else None
+        if interp is None:
+            return
+        reached = getattr(interp, "ending_reached", None)
+        if reached is not None and reached is not self._ending_seen:
+            self._ending_seen = reached
+            _count, name, title = reached
+            self._write({"v": REPORT_VERSION, "event": ENDING_EVENT,
+                         "id": _short(name), "title": _short(title)})
+        stmt = getattr(interp, "current", None)
+        file = getattr(getattr(stmt, "file", None), "ref", None)
+        line = getattr(stmt, "line", None)
+        if not isinstance(file, str) or type(line) is not int or line < 1:
+            return
+        place = (file, line, str(getattr(stmt, "label", "")))
+        now = self.clock()
+        if place == self._at_sent or now < self._at_next:
+            return
+        self._at_sent, self._at_next = place, now + 1.0 / AT_PER_S
+        self._write({"v": REPORT_VERSION, "event": AT_EVENT, "file": _short(place[0]),
+                     "line": line, "scene": _short(place[2])})
 
     def send_line(self, data: bytes) -> None:
         """F40: one report line (``data`` without its line break) to Studio, as ``_write``
@@ -252,6 +304,14 @@ def _text(text: str) -> str:
     text = redact(str(text))
     if len(text) > REPORT_TEXT_MAX_CHARS:
         text = text[:REPORT_TEXT_MAX_CHARS - 1] + "…"
+    return text
+
+
+def _short(text: str) -> str:
+    """A line report's string: redacted, then cut to ``GAME_EVENT_TEXT_MAX``."""
+    text = redact(str(text))
+    if len(text) > GAME_EVENT_TEXT_MAX:
+        text = text[:GAME_EVENT_TEXT_MAX - 1] + "…"
     return text
 
 
