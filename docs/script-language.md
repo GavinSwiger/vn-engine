@@ -1595,6 +1595,12 @@ Esc opens the game menu as usual. A save made during a minigame starts it again 
 beginning, and rolling back to it lets the player play it again, like a choice. Random
 layouts come out the same each time.
 
+**Phone chats.** When a `minigame phone_chat` closes, the messages the player saw join the
+history log (the contact's under the sender's name, the player's as choice rows), and the
+whole chat stays on the game menu's **Inbox** page to read again, newest first, with a dot on
+any chat not opened there yet. The Inbox is saved and rolled back with the story. See
+"Reading a chat again" in [minigames.md](minigames.md).
+
 **Shops.** `minigame shop stock=stall_stock into bought` opens a shop where the player buys
 items with the story's money (the item marked `money`). The stock is a `define` of items and
 prices: `define stall_stock = {"tea": None, "matches": [1, 10], "lantern": 20}` sells tea at

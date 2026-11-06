@@ -63,13 +63,16 @@ def test_the_inbox_lists_threads_newest_first_with_unread_marks():
     # The newest is shown first, and showing it marks it read; the other stays unread.
     assert view.selected == two.key and codex.read == {two.key}
     assert not port.is_read(one.key)
-    # The detail: one paragraph per line, the name in bold, the player as "You".
+    # The detail: one paragraph per line, the name in bold, the player as "You"; the
+    # opening time is in the title, later times are italic dividers.
     entry = thread_entry(one, "You")
     texts = [[(s.text, s.style.bold, s.style.italic) for s in p.pieces]
              for p in entry.paragraphs]
-    assert texts == [[("11:42 PM", False, True)],
-                     [("Sayori: ", True, False), ("you awake?", False, False)],
+    assert texts == [[("Sayori: ", True, False), ("you awake?", False, False)],
                      [("You: ", True, False), ("Yeah.", False, False)]]
+    later = thread("Sayori", "", ("them", "Sayori", "hi"), ("time", "", "1 AM"))
+    assert [p.pieces[0].text for p in thread_entry(later, "You").paragraphs] == [
+        "Sayori: ", "1 AM"]
     # A new thread shows on the next update (the view's signature includes the inbox).
     three = thread("Daichi", "", ("them", "Daichi", "Late again?"), before=(one, two))
     codex._threads = (one, two, three)

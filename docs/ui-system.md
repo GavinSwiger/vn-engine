@@ -111,7 +111,8 @@ steps apply in order, each only if still needed:
 
 Nine entries (Codex, Skip Game) fit at 150% at step 2. With Codex and Flowchart
 the in-game sidebar has 9 entries and fits at step 2 (635 of 640); a 10th (Skip Game or
-Help) fits at step 3 with labels at 36.
+Help) fits at step 3 with labels at 36. With F65's Inbox all twelve entries can show: at
+100% they fit at step 2 (48 tall), at 150% at step 3 with labels at 28.
 
 **Title fit (F20).** F10's title column fit gains a third step: button height
 becomes max(48, pitch + 8), as sidebar step 2. With Flowchart, 7 title entries fit at 150%
@@ -1207,6 +1208,30 @@ for every use), `engine/ui/builtin/codex_page.py` (`UseAction`).
   takes the right half. Use closes the game menu and the item's scene starts at once. The
   button is a focus group of its own (keys and gamepad reach it from the list or the body).
 
+### Inbox page (F65 round 1)
+
+Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can reread".
+Modules: `engine/core/codexkinds.py` (codex kinds), `engine/ui/builtin/kind_page.py`
+(`KindPage`), `engine/app/inbox.py` (the port and the game-menu entry).
+
+- **Codex kinds.** Every page of collected entries is the Codex view (§9 "Codex view") over
+  the kinds registered for that page: tips and items on the Codex page, finished chats on
+  the Inbox page. A kind's description gives its page, default tab word, row order
+  (declared, obtained, newest first) and which fields it shows; later kinds (contacts,
+  goals, thoughts, profiles) reuse the same list, unread dot, detail panel, keys and mouse.
+- **Where.** The game menu's `inbox` entry, after `codex`, shown once a chat has finished.
+  Its label and the page heading are `[words] inbox`; with a genre kit and that word left
+  as is, the kit's `messages` title (Messages, Whispers, Dispatches, Pigeon post, Comms,
+  Letters).
+- **Rows.** One per finished chat, newest first: the contact, then " · " and the chat's
+  opening time when it has one. The unread dot (`codex.new.fill_color`) stays until the
+  chat is shown on the page. One tab, so no tab row.
+- **Detail.** The title is the row's. One paragraph per message, 12 apart: the sender's
+  name and a colon in bold, then the text; the player's messages under `[words] inbox_me`
+  ("You"); later time dividers in italics (the opening time is in the title). No picture, purse, pick or Use button.
+- **Colors and motion.** The Codex view's tokens (`codex.*`, `list.*`, `panel.*`), so the
+  page follows the theme, the scheme and W67 as the Codex page does; nothing moves.
+
 ### Check roll (F59)
 
 Spec: specs/F59-choice-checks/SPEC.md and proposal I-05. Modules:
@@ -1377,3 +1402,5 @@ handler).
 - 2026-11-06: F59 (builder): §9 "Check roll" (the dice card after a checked pick: rows,
   choice tokens, contrast) and its Standard timings row; F62: the rank-change pulse is a
   ring that grows and fades over 0.4 s.
+- 2026-11-06: F65 round 1 (builder): §9 "Inbox page": codex kinds, the Inbox page's rows
+  and detail, and the kit's name for it.

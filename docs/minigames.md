@@ -674,8 +674,32 @@ and the gamepad's Start button open the game menu, as in every minigame.
 Saving during a chat saves its start: loading starts it again at the first message, with
 every reply open. Rolling back (the mouse wheel or Page Up, when the chat has nothing to
 scroll) goes back to the line before the chat, but only until the player hurries a message,
-moves between replies, picks one, or scrolls; after that, the chat holds its place. The chat
-adds no lines to History.
+moves between replies, picks one, or scrolls; after that, the chat holds its place.
+
+### Reading a chat again
+
+When the chat closes, it stays readable:
+
+- **History.** The messages the player saw join the history log in order, right after the
+  line before the chat: each of the contact's messages under the sender's name, and each
+  of the player's messages and picked replies as a choice row. Time dividers are left out.
+- **The Inbox.** The whole chat is kept on the **Inbox** page of the game menu, after
+  Codex. The button appears once the first chat has finished. The page lists one row per
+  finished chat, newest first, named by the contact and the opening time ("Sayori · 11:42
+  PM"). A dot marks a chat the player hasn't opened on the page yet. The right side shows
+  the chat as it played: "Sayori: you awake?", the player's own messages as "You: …"
+  (`[words] inbox_me`), and later time dividers in italics. Playing the same chat again adds
+  a second row.
+- **Saves and going back.** The Inbox is part of the story, like the items a player holds:
+  a save keeps it, loading puts it back, and rolling back to before the chat takes the row
+  away again. Whether a row has been opened is remembered across saves and playthroughs.
+  A save from before this version loads with an empty Inbox.
+
+A chat the player skips (Skip Game) is kept with the replies a skip picks, so the player can
+still read it there. The page's name is `[words] inbox` ("Inbox"); with a genre kit and that
+word left as is, the kit names it: Messages (Romance, Cozy), Whispers (Horror), Dispatches
+(Mystery), Pigeon post (Fantasy), Comms (Sci-fi), Letters (Letters). A minigame of your own
+that replaces `phone_chat` adds nothing to History or the Inbox.
 
 ### When the arguments are refused
 

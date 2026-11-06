@@ -9,7 +9,8 @@ reopen any finished chat from the game menu and read it again.
   ``CodexEntry`` of kind ``chat`` (cached per threads tuple): the title is the contact (with
   the chat's opening time, "Sayori · 11:42 PM", so two chats with one contact differ), one
   paragraph per line: "Sayori: you awake?" with the name in bold, the player's own lines
-  under ``[words] inbox_me`` ("You"), and time dividers in italics. ``listed("chat")`` is
+  under ``[words] inbox_me`` ("You"), and later time dividers in italics (the opening time
+  is in the title). ``listed("chat")`` is
   newest first; ``is_read``/``mark_read`` are the persistent Inbox read marks (unread rows
   show the codex's dot until opened).
 - The game menu's ``inbox`` entry (after ``codex``), shown once the inbox has a thread. Its
@@ -40,7 +41,10 @@ PLAIN: Final = Style()
 def thread_entry(thread: "InboxThread", me: str) -> CodexEntry:
     """``thread`` as the page's entry (module docstring); ``me`` names the player's lines."""
     paragraphs = []
-    for line in thread.lines:
+    lines = thread.lines
+    if lines and lines[0].side == "time" and lines[0].text == thread.time:
+        lines = lines[1:]                               # the title already says when
+    for line in lines:
         if line.side == "time":
             paragraphs.append(TaggedText((Span(line.text, ITALIC),)))
         else:
