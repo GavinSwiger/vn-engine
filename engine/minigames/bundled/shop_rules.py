@@ -14,6 +14,7 @@ share one copy and Studio's mirror (``minigamedata``, ADR-0008) is tested agains
   against the declared items, the money item and the declared prices.
 - **Play.** ``parse(args, story)`` gives the ``Offer`` rows; ``why_not`` says why Buy can't
   happen now (``None``: it can).
+- **Words.** ``money_for(n, word)``: "1 Coin", not "1 Coins".
 - **Outcomes.** ``fixed_outcome``: test and skipped buy nothing (``{}``), no changes.
 - **Look.** ``shop_layout``: the panel, the purse strip, the list, the message line and the
   three buttons.
@@ -180,6 +181,19 @@ def why_not(offer: Offer, *, bought: int, money: int, held: int, most: int,
     return None
 
 
+def money_for(n: int, word: str) -> str:
+    """The money word for a price of ``n``: for 1, the plural's singular by the plain English
+    rule ("Coins" -> "Coin", "Rubies" -> "Ruby", "Gold" and "Glass" stay), so a price reads
+    "1 Coin", not "1 Coins"; any other number keeps the word as written."""
+    if n != 1:
+        return word
+    if len(word) > 3 and word.endswith("ies"):
+        return word[:-3] + ("Y" if word[-3:].isupper() else "y")
+    if len(word) > 1 and word[-1] in "sS" and word[-2] not in "sS'":
+        return word[:-1]
+    return word
+
+
 def fixed_outcome(args: dict) -> Outcome:
     """Test and skipped: nothing bought (``{}``), nothing changed."""
     return Outcome({})
@@ -250,5 +264,5 @@ def columns(x: float, w: float) -> tuple[Rect, Rect, Rect]:
 
 __all__ = ["ACTIONS_MAX", "DEFAULTS", "ENOUGH", "FULL", "Offer", "PRICE_MAX", "REQUIRED",
            "ROWS_MAX", "SHORT", "SOLD_OUT", "STOCK_MAX", "ShopLayout", "bought_result",
-           "columns", "fixed_outcome", "money_of", "parse", "problem", "shop_layout",
+           "columns", "fixed_outcome", "money_for", "money_of", "parse", "problem", "shop_layout",
            "story_problem", "why_not"]

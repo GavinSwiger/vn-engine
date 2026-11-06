@@ -86,6 +86,12 @@ def test_story_refusals(args, story, said):
     assert found is not None and said in found, found
 
 
+def test_one_of_the_money_is_singular():
+    said = [rules.money_for(n, w) for n, w in ((1, "Coins"), (2, "Coins"), (1, "Rubies"),
+                                             (1, "Gold"), (1, "Glass"), (0, "Coins"))]
+    assert said == ["Coin", "Coins", "Ruby", "Gold", "Glass", "Coins"]
+
+
 def test_prices_and_why_not():
     assert rules.problem(ARGS) is None and rules.story_problem(ARGS, NAMES) is None
     offers = rules.parse(ARGS, NAMES)
@@ -129,7 +135,7 @@ def test_buy_put_back_and_leave(game):
     w = shop_world(game)
     g = open_shop(w)
     assert [g.row_title(o) for o in g.offers] == ["Jasmine Tea", "Matches", "Red Lantern"]
-    assert [g.price_text(o) for o in g.offers] == ["5 Coins", "1 Coins", "20 Coins"]
+    assert [g.price_text(o) for o in g.offers] == ["5 Coins", "1 Coin", "20 Coins"]
     assert [g.stock_text(o) for o in g.offers] == ["", "2 left", ""]
     assert g.purse() == 30 and w.session.hint_text == WORDS["hint"]
     g.buy()                                                    # tea, 5

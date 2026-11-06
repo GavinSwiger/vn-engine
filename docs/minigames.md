@@ -1938,7 +1938,8 @@ purchase, give the result and the changes with `finish`.
 
 The shop draws with the game's `panel`, `list` and `button` colors, so it fits every color
 scheme. `[theme.plugin.shop]` has `buy_sound` (none). `{item}` is an item's name, `{money}`
-the money word and `{n}` a number:
+the money word and `{n}` a number. A price of 1 drops the money word's plural ending ("1 Coin",
+"1 Ruby"; "Gold" stays "Gold"):
 
 ```toml
 [words.plugin.shop]

@@ -6,7 +6,7 @@ Every rule is in ``shop_rules``; this module is the session:
 - **The panel.** The money the player holds at the top right ("Coins ×30": the bag's money
   word, ``ctx.codex.money_word()``), the stock as a list (each row: the item's title, "×2"
   when the player holds some, "3 left" or "Sold out" when the stock has a number, the price
-  as "5 Coins" or "Free"), a message line, and **Buy**, **Put back** and **Leave**.
+  as "5 Coins", "1 Coin" or "Free"), a message line, and **Buy**, **Put back** and **Leave**.
 - **Buy** buys one of the selected row: the price is taken from the money and one item is
   added, through API 1.5's counts (``ctx.codex.take(money, price)``, ``give(item)``), so the
   panel shows the new money and count at once. When it can't, the message says why (sold
@@ -165,7 +165,8 @@ class Shop(Minigame):
     def price_text(self, offer: rules.Offer) -> str:
         if offer.price == 0:
             return self.word["free"]
-        return fill(self.word["price"], n=f"{offer.price:,}", money=self.money_word)
+        return fill(self.word["price"], n=f"{offer.price:,}",
+                    money=rules.money_for(offer.price, self.money_word))
 
     def stock_text(self, offer: rules.Offer) -> str:
         if offer.stock is None:
