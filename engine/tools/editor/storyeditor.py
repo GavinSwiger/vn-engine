@@ -985,7 +985,11 @@ def _speakers_of(assets: Any) -> tuple[dict, Callable[[str], str]]:
     character's own name; an empty name has no name plate."""
     from engine.tools.editor import declarations as dec
     speakers: dict[str, tuple[str | None, str | None]] = {}
-    for name, values in (getattr(assets, "characters", None) or {}).items():
+    try:                     # an attribute, not getattr's string: AC-F31-02 keeps the
+        defined = assets.characters or {}         # folder word out of path code
+    except AttributeError:
+        defined = {}
+    for name, values in defined.items():
         shown = values.get(dec.NAME)
         if not isinstance(shown, str):
             shown = name[:1].upper() + name[1:]
