@@ -29,6 +29,9 @@ Rules (03-ui "Notice (toast)", ui-system §5 and §9):
   text 12 after it, and the panel at least 48 + 24 tall; a shorter text block is centred
   against the icon. A placeholder (missing or unreadable picture) draws a 48×48 frame in the
   marker color instead. Without an icon the layout is unchanged.
+- **Skin** (F65 round 3): ``notify(skin=)`` with a ``NoticeSkin`` (``ui/devicelook``: a
+  pigeon's note, a phone's bubble) draws the panel with the skin's frame and text color and
+  then its marks; the layout, timing and text are the same as without one.
 
 Times are kept in seconds from ``update(dt)`` (the caller's clock), so tests drive it with a
 fake clock. Text is measured with an injected ``layouts.Measure`` (reference metrics), so
@@ -40,7 +43,7 @@ import unicodedata
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Final, Literal
+from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 from engine.core.graphemes import graphemes
 from engine.render.frames import FrameSpec
@@ -232,14 +235,27 @@ class NoticeView:
     icon_box: Box | None = None
 
 
+class NoticeSkin(Protocol):
+    """F65 round 3: a look for one notice (module docstring)."""
+
+    text_color: RGB
+
+    def frame(self, base: FrameSpec) -> FrameSpec: ...
+
+    def decorate(self, canvas: "Canvas", painter: "Painter", box: Box,
+                 opacity: float) -> None: ...
+
+
 class _Notice:
-    __slots__ = ("text", "kind", "icon", "chars", "phase", "t", "slide", "shown_s", "panel",
+    __slots__ = ("text", "kind", "icon", "skin", "chars", "phase", "t", "slide", "shown_s", "panel",
                  "panel_key", "y", "y_from", "y_to", "y_t")
 
-    def __init__(self, text: str, kind: Kind, icon: "ImageRef | None" = None) -> None:
+    def __init__(self, text: str, kind: Kind, icon: "ImageRef | None" = None,
+                 skin: NoticeSkin | None = None) -> None:
         self.text = text
         self.kind = kind
         self.icon = icon
+        self.skin = skin
         self.chars = len(graphemes(text))
         self.phase: Phase = "in"
         self.t = 0.0
@@ -290,13 +306,13 @@ class NoticeLayer:
     # -- notify --
 
     def notify(self, text: str, *, kind: Kind = "info", hold: bool | None = None,
-               icon: "ImageRef | None" = None) -> None:
+               icon: "ImageRef | None" = None, skin: NoticeSkin | None = None) -> None:
         """Show ``text`` (cleaned, cut to 1,000 code points). A text equal to one shown
         restarts its shown time (from a fade-out it fades back in, without the slide); equal
         to one waiting, nothing changes. Otherwise it waits in order, past 10 the oldest
         waiting is dropped, and it shows now if there is room and ``hold`` (the top screen's
         ``holds_notices``; None keeps the last value) is False. ``icon`` (F37): a picture
-        drawn left of the text (module docstring)."""
+        drawn left of the text; ``skin`` (F65): its look (module docstring)."""
         if kind not in KINDS:
             raise ValueError(f"notice kind must be 'info' or 'problem', not {kind!r}")
         if hold is not None:
@@ -308,7 +324,7 @@ class NoticeLayer:
                 return
         if any(notice.text == text for notice in self._waiting):
             return
-        self._waiting.append(_Notice(text, kind, icon))
+        self._waiting.append(_Notice(text, kind, icon, skin))
         while len(self._waiting) > MAX_WAITING:
             self._waiting.popleft()
             self.dropped += 1
@@ -503,7 +519,12 @@ class NoticeLayer:
             panel = notice.panel
             assert panel is not None
             box = self._box(notice, fade)
-            painter.shape(box, style.frame, image=style.image, alpha=opacity)
+            skin = notice.skin
+            if skin is None:
+                painter.shape(box, style.frame, image=style.image, alpha=opacity)
+            else:
+                painter.shape(box, skin.frame(style.frame), alpha=opacity)
+                skin.decorate(canvas, painter, box, opacity)
             if panel.bar is not None:
                 bar = panel.bar
                 canvas.fill((*style.marker_color, round(255 * opacity)),
@@ -519,7 +540,8 @@ class NoticeLayer:
             top = box.y + panel.text_y
             for index, line in enumerate(panel.lines):
                 if line:
-                    _draw_line(canvas, line, font, style.text_color,
+                    _draw_line(canvas, line, font,
+                               style.text_color if skin is None else skin.text_color,
                                (box.x + panel.text_x, top + index * panel.pitch), opacity)
 
 
@@ -579,5 +601,5 @@ def _draw_line(canvas: "Canvas", text: str, font: FontSpec, color: RGB,
 
 __all__ = ["ICON_GAP", "ICON_SIZE", "KINDS", "MAX_SHOWN", "MAX_WAITING", "NOTICE_LIMIT",
            "NOTICE_RIGHT", "NOTICE_TOP", "Kind", "NoticeLayer", "NoticePanel", "NoticeStyle",
-           "NoticeView", "clean_text", "draw_fitted", "ease_in_out", "fit_box", "notice_panel",
+           "NoticeSkin", "NoticeView", "clean_text", "draw_fitted", "ease_in_out", "fit_box", "notice_panel",
            "notice_style", "shown_ms"]

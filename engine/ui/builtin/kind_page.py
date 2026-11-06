@@ -12,6 +12,8 @@ description, a port that lists it, and ``KindPage(port, "<page>")`` in a ``MenuE
 - No purse, no pick or Use button, never opened from the title screen.
 - F65 round 2: ``select`` names the entry to show first (``open pigeon``: the newest thread
   that came by pigeon), when it is listed; else the first row, as before.
+- F65 round 3: ``view`` is the ``CodexView`` class the page shows (the Inbox passes
+  ``inbox_view.InboxView``, which draws each device look its own way).
 """
 
 from typing import TYPE_CHECKING
@@ -27,16 +29,18 @@ if TYPE_CHECKING:
 class KindPage(CodexPage):
     """The page ``page`` (module docstring)."""
 
-    def __init__(self, port: CodexPort, page: str, *, select: str | None = None) -> None:
+    def __init__(self, port: CodexPort, page: str, *, select: str | None = None,
+                 view: type[CodexView] = CodexView) -> None:
         super().__init__(port, from_title=False)
         self.heading = page
         self.filter = CodexFilter(frozenset(k.name for k in page_kinds(page)))
         self.select = select
+        self.view_class = view
 
     def build(self, host: "PageHost", body: "Box") -> "list[FocusGroup]":
         self.host = host
         if self.view is None:
-            self.view = CodexView(self.port, ui=host.shell, filter=self.filter,
+            self.view = self.view_class(self.port, ui=host.shell, filter=self.filter,
                                   scope=lambda: host.scope)
             self.view.selected = self.select           # kept by build when it is listed
         return self.view.build(body, host.painter.text_scale())

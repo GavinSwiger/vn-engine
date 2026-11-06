@@ -6,7 +6,7 @@ quick menu's Inbox buttons, the arrival notice, and ``open``'s wait."""
 from types import SimpleNamespace
 
 from engine.app.inbox import AppInboxPort, install_inbox, thread_entry
-from engine.core.config_schema import WordsConfig
+from engine.core.config_schema import ThemeConfig, WordsConfig
 from engine.runtime.commands import MessageArrived, OpenInbox, WaitDone
 from engine.runtime.inbox import build_delivery, group_threads
 from engine.script.inbox import SendStep
@@ -141,7 +141,7 @@ def _installed(codex, *, sends=False):
     shell = SimpleNamespace(
         words=Words(), replay=None,
         menus=SimpleNamespace(add=lambda menu, entry: added.append((menu, entry))),
-        notify=lambda text, icon=None: notices.append((text, icon)),
+        notify=lambda text, icon=None, skin=None: notices.append((text, icon)),
         open_game_menu=lambda by, page=None, on_closed=None: opened.append((page, on_closed))
         or object())
     routes = {}
@@ -152,7 +152,7 @@ def _installed(codex, *, sends=False):
                                                                          cmd.wait_id),
                             press=lambda: pressed.append(stage.wait_id))
     app = SimpleNamespace(
-        shell=shell, config=SimpleNamespace(theme=SimpleNamespace(kit=None)),
+        shell=shell, config=SimpleNamespace(theme=ThemeConfig(), device={}),
         router=SimpleNamespace(register=lambda kind, fn: routes.__setitem__(kind, fn)),
         stage_screen=stage, skip_auto=SimpleNamespace(skipping=False), assets=None,
         story=SimpleNamespace(interp=SimpleNamespace(codex=codex, program=program),

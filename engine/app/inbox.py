@@ -16,7 +16,10 @@ opens with ``open inbox`` / ``open pigeon``.
   (``kits.device_words``; "" is the game's default, ``kits.device_look``: the kit's, else a
   phone). A letter look (letters, pigeon, mind) reads as a letter: the contact's lines as
   plain paragraphs, signed "— Hana"; a chat look (phone, radio, terminal) as "Hana: …".
-  The player's own lines are under ``[words] inbox_me`` ("You"). ``is_read`` is "every
+  The player's own lines are under ``[words] inbox_me`` ("You"). Round 3: the port also
+  says how each paragraph is drawn (``paragraph_looks``: its look and role, "via", "time",
+  "them", "me", "sign"), and the page is an ``InboxView`` that draws each look its own way
+  (a phone's bubbles, a letter's paper, …); a thought (``mind``) reads in italics. ``is_read`` is "every
   delivery read"; ``mark_read`` marks them all (the persistent kind ``inbox_read``), so the
   row's dot and the buttons' counts go when the thread is opened.
 - The game menu's ``inbox`` entry (after ``codex``), shown once there is a delivery or when
@@ -26,7 +29,9 @@ opens with ``open inbox`` / ``open pigeon``.
   ``messages`` title where the author left that word as is (``kits.kit_words``).
 - ``MessageArrived`` → the arrival notice, worded by the device look ("A pigeon lands on the
   sill with a note from Hana.", "New message from Ren."), with the contact's picture as its
-  icon. Like the codex's notices: none during a scene replay, none on a quiet re-run (the
+  icon. Round 3: worded by ``[device.<look>]`` where set (``kits.device_words``), drawn in
+  the look's skin (``ui/devicelook.notice_skin``), and its ``arrive_sound`` plays once as a
+  UI sound (``audio.play_ui``: the sound volume), never while skipping. Like the codex's notices: none during a scene replay, none on a quiet re-run (the
   runtime drops its holds).
 - ``OpenInbox`` (``open``'s story wait) → the stage holds the wait, then the game menu opens
   on the Inbox page at the newest thread (``open pigeon``: the newest that came by pigeon);
@@ -38,12 +43,14 @@ opens with ``open inbox`` / ``open pigeon``.
 from typing import TYPE_CHECKING, Final
 
 from engine.core.codexkinds import CHAT
-from engine.core.kits import device_look, device_words
+from engine.core.kits import arrive_text, device_look, device_words
 from engine.runtime.codex import CodexCategory, CodexEntry
 from engine.runtime.commands import MessageArrived, OpenInbox, Span, Style, TaggedText, WaitDone
 from engine.runtime.images import ImageFile, SolidColor
 from engine.runtime.send import uses_send
+from engine.ui.builtin.inbox_view import InboxView, ParaLook
 from engine.ui.builtin.kind_page import KindPage
+from engine.ui.devicelook import notice_skin
 from engine.ui.menus import MenuEntry
 from engine.ui.nav import InputKind
 
@@ -66,51 +73,71 @@ def look_of(delivery: "Delivery", default: str) -> str:
     return delivery.device or default
 
 
-def _header(delivery: "Delivery", look: str) -> str:
+def _header(delivery: "Delivery", look: str, config: object = None) -> str:
     """The italic line above a delivery: how it came and when."""
     if not delivery.sender:                              # a finished phone chat (round 1)
         return delivery.time
-    via = device_words(look).via
+    via = device_words(look, config).via
     return f"{via} · {delivery.time}" if delivery.time else via
 
 
-def _part(delivery: "Delivery", me: str, look: str, contact: str) -> list[TaggedText]:
-    """One delivery's paragraphs (module docstring)."""
-    out: list[TaggedText] = []
-    header = _header(delivery, look)
+def _part(delivery: "Delivery", me: str, look: str, contact: str, config: object = None
+          ) -> list[tuple[TaggedText, str]]:
+    """One delivery's paragraphs, each with its role for the look's drawing ("via",
+    "time", "them", "me", "sign"; ``ui/builtin/inbox_view.ParaLook``). Round 3: a thought
+    (``mind``) reads in italics."""
+    out: list[tuple[TaggedText, str]] = []
+    header = _header(delivery, look, config)
     if header:
-        out.append(TaggedText((Span(header, ITALIC),)))
+        out.append((TaggedText((Span(header, ITALIC),)), "via"))
     lines = delivery.lines
     if lines and lines[0].side == "time" and lines[0].text == delivery.time:
         lines = lines[1:]                                # the header already says when
-    letter = device_words(look).letter and bool(delivery.sender)
+    letter = device_words(look, config).letter and bool(delivery.sender)
+    plain = ITALIC if look == "mind" else PLAIN
+    bold = Style(bold=True, italic=plain.italic)
     signed = False
     for line in lines:
         if line.side == "time":
-            out.append(TaggedText((Span(line.text, ITALIC),)))
+            out.append((TaggedText((Span(line.text, ITALIC),)), "time"))
             continue
         name = me if line.side == "me" else line.name
+        role = "me" if line.side == "me" else "them"
         if letter and line.side == "them" and line.name == contact:
-            out.append(TaggedText((Span(line.text, PLAIN),)))
+            out.append((TaggedText((Span(line.text, plain),)), role))
             signed = True
             continue
-        out.append(TaggedText((Span(f"{name}: ", BOLD), Span(line.text, PLAIN)))
-                   if name else TaggedText((Span(line.text, PLAIN),)))
+        out.append((TaggedText((Span(f"{name}: ", bold), Span(line.text, plain)))
+                    if name else TaggedText((Span(line.text, plain),)), role))
     if signed:
-        out.append(TaggedText((Span(f"— {contact}", ITALIC),)))
+        out.append((TaggedText((Span(f"— {contact}", ITALIC),)), "sign"))
     return out
 
 
-def thread_entry(thread: "ContactThread", me: str, *, default: str = "phone",
-                 image: str | None = None) -> CodexEntry:
-    """``thread`` as the page's entry (module docstring); ``me`` names the player's lines,
-    ``default`` is the game's device look, ``image`` the contact's picture name."""
+def thread_parts(thread: "ContactThread", me: str, *, default: str = "phone",
+                 image: str | None = None, config: object = None
+                 ) -> "tuple[CodexEntry, tuple[ParaLook, ...]]":
+    """``thread`` as the page's entry (module docstring) and how each of its paragraphs
+    is dressed (round 3); ``me`` names the player's lines, ``default`` is the game's device
+    look, ``image`` the contact's picture name, ``config`` gives ``[device.*]``'s words."""
     paragraphs: list[TaggedText] = []
+    looks: list[ParaLook] = []
     for delivery in reversed(thread.parts):
-        paragraphs.extend(_part(delivery, me, look_of(delivery, default), delivery.contact))
+        look = look_of(delivery, default)
+        part = _part(delivery, me, look, delivery.contact, config)
+        for i, (text, role) in enumerate(part):
+            paragraphs.append(text)
+            looks.append(ParaLook(look, role, i == 0, i == len(part) - 1))
     newest = thread.newest
-    return CodexEntry(thread.key, CHAT.name, thread.title, CATEGORY, image,  # type: ignore[arg-type]
-                      tuple(paragraphs), newest.sid, "", 0)
+    entry = CodexEntry(thread.key, CHAT.name, thread.title, CATEGORY, image,  # type: ignore[arg-type]
+                       tuple(paragraphs), newest.sid, "", 0)
+    return entry, tuple(looks)
+
+
+def thread_entry(thread: "ContactThread", me: str, *, default: str = "phone",
+                 image: str | None = None, config: object = None) -> CodexEntry:
+    """``thread`` as the page's entry (``thread_parts`` without the looks)."""
+    return thread_parts(thread, me, default=default, image=image, config=config)[0]
 
 
 class AppInboxPort:
@@ -121,13 +148,14 @@ class AppInboxPort:
     show_locked = False
 
     def __init__(self, codex, me, *, default: str = "phone", contacts=lambda: {},
-                 images: "ImageIndex | None" = None) -> None:
+                 images: "ImageIndex | None" = None, config: object = None) -> None:
         self._codex = codex
         self._me = me
         self.default = default
         self._contacts = contacts
         self.images = images
-        self._made: tuple = ((), "", ())               # (threads, me, entries)
+        self.config = config
+        self._made: tuple = ((), "", (), {})           # (threads, me, entries, looks)
 
     @property
     def codex(self) -> "Codex":
@@ -138,10 +166,16 @@ class AppInboxPort:
         made = self._made
         if made[0] is not threads or made[1] != me:
             pictures = self._contacts()
-            made = self._made = (threads, me, tuple(
-                thread_entry(t, me, default=self.default, image=pictures.get(t.sender))
-                for t in threads))
+            parts = [thread_parts(t, me, default=self.default, image=pictures.get(t.sender),
+                                  config=self.config) for t in threads]
+            made = self._made = (threads, me, tuple(entry for entry, _ in parts),
+                                 {entry.name: looks for entry, looks in parts})
         return made[2]
+
+    def paragraph_looks(self, name: str) -> "tuple[ParaLook, ...] | None":
+        """Round 3: how each paragraph of entry ``name`` is drawn (``InboxView``)."""
+        self.entries()
+        return self._made[3].get(name)
 
     def categories(self) -> tuple[CodexCategory, ...]:
         return (CATEGORY,)
@@ -204,24 +238,30 @@ def install_inbox(app: "App", interp: "Interpreter",
     shell = getattr(app, "shell", None)
     port = AppInboxPort(codex, lambda: shell.words.get("inbox_me") if shell is not None
                         else "You", default=device_look(app.config), contacts=pictures,
-                        images=images)
+                        images=images, config=app.config)
     sends = uses_send(interp.program)
     pending: list[str | None] = [None]                 # the thread ``open`` shows first
 
     def page(host) -> KindPage:
         select, pending[0] = pending[0], None
-        return KindPage(port, PAGE, select=select)
+        return KindPage(port, PAGE, select=select, view=InboxView)
 
     def on_arrived(cmd: MessageArrived) -> None:
         if shell is None or getattr(shell, "replay", None) is not None:
             return
         look = cmd.device or port.default
-        text = device_words(look).arrive.format(name=cmd.title)
+        words = device_words(look, app.config)
         icon = None
         source = port.picture(cmd.image) if cmd.image is not None else None
         if isinstance(source, str):
             icon = app.assets.image(source)
-        shell.notify(text, icon=icon)
+        theme = getattr(shell, "theme", None)
+        cfg = theme.cfg if theme is not None else app.config.theme
+        shell.notify(arrive_text(words, cmd.title), icon=icon, skin=notice_skin(cfg, look))
+        skip = getattr(app, "skip_auto", None)
+        audio = getattr(app, "audio", None)
+        if words.sound and audio is not None and not (skip is not None and skip.skipping):
+            audio.play_ui(words.sound)                   # once, at the sound volume
 
     def open_inbox(cmd: OpenInbox) -> None:
         stage = getattr(app, "stage_screen", None)
@@ -261,4 +301,5 @@ def install_inbox(app: "App", interp: "Interpreter",
     return port
 
 
-__all__ = ["AppInboxPort", "CATEGORY", "install_inbox", "look_of", "thread_entry"]
+__all__ = ["AppInboxPort", "CATEGORY", "install_inbox", "look_of", "thread_entry",
+           "thread_parts"]

@@ -125,7 +125,7 @@ from engine.ui.builtin.load_fade import LoadFadeScreen
 from engine.ui.menu_screen import CursorKeeper, MenuScreen
 from engine.ui.menus import DEFAULT_ORDER, MENU_NOUNS, MenuRegistry, UiOverrides, join_names
 from engine.ui.nav import InputKind
-from engine.ui.notice import Kind, NoticeLayer, NoticeStyle, notice_style
+from engine.ui.notice import Kind, NoticeLayer, NoticeSkin, NoticeStyle, notice_style
 from engine.ui.paint import Painter
 from engine.ui.screen import Screen, ScreenStack
 from engine.ui.statuscorner import CornerStyle, StatusCorner, corner_style, reserved_areas
@@ -421,12 +421,14 @@ class GameShell:
 
     # -- notices (F11 C2, 04 §7.9) --
 
-    def notify(self, text: str, *, kind: Kind = "info", icon: "ImageRef | None" = None) -> None:
+    def notify(self, text: str, *, kind: Kind = "info", icon: "ImageRef | None" = None,
+               skin: "NoticeSkin | None" = None) -> None:
         """Show a notice (``"info"``, or ``"problem"`` with its bar) over whatever is on
         top. It waits while the top screen ``holds_notices`` (C7). F11, F12 (SEC-F12-12),
         F16 (W70), and F37 call this with their words; F37's achievement notice passes its
-        ``icon`` (drawn left of the text; without one the layout is unchanged)."""
-        self.notices.notify(text, kind=kind, hold=self._holds_notices(), icon=icon)
+        ``icon`` (drawn left of the text; without one the layout is unchanged). F65's arrival
+        notice passes its device look's ``skin`` (``notice.NoticeSkin``)."""
+        self.notices.notify(text, kind=kind, hold=self._holds_notices(), icon=icon, skin=skin)
 
     def update_layer(self, dt: float, *, focused: bool) -> None:
         """``App``, after ``ScreenStack.update``: notice times run while ``focused`` and the
