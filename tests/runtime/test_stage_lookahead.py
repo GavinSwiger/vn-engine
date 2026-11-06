@@ -49,9 +49,10 @@ def test_ac_f04_42_dialogue_words_need_the_speaker_on_stage(tmp_path):
     interp = _waiting(_lookahead_game(tmp_path / "game"))
     interp.stage = StageState(None, ())                 # hana not on stage
     found = lookahead(interp, interp.current)
-    assert "hana pout" not in found.sprites
+    # The one-word show hana now puts her on the (simulated) stage as "hana", so her
+    # words count; without that show they wouldn't (test_hide_and_scene_...).
+    assert found.sprites == ("hana", "daichi grin", "hana pout")
     assert set(found.backgrounds) == {"bg a", "bg b", "bg c"}
-    assert "daichi grin" in found.sprites
 
 
 def test_ac_f04_42_the_burst_carries_it_after_the_line(tmp_path):
@@ -149,10 +150,39 @@ def test_nothing_ahead_gives_none(tmp_path):
     assert PrefetchImages not in burst_types
 
 
-def test_stage_changes_along_the_walk_are_not_simulated(tmp_path):
+def test_a_character_who_enters_ahead_has_their_words_fetched(tmp_path):
+    # v1 perf review: "on stage" is simulated along the walk, so hana's first line after
+    # she enters names her expression too.
     program = story_game(tmp_path / "g", ['"A."', "show hana happy", 'hana pout "B."'])
     interp = _waiting(program)
     assert interp.stage.index_of("hana") is None
-    assert lookahead(interp, interp.current) == PrefetchImages((), ("hana happy",))
+    assert lookahead(interp, interp.current) == PrefetchImages((), ("hana happy", "hana pout"))
     interp.stage = replace(interp.stage)                    # unchanged value, same answer
-    assert lookahead(interp, interp.current) == PrefetchImages((), ("hana happy",))
+    assert lookahead(interp, interp.current) == PrefetchImages((), ("hana happy", "hana pout"))
+
+
+def test_hide_and_scene_take_speakers_off_the_simulated_stage(tmp_path):
+    program = story_game(tmp_path / "g", [
+        "show hana happy", "show daichi", '"A."', "hide hana", 'hana pout "B."',
+        'd grin "C."', "scene bg b", 'd sigh "D."', "show hana", 'hana smile "E."'])
+    interp = _waiting(program)
+    assert interp.stage.index_of("hana") is not None
+    found = lookahead(interp, interp.current)
+    assert found == PrefetchImages(("bg b",), ("daichi grin", "hana", "hana smile"))
+
+
+def test_dialogue_words_change_the_simulated_image(tmp_path):
+    # After "hana pout", the one-word show hana keeps "hana pout": nothing new to fetch.
+    program = story_game(tmp_path / "g", [
+        "show hana happy", '"A."', 'hana pout "B."', "show hana at left", 'hana pout "C."'])
+    interp = _waiting(program)
+    assert lookahead(interp, interp.current) == PrefetchImages((), ("hana pout",))
+
+
+def test_each_path_has_its_own_simulated_stage(tmp_path):
+    # The scene in one branch doesn't take hana off the other branch's stage.
+    program = story_game(tmp_path / "g", [
+        "show hana happy", '"A."', "if x:", "    scene bg a", '    hana pout "B."',
+        "else:", '    hana smile "C."'], top="default x = False\n")
+    interp = _waiting(program)
+    assert lookahead(interp, interp.current) == PrefetchImages(("bg a",), ("hana smile",))

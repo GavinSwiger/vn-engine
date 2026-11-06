@@ -334,73 +334,88 @@ def lookahead(interp: "Interpreter", start: "Statement") -> PrefetchImages | Non
     ``return`` and the end of a label block. It collects up to ``LOOKAHEAD_MAX_IMAGES``
     names in visit order: ``scene`` images (backgrounds); ``show`` images (sprites; the
     one-word form for a tag on stage keeps its image, so it is skipped); and the dialogue
-    words of a speaker whose tag is on the current stage. Stage changes along the walk are
-    not simulated. F07 walks a menu's choices through ``blocks()``.
+    words of a speaker whose tag is on stage. "On stage" is simulated along each path of the
+    walk (v1 perf review): it starts as the current stage, a ``show`` puts its tag there,
+    a ``hide`` takes it off, a ``scene`` empties it, and dialogue words change the speaker's
+    image; so a character who enters just ahead has their first lines' words fetched too.
+    F07 walks a menu's choices through ``blocks()``.
 
     Pure: reads the program, the stage, and ``G``'s Characters; changes nothing a
     fingerprint sees (the successor memo is a cache)."""
     from engine.runtime.character import Character  # below the interpreter (docstring)
 
     program = interp.program
-    on_stage = {sprite.tag: sprite for sprite in interp.stage.sprites}
+    # Each queued statement carries the stage its path reaches it with, as {tag: image};
+    # a change copies the dict, so paths never share a changed one.
     G = interp.G
     backgrounds: list[str] = []
     sprites: list[str] = []
     names: set[str] = set()
-    pending: deque["Statement"] = deque()
+    pending: deque[tuple["Statement", dict[str, str]]] = deque()
     queued: set[int] = set()
 
-    def push(stmt: object) -> None:
+    def push(stmt: object, stage: dict[str, str]) -> None:
         if isinstance(stmt, StatementNode) and id(stmt) not in queued:
             queued.add(id(stmt))
-            pending.append(stmt)
+            pending.append((stmt, stage))
 
-    def push_label(target: str) -> None:
+    def push_label(target: str, stage: dict[str, str]) -> None:
         label = program.labels.get(target)
         if label is not None and label.block:
-            push(label.block[0])
+            push(label.block[0], stage)
 
     def add(name: str, into: list[str]) -> None:
         if name not in names:
             names.add(name)
             into.append(name)
 
+    on_stage = {sprite.tag: sprite.image for sprite in interp.stage.sprites}
     for block in start.blocks():        # F07: a menu's choices come before what follows
         if block:
-            push(block[0])
-    push(interp._successor(start)[0])
+            push(block[0], on_stage)
+    push(interp._successor(start)[0], on_stage)
     visits = 0
     while pending and visits < LOOKAHEAD_MAX_STATEMENTS and len(names) < LOOKAHEAD_MAX_IMAGES:
-        stmt = pending.popleft()
+        stmt, on_stage = pending.popleft()
         visits += 1
         if isinstance(stmt, Scene):
             if stmt.image is not None:
                 add(stmt.image, backgrounds)
+            on_stage = {}
         elif isinstance(stmt, Show):
-            here = on_stage.get(stmt.tag or first_word(stmt.image))
-            if not (here is not None and stmt.image == first_word(here.image)):
+            tag = stmt.tag or first_word(stmt.image)
+            here = on_stage.get(tag)
+            if not (here is not None and stmt.image == first_word(here)):
                 add(stmt.image, sprites)
+                on_stage = {**on_stage, tag: stmt.image}
+        elif isinstance(stmt, Hide):
+            if stmt.tag in on_stage:
+                on_stage = {t: image for t, image in on_stage.items() if t != stmt.tag}
         elif isinstance(stmt, SayNode) and stmt.speaker is not None and stmt.attributes:
             c = G.get(stmt.speaker)
             if isinstance(c, Character):
-                here = on_stage.get(speaker_tag(c, stmt.speaker))
+                tag = speaker_tag(c, stmt.speaker)
+                here = on_stage.get(tag)
                 if here is not None:
-                    add(first_word(here.image) + " " + " ".join(stmt.attributes), sprites)
+                    image = first_word(here) + " " + " ".join(stmt.attributes)
+                    add(image, sprites)
+                    if image != here:
+                        on_stage = {**on_stage, tag: image}
         if visits >= LOOKAHEAD_MAX_STATEMENTS:
             break                       # nothing more can be visited: no more successors
         blocks = stmt.blocks()
         if blocks:                      # an if's branches, F07 a menu's choices
             for block in blocks:
                 if block:
-                    push(block[0])
-            push(interp._successor(stmt)[0])
+                    push(block[0], on_stage)
+            push(interp._successor(stmt)[0], on_stage)
         elif isinstance(stmt, Jump):
-            push_label(stmt.target)
+            push_label(stmt.target, on_stage)
         elif isinstance(stmt, CallNode):
-            push_label(stmt.target)
-            push(interp._successor(stmt)[0])
+            push_label(stmt.target, on_stage)
+            push(interp._successor(stmt)[0], on_stage)
         elif not isinstance(stmt, Return):
-            push(interp._successor(stmt)[0])
+            push(interp._successor(stmt)[0], on_stage)
     if not names:
         return None
     return PrefetchImages(tuple(backgrounds), tuple(sprites))      # ≤ 8 names in all
