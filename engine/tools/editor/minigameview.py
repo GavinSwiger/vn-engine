@@ -37,6 +37,7 @@ from typing import Any
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declplan, declrename, files
+from engine.tools.editor import tablepanel as tp
 from engine.tools.editor import minigamedata as mg
 from engine.tools.editor.dialogs import ask, ask_text, show_error
 from engine.tools.editor.scriptedit import STALE, FilePlan, LineEdit, Plan, Refuse
@@ -394,55 +395,8 @@ def starter(kind: str, lookups: Lookups) -> object | None:
 
 # --- Small widgets -----------------------------------------------------------------------------
 
-class _Combo:
-    """An editable drop-down that commits on a pick, Enter or focus-out (``on_change(text)``)."""
-
-    def __init__(self, parent: tk.Misc, values: Sequence[str], value: str, *,
-                 on_change: Callable[[str], object], width: int = 18,
-                 readonly: bool = False) -> None:
-        self.var = tk.StringVar(master=parent, value=value)
-        self.value = value
-        self.on_change = on_change
-        self.widget = self.box = ttk.Combobox(parent, textvariable=self.var, values=list(values),
-                                              width=width,
-                                              state="readonly" if readonly else "normal")
-        self.box.bind("<<ComboboxSelected>>", lambda _e: self.commit(), add="+")
-        for key in ("<Return>", "<KP_Enter>", "<FocusOut>"):
-            self.box.bind(key, lambda _e: self.commit(), add="+")
-
-    def set(self, value: str) -> None:
-        self.value = value
-        self.var.set(value)
-
-    def commit(self) -> None:
-        text = self.var.get().strip()
-        if text != self.value:
-            self.value = text
-            self.on_change(text)
-
-
-class _Entry:
-    """A one-line entry committing on Enter or focus-out; Escape puts the value back."""
-
-    def __init__(self, parent: tk.Misc, value: str, *, on_change: Callable[[str], object],
-                 width: int = 30) -> None:
-        self.var = tk.StringVar(master=parent, value=value)
-        self.value = value
-        self.on_change = on_change
-        self.widget = self.entry = ttk.Entry(parent, textvariable=self.var, width=width)
-        for key in ("<Return>", "<KP_Enter>", "<FocusOut>"):
-            self.entry.bind(key, lambda _e: self.commit(), add="+")
-        self.entry.bind("<Escape>", lambda _e: self.var.set(self.value), add="+")
-
-    def set(self, value: str) -> None:
-        self.value = value
-        self.var.set(value)
-
-    def commit(self) -> None:
-        text = self.var.get()
-        if text != self.value:
-            self.value = text
-            self.on_change(text)
+_Combo = tp.Combo          # the Table panel's widgets (F64 round 2), under their old names
+_Entry = tp.Entry
 
 
 class _Message:
@@ -1762,7 +1716,16 @@ class GiftsEditor(Editor):
         self.remove_button = ttk.Button(bar, text=REMOVE_CHARACTER, style="Secondary.TButton",
                                         command=self.remove_character)
         self.remove_button.pack(side="left", padx=(px(4), 0))
-        self.table = ttk.Frame(self.frame)
+        lo, hi = mg.GIFT_POINTS
+        self.panel = tp.TablePanel(self.frame, (
+            tp.Column("item", GIFT_HEADS[0], tp.PICK, choices=lambda: self.lookups.items),
+            tp.Column("reaction", GIFT_HEADS[1], tp.PICK, width=10,
+                      choices=lambda: [(r, mg.REACTION_TITLES[r]) for r in mg.REACTIONS]),
+            tp.Column("points", GIFT_HEADS[2], tp.NUMBER, width=4, lo=lo, hi=hi),
+            tp.Column("line", GIFT_HEADS[3], tp.TEXT, width=30, blank=True)),
+            px=px, on_edit=self._edited, on_pinned=lambda _i, key, value: self.set_any(
+                **{key: value}), on_remove=self.remove_gift)
+        self.table = self.panel.frame
         self.table.pack(anchor="w", fill="x", pady=(px(8), 0))
         foot = ttk.Frame(self.frame)
         foot.pack(fill="x", pady=(px(8), 0))
@@ -1793,8 +1756,7 @@ class GiftsEditor(Editor):
     # -- building --
 
     def rebuild(self) -> None:
-        for child in self.table.winfo_children():
-            child.destroy()
+        self.panel.clear()
         self.any_fields, self.rows = {}, []
         sections = self.table_model.sections
         self.current = min(self.current, max(0, len(sections) - 1))
@@ -1812,64 +1774,24 @@ class GiftsEditor(Editor):
         section = self.section
         if section is None:
             return
-        pad = self.px(6)
-        for c, head in enumerate(GIFT_HEADS):
-            ttk.Label(self.table, text=head.upper(), style="Caption.TLabel").grid(
-                row=0, column=c, sticky="w", padx=(0, pad))
         row = section.any_row or mg.GiftRow(mg.ANY_GIFT, "neutral", 0)
-        ttk.Label(self.table, text=ANY_GIFT_TEXT).grid(row=1, column=0, sticky="w",
-                                                       padx=(0, pad), pady=1)
-        self.any_fields = self._cells(1, row, lambda **v: self.set_any(**v))
-        titles = [t for _n, t in items]
-        for r, gift in enumerate(self.gifts(), start=2):
-            index = r - 2
-            item = _Combo(self.table, titles, self.lookups.item_title(gift.item), width=18,
-                          readonly=True,
-                          on_change=lambda text, i=index: self.set_gift(
-                              i, item=self._item_name(text)))
-            item.widget.grid(row=r, column=0, sticky="w", padx=(0, pad), pady=1)
-            fields = self._cells(r, gift, lambda i=index, **v: self.set_gift(i, **v))
-            fields["item"] = item
-            ttk.Button(self.table, text=REMOVE, width=3, style="Ghost.TButton",
-                       command=lambda i=index: self.remove_gift(i)).grid(
-                row=r, column=4, sticky="w")
-            self.rows.append(fields)
-
-    def _cells(self, r: int, row: mg.GiftRow, set_: Callable[..., object]) -> dict[str, Any]:
-        """The Reaction, Points and What they say cells of grid row ``r``."""
-        pad = self.px(6)
-        titles = [mg.REACTION_TITLES[x] for x in mg.REACTIONS]
-        reaction = _Combo(self.table, titles, mg.REACTION_TITLES.get(row.reaction, row.reaction),
-                          width=10, readonly=True,
-                          on_change=lambda text: set_(reaction=self._reaction(text)))
-        reaction.widget.grid(row=r, column=1, sticky="w", padx=(0, pad), pady=1)
-        var = tk.StringVar(master=self.table, value=str(row.points))
-        lo, hi = mg.GIFT_POINTS
-        spin = ttk.Spinbox(self.table, from_=lo, to=hi, increment=1, width=4, textvariable=var,
-                           command=lambda: set_(points=self._points(var)))
-        for key in ("<Return>", "<KP_Enter>", "<FocusOut>"):
-            spin.bind(key, lambda _e: set_(points=self._points(var)), add="+")
-        spin.grid(row=r, column=2, sticky="w", padx=(0, pad), pady=1)
-        line = _Entry(self.table, row.line or "", width=30,
-                      on_change=lambda text: set_(line=text.strip() or None))
-        line.widget.grid(row=r, column=3, sticky="w", padx=(0, pad), pady=1)
-        return {"reaction": reaction, "points": var, "spin": spin, "line": line}
-
-    def _item_name(self, title: str) -> str:
-        return next((n for n, t in self.lookups.items if t == title), title)
+        self.panel.show([self._values(g) for g in self.gifts()],
+                        pinned=[(ANY_GIFT_TEXT, self._values(row))])
+        self.any_fields = self._aliased(self.panel.pinned_cells[0])
+        self.rows = [self._aliased(cells) for cells in self.panel.rows]
 
     @staticmethod
-    def _reaction(title: str) -> str:
-        return next((r for r, t in mg.REACTION_TITLES.items() if t == title), title.lower())
+    def _values(row: mg.GiftRow) -> dict[str, object]:
+        return {"item": row.item, "reaction": row.reaction, "points": row.points,
+                "line": row.line}
 
     @staticmethod
-    def _points(var: tk.StringVar) -> int | None:
-        try:
-            value = int(str(var.get()).strip())
-        except ValueError:
-            return None
-        lo, hi = mg.GIFT_POINTS
-        return value if lo <= value <= hi else None
+    def _aliased(cells: dict[str, Any]) -> dict[str, Any]:
+        """The panel's cells under the names this editor always had ("spin")."""
+        return {**cells, "spin": cells["points.spin"]}
+
+    def _edited(self, index: int, key: str, value: object) -> None:
+        self.set_gift(index, **{key: value})                 # type: ignore[arg-type]
 
     # -- changes --
 
