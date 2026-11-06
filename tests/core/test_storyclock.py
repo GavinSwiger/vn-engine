@@ -1,8 +1,10 @@
 """F63 story clock: ``[calendar]`` in config.toml and the calendar arithmetic of
 ``engine/core/storyclock.py`` (specs/F63-story-clock/SPEC.md)."""
 
-from engine.core.storyclock import (DEFAULT_PARTS, Calendar, CalendarProblem, MONTHS,
-                                    calendar_of)
+import pytest
+
+from engine.core.storyclock import (DEFAULT_PARTS, Calendar, CalendarProblem, DateProblem,
+                                    MONTHS, calendar_of)
 
 
 def test_no_calendar_and_no_kit_gives_the_defaults(load):
@@ -56,3 +58,18 @@ def test_bad_values_are_config_errors(load):
                  'parts = ["' + "x" * 31 + '"]', 'last_day = "soon"'):
         result = load(f"[calendar]\n{text}\n")
         assert len(result.errors) == 1, text
+
+
+def test_go_to():
+    calendar = Calendar(months=MONTHS)                 # day 1 is 1 January
+    assert calendar.go_to(5, 1, part="Evening") == (5, 2)          # later today
+    assert calendar.go_to(5, 3, part="evening") == (6, 2)          # passed: tomorrow's
+    assert calendar.go_to(5, 2, text="Evening") == (5, 2)          # a quoted part, no change
+    assert calendar.go_to(10, 0, text="10 January", part="Night") == (10, 3)   # today counts
+    assert calendar.go_to(10, 3, text="10 January") == (375, 0)    # its part has passed
+    assert calendar.go_to(10, 3, day=2) == (2, 0)                   # a day number may go back
+    for kwargs, form in (({"part": "Noon"}, "part"), ({"text": "Smarch 3"}, "date"),
+                         ({"day": 100_000}, "max")):
+        with pytest.raises(DateProblem) as problem:
+            calendar.go_to(1, 0, **kwargs)
+        assert problem.value.form == form

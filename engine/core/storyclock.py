@@ -186,7 +186,8 @@ class Calendar:
         one and nothing else is given; ``part`` a part's name. A part alone: later today, else
         that part of the next day. A repeating date: the next time it comes (today counts
         while its part is still ahead). A day number may go back. ``DateProblem`` otherwise."""
-        if text is not None and day is None and part is None                 and self.part_index(text) is not None:
+        if (text is not None and day is None and part is None
+                and self.part_index(text) is not None):
             text, part = None, text
         index = 0
         if part is not None:
@@ -325,6 +326,6 @@ def _with_start(calendar: Calendar, start: object, problems: list[CalendarProble
     return replace(calendar, **changes)
 
 
-__all__ = ["Calendar", "CalendarProblem", "DateProblem", "DAY_MAX", "DAYS_IN_MAX", "DEFAULT_CALENDAR",
-           "DEFAULT_PARTS", "MONTHS", "MONTHS_MAX", "NAME_MAX", "PARTS_MAX", "SEASONS_MAX",
+__all__ = ["Calendar", "CalendarProblem", "DateProblem", "DAY_MAX", "DAYS_IN_MAX",
+           "DEFAULT_CALENDAR", "DEFAULT_PARTS", "MONTHS", "MONTHS_MAX", "NAME_MAX", "PARTS_MAX", "SEASONS_MAX",
            "SEASON_DAYS", "TEXT_FIELDS", "TEXT_MAX", "WEEKDAYS", "WEEKDAYS_MAX", "calendar_of"]
