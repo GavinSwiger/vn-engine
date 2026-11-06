@@ -19,6 +19,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Final
 
+from engine.core.constants import WRITE_ROOT_DIRNAMES
 from engine.core.paths import engine_root, games_dir, is_editor_build, studio_user_dir
 
 EXAMPLE_GAME_NAME: Final = "Paper Lanterns"
@@ -26,8 +27,7 @@ EXAMPLE_GAME_DIRNAME: Final = "game"            # under engine_root(): the bundl
 LAST_GAME_FILE: Final = "last-game.txt"         # in studio_user_dir()
 LAST_GAME_MAX_BYTES: Final = 4096
 # What a run, a playtest or Studio writes in a game folder: never part of the example copy.
-SKIPPED_TOP: Final = frozenset({".studio", "logs", "saves", "persistent", "settings",
-                                "characters", "builds"})
+SKIPPED_TOP: Final = frozenset({".studio", *WRITE_ROOT_DIRNAMES, "builds"})
 SKIPPED_ANYWHERE: Final = frozenset({"__pycache__"})
 NO_GAMES_FOLDER: Final = ("vn-engine Studio couldn't find your Documents folder, so it has "
                           "nowhere to keep your games.")

@@ -29,7 +29,7 @@ READER_TITLE: Final = "Beginner's guide"          # the default guide's title
 OPEN_OUTSIDE: Final = "Open in your viewer"
 CLOSE_TEXT: Final = "Close"
 READ_MAX: Final = 1024 * 1024
-WIDTH, HEIGHT = 720, 640                # px at 100 %
+WIDTH, HEIGHT = 740, 640                # px at 100 %
 
 # Run styles: plain text, bold, italic, inline code; row kinds: h1 h2 h3, a paragraph, a list
 # item (its indent level), a code block line, a blank line.
