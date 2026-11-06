@@ -41,7 +41,7 @@ The pin at the right of the status bar switches between two ways (also **Dock th
 beside Studio** in the **▾** next to **▶ Play** and in the **Run** menu; Studio remembers it
 for every game):
 
-- **📌 Docked**: the game opens without a title bar, and when you move or resize Studio, the
+- **📌 Docked** (the default): the game opens without a title bar, and when you move or resize Studio, the
   game moves with it. If Studio fills the screen, Studio leaves maximized and takes the
   left part; the game gets the right. When the game closes, Studio goes back as it was,
   unless you moved or resized it.

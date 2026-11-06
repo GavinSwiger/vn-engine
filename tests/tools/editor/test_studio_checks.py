@@ -411,7 +411,7 @@ def test_ac50_the_status_bar(studio, studio_game):
         return [item.shown() for item in bar.items if item.shown()]
 
     assert shown() == ["my_game", "Checking…", "▶ Not running.", "Ln 1, Col 1",
-                       "Spaces: 4", "UTF-8", "LF", "Floating"]     # 2.3: the game's pin
+                       "Spaces: 4", "UTF-8", "LF", "\U0001f4cc Docked"]   # 2.3: the pin, Docked by default
     ed.text.mark_set("insert", "6.4")                       # a cursor move
     root.update()
     assert ed.cursor_item.cget("text") == "Ln 6, Col 5"

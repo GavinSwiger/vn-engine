@@ -56,6 +56,11 @@ def test_play_places_the_game_and_studio_makes_room_and_gives_it_back(studio, tm
     monkeypatch.setattr(gamebeside, "give_back",
                         lambda root, before: moves.append(("back", before)))
     monkeypatch.setattr(win, "_game_size", lambda: GAME)
+    assert win.game_beside.get()                    # a new person starts Docked (card 2.3)
+    assert win.dock_pin.cget("text") == gamebeside.PIN_DOCKED
+    win.game_beside.set(False)                      # choose Floating: the flow below
+    win.toggle_game_beside()
+    assert uiprefs.load()["game_beside"] is False   # and it is remembered
 
     win.play_from_start()                           # room on the right: placed, right
     argv = game.argvs[-1]                           # after --report-to-editor
@@ -64,7 +69,7 @@ def test_play_places_the_game_and_studio_makes_room_and_gives_it_back(studio, tm
     assert moves == []
 
     assert gamebeside.BORDERLESS not in argv        # floating: its own title bar
-    menu = win.play_bar.menu                        # ▾ and Run: the switch, off at first
+    menu = win.play_bar.menu                        # ▾ and Run: the switch, now off
     assert menu.entrycget("end", "label") == gamebeside.MENU == "Dock the game beside Studio"
     assert win.dock_pin.cget("text") == gamebeside.PIN_FLOATING        # and the pin
     assert not win.game_beside.get()
@@ -137,7 +142,7 @@ def test_a_docked_game_follows_studio_and_the_pin_switches(studio, tmp_path, mon
     def moved() -> None:
         win._studio_moved(type("E", (), {"widget": win.root})())
 
-    win.dock_pin.label.event_generate("<Button-1>")             # the pin: Docked
+    # Docked from the start (the default); the pin switches to Floating further down.
     assert win.game_beside.get() and win.dock_pin.cget("text") == gamebeside.PIN_DOCKED
     win.play_from_start()
     win.apply_events([PreviewEvent(PreviewState.RUNNING)])

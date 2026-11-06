@@ -186,8 +186,9 @@ class RunWiring:
             self._state_writable = False
         self.play_bar.set_guide(self.guide_shown)
         # Proposal 2.3: docked or floating (one setting, remembered for this person).
+        # Docked unless this person chose Floating (the card's default, 2026-11-06).
         self.game_beside = tk.BooleanVar(master=self.root,
-                                         value=uiprefs.value("game_beside") is True)
+                                         value=uiprefs.value("game_beside") is not False)
         self.play_bar.add_check(gamebeside.MENU, self.game_beside, self.toggle_game_beside)
         self._room_before: tuple[str, str] | None = None
         self._follow_after: str | None = None
