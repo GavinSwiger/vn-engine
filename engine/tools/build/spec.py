@@ -1,60 +1,76 @@
-"""The PyInstaller spec and version file (F42 ``04-technical.md`` §3.1, §7.4; SEC-F42-02,
--03, -04, -15; ``07`` I-5).
+"""The PyInstaller spec of the player runtime (F42 ``04-technical.md`` §3.1, §7.4; SEC-F42-02,
+-03, -04, -15; ``07`` I-5; F66).
 
-Why this module exists: the build drives PyInstaller as a child from a generated spec
-(architect decision 3), so what goes into the bundle is decided here, in one readable text:
+Why this module exists: every built game runs the same frozen player (``launcher_main`` running
+``<exe folder>/game``), so PyInstaller runs once to make that player, the *runtime*
+(``runtime.build_player_runtime``), and builds only copy it (architect decision 3, kept as one
+readable spec text):
 
 - ``Analysis([<engine root>/main.py], pathex=[])``: the exe runs ``main.py``'s
   ``launcher_main``. ``hiddenimports`` = ``engine_modules()`` (every real ``engine``
   package and module except ``engine/tools`` and ``engine/data``, so engine modules imported
-  by name are bundled) + the plugins' standard-library modules (``plugins.scan_imports``).
-  ``excludes``: ``tkinter``, ``_tkinter``, ``engine.tools``, ``PyInstaller``, and the
-  network/OpenSSL modules unless a plugin may need them (``excludes()``).
+  by name are bundled) + ``stdlib_modules()`` (the whole standard library a build may ship,
+  so any plugin's standard-library import works without a new PyInstaller run).
+  ``excludes``: ``EXCLUDES`` (``engine.tools``, ``PyInstaller`` and the standard-library
+  parts builds never ship, ``plugins.NOT_BUNDLED``: ``tkinter`` and the like).
 - ``datas``: only ``engine/data/fonts`` and ``engine/data/icon.png``, placed at
   ``engine/data/...`` inside the bundle so ``engine_data_dir()`` finds them under
   ``_MEIPASS`` (I-5). ``engine/data/starter/`` and ``engine/data/sample/`` never ship.
-- ``EXE(console=False, upx=False, icon, version, contents_directory="_internal")`` and
-  ``COLLECT(upx=False, name="app")``: one-folder mode, the stock bootloader, no UPX.
-- No game-folder path is ever an input: the icon and version file are written into staging
-  first, and the game folder is copied separately (SEC-F42-03).
+- ``EXE(console=False, upx=False, icon, contents_directory="_internal")`` and
+  ``COLLECT(upx=False, name="app")``: one-folder mode, the stock bootloader, no UPX. Each
+  build writes the game's own icon and version resource onto its copy of the exe
+  (``winres``).
+- No game-folder path is ever an input (SEC-F42-03).
 
-Every value is written with ``repr()``: PyInstaller evaluates both files as Python, so a title
-like ``x'); import os #`` stays a string.
+The network and OpenSSL binaries (``NETWORK_BINARIES``) are in the runtime; a build leaves them
+out unless a plugin may need them (``needs_network``, P8).
 
-``packer_argv(spec_file, staging)`` is the packer's command: ``-E -B -m PyInstaller`` with
-dist and work folders inside staging (SEC-F42-04).
+Every value is written with ``repr()``: PyInstaller evaluates the spec as Python.
 
-Child-only; imports ``core``, ``tools.build.procs`` and the standard library.
+``packer_argv(spec_file, work)`` is the packer's command: ``-E -B -m PyInstaller`` with
+dist and work folders inside ``work`` (SEC-F42-04).
+
+Imports ``core``, ``tools.build.procs``/``plugins`` and the standard library.
 """
 
 import os
 import sys
+import sysconfig
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Final
 
 from engine.core.paths import engine_root
+from engine.tools.build.plugins import NOT_BUNDLED
 from engine.tools.build.procs import DIST_DIR, WORK_DIR
 
 ENTRY_SCRIPT: Final = "main.py"
 COLLECT_NAME: Final = "app"              # dist/app/* is moved into the build folder
 CONTENTS_DIR: Final = "_internal"
-EXCLUDES: Final = ("tkinter", "_tkinter", "engine.tools", "PyInstaller")
-# Network and OpenSSL modules the engine never uses at run time (P8). PyInstaller follows
-# every import it can see, including ones inside functions: stdlib ``platform`` (which
-# ``engine.app.platform`` imports for the OS name) imports ``socket`` inside ``node()``, and
-# ``hashlib`` imports the OpenSSL-backed ``_hashlib`` (libcrypto-3.dll, about 5 MB) when it
-# can. The engine only calls ``platform.system()``/``release()``/``version()`` (``uname()``
+EXCLUDES: Final = ("engine.tools", "PyInstaller", *sorted(NOT_BUNDLED))
+# Network and OpenSSL binaries the engine never uses at run time (P8): stdlib ``platform``
+# (which ``engine.app.platform`` imports for the OS name) imports ``socket`` inside ``node()``,
+# and ``hashlib`` imports the OpenSSL-backed ``_hashlib`` (libcrypto-3.dll, about 5 MB) when
+# it can. The engine only calls ``platform.system()``/``release()``/``version()`` (``uname()``
 # returns an empty node name without ``socket``) and ``hashlib.blake2b``/``sha256``, which
-# come from Python's built-in ``_blake2``/``_sha2``. So a build leaves them out, unless a
+# come from Python's built-in ``_blake2``/``_sha2``. So a build leaves these files of
+# ``_internal`` out (their modules then fail to import, which the engine expects), unless a
 # plugin imports something that may need them (``NEEDS_NETWORK``), when they stay.
-NETWORK_EXCLUDES: Final = ("_hashlib", "_ssl", "ssl", "_socket", "socket")
+# ``_socket.pyd`` (85 KB) always stays: with the whole standard library in the runtime,
+# PyInstaller's multiprocessing runtime hook imports ``socket`` at every start (F66).
+NETWORK_BINARIES: Final = frozenset({"_hashlib.pyd", "_ssl.pyd", "libcrypto-3.dll",
+                                     "libssl-3.dll"})
 NEEDS_NETWORK: Final = frozenset({
     "asyncio", "concurrent", "email", "ftplib", "hashlib", "hmac", "http", "imaplib",
     "logging.handlers", "mailbox", "multiprocessing", "poplib", "secrets", "selectors",
     "smtplib", "socket", "socketserver", "ssl", "urllib", "uuid", "wsgiref", "xmlrpc"})
 SKIPPED_PACKAGES: Final = frozenset({"tools", "data"})     # under engine/
 SKIPPED_MODULES: Final = frozenset({"__main__"})           # the frozen exe runs main.py
+# Standard-library names the runtime leaves out besides NOT_BUNDLED: CPython's own test
+# extensions and demo modules (``_test*`` too), and test folders inside packages.
+STDLIB_SKIPPED: Final = frozenset({"__hello__", "__phello__", "_ctypes_test", "xxlimited",
+                                   "xxlimited_35", "xxsubtype", "antigravity", "this"})
+STDLIB_TEST_DIRS: Final = frozenset({"test", "tests", "idle_test"})
 MAX_VERSION_PART: Final = 0xFFFF
 
 
@@ -103,51 +119,56 @@ def version_numbers(file_version: str) -> tuple[int, int, int, int]:
     return numbers  # type: ignore[return-value]
 
 
-def excludes(hidden: Iterable[str] = ()) -> list[str]:
-    """The spec's ``excludes``: ``EXCLUDES``, plus ``NETWORK_EXCLUDES`` unless a plugin
-    module in ``hidden`` is (or is inside) one of ``NEEDS_NETWORK``."""
-    needs = any(name == wanted or name.startswith(wanted + ".")
-                for name in hidden for wanted in NEEDS_NETWORK)
-    return [*EXCLUDES, *(() if needs else NETWORK_EXCLUDES)]
+def needs_network(hidden: Iterable[str] = ()) -> bool:
+    """Whether a plugin module in ``hidden`` is (or is inside) one of ``NEEDS_NETWORK``: the
+    build then keeps ``NETWORK_BINARIES``."""
+    return any(name == wanted or name.startswith(wanted + ".")
+               for name in hidden for wanted in NEEDS_NETWORK)
 
 
-def version_text(*, title: str, version: str, file_version: str, exe_name: str) -> str:
-    """The Windows version resource (PR-F42-20): Product name and File description = title,
-    Product version = the version text, File version = ``file_version`` (``1.2.0.0``),
-    Original filename = the exe name."""
-    numbers = version_numbers(file_version)
-    strings = [("FileDescription", title), ("FileVersion", file_version),
-               ("InternalName", exe_name.removesuffix(".exe")),
-               ("OriginalFilename", exe_name), ("ProductName", title),
-               ("ProductVersion", version)]
-    table = ",\n".join(f"          StringStruct({key!r}, {value!r})" for key, value in strings)
-    return (
-        "# UTF-8\n"
-        "# Generated by vn-engine's build (engine/tools/build/spec.py).\n"
-        "VSVersionInfo(\n"
-        "  ffi=FixedFileInfo(\n"
-        f"    filevers={numbers!r},\n"
-        f"    prodvers={numbers!r},\n"
-        "    mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),\n"
-        "  kids=[\n"
-        "    StringFileInfo([\n"
-        "      StringTable('040904B0', [\n"
-        f"{table}])]),\n"
-        "    VarFileInfo([VarStruct('Translation', [1033, 1200])])\n"
-        "  ]\n"
-        ")\n"
-    )
+def _stdlib_name_ok(name: str) -> bool:
+    return (name.isidentifier() and name not in NOT_BUNDLED and name not in STDLIB_SKIPPED
+            and not name.startswith("_test"))
 
 
-def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
-              hidden: Iterable[str] = (), root: Path | None = None) -> str:
-    """The spec for ``exe_stem`` (the exe name without ``.exe``). ``icon`` and
-    ``version_file`` are files in staging (None on platforms without them); ``hidden`` the
-    plugins' standard-library modules."""
+def stdlib_modules() -> list[str]:
+    """Every standard-library module a build may ship, sorted: the top-level names in
+    ``sys.stdlib_module_names`` (less ``NOT_BUNDLED``, ``STDLIB_SKIPPED`` and ``_test*``),
+    plus each package's real submodules on disk (test folders and ``__main__`` left out).
+    Names this platform lacks (``pwd``) are harmless: PyInstaller notes them and goes on."""
+    stdlib = Path(sysconfig.get_paths()["stdlib"])
+    found = {name for name in sys.stdlib_module_names if _stdlib_name_ok(name)}
+    for top in sorted(found):
+        package = stdlib / top
+        if not (package / "__init__.py").is_file():
+            continue
+        stack = [(package, (top,))]
+        while stack:
+            folder, parts = stack.pop()
+            try:
+                with os.scandir(folder) as entries:
+                    listed = [(entry.name, entry.is_dir(follow_symlinks=False),
+                               entry.is_file(follow_symlinks=False)) for entry in entries]
+            except OSError:
+                continue
+            for name, is_dir, is_file in listed:
+                if is_dir and name.isidentifier() and name not in STDLIB_TEST_DIRS \
+                        and (folder / name / "__init__.py").is_file():
+                    found.add(".".join((*parts, name)))
+                    stack.append((folder / name, (*parts, name)))
+                elif is_file and name.endswith(".py"):
+                    stem = name[:-3]
+                    if stem.isidentifier() and stem not in ("__init__", "__main__"):
+                        found.add(".".join((*parts, stem)))
+    return sorted(found)
+
+
+def spec_text(*, exe_stem: str, icon: Path | None, root: Path | None = None) -> str:
+    """The runtime's spec for ``exe_stem`` (the exe name without ``.exe``); ``icon`` is an
+    ``.ico`` in the work folder (None on platforms without one)."""
     base = Path(root) if root is not None else engine_root()
     data = base / "engine" / "data"
-    plugin_modules = sorted(set(hidden))
-    hiddenimports = engine_modules(base) + plugin_modules
+    hiddenimports = engine_modules(base) + stdlib_modules()
     datas = [(str(data / "fonts"), "engine/data/fonts"),
              (str(data / "icon.png"), "engine/data")]
     return (
@@ -161,7 +182,7 @@ def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
         "    hookspath=[],\n"
         "    hooksconfig={},\n"
         "    runtime_hooks=[],\n"
-        f"    excludes={excludes(plugin_modules)!r},\n"
+        f"    excludes={list(EXCLUDES)!r},\n"
         "    noarchive=False,\n"
         ")\n"
         "pyz = PYZ(a.pure)\n"
@@ -177,7 +198,6 @@ def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
         "    upx=False,\n"
         "    console=False,\n"
         f"    icon={None if icon is None else str(icon)!r},\n"
-        f"    version={None if version_file is None else str(version_file)!r},\n"
         f"    contents_directory={CONTENTS_DIR!r},\n"
         ")\n"
         "coll = COLLECT(\n"
@@ -192,14 +212,14 @@ def spec_text(*, exe_stem: str, icon: Path | None, version_file: Path | None,
     )
 
 
-def packer_argv(spec_file: Path, staging: Path) -> list[str]:
-    """``python -E -B -m PyInstaller`` on ``spec_file`` with dist and work in staging."""
-    staging = Path(staging)
+def packer_argv(spec_file: Path, work: Path) -> list[str]:
+    """``python -E -B -m PyInstaller`` on ``spec_file`` with dist and work in ``work``."""
+    work = Path(work)
     return [sys.executable, "-E", "-B", "-m", "PyInstaller", "--noconfirm",
-            "--log-level", "WARN", "--distpath", str(staging / DIST_DIR),
-            "--workpath", str(staging / WORK_DIR), str(spec_file)]
+            "--log-level", "WARN", "--distpath", str(work / DIST_DIR),
+            "--workpath", str(work / WORK_DIR), str(spec_file)]
 
 
 __all__ = ["COLLECT_NAME", "CONTENTS_DIR", "ENTRY_SCRIPT", "EXCLUDES", "NEEDS_NETWORK",
-           "NETWORK_EXCLUDES", "engine_modules", "excludes", "packer_argv", "spec_text",
-           "version_numbers", "version_text"]
+           "NETWORK_BINARIES", "engine_modules", "needs_network", "packer_argv", "spec_text",
+           "stdlib_modules", "version_numbers"]

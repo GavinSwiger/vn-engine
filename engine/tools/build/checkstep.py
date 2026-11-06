@@ -51,9 +51,15 @@ _KIND: Final = re.compile(CHECK_KIND_RE)
 
 
 def check_argv(game_root: Path) -> list[str]:
-    """The check grandchild's command (full check: no ``--no-launch``)."""
-    return [sys.executable, "-E", "-B", "-m", "engine", "check", str(game_root),
-            "--report-to-editor"]
+    """The check grandchild's command (full check: no ``--no-launch``): ``python -E -B -m
+    engine check …``, or in the Studio app (F66) its own exe's child form
+    (``core.childcmd.engine_argv``)."""
+    command = ("check", str(game_root), "--report-to-editor")
+    try:
+        from engine.core.childcmd import engine_argv
+    except ImportError:                     # an engine without the Studio app's child form
+        return [sys.executable, "-E", "-B", "-m", "engine", *command]
+    return engine_argv(*command, python_flags=("-E", "-B"))
 
 
 @dataclass

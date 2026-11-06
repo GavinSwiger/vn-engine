@@ -20,10 +20,13 @@ from ``buildmodel`` (pure); this module only lays out widgets and wires the runn
   the marker test (``buildmodel.open_targets``), never a path from a report (I-11). Run
   starts the exe from an argument list with the build folder as working directory.
 - **Install build tool** (D2) runs ``InstallRunner`` (pinned, hashed pip) with its output in
-  the Setup view.
+  the Setup view. Developer installs only (F66): a build copies the player runtime
+  (``player``), so with Studio's bundled player, or a cached one, Build is ready, and
+  Studio's app never offers the button (``can_install``).
 - ``build_running(win)``: the close guard (``CLOSE_WHILE_BUILDING``) in ``window.on_close``.
 
-``make_runner``, ``make_installer``, ``tool_status``, ``open_folder``, ``run_game``,
+``make_runner``, ``make_installer``, ``tool_status``, ``can_install``, ``open_folder``,
+``run_game``,
 ``choose_folder``, ``choose_icon``, ``clock``, ``ask`` and ``show_error`` are module names so
 tests replace them.
 
@@ -45,7 +48,7 @@ from typing import Any
 
 from engine.core.paths import GamePaths, engine_data_dir
 from engine.script.assetgroups import CONFIG_REF
-from engine.tools.build import names, procs, texts
+from engine.tools.build import names, player, procs, texts
 from engine.tools.editor import buildmodel, buildprefs, dialogs, icons
 from engine.tools.editor.buildrunner import (
     DONE as ROW_DONE,
@@ -134,8 +137,14 @@ def make_installer(game_root: Path) -> Any:
 
 
 def tool_status() -> procs.ToolStatus:
+    """F66: ready with a player runtime; else (developer install) PyInstaller's status."""
     importlib.invalidate_caches()               # a pip install just now must be seen
-    return procs.tool_status()
+    return player.tool_status()
+
+
+def can_install() -> bool:
+    """Whether **Install build tool** may be offered (never in Studio's app)."""
+    return player.can_install_tool()
 
 
 clock: Callable[[], float] = time.monotonic
@@ -677,6 +686,11 @@ class BuildDialog:
                                     y=self.tool.wanted)[0]
             self.tool_label.configure(text=message, style="BuildWarn.TLabel",
                                       image=self.icon("warning", THEME["marker.warning"]))
+            offer = self.tool.key in TOOL_KEYS and can_install()
+            if offer and not self.install_button.winfo_manager():
+                self.install_button.pack(anchor="w", pady=(self.px(8), 0))
+            elif not offer and self.install_button.winfo_manager():
+                self.install_button.pack_forget()
 
     def _set_install_state(self, state: str | None, text: str = "") -> None:
         """``installing``, ``installed``, ``failed`` (or ``None``): the line and button."""
@@ -695,7 +709,7 @@ class BuildDialog:
 
     def install(self) -> None:
         """**Install build tool**: pip with the pinned, hashed file, output below."""
-        if self.installing:
+        if self.installing or not can_install():
             return
         if self.view != SETUP:
             self.show_setup()
@@ -1044,7 +1058,7 @@ class BuildDialog:
             button.configure(command=lambda: self._toggle(button, box, SHOW_DETAILS, row))
             button.pack(side="left")
         buttons: list[tuple[str, Callable[[], object], bool]] = []
-        if code in TOOL_KEYS:
+        if code in TOOL_KEYS and can_install():
             buttons.append((INSTALL, self.install, False))
         buttons += [(CLOSE, self.close, False), (TRY_AGAIN, self.show_setup, True)]
         made = self._button_row(page, buttons)
@@ -1189,4 +1203,4 @@ class _IconPicker:
 
 __all__ = ["BuildDialog", "build_running", "choose_folder", "choose_icon", "installer_for",
            "make_installer", "make_runner", "open_build_dialog", "open_folder", "run_game",
-           "runner_for", "tool_status", "update_menu"]
+           "runner_for", "tool_status", "can_install", "update_menu"]

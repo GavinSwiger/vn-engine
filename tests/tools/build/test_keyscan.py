@@ -94,12 +94,13 @@ def test_ac_f48_59_the_build_child_gets_no_key(monkeypatch, tmp_path):
     assert not any(key in part for part in argv for key in (ANT, PROJ))
     assert not {k.upper() for k in kwargs["env"]} & procs.PROVIDER_KEY_VARS
     assert ANT not in kwargs["env"].values() and PROJ not in kwargs["env"].values()
-    # The build's own grandchildren (check, packer) go through the same spawn.
+    # The build's own grandchild (the check) goes through the same spawn; so does the packer
+    # that makes a player runtime (F66, test_runtime).
     children = FakeChildren()
     calls = []
     deps = fake_deps(children, popen=lambda argv, **kw: calls.append(kw) or children(argv))
     assert run(game, tmp_path / "out", deps)[0] == 0
-    assert len(calls) == 2 and all(
+    assert len(calls) == 1 and all(
         not {k.upper() for k in kw["env"]} & procs.PROVIDER_KEY_VARS for kw in calls)
 
 

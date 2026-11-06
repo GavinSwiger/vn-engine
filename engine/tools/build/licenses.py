@@ -116,6 +116,13 @@ def collect_notices(dll_dirs: Iterable[Path] | None = None) -> Notices:
     return Notices(files, tuple(sorted(unknown)))
 
 
+def unknown_dlls(dll_dirs: Iterable[Path]) -> tuple[str, ...]:
+    """The DLLs directly in ``dll_dirs`` with no notice in ``DLL_NOTICES``, sorted. Reads
+    names only, so a build from Studio's app (no installed Python) checks its copy too."""
+    found = {dll for folder in dll_dirs for dll in bundled_dlls(Path(folder))}
+    return tuple(sorted(dll for dll in found if dll.casefold() not in DLL_NOTICES))
+
+
 def write_notices(folder: Path, notices: Notices) -> None:
     """Create ``folder`` (it must not exist) and write every notice by exclusive create."""
     folder = Path(folder)
@@ -203,4 +210,4 @@ def _crlf(text: str) -> str:
 
 __all__ = ["DLL_NOTICES", "ENGINE_NOTICE", "NOTICES_DIR", "Notice", "Notices",
            "bundled_dlls", "collect_notices", "installed_pygame_dir", "python_license",
-           "write_notices"]
+           "unknown_dlls", "write_notices"]

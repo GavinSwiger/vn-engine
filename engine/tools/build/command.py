@@ -9,7 +9,9 @@ changes when everything succeeded.
 
 **Preflight** (a failure writes nothing to *Save to*): the game folder; ``config.toml`` (with
 errors, the check still runs so Problems list them, then ``B_CONFIG``); the Game ID
-(``B_NO_ID``); the build tool (``B_NO_TOOL``/``B_TOOL_VERSION``); *Save to* inside the game
+(``B_NO_ID``); the player runtime (``player.tool_status``: ready with Studio's bundled
+player or a cached one; else, in a developer install, PyInstaller to make one, ``B_NO_TOOL``/
+``B_TOOL_VERSION``; in Studio's app ``B_NO_RUNTIME``); *Save to* inside the game
 folder, holding it, or inside ``<engine root>/engine`` (``B_OUT_INSIDE``, real paths both
 ways); an earlier build there (``B_EXISTS`` without ``--replace``; anything else at that name
 ``B_NAME_TAKEN``); the plugin scan (``B_PLUGIN_IMPORT``); the icon (``BAD_ICON``); the walk
@@ -19,11 +21,15 @@ refused: ``B_CANT_WRITE``).
 
 **Steps** (``build_step`` at each start; ``texts.steps``): check (``checkstep``; errors
 ``B_ERRORS``) → copy (``sweep_stale``, ``make_staging``, ``copy_game`` into
-``<staging>/b/<folder>/game``, then F48's key scan, ``keyscan.scan``) → pack (icon, version file and spec in ``<staging>/spec``;
-PyInstaller as a child, its output in a 200-line ring; non-zero → ``B_PACK_FAILED`` with the
-redacted tail; ``dist/app/*`` moved into the folder) → notices (``licenses/``, ``README.txt``,
-``_internal/vn-build.json``; a bundled DLL without a notice is ``B_PACK_FAILED``) → zip (only
-with ``--zip``) → finish (``install_build``, ``build_done``).
+``<staging>/b/<folder>/game``, then F48's key scan, ``keyscan.scan``) → pack (F66: the
+player runtime, ``runtime.ensure_runtime``, which in a developer install makes and caches one
+first with PyInstaller as a child, a failure being ``B_PACK_FAILED`` with the redacted tail;
+``runtime.copy_runtime`` into the folder with the exe renamed and the network binaries left
+out unless a plugin may need them; then the game's icon and version resource on the exe,
+``winres.set_resources``) → notices (the runtime's ``licenses/`` must be there and every
+bundled DLL have a notice, else ``B_PACK_FAILED``; ``README.txt``,
+``_internal/vn-build.json``) → zip (only with ``--zip``) → finish (``install_build``,
+``build_done``). No step needs Python or PyInstaller when a runtime is ready.
 
 Any failure, exception or Ctrl+C kills the running grandchild's tree, removes staging in a
 ``finally``, and reports ``build_failed {code, values, details}`` (``B_CRASHED`` for an
@@ -62,7 +68,8 @@ from engine.core.errors import UserFacingError
 from engine.core.logsetup import redaction_roots
 from engine.core.paths import GamePaths, engine_root
 from engine.core.redact import RedactRoot
-from engine.tools.build import checkstep, keyscan, names, plugins, procs, spec, texts, tree
+from engine.tools.build import (checkstep, keyscan, names, player, plugins, procs, runtime,
+                                spec, texts, tree)
 from engine.tools.build.texts import BuildStopped
 
 EXIT_BUILT: Final = 0
@@ -73,11 +80,9 @@ BUILDS_FOLDER: Final = "builds"                  # D6: next to the game folder
 SPACE_MARGIN: Final = 100 * 1024 * 1024          # PR-F42-22
 BUILD_DIR: Final = "b"                           # <staging>/b/<folder>: short (LONG_PATHS)
 GAME_DIR: Final = "game"
-LICENSES_DIR: Final = "licenses"
+LICENSES_DIR: Final = player.LICENSES_DIR
 README: Final = "README.txt"
-ICON_FILE: Final = "icon.ico"
-VERSION_FILE: Final = "version.txt"
-SPEC_FILE: Final = "game.spec"
+RUNTIME_TOKEN: Final = "<runtime>"
 IS_WINDOWS: Final = os.name == "nt"
 
 
@@ -91,14 +96,14 @@ def _make_icon(game_root: Path, ref: str | None) -> bytes:
         raise BuildStopped(texts.BAD_ICON) from None
 
 
-def _collect_notices(dll_dirs: list[Path]):
+def _unknown_dlls(dll_dirs: list[Path]) -> tuple[str, ...]:
     from engine.tools.build import licenses
-    return licenses.collect_notices(dll_dirs)
+    return licenses.unknown_dlls(dll_dirs)
 
 
-def _write_notices(folder: Path, notices) -> None:
-    from engine.tools.build import licenses
-    licenses.write_notices(folder, notices)
+def _set_resources(exe: Path, ico: bytes, version: bytes) -> None:
+    from engine.tools.build import winres
+    winres.set_resources(exe, ico, version)
 
 
 def _write_zip(folder: Path, target: Path) -> tuple[int, int]:
@@ -109,14 +114,15 @@ def _write_zip(folder: Path, target: Path) -> tuple[int, int]:
 @dataclass
 class BuildDeps:
     """Everything the step machine reaches outside itself; tests replace parts of it (a fake
-    ``popen`` for the check and packer children above all)."""
+    ``popen`` for the check child and a fake runtime above all)."""
     popen: Callable[..., object] | None = None
-    tool_status: Callable[[], procs.ToolStatus] = procs.tool_status
+    tool_status: Callable[[], procs.ToolStatus] = player.tool_status
+    get_runtime: Callable[..., Path] = runtime.ensure_runtime
     disk_free: Callable[[Path], int] = lambda path: shutil.disk_usage(path).free
     kill_tree: Callable[[object], None] = procs.kill_tree
     make_icon: Callable[[Path, str | None], bytes] = _make_icon
-    collect_notices: Callable[[list[Path]], object] = _collect_notices
-    write_notices: Callable[[Path, object], None] = _write_notices
+    set_resources: Callable[[Path, bytes, bytes], None] = _set_resources
+    unknown_dlls: Callable[[list[Path]], tuple[str, ...]] = _unknown_dlls
     write_zip: Callable[[Path, Path], tuple[int, int]] = _write_zip
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
     engine_root: Callable[[], Path] = engine_root
@@ -362,6 +368,9 @@ class BuildJob:
         self._roots = (redaction_roots(game_root=root, game_dir_as_given=self.game_dir,
                                        engine_root=self.deps.engine_root())
                        + procs.build_roots(save_to, staging))
+        cache = player.cache_root()
+        if cache is not None:
+            self._roots.append(RedactRoot(RUNTIME_TOKEN, str(cache)))
         self.reporter.step(2, m, texts.STEP_COPY, files=prep.files, size=prep.bytes,
                            staging=self.staging.name)
         build_dir = staging / BUILD_DIR
@@ -473,51 +482,36 @@ class BuildJob:
 
     def _pack(self, staging: Path, build_folder: Path, *, title: str, version: str,
               exe: str, ico: bytes | None, hidden: tuple[str, ...]) -> None:
-        spec_dir = staging / procs.SPEC_DIR
-        os.mkdir(spec_dir)
-        icon_path = version_path = None
-        if ico is not None:
-            icon_path = spec_dir / ICON_FILE
-            icon_path.write_bytes(ico)
-            version_path = spec_dir / VERSION_FILE
-            version_path.write_text(spec.version_text(
-                title=title, version=version, file_version=names.file_version(version),
-                exe_name=exe), encoding="utf-8")
-        spec_file = spec_dir / SPEC_FILE
-        spec_file.write_text(spec.spec_text(exe_stem=exe.removesuffix(names.EXE_SUFFIX),
-                                            icon=icon_path, version_file=version_path,
-                                            hidden=hidden, root=self.deps.engine_root()),
-                             encoding="utf-8")
+        """F66: copy the player runtime (made first in a developer install without one),
+        then write the game's icon and version resource on its exe."""
         kwargs = {} if self.deps.popen is None else {"popen": self.deps.popen}
-        proc = procs.spawn(spec.packer_argv(spec_file, staging), **kwargs)
-        self.proc = proc
-        ring: collections.deque[str] = collections.deque(maxlen=procs.TAIL_LINES)
         try:
-            for body in checkstep.read_lines(proc.stdout):
-                ring.append(body.decode("utf-8", "replace"))
+            source = self.deps.get_runtime(scratch=staging, started=self._started, **kwargs)
+        except runtime.RuntimeBuildError as error:
+            raise _stopped("B_PACK_FAILED", self._redacted(error.lines)) from None
         finally:
-            try:
-                proc.stdout.close()
-            except (OSError, ValueError):
-                pass
-        code = proc.wait()
-        self.proc = None
-        app = staging / procs.DIST_DIR / spec.COLLECT_NAME
-        if code != 0 or not tree.is_real_dir(app) or not (app / exe).is_file():
-            raise _stopped("B_PACK_FAILED", self._redacted(list(ring)))
-        for entry in sorted(os.listdir(app)):
-            os.rename(app / entry, build_folder / entry)
+            self.proc = None
+        runtime.copy_runtime(source, build_folder, exe,
+                             keep_network=spec.needs_network(hidden))
+        if ico is None:
+            return
+        from engine.tools.build import winres
+        info = winres.version_info(title=title, version=version,
+                                   file_version=names.file_version(version), exe_name=exe)
+        try:
+            self.deps.set_resources(build_folder / exe, ico, info)
+        except winres.ResourceError as error:
+            raise _stopped("B_PACK_FAILED", self._redacted([str(error)])) from None
 
     def _notices(self, build_folder: Path, *, title: str, version: str, exe: str,
                  app_id: str) -> None:
         internal = build_folder / spec.CONTENTS_DIR
-        if not tree.is_real_dir(internal):
-            raise _stopped("B_PACK_FAILED", [f"{spec.CONTENTS_DIR} is missing."])
-        notices = self.deps.collect_notices([internal, internal / "pygame"])
-        unknown = tuple(getattr(notices, "unknown_dlls", ()))
+        for needed in (internal, build_folder / LICENSES_DIR):
+            if not tree.is_real_dir(needed):
+                raise _stopped("B_PACK_FAILED", [f"{needed.name} is missing."])
+        unknown = tuple(self.deps.unknown_dlls([internal, internal / "pygame"]))
         if unknown:
             raise _stopped("B_PACK_FAILED", [texts.NO_NOTICE.format(dll=dll) for dll in unknown])
-        self.deps.write_notices(build_folder / LICENSES_DIR, notices)
         with open(build_folder / README, "xb") as stream:
             stream.write(texts.readme_bytes(name=title, version=version, exe=exe,
                                             app_id=app_id))

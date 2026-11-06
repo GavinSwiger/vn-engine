@@ -223,6 +223,9 @@ TOO_BIG_BYTES = "more than 8 GB"
 FAILURES: dict[str, tuple[str, str]] = {
     "B_NO_TOOL": ("The build tool (PyInstaller) isn't installed.", _TOOL_FIX),
     "B_TOOL_VERSION": ("The build tool is version {x}, but this engine needs {y}.", _TOOL_FIX),
+    # F66: Studio's app builds from its own player folder; this is a damaged install.
+    "B_NO_RUNTIME": ("This copy of Studio is missing its player folder, so it can't build.",
+                     "Install Studio again from its zip, keeping all its files together."),
     "B_NO_ID": ("config.toml has no Game ID ([game] id).",
                 'Add one in Build game…, or add a line under [game]: id = "{slug}"'),
     "B_CONFIG": ("config.toml has problems, so the game can't be built yet.", _PROBLEMS_FIX),

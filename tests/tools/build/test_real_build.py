@@ -1,6 +1,7 @@
 """F42 P8: real builds (``-m build``; AC-F42-03, -06, -07, -11, -12, -22, -31, -38, -40).
 
-These tests run ``python -m engine build`` for real (PyInstaller as a child), then run the
+These tests run ``python -m engine build`` for real (F66: PyInstaller as a child makes the
+player runtime once, cached per engine; builds copy it), then run the
 built exe. They need the pinned PyInstaller for the running interpreter
 (``python -m pip install --require-hashes -r requirements-build.txt``) and are skipped
 unless asked for: ``VN_BUILD=1`` or ``-m build`` (tests/conftest.py). CI's Windows build job
@@ -220,9 +221,10 @@ def test_ac_f42_07_bundle_has_no_dev_tools_tk_starter_or_sample(example_build):
     tk = ("tkinter", "_tkinter", "tcl", "tk", "_tcl_data", "_tk_data", "tcl86t.dll",
           "tk86t.dll", "_tkinter.pyd")
     assert not [f for f in files if any(part.startswith(tk) for part in f.split("/"))]
-    # P8 (spec.NETWORK_EXCLUDES): no OpenSSL or sockets unless a plugin may need them.
-    assert not [f for f in files if f in ("_hashlib.pyd", "_ssl.pyd", "_socket.pyd",
-                                          "libcrypto-3.dll", "libssl-3.dll")]
+    # P8 (spec.NETWORK_BINARIES): no OpenSSL or sockets unless a plugin may need them.
+    # F66: _socket.pyd stays (PyInstaller's multiprocessing runtime hook imports socket).
+    assert not [f for f in files if f in ("_hashlib.pyd", "_ssl.pyd", "libcrypto-3.dll",
+                                          "libssl-3.dll")]
 
 
 # --- AC-F42-11 ---------------------------------------------------------------------------------

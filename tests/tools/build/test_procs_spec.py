@@ -10,7 +10,7 @@ from pathlib import Path
 
 from engine.core.paths import engine_root
 from engine.core.redact import RedactRoot
-from engine.tools.build import procs, spec, texts
+from engine.tools.build import procs, spec, texts, winres
 
 REPO = Path(__file__).resolve().parents[3]
 HASH_RE = re.compile(r"--hash=sha256:[0-9a-f]{64}")
@@ -104,8 +104,7 @@ def test_ac_f42_39_build_side_children_spec_and_redaction(tmp_path, monkeypatch)
     assert packer[1:5] == ["-E", "-B", "-m", "PyInstaller"]
     for flag in ("--distpath", "--workpath"):
         assert Path(packer[packer.index(flag) + 1]).is_relative_to(staging)
-    text = spec.spec_text(exe_stem="Paper Lanterns", icon=staging / "spec" / "icon.ico",
-                          version_file=staging / "spec" / "version.txt", hidden=["json"])
+    text = spec.spec_text(exe_stem="player", icon=staging / "spec" / "icon.ico")
     for item in [*install, *packer, text]:
         assert str(game) not in item
     tree = ast.parse(text)                                # PyInstaller evaluates it
@@ -114,23 +113,27 @@ def test_ac_f42_39_build_side_children_spec_and_redaction(tmp_path, monkeypatch)
     analysis = {k.arg: ast.literal_eval(k.value) for k in calls_by_name["Analysis"].keywords}
     assert analysis["pathex"] == []
     assert [dest for _, dest in analysis["datas"]] == ["engine/data/fonts", "engine/data"]
-    assert {"tkinter", "engine.tools", "PyInstaller", "_hashlib", "_socket"} <= set(
+    assert {"tkinter", "_tkinter", "engine.tools", "PyInstaller", "idlelib", "test"} <= set(
         analysis["excludes"])
-    # P8: the network/OpenSSL trim stays off when a plugin may need it.
-    assert "_hashlib" not in spec.excludes(["json", "urllib.request"])
-    assert "_hashlib" not in spec.excludes(["hashlib"])
+    # P8: the network/OpenSSL binaries are left out of a build unless a plugin may need them.
+    assert spec.needs_network(["json", "urllib.request"]) and spec.needs_network(["hashlib"])
+    assert not spec.needs_network(["json", "sqlite3", "hashlibx"])
+    # F66: the runtime holds the whole standard library a build may ship, so any plugin's
+    # stdlib import works without PyInstaller; never tkinter, tests or the installers.
     hidden = analysis["hiddenimports"]
     assert "engine.core.paths" in hidden and "json" in hidden
+    assert {"sqlite3", "email.mime.text", "xml.etree.ElementTree", "socket"} <= set(hidden)
     assert not [m for m in hidden if m.startswith(("engine.tools", "engine.data"))]
+    assert not [m for m in hidden if m.split(".")[0] in ("tkinter", "idlelib", "test",
+                                                            "ensurepip", "_testcapi")
+                or m.endswith(("__main__", ".test")) or ".test." in m]
     exe = {k.arg: k.value for k in calls_by_name["EXE"].keywords}
     assert ast.literal_eval(exe["upx"]) is False and ast.literal_eval(exe["console"]) is False
 
-    hostile = "x', 'y'); import os  #"
-    version = spec.version_text(title=hostile, version="1.2-beta", file_version="1.2.0.0",
-                                exe_name="x.exe")
-    strings = [n.value for n in ast.walk(ast.parse(version)) if isinstance(n, ast.Constant)]
-    assert hostile in strings and "1.2-beta" in strings
-    assert not [n for n in ast.walk(ast.parse(version)) if isinstance(n, ast.Import)]
+    hostile = "x', 'y'); import os  #"                 # a title is data in the resource
+    version = winres.version_info(title=hostile, version="1.2-beta", file_version="1.2.0.0",
+                                  exe_name="x.exe")
+    assert hostile.encode("utf-16-le") in version and "1.2-beta".encode("utf-16-le") in version
 
     home = Path.home()
     lines = [f"line {i}" for i in range(300)] + [

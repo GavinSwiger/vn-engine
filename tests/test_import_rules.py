@@ -73,11 +73,12 @@ PYGAME_SUBPACKAGES = {"engine.tools.helper", "engine.tools.console"}
 # F42 (04 §3.4, 07 I-10): tools/build imports core, script, the stdlib and itself (and the
 # engine version, for the build marker, like the tools row); pygame only
 # in icon.py; never PyInstaller (it runs only as a child). tools/editor (Studio) may import
-# only the five shared build modules, and those import only each other within tools/build.
+# only the shared build modules, and those import only each other within tools/build. F66 adds
+# ``player`` (which runtime a build uses, Build's readiness) to the shared set.
 PYGAME_FILES = {"engine/tools/build/icon.py"}
 EXTERNAL_BANNED: dict[str, tuple[str, ...]] = {"engine.tools.build": ("PyInstaller",)}
 BUILD_PACKAGE = "engine.tools.build"
-SHARED_BUILD = frozenset({"names", "texts", "rules", "tree", "procs"})
+SHARED_BUILD = frozenset({"names", "texts", "rules", "tree", "procs", "player"})
 SHARED_BUILD_USERS = {"engine.tools.editor"}
 # F41 (04 §3; F43 07 I-9): tools/lint.py, the linter's rules, has tools/check.py's row; it
 # never imports tools.check (check imports lint).

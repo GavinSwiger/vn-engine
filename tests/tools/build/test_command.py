@@ -1,17 +1,17 @@
-"""F42 P5: the build's step machine with fake check and packer children (AC-F42-02, -16, -19,
--21, -33). Real PyInstaller builds are P8's."""
+"""F42 P5: the build's step machine with a fake check child and a fake player runtime
+(AC-F42-02, -16, -19, -21, -33; F66). Real builds are P8's."""
 
 import io
 import json
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from engine.core.editorreport import REPORT_MARKER
-from engine.tools.build import checkstep, command, names, procs, tree
-from engine.tools.build.licenses import Notice, Notices
+from engine.tools.build import checkstep, command, names, player, procs, runtime, tree
 from tests.core.test_safefile import link_dir
 
 TITLE, VERSION, APP_ID = "Paper Lanterns", "0.1.0", "paper-lanterns"
@@ -50,8 +50,25 @@ class FakeProc:
         return self.returncode
 
 
+def make_fake_runtime(folder: Path) -> Path:
+    """A runtime's shape: the player exe, ``_internal`` (with a network binary), ``licenses``
+    and the meta file."""
+    (folder / "_internal" / "pygame").mkdir(parents=True)
+    (folder / "player.exe").write_bytes(b"MZ fake exe")
+    (folder / "_internal" / "python312.dll").write_bytes(b"dll")
+    (folder / "_internal" / "_ssl.pyd").write_bytes(b"pyd")
+    (folder / "_internal" / "pygame" / "SDL2.dll").write_bytes(b"dll")
+    (folder / "licenses").mkdir()
+    (folder / "licenses" / "vn-engine.txt").write_bytes(b"x\r\n")
+    (folder / player.META_NAME).write_text(
+        json.dumps({"format": player.RUNTIME_FORMAT, "key": "k", "exe": "player.exe"}),
+        encoding="utf-8")
+    return folder
+
+
 class FakeChildren:
-    """``popen`` for the check (``check`` lines) and the packer (writes ``dist/app``)."""
+    """``popen`` for the check (``check`` lines) and ``get_runtime`` for the pack step (a
+    fake runtime, or a failed runtime build with ``pack_lines``)."""
 
     def __init__(self, check=None, pack_code=0, pack_lines=(), on_pack=None) -> None:
         self.check = CLEAN_CHECK if check is None else check
@@ -59,32 +76,37 @@ class FakeChildren:
         self.pack_lines = list(pack_lines)
         self.on_pack = on_pack
         self.argvs: list[list[str]] = []
+        self.scratches: list[Path] = []
+        self.resources: list[tuple] = []
+        self._temp = tempfile.TemporaryDirectory()
+        self.runtime = make_fake_runtime(Path(self._temp.name) / "runtime")
 
     def __call__(self, argv, **kwargs):
         self.argvs.append(argv)
-        if "check" in argv:
-            return FakeProc(self.check, 0)
-        dist = Path(argv[argv.index("--distpath") + 1])
-        if self.pack_code == 0:
-            app = dist / "app"
-            (app / "_internal").mkdir(parents=True)
-            (app / EXE).write_bytes(b"MZ fake exe")
-            (app / "_internal" / "python312.dll").write_bytes(b"dll")
+        assert "check" in argv
+        return FakeProc(self.check, 0)
+
+    def get_runtime(self, *, scratch, started, popen=None):
+        self.scratches.append(scratch)
         if self.on_pack is not None:
-            self.on_pack(argv)
-        staging = str(dist.parent).encode()
-        return FakeProc([line.replace(b"{staging}", staging) for line in self.pack_lines],
-                        self.pack_code)
+            self.on_pack(scratch)
+        if self.pack_code != 0:
+            staging = str(scratch).encode()
+            raise runtime.RuntimeBuildError(
+                [line.replace(b"{staging}", staging).decode() for line in self.pack_lines])
+        return self.runtime
 
 
 def fake_deps(children: FakeChildren, **over) -> command.BuildDeps:
     values = dict(
         popen=children,
+        get_runtime=children.get_runtime,
         tool_status=lambda: procs.ToolStatus(None, procs.PYINSTALLER_VERSION),
         disk_free=lambda path: 100 * GIB,
         kill_tree=lambda proc: None,
         make_icon=lambda root, ref: b"ICO",
-        collect_notices=lambda dirs: Notices((Notice("vn-engine.txt", b"x\r\n"),)),
+        set_resources=lambda exe, ico, info: children.resources.append((exe, ico, info)),
+        unknown_dlls=lambda dirs: (),
         now=lambda: datetime(2026, 11, 2, tzinfo=timezone.utc))
     values.update(over)
     return command.BuildDeps(**values)
@@ -147,10 +169,19 @@ def test_ac_f42_02_exit_codes_and_cli_lines(game, tmp_path):
     assert marker["id"] == APP_ID and marker["built"] == "2026-11-02T00:00:00Z"
     assert tree.is_earlier_build(built) and tree.zip_is_earlier_build(
         out / f"{FOLDER}.zip", FOLDER)
-    # Children: argument lists; the packer's argv holds no game-folder path.
-    check_argv, pack_argv = children.argvs
+    # The check child; then the runtime copied (F66), its exe renamed, the meta file and the
+    # network binaries left out, the licenses kept, and the icon and version on the exe.
+    [check_argv] = children.argvs
     assert check_argv[-3:] == ["check", str(game.resolve()), "--report-to-editor"]
-    assert not any(str(game) in part for part in pack_argv)
+    assert len(children.scratches) == 1 and tree.STAGING_RE.fullmatch(
+        children.scratches[0].name)
+    assert not (built / "player.exe").exists() and not (built / player.META_NAME).exists()
+    assert (built / "_internal" / "python312.dll").is_file()
+    assert (built / "_internal" / "pygame" / "SDL2.dll").is_file()
+    assert not (built / "_internal" / "_ssl.pyd").exists()
+    assert (built / "licenses" / "vn-engine.txt").read_bytes() == b"x\r\n"
+    [(exe, ico, info)] = children.resources
+    assert exe.name == EXE and ico == b"ICO" and TITLE.encode("utf-16-le") in info
 
     # 1: not built, with the Can't build / Fix lines on stderr.
     code, stdout, stderr = run(game, out, fake_deps(FakeChildren()))
@@ -222,13 +253,12 @@ def test_ac_f42_19_a_failure_at_each_step_leaves_save_to_unchanged(game, tmp_pat
     if "install" in patches:
         monkeypatch.setattr(tree, "install_build", patches["install"])
     if "notices" in patches:
-        over["collect_notices"] = lambda dirs: Notices((), patches["notices"])
+        over["unknown_dlls"] = lambda dirs: patches["notices"]
     if "write_zip" in patches:
         over["write_zip"] = patches["write_zip"]
     seen = {}
     children = FakeChildren(**child_options,
-                            on_pack=lambda argv: seen.setdefault("staging", Path(
-                                argv[argv.index("--distpath") + 1]).parent))
+                            on_pack=lambda scratch: seen.setdefault("staging", scratch))
     code, stdout, _ = run(game, out, fake_deps(children, **over), report=True, zip=True)
     assert code == 1
     failed = events(stdout)[-1]

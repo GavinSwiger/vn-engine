@@ -385,6 +385,26 @@ def test_ac_f42_26_each_failure_shows_its_message_and_fix_details_and_install(
     assert dialog.build_button.instate(["!disabled"])
 
 
+def test_f66_studio_app_never_offers_install_build_tool(studio, route_game, builds, asked,
+                                                       monkeypatch):
+    monkeypatch.setattr(builddialog, "can_install", lambda: False)
+    status = [procs.ToolStatus("B_NO_TOOL")]
+    monkeypatch.setattr(builddialog, "tool_status", lambda: status[0])
+    ed = studio(route_game)
+    dialog = open_dialog(ed)
+    assert not dialog.install_button.winfo_manager()       # the line says why; no button
+    assert dialog.build_button.instate(["disabled"])
+    dialog.install()                                       # a stray call does nothing
+    assert not dialog.installing
+    dialog.tool = TOOL_OK
+    child = start_build(ed, dialog)
+    child.send("build_failed", code="B_NO_TOOL", values={}, details=[])
+    child.end(1)
+    pump(ed, lambda: dialog.view == builddialog.FAILED)
+    names = [b.cget("text") for b in dialog.page.winfo_children()[-1].winfo_children()]
+    assert names == [builddialog.CLOSE, builddialog.TRY_AGAIN]
+
+
 # --- AC-F42-27 --------------------------------------------------------------------------------
 
 def test_ac_f42_27_finished_view_texts_and_the_open_and_run_targets(
