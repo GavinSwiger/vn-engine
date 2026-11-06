@@ -821,6 +821,7 @@ usable thumbnail shows F11's themed placeholder, never the checkerboard.
 | Choice fade-in | `choice.fade_in_ms` 120, `linear`, from the frame the buttons appear; a pick is an instant cut | F07 every menu |
 | Choice guard | 250 ms after the buttons appear, picks are ignored (focus still moves) | F07 every menu |
 | Choice countdown (F51) | `menu time N`: N s (Timing assist Slower 2N s, No time limits none), counted only while the menu is on top, drawn, not hidden and the window has focus; the bar shrinks every frame, the number shows whole seconds rounded up; at 0 the timeout choice is picked (an instant cut). A Timing assist change keeps the fraction of time left. Reduced motion: the bar moves once per whole second, with the number; never a pulse, shake or flash | F51 timed menus |
+| Check roll (F59) | 1.3 s in all, counted only while it is on top and the window has focus: the dice change face every 75 ms and bounce (at most 14 units, shrinking) for 600 ms, then land on the roll and the sum and result appear (a cut). A press, skip, a restore or New Game ends it at once. Reduced motion: landed from the first frame, no bounce | F59 checks on choices |
 | `cut` (proposed, F09) | New picture in the next frame; 0 ms | `with cut`, and any length 0 |
 | `dissolve` (proposed, F09) | Per-pixel blend old → new, `linear`; 500 ms (`[effects] dissolve`) | `with dissolve`, `Dissolve(…)` defines |
 | `fade` (proposed, F09) | Old → color (first half), color → new (second half), `linear` each half; 1,000 ms, `effects.fade_color` | `with fade`, `Fade(…)` defines; F18's chapter cards by default |
@@ -1171,6 +1172,32 @@ item), `engine/app/meters.py` (keeps the corner in line with the story's shown l
 - **Motion.** Shown and hidden meters fade with the corner; values change at once; a rank
   change pulses the panel. After a load or New Game the meters reappear at once (a cut).
 
+### Check roll (F59)
+
+Spec: specs/F59-choice-checks/SPEC.md and proposal I-05. Modules:
+`engine/ui/builtin/check_roll.py` (the card), `engine/app/checkroll.py` (the `CheckRolled`
+handler).
+
+- **Where.** One card, 400 units wide, centered across the canvas and in the space above
+  the say window (the canvas middle in NVL or with the box hidden), drawn above the stage
+  and the box. It takes no input: a click, Space or Enter reaches the textbox, whose idle
+  advance ends the roll's wait (Esc still opens the game menu).
+- **Rows.** "Empathy check" (22 × text scale); two 64-unit dice 24 apart (rounded squares,
+  3-unit outline, pips on a 3 × 3 grid); "Needs 10" while they tumble, then
+  "Dice 6 + Empathy 3 = 9 vs 10" (20); then the result (30, bold): "Success" or "Failure",
+  "(double six)" or "(double one)" when the rule decided it. Sizes follow the player's
+  text scale up to 150 %.
+- **Tokens.** No tokens of its own: it uses the choice buttons', so every color scheme,
+  `[style.*]` look and imported palette styles it. Card: `choice.fill_color` at
+  `max(choice.fill_opacity, 0.90)`, border `choice.marker.fill_color`. Dice:
+  `choice.fill_color` with `choice.marker.fill_color` outlines and pips. Text:
+  `choice.text_color`; "Success" in `choice.marker.fill_color`, "Failure" in
+  `choice.text_color` (a failure is part of the story, not an error, so never red).
+- **Contrast.** Text on the card is W67's `choice.text_color` / `choice.fill_color` pair
+  (the card is at least as opaque as the buttons); the marker on the fill is the pair F59's
+  badge uses (at least 4.47:1 in every built-in scheme; tests check both in all 28).
+- **Motion.** See Standard timings, "Check roll (F59)".
+
 ## Changelog
 
 - 2026-11-01: Created with F04 (vn-ui-designer): canvas and anchors, standard stage
@@ -1312,3 +1339,6 @@ item), `engine/app/meters.py` (keeps the corner in line with the story's shown l
   "Status corner" (layout, layer, visibility, motion, W67).
 - 2026-11-06: F62 round 2 (builder): §9 "Shown meters" (rows, the five looks, the NVL
   column, colors, motion) and the corner's rank-change pulse.
+- 2026-11-06: F59 (builder): §9 "Check roll" (the dice card after a checked pick: rows,
+  choice tokens, contrast) and its Standard timings row; F62: the rank-change pulse is a
+  ring that grows and fades over 0.4 s.

@@ -398,7 +398,7 @@ label accuse:
                 daichi surprised "...How did you know that?"
             failure:
                 daichi "Nice story."
-        "You're scared of something." check empathy 7 if met_daichi:
+        "You're scared of something." check empathy 7 retry if met_daichi:
             success:
                 daichi sad "...Of the river."
             failure:
@@ -420,17 +420,31 @@ label accuse:
   `[Logic · Hard · 28%] The gate was locked from the inside.` The name is the meter's,
   with `_` as a space; the word is the difficulty's (for a number, the word at or below
   it). The odds use the meter's value when the menu appears.
-- **One try**: once a check has been picked, it's hidden when its menu comes back (locked,
-  with `show_locked = true`), whether it succeeded or not. Keep a choice without a check in
-  every menu that comes back, so the player always has a way on.
+- **Then the dice roll.** Right after the pick a small card shows two dice tumbling and
+  landing (about a second), then the sum against the difficulty and the result:
+  `Dice 4 + Empathy 3 = 7 vs 7`, **Success** in the marker color or **Failure** in the
+  choice text color. A click, Space or Enter skips the rest; skip mode passes it; with
+  Reduce motion the dice show the result at once. Going back or forward never shows it
+  again. History keeps one line for it: `Empathy check: 7 vs 7, success`.
+- **One try** (a "red check"): once a check has been picked, it's hidden when its menu
+  comes back (locked, with `show_locked = true`), whether it succeeded or not. Keep a
+  choice without a check in every menu that comes back, so the player always has a way on.
+- **`retry`** (a "white check"), after the difficulty: a failed check comes back once its
+  meter has changed since the try, up or down. Until then it's hidden (locked, with
+  `show_locked = true`, showing `[Empathy · Trivial · Retry once Empathy changes]`). A
+  success is final. Give the player a way to change the meter, such as a scene where
+  `points empathy += 1` runs; with no line that changes it, the check warns (below).
 - **Loading and going back never reroll.** The roll uses the story's dice
   ([Random numbers](#10-random-numbers)), so going back to the menu and picking the same
-  choice gives the same result.
+  choice gives the same result. A retry check's try (the meter's value then, and the
+  result) is saved with the pick, so after a load it comes back exactly when it would have.
 - In dev runs, the log shows each roll: the dice, the meter, the total and the result.
-- `check`, `success` and `failure` are words only in these places; they stay free as
-  variable names.
-- Not yet: checks the player can retry once the meter rises, bonuses on a check, and a dice
-  animation.
+- `check`, `success`, `failure` and `retry` are words only in these places; they stay free
+  as variable names.
+- In Studio, the Choice form's Check button opens a dialog with the meter, the difficulty,
+  the odds, and **Can retry after the stat changes**.
+- Not yet: bonuses on a check ("+1 from the key"), and words for the card and the badge in
+  other languages.
 
 **Settings in `config.toml`.** How menus behave is under `[choice]`; how they look is under
 `[theme.choice]` (colors, text size, width, frame images, the focus marker, the locked
@@ -489,7 +503,8 @@ file and line:
 | `check logic needs a difficulty after the meter: a number from 1 to 99, or trivial, easy, medium, hard, heroic, legendary or impossible.` | Add the difficulty. |
 | `check takes a difficulty from 1 to 99 or a word (trivial, easy, medium, hard, heroic, legendary or impossible), but found tough.` | Use a number or one of the words. |
 | `check logic 9 takes nothing else before the : (an if may follow it), but found now.` | Remove the extra words. |
-| `checks can't be retried yet: each check is tried once per playthrough. Remove retry.` | Remove `retry`. |
+| `retry goes after the difficulty: write check logic medium retry, or check logic 9 retry.` | Move `retry` after the difficulty. |
+| `this check can be retried once empathy changes, but no line changes empathy, so after a failure it never comes back. Add a line such as points empathy += 1 where the player earns it, or remove retry.` (warning) | Add a `points` line that changes the meter, or remove `retry`. |
 | `there is no meter named "lgoic". Did you mean "logic"? Declare meters at the top level, e.g. points lgoic 0 to 10.` | Fix the name, or declare the meter. |
 | `this choice has a check but no failure: under it. Add failure: with what happens then; to just go on, write $ pass under it.` | Add the missing part. |
 | `a choice with a check holds only success: and failure:, each with its own lines. Indent this line under one of them.` | Move the line under `success:` or `failure:`. |
