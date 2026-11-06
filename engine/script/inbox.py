@@ -10,12 +10,17 @@ in the Inbox until it is read, and a scene can stop for it. Three lines do that:
   messages come by (default: the kit's, else a phone), and a picture. A row of F19's
   ``lock`` table (``routes.LOCK_TARGETS``), so ``contact`` is a word only right after
   ``lock`` (ADR-0010 rule 2). ``ContactDecl``; ``Program.contacts``.
-- ``send <message> from <contact> [on <look>]`` (in a scene) delivers the message to the
-  contact's thread with an arrival notice. The message is a ``define`` (or ``default``):
-  one text, or a list of lines in the phone chat's format (texts from the contact,
-  ``{"me": …}`` for the player's own, ``{"time": …}`` for a divider, ``{"Ren": …}`` for
-  someone else). Replies (``{"ask": …}``) come with round 3 (E452's ``ask`` form until then).
-  ``SendStep``.
+- ``send <message> from <contact> [on <look>] [after <n> days|scenes] [ask "…" …]`` (in a
+  scene) delivers the message to the contact's thread with an arrival notice. The message
+  is a ``define`` (or ``default``): one text, or a list of lines in the phone chat's format
+  (texts from the contact, ``{"me": …}`` for the player's own, ``{"time": …}`` for a
+  divider, ``{"Ren": …}`` for someone else). ``SendStep``. Round 3 ("Delays"): ``after 1
+  day`` / ``after 2 scenes`` hold it until the story clock or the scenes entered get there.
+  Round 3 ("Replies as choices"): the message may end with an ask in the phone chat's
+  shapes (``{"ask": ["Yes", "No"]}``: each text is its own id; ``{"ask": "come", "yes":
+  "I will.", "no": "No."}``: ids and texts; ``ask_options``), or the line may give its own
+  replies (``ask "Yes" "No"``); the player answers in the Inbox, and the story reads
+  ``inbox.reply("invite")`` (``runtime/send.InboxView``).
 - ``open inbox`` / ``open <look>`` (in a scene) opens the Inbox at the newest thread (the
   newest that came by that look) and the story waits until the player closes it.
   ``OpenStep``.
@@ -29,21 +34,28 @@ character of that name. ``from``, ``on`` and ``inbox`` are words only in these p
 
 **Through the trigger core** (ADR-0011): each ``send`` line is one trigger of kind
 ``message`` (``collect``: name its sid, ``live=False``, ``once``, payload the line), armed by
-the line and fired at once; round 3's ``after 1 day`` only adds timing to the same trigger.
+the line and fired at once, or, with round 3's ``after 1 day``, when its timing comes
+(``send_trigger``).
 
 **Checks.** Parse: E448 (``send``), E449 (``open``), E450 (``lock contact``; at most
 ``CONTACTS_MAX``, names unique, in ``check_story``). Whole game (``check_story``): E451 (a
 contact no ``lock contact`` declares), E452 (a message no define or default declares, or a
 define whose literal value isn't a message), W311 (``open <look>`` when nothing comes by that
-look). Run time: E453 (``runtime/send.py``). ``SendStep`` and ``OpenStep`` never branch: the
-story map and reach treat them as plain lines.
+look). Round 3: E448's ``after``/``ask`` forms (parse), E452's ask forms, E455 (replies on
+the line and in the message), W312 (``after N days`` in a game whose clock never moves),
+the trigger core's W316 (a delay past ``[calendar] last_day``), W313 (``inbox.reply`` of a
+message sent without replies) and W314 (compared with a reply it never offers). Run time:
+E453, E454 (``runtime/send.py``). ``SendStep`` and ``OpenStep`` never branch; reach reads
+``inbox.reply("m")`` like a variable that a ``send m`` with replies may change.
 """
 
 import ast
+import re
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any, Final
 
+from engine.core.storyclock import DAY_MAX
 from engine.script import inbox_messages
 from engine.script.chapter import _shown
 from engine.script.diagnostics import Diagnostic, ScriptWarning
@@ -57,7 +69,7 @@ from engine.script.statement_docs import StatementDoc, register_doc
 from engine.script.statements import (NoText, ParseContext, PositionalWord, StatementSpec,
                                       register_positional)
 from engine.script.suggest import suggest
-from engine.script.triggers import Trigger
+from engine.script.triggers import SCENES_MAX, Timing, Trigger
 from engine.script.words import canonical_name, check_name
 
 TEMPLATES.update(inbox_messages.TEMPLATES)
@@ -69,6 +81,16 @@ WORD_ON: Final = "on"
 WORD_IMAGE: Final = "image"
 WORD_CONTACT: Final = "contact"
 WORD_INBOX: Final = "inbox"
+WORD_AFTER: Final = "after"
+WORD_ASK: Final = "ask"
+WORD_REPLY: Final = "reply"              # inbox.reply("invite") in author Python
+DAY_UNITS: Final = ("day", "days")
+SCENE_UNITS: Final = ("scene", "scenes")
+REPLIES_MAX: Final = 4                   # reply options a message offers (phone chat's)
+REPLY_MAX: Final = 80                    # a reply's text (code points; phone chat's)
+IGNORE: Final = "ignore"                 # a phone chat's ignore key: accepted, not shown
+ID_RE: Final = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}", re.ASCII)   # phone chat's
+_BREAKS: Final = "\u2028\u2029\x7f"
 TRIGGER_KIND: Final = "message"          # the trigger core's kind for a send line
 # The device looks (``core/kits.DEVICE_LOOKS``; script may import core, but the words are
 # the script's, so they are listed once in ``inbox_messages``).
@@ -97,11 +119,19 @@ class ContactDecl(Node):
 
 @dataclass(slots=True, kw_only=True)
 class SendStep(Statement):
-    """``send <message> from <contact> [on <look>]``. Not a checkpoint; never branches."""
+    """``send <message> from <contact> [on <look>] [after <n> days|scenes] [ask "…" …]``.
+    Not a checkpoint; never branches. Round 3: ``after_days`` / ``after_scenes`` (at most
+    one is set) hold the message until then; ``replies`` are the line's own reply options
+    (the player's texts; a message's own ask is in its define). The delay and the replies
+    are left out of the identity key, so changing them keeps the line's sid (and a saved
+    waiting message)."""
 
     message: str
     contact: str
     device: str | None = None
+    after_days: int | None = None
+    after_scenes: int | None = None
+    replies: tuple[str, ...] = ()
 
     def identity_key(self) -> tuple[str, ...]:
         return (WORD_SEND, self.message, self.contact, self.device or "")
@@ -109,7 +139,24 @@ class SendStep(Statement):
     def written(self) -> str:
         """The line as Studio writes it back."""
         tail = f" on {self.device}" if self.device else ""
+        tail += after_words(self.after_days, self.after_scenes)
+        if self.replies:
+            tail += " " + WORD_ASK + "".join(f' "{quote(r)}"' for r in self.replies)
         return f"send {self.message} from {self.contact}{tail}"
+
+
+def after_words(days: int | None, scenes: int | None) -> str:
+    """`` after 1 day`` / `` after 2 scenes`` ("" for neither)."""
+    if days is not None:
+        return f" {WORD_AFTER} {days} {'day' if days == 1 else 'days'}"
+    if scenes is not None:
+        return f" {WORD_AFTER} {scenes} {'scene' if scenes == 1 else 'scenes'}"
+    return ""
+
+
+def quote(text: str) -> str:
+    """``text`` inside a script string's quotes (backslashes and quotes escaped)."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 @dataclass(slots=True, kw_only=True)
@@ -187,19 +234,97 @@ def parse_send(raw: RawStatement, ctx: ParseContext) -> SendStep | None:
     if contact is None:
         return None
     device: str | None = None
+    days: int | None = None
+    scenes: int | None = None
+    replies: tuple[str, ...] = ()
+    seen: set[str] = set()
     at = 4
-    if len(tokens) > at and tokens[at].kind == NAME and tokens[at].text == WORD_ON:
-        found = tokens[at + 1].text if len(tokens) > at + 1 else ""
-        if found not in LOOKS:
-            ctx.error("E448", "device", found, suggest(found, LOOKS) if found else None)
+    while at < len(tokens):
+        token = tokens[at]
+        word = token.text if token.kind == NAME else ""
+        if word not in (WORD_ON, WORD_AFTER, WORD_ASK):
+            ctx.error("E448", "extra", _after(raw, at))
             return None
-        device = found
-        at += 2
-    if len(tokens) > at:
-        ctx.error("E448", "extra", _after(raw, at))
-        return None
+        if word in seen:
+            ctx.error("E448", "twice", word)
+            return None
+        seen.add(word)
+        if word == WORD_ON:
+            found = tokens[at + 1].text if len(tokens) > at + 1 else ""
+            if found not in LOOKS:
+                ctx.error("E448", "device", found, suggest(found, LOOKS) if found else None)
+                return None
+            device = found
+            at += 2
+        elif word == WORD_AFTER:
+            timing = _after_timing(raw, ctx, at)
+            if timing is None:
+                return None
+            days, scenes = timing
+            at += 3
+        else:
+            stop = at + 1
+            while stop < len(tokens) and tokens[stop].kind == STRING:
+                stop += 1
+            found_replies = _replies(ctx, [t.text for t in tokens[at + 1:stop]])
+            if found_replies is None:
+                return None
+            replies = found_replies
+            at = stop
     return SendStep(file=raw.file, line=raw.line, end_line=raw.end_line, column=raw.column,
-                    message=message, contact=contact, device=device)
+                    message=message, contact=contact, device=device, after_days=days,
+                    after_scenes=scenes, replies=replies)
+
+
+def _after_timing(raw: RawStatement, ctx: ParseContext, at: int
+                  ) -> tuple[int | None, int | None] | None:
+    """``after <n> day(s)|scene(s)`` from token ``at`` (``after``): ``(days, scenes)``."""
+    tokens = raw.tokens
+    count = tokens[at + 1] if len(tokens) > at + 1 else None
+    unit = tokens[at + 2].text if len(tokens) > at + 2 and tokens[at + 2].kind == NAME else ""
+    if unit in ("part", "parts"):
+        ctx.error("E448", "part")
+        return None
+    if (count is None or count.kind != NAME or not count.text.isdigit()
+            or unit not in DAY_UNITS + SCENE_UNITS):
+        ctx.error("E448", "after", _after(raw, at + 1))
+        return None
+    most = DAY_MAX if unit in DAY_UNITS else SCENES_MAX
+    n = int(count.text) if len(count.text) <= 6 else most + 1
+    if not 1 <= n <= most:
+        ctx.error("E448", "count", count.text, f"{most:,}")
+        return None
+    return (n, None) if unit in DAY_UNITS else (None, n)
+
+
+def reply_problem(text: object) -> str | None:
+    """Why ``text`` can't be a reply the player picks (None when it can): 1 to
+    ``REPLY_MAX`` characters on one line, no space at either end."""
+    if type(text) is not str:
+        return f"a reply is {_kind(text)}, not text."
+    if not text.strip():
+        return "a reply is empty."
+    if len(text) > REPLY_MAX:
+        return f"a reply is {len(text):,} characters long; the most is {REPLY_MAX}."
+    if text != text.strip() or any(ord(c) < 32 or c in _BREAKS for c in text):
+        return "a reply starts or ends with a space, or has a line break."
+    return None
+
+
+def _replies(ctx: ParseContext, texts: list[str]) -> tuple[str, ...] | None:
+    """``ask "…" "…"``'s replies, checked (E448 ``ask``)."""
+    why = None
+    if not 1 <= len(texts) <= REPLIES_MAX:
+        why = f"found {len(texts)}" if texts else ""
+    elif len(set(texts)) != len(texts):
+        why = "two are the same"
+    else:
+        why = next((found for found in map(reply_problem, texts) if found is not None), None)
+        why = why[:-1] if why else why
+    if why is not None:
+        ctx.error("E448", "ask", why)
+        return None
+    return tuple(texts)
 
 
 def parse_open(raw: RawStatement, ctx: ParseContext) -> OpenStep | None:
@@ -346,15 +471,59 @@ def _text_problem(text: object) -> str | None:
     return None
 
 
+def ask_options(step: object) -> tuple[tuple[tuple[str, str], ...] | None, str]:
+    """A message's ask (``{"ask": …}``) as its reply options ``((id, text), …)``, or
+    ``(None, why)``. Two shapes, the phone chat's: ``{"ask": ["I'll be there.", "Not this
+    year."]}`` (each text is its own id) and ``{"ask": "come", "yes": "I'll be there.", "no":
+    "Not this year."}`` (an ask name, then ids and texts). A phone chat's ``ignore`` is
+    accepted and left out: in the Inbox any message can stay unanswered. 1 to
+    ``REPLIES_MAX`` replies, each ``reply_problem``-free, all different."""
+    assert type(step) is dict and WORD_ASK in step
+    head = step[WORD_ASK]
+    options: list[tuple[str, str]] = []
+    if type(head) is list:
+        if not step.keys() <= {WORD_ASK, IGNORE}:
+            return None, "a list of replies takes no other keys."
+        options = [(t, t) for t in head]                        # type: ignore[misc]
+    elif type(head) is str:
+        if not ID_RE.fullmatch(head):
+            return None, "its name isn't letters, digits and _."
+        for key, text in step.items():
+            if key in (WORD_ASK, IGNORE):
+                continue
+            if type(key) is not str or not ID_RE.fullmatch(key):
+                return None, f"a reply's name {_echo(key)} isn't letters, digits and _."
+            if type(text) is list:
+                return None, (f"reply {key} is a list. In the Inbox a reply is one text; send "
+                              "the answer as another message.")
+            options.append((key, text))                         # type: ignore[arg-type]
+    else:
+        return None, f"ask is {_kind(head)}; give a list of replies, or a name."
+    if not 1 <= len(options) <= REPLIES_MAX:
+        return None, f"it has {len(options)} replies; a message offers 1 to {REPLIES_MAX}."
+    for _, text in options:
+        found = reply_problem(text)
+        if found is not None:
+            return None, found
+    if len({t for _, t in options}) != len(options):
+        return None, "two replies are the same."
+    return tuple(options), ""
+
+
+def _echo(value: object) -> str:
+    return f'"{value}"' if type(value) is str and len(value) <= 40 else _kind(value)
+
+
 def message_problem(value: object) -> tuple[str, object, str] | None:
     """Why ``value`` can't be sent (E452/E453's ``(form, where, detail)``), or None. A text,
     or a list of 1 to ``STEPS_MAX`` lines: a text from the contact, or a one-key dict:
-    ``me``, ``time``, or another sender's name (1 to ``SENDER_MAX`` characters); an
-    ``{"ask": …}`` is the ``ask`` form (round 3)."""
+    ``me``, ``time``, or another sender's name (1 to ``SENDER_MAX`` characters); round 3: the
+    last line may be an ask (``ask_options``), after at least one other line."""
     if type(value) is str:
         found = _text_problem(value)
-        return None if found is None else ("empty", 1, "") if not value.strip() \
-            else ("line", 1, found)
+        if found is None:
+            return None
+        return ("empty", 1, "") if not value.strip() else ("line", 1, found)
     if type(value) is not list:
         return ("kind", 0, _kind(value))
     if not value:
@@ -367,14 +536,21 @@ def message_problem(value: object) -> tuple[str, object, str] | None:
             if found is not None:
                 return ("line", index, found)
             continue
-        if type(step) is dict and "ask" in step:
-            return ("ask", index, "")
+        if type(step) is dict and WORD_ASK in step:
+            if index != len(value):
+                return ("ask_last", index, "")
+            if index == 1:
+                return ("ask_only", index, "")
+            options, why = ask_options(step)
+            if options is None:
+                return ("ask", index, why)
+            continue
         if type(step) is not dict or len(step) != 1:
             return ("step", index, _kind(step) if type(step) is not dict
                     else f"a dictionary with {len(step):,} keys")
         ((key, text),) = step.items()
-        if type(key) is not str or not key.strip() or len(key) > SENDER_MAX \
-                or key != key.strip():
+        if (type(key) is not str or not key.strip() or len(key) > SENDER_MAX
+                or key != key.strip()):
             return ("line", index, f"is from a sender whose name isn't 1 to {SENDER_MAX} "
                                    "characters with no space at either end.")
         found = _text_problem(text)
@@ -383,14 +559,24 @@ def message_problem(value: object) -> tuple[str, object, str] | None:
     return None
 
 
+def message_ask(value: Any) -> tuple[tuple[str, str], ...]:
+    """A checked message's reply options (``ask_options`` of its last line), or ()."""
+    if type(value) is list and value and type(value[-1]) is dict and WORD_ASK in value[-1]:
+        return ask_options(value[-1])[0] or ()
+    return ()
+
+
 def message_lines(value: Any, contact: str) -> list[tuple[str, str, str]]:
     """A checked message (``message_problem`` is None) as Inbox lines ``(side, name,
-    text)``: ``them`` with ``contact`` (or another sender), ``me``, or ``time``."""
+    text)``: ``them`` with ``contact`` (or another sender), ``me``, or ``time``. Its ask
+    is not a line (``message_ask``)."""
     steps = [value] if type(value) is str else value
     out: list[tuple[str, str, str]] = []
     for step in steps:
         if type(step) is str:
             out.append(("them", contact, step))
+            continue
+        if WORD_ASK in step:
             continue
         ((key, text),) = step.items()
         if key == "me":
@@ -431,7 +617,9 @@ def _plain(node: ast.AST) -> object:
         if any(k is None for k in node.keys):
             raise _NotPlain
         return {_plain(k): _plain(v) for k, v in zip(node.keys, node.values)}  # type: ignore[arg-type]
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub)             and isinstance(node.operand, ast.Constant)             and type(node.operand.value) in (int, float):
+    if (isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub)
+            and isinstance(node.operand, ast.Constant)
+            and type(node.operand.value) in (int, float)):
         return -node.operand.value
     raise _NotPlain
 
@@ -468,8 +656,9 @@ def _kit_look(config: Any) -> str | None:
 
 def check_story(nodes: Iterable[Node], add: Callable[[Diagnostic], object],
                 config: Any = None) -> list[ScriptWarning]:
-    """E450's ``dup`` and ``many``, E451, E452 to ``add``; W311 returned (module docstring).
-    ``config`` None (tools without one): no W311 (the kit's device is unknown)."""
+    """E450's ``dup`` and ``many``, E451, E452, E455 to ``add``; W311–W314 and the trigger
+    core's W316 returned (module docstring). ``config`` None (tools without one): no W311
+    (the kit's device is unknown) and no W316 (the calendar is unknown)."""
     nodes = list(nodes)
     warnings: list[ScriptWarning] = []
     contacts: dict[str, ContactDecl] = {}
@@ -520,6 +709,7 @@ def check_story(nodes: Iterable[Node], add: Callable[[Diagnostic], object],
             add(Diagnostic("E452", declared.file, declared.line, None,
                            (form, stmt.message, where, detail, None), stmt=declared.line))
             checked[stmt.message] = None              # once per define
+    warnings += _check_round3(nodes, steps, values, add, config)
     if config is None:
         return warnings                               # the kit's look is unknown here
     for stmt in steps:
@@ -529,14 +719,134 @@ def check_story(nodes: Iterable[Node], add: Callable[[Diagnostic], object],
     return warnings
 
 
+def _check_round3(nodes: list[Node], steps: list[Statement],
+                  values: dict[str, Define | Default], add: Callable[[Diagnostic], object],
+                  config: Any) -> list[ScriptWarning]:
+    """Round 3: E455 (replies on the line and in the message), W312 (``after N days`` with no
+    ``clock`` line), the trigger core's W316 for delays past ``[calendar] last_day``, and
+    W313/W314 for ``inbox.reply`` in author Python."""
+    from engine.core.storyclock import calendar_of
+    from engine.script.clock import ClockStep
+    from engine.script.triggers import check_triggers
+    warnings: list[ScriptWarning] = []
+    sends = [s for s in steps if isinstance(s, SendStep)]
+    replies: dict[str, set[str] | None] = {}              # message → reply ids (None: unknown)
+    for stmt in sends:
+        declared = values.get(stmt.message)
+        ok, value = _literal(declared) if declared is not None else (True, None)
+        asked = message_ask(value) if ok and message_problem(value) is None else ()
+        if stmt.replies and asked and declared is not None:
+            add(Diagnostic("E455", stmt.file, stmt.line, None, (stmt.message, declared.line),
+                           stmt=stmt.line))
+        known = replies.get(stmt.message, set())
+        if known is not None:
+            if stmt.replies:
+                known = known | set(stmt.replies)
+            elif not ok:
+                known = None                               # a computed message: may ask
+            else:
+                known = known | {key for key, _ in asked}
+        replies[stmt.message] = known
+    clock_lines = any(isinstance(node, Label) and any(
+        isinstance(stmt, ClockStep) for stmt, _ in walk_block(node.block)) for node in nodes)
+    for stmt in sends:
+        if stmt.after_days is not None and not clock_lines:
+            warnings.append(ScriptWarning(
+                format_message("W312", (stmt.message, stmt.after_days)), code="W312",
+                file=stmt.file.ref, line=stmt.line))
+    timed = [send_trigger(s) for s in sends if s.after_days is not None]
+    if timed and config is not None and clock_lines and "clock" not in values:
+        calendar, _problems = calendar_of(config)
+        warnings += check_triggers(timed, add, calendar)
+    if WORD_INBOX not in values:
+        warnings += _check_reads(nodes, replies)
+    return warnings
+
+
+def _reply_call(node: ast.AST) -> str | None:
+    """The message name of ``inbox.reply("<name>")``, else None."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            and node.func.attr == WORD_REPLY and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == WORD_INBOX and len(node.args) == 1
+            and not node.keywords and isinstance(node.args[0], ast.Constant)
+            and type(node.args[0].value) is str):
+        return node.args[0].value
+    return None
+
+
+def _compared(node: ast.Compare) -> Iterator[tuple[str, str]]:
+    """``(message, text)`` for each ``inbox.reply("m") == "text"`` (``!=`` too, either side,
+    and ``in`` a tuple or list of texts) in one comparison."""
+    parts = [node.left, *node.comparators]
+    for i, op in enumerate(node.ops):
+        a, b = parts[i], parts[i + 1]
+        for call, other in ((a, b), (b, a)):
+            name = _reply_call(call)
+            if name is None:
+                continue
+            if (isinstance(op, (ast.Eq, ast.NotEq)) and isinstance(other, ast.Constant)
+                    and type(other.value) is str):
+                yield name, other.value
+            elif (isinstance(op, (ast.In, ast.NotIn)) and call is a
+                    and isinstance(other, (ast.Tuple, ast.List, ast.Set))):
+                for item in other.elts:
+                    if isinstance(item, ast.Constant) and type(item.value) is str:
+                        yield name, item.value
+
+
+def _check_reads(nodes: list[Node], replies: dict[str, set[str] | None]
+                 ) -> list[ScriptWarning]:
+    """W313 (a message no send line sends with replies) and W314 (a compared text that isn't
+    one of its replies), once per piece and message."""
+    from engine.script.bindings import iter_pieces
+    warnings: list[ScriptWarning] = []
+    asking = [m for m, ids in replies.items() if ids != set()]
+    for piece in iter_pieces(nodes):
+        source = piece.py.source
+        if WORD_REPLY not in source or WORD_INBOX not in source:
+            continue
+        try:
+            tree = ast.parse(source.strip(), mode="exec")
+        except (SyntaxError, ValueError, RecursionError, MemoryError):
+            continue
+        said: set[tuple[str, str]] = set()
+        for node in ast.walk(tree):
+            name = _reply_call(node)
+            if name is not None and replies.get(name, set()) == set() \
+                    and ("W313", name) not in said:
+                said.add(("W313", name))
+                warnings.append(ScriptWarning(
+                    format_message("W313", (name, suggest(name, asking))), code="W313",
+                    file=piece.file.ref, line=piece.py.line))
+            if not isinstance(node, ast.Compare):
+                continue
+            for message, text in _compared(node):
+                ids = replies.get(message)
+                if not ids or text == "" or text in ids or ("W314", message) in said:
+                    continue
+                said.add(("W314", message))
+                offered = " or ".join(f'"{i}"' for i in sorted(ids))
+                warnings.append(ScriptWarning(
+                    format_message("W314", (message, text, offered)), code="W314",
+                    file=piece.file.ref, line=piece.py.line))
+    return warnings
+
+
 # --- The trigger core's "message" kind (ADR-0011) -------------------------------------------------
 
+def send_trigger(stmt: SendStep) -> Trigger:
+    """``stmt`` as a trigger of kind ``message``: named by its sid, armed by the line
+    (``live=False``), ``once``, the line as its payload, and round 3's ``after`` timing."""
+    timing = Timing(after_days=stmt.after_days, after_scenes=stmt.after_scenes)
+    return Trigger(TRIGGER_KIND, stmt.sid or f"{stmt.file.ref}:{stmt.line}", stmt, once=True,
+                   live=False, timing=timing, payload=stmt)
+
+
 def collect(program: Any) -> Iterator[Trigger]:
-    """Each ``send`` line as a trigger of kind ``message``: named by its sid, armed by the
-    line (``live=False``), ``once``, the line as its payload. Round 3 adds ``after`` timing."""
+    """Each ``send`` line as its trigger (``send_trigger``)."""
     for stmt in program.iter_statements():
         if isinstance(stmt, SendStep):
-            yield Trigger(TRIGGER_KIND, stmt.sid, stmt, once=True, live=False, payload=stmt)
+            yield send_trigger(stmt)
 
 
 def uses_send(program: Any) -> bool:

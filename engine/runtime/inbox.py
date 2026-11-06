@@ -22,6 +22,9 @@ round 1 save's per-chat rows become each contact's history with no change to the
   contact's script name ("" for a phone chat); ``message`` the define sent ("" for a chat);
   ``device`` the look it came by ("" for the game's default, which the app resolves from the
   kit; ``"phone"`` for a chat).
+- Round 3: ``ask`` (the reply options a sent message ends with, ``(id, text)``, as they were
+  when it arrived) and ``reply`` (the id the player picked; ``waiting`` until then, and
+  ``answered`` makes the picked copy). Both saved only when set, so older saves load.
 - ``ContactThread(key, sender, title, parts)``: one contact's deliveries, oldest first.
   ``group_threads(deliveries, titles)``: the threads, newest first (by their newest
   delivery). A delivery joins its ``sender``'s thread; a phone chat joins the declared
@@ -68,7 +71,10 @@ SIDES: Final = frozenset({"them", "me", "time"})
 PHONE: Final = "phone"                  # the device look of a phone chat
 _KEY: Final = re.compile(r"[0-9a-f]{16}\.[1-9][0-9]{0,5}")
 _KEYS: Final = frozenset({"key", "sid", "contact", "time", "device", "lines"})
-_MORE: Final = frozenset({"from", "message"})          # round 2, each only when not empty
+_MORE: Final = frozenset({"from", "message", "ask", "reply"})   # rounds 2-3, when not empty
+ASK_MAX: Final = 4                      # round 3: reply options a delivery keeps
+REPLY_TEXT_MAX: Final = 80              # round 3: a reply's text (and a list reply's id)
+ID_MAX: Final = 80                      # round 3: a reply's id
 CHAT_KEY: Final = "chat:"               # the key prefix of an undeclared contact's thread
 _SURROGATE: Final = re.compile("[\ud800-\udfff]")
 
@@ -90,6 +96,17 @@ class Delivery:
     lines: tuple[InboxLine, ...]
     sender: str = ""                    # round 2: the declared contact ("" for a chat)
     message: str = ""                   # round 2: the define sent ("" for a chat)
+    ask: tuple[tuple[str, str], ...] = ()   # round 3: the reply options, (id, text)
+    reply: str = ""                     # round 3: the id the player picked ("": none yet)
+
+    @property
+    def waiting(self) -> bool:
+        """Round 3: it asks for a reply the player hasn't given yet."""
+        return bool(self.ask) and not self.reply
+
+    def reply_text(self) -> str:
+        """The text of the picked reply ("" before one)."""
+        return next((text for key, text in self.ask if key == self.reply), "")
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,7 +225,7 @@ CHAT_READERS: Final[dict[str, tuple[Callable[[Mapping[str, object], object], Lin
 
 def build_delivery(sid: str, threads: Sequence[Delivery], contact: str, time: str,
                    device: str, lines: Sequence[tuple[str, str, str]], *, sender: str = "",
-                   message: str = "") -> Delivery | None:
+                   message: str = "", ask: Sequence[tuple[str, str]] = ()) -> Delivery | None:
     """A delivery from a reader's lines (cut to the limits), or None when nothing shows."""
     out = tuple(InboxLine(side, shown(name, NAME_MAX), shown(text, TEXT_MAX))
                 for side, name, text in lines[:LINES_MAX]
@@ -216,7 +233,8 @@ def build_delivery(sid: str, threads: Sequence[Delivery], contact: str, time: st
     if not any(line.side != "time" for line in out):
         return None
     return Delivery(delivery_key(sid, threads), sid, shown(contact, NAME_MAX),
-                    shown(time, NAME_MAX), device, out, sender, message)
+                    shown(time, NAME_MAX), device, out, sender, message,
+                    tuple((k, t) for k, t in ask[:ASK_MAX]))
 
 
 def record_chat(interp: "Interpreter", m: "Minigame", sig: "MinigameSig | None",
@@ -254,6 +272,10 @@ def _delivery_json(t: Delivery) -> dict:
         out["from"] = t.sender
     if t.message:
         out["message"] = t.message
+    if t.ask:
+        out["ask"] = [[key, text] for key, text in t.ask]
+    if t.reply:
+        out["reply"] = t.reply
     return out
 
 
@@ -269,6 +291,36 @@ def _saved_name(value: object) -> bool:
     """A saved ``from`` or ``message``: a script name (1 to 64 code points, no space)."""
     return type(value) is str and 0 < len(value) <= 64 and not any(
         c.isspace() or ord(c) < 32 or 0xD800 <= ord(c) <= 0xDFFF for c in value)
+
+
+def _ask_from_json(item: dict) -> tuple[tuple[str, str], ...]:
+    """Round 3: a saved ``ask`` (1 to ``ASK_MAX`` ``[id, text]`` pairs, ids and texts
+    different) and ``reply`` (one of the ids; only with an ask). ``ValueError`` otherwise."""
+    if "ask" not in item:
+        if "reply" in item:
+            raise ValueError("inbox")
+        return ()
+    raw = item["ask"]
+    if type(raw) is not list or not 0 < len(raw) <= ASK_MAX:
+        raise ValueError("inbox")
+    ask: list[tuple[str, str]] = []
+    for pair in raw:
+        if (type(pair) is not list or len(pair) != 2 or not _text(pair[0], 1, ID_MAX)
+                or not _text(pair[1], 1, REPLY_TEXT_MAX)):
+            raise ValueError("inbox")
+        ask.append((pair[0], pair[1]))
+    if len({k for k, _ in ask}) != len(ask) or len({t for _, t in ask}) != len(ask):
+        raise ValueError("inbox")
+    if "reply" in item and item["reply"] not in {k for k, _ in ask}:
+        raise ValueError("inbox")
+    return tuple(ask)
+
+
+def answered(delivery: Delivery, reply: str) -> Delivery:
+    """Round 3: ``delivery`` with ``reply`` (one of its ids) picked."""
+    from dataclasses import replace
+    assert delivery.waiting and any(k == reply for k, _ in delivery.ask)
+    return replace(delivery, reply=reply)
 
 
 def deliveries_from_json(obj: object) -> tuple[Delivery, ...]:
@@ -301,16 +353,17 @@ def deliveries_from_json(obj: object) -> tuple[Delivery, ...]:
                     or not _text(line[2], 1, TEXT_MAX):
                 raise ValueError("inbox")
             parsed.append(InboxLine(line[0], line[1], line[2]))
+        ask = _ask_from_json(item)
         keys.add(key)
         out.append(Delivery(key, sid, item["contact"], item["time"], item["device"],
-                            tuple(parsed), sender, message))
+                            tuple(parsed), sender, message, ask, item.get("reply", "")))
     if len(out) > 1 and sum(map(size, out)) > CHARS_MAX:
         raise ValueError("inbox")
     return tuple(out)
 
 
 __all__ = ["CHARS_MAX", "CHAT_KEY", "CHAT_READERS", "ContactThread", "DELIVERIES_MAX",
-           "Delivery", "InboxLine", "LINES_MAX", "NAME_MAX", "PHONE", "READ_KIND", "SIDES",
+           "Delivery", "InboxLine", "LINES_MAX", "answered", "NAME_MAX", "PHONE", "READ_KIND", "SIDES",
            "TEXT_MAX", "build_delivery", "deliveries_from_json", "deliveries_json",
            "delivery_key", "group_threads", "kept", "phone_lines", "record_chat", "shown",
            "size"]

@@ -1,9 +1,10 @@
-"""The Inbox's message texts (F65 round 2, "Contacts and send" and "Open on cue"): load
-E448–E450 (``script/inbox.py``, parse), E451, E452 and W311 (``inbox.check_story``), run
-E453 (``runtime/send.py``). F65's block is E448–E459 / W311–W316; the trigger core takes from
-the top down (E459–E457, W316–W315), this work from the bottom up. ``script/inbox.py`` adds
-these to ``messages.TEMPLATES`` when it is imported, so ``messages.py`` needs no edit. Every
-template formats with no arguments (the message tests call each with its defaults).
+"""The Inbox's message texts (F65 round 2, "Contacts and send" and "Open on cue"; round 3,
+"Replies as choices" and "Delays"): load E448–E450 (``script/inbox.py``, parse), E451, E452,
+E455, W311–W314 (``inbox.check_story``), run E453 and E454 (``runtime/send.py``). F65's
+block is E448–E459 / W311–W316; the trigger core takes from the top down (E459–E457,
+W316–W315), this work from the bottom up. ``script/inbox.py`` adds these to
+``messages.TEMPLATES`` when it is imported, so ``messages.py`` needs no edit. Every template
+formats with no arguments (the message tests call each with its defaults).
 """
 
 from collections.abc import Callable, Sequence
@@ -39,7 +40,10 @@ def _e448(form: str = "word", found: str = "", suggestion: str | None = None) ->
     """``send``'s shape: ``word`` (ADR-0010 rule 4, no character send), ``speaker`` (the game
     has a character send), ``from`` (no ``from`` after the message), ``contact`` (nothing
     after ``from``), ``quoted`` (a contact in quotes), ``device`` (``on`` and a look this
-    engine doesn't have), ``extra``, ``colon``."""
+    engine doesn't have), ``extra``, ``colon``; round 3: ``after`` (no number or unit after
+    ``after``), ``part`` (``after 1 part``), ``count`` (a number out of range; ``suggestion``
+    the most), ``ask`` (replies that aren't 1 to 4 short texts; ``found`` says why),
+    ``twice`` (``on``, ``after`` or ``ask`` again)."""
     if form == "speaker":
         return ("send is a character here, but this line has no text in quotes. To make send "
                 f'speak, write e.g. send "On my way." To deliver a message, write {_SEND}.')
@@ -54,9 +58,24 @@ def _e448(form: str = "word", found: str = "", suggestion: str | None = None) ->
                 f"The name shown in the Inbox comes from the contact's line ({_CONTACT}).")
     if form == "device":
         return _look(found, suggestion) + " Write e.g. send invite from hana on pigeon."
+    if form == "after":
+        return (f"send … after needs a number and days or scenes, but {_found(found)}. Write "
+                "e.g. send invite from hana after 1 day, or after 2 scenes.")
+    if form == "part":
+        return ("send … after counts days or scenes, not parts of the day. Write e.g. send "
+                "invite from hana after 1 day, or send it from the scene that comes later.")
+    if form == "count":
+        return (f"send … after takes a whole number from 1 to {suggestion or 10_000}, but "
+                f"found {_quoted(found)}. Write e.g. send invite from hana after 2 days.")
+    if form == "ask":
+        return (f"send … ask needs 1 to 4 replies in quotes, each 1 to 80 characters on one "
+                f"line, all different, but {found or 'found none'}. Write e.g. send invite "
+                'from hana ask "I will." "Not this year."')
+    if form == "twice":
+        return f"send has {show(found)} twice. Keep one."
     if form == "extra":
-        return (f"send takes a message, from and a contact (and on and a device look at "
-                f"most), but found {_quoted(found)} after them. Write e.g. {_SEND}.")
+        return (f"send takes a message, from and a contact, then on and a look, after and a "
+                f"delay, or ask and replies, but found {_quoted(found)}. Write e.g. {_SEND}.")
     if form == "colon":
         return ("send takes no colon or block after it. Put the message in a define (define "
                 'invite = "See you at the bridge."), then write ' + _SEND + ".")
@@ -151,9 +170,15 @@ def _shape(form: str, message: str, where: object, detail: str) -> str:
     if form == "line":
         return f"line {where} of {head} {detail}"
     if form == "ask":
-        return (f"line {where} of {head} asks for a reply. Replies in the Inbox come in a "
-                "later version; for now, send only lines, or use minigame phone_chat for a "
-                "chat the player answers.")
+        return (f"line {where} of {head} asks for a reply, but {detail} Write e.g. "
+                '{"ask": ["I will.", "Not this year."]}, or {"ask": "come", "yes": "I '
+                'will.", "no": "Not this year."}.')
+    if form == "ask_last":
+        return (f"line {where} of {head} asks for a reply, but more lines follow it. A "
+                "message asks once, at its end: move the ask to the last line.")
+    if form == "ask_only":
+        return (f"{head} only asks for a reply. Give it a line to answer first, e.g. "
+                '["Meet me at the bridge?", {"ask": ["Yes", "No"]}].')
     if form == "step":
         return (f"line {where} of {head} must be text, or a one-key dictionary such as "
                 f'{{"me": "On my way."}}, {{"time": "Day 3"}} or {{"Ren": "Hi!"}}, but it is '
@@ -186,6 +211,43 @@ def _e453(form: str = "missing", message: str = "invite", where: object = 1,
     return _shape(form, message, where, detail)
 
 
+def _e454(form: str = "name", found: str = "a number") -> str:
+    """Run time, ``inbox`` in author Python: ``name`` (``reply`` without a message's name
+    in quotes; ``found`` what it got), ``write`` (a change to ``inbox``)."""
+    if form == "write":
+        return ("inbox can be read, not changed: the player's replies change it. Read a reply "
+                'with inbox.reply("invite").')
+    return (f"inbox.reply needs a message's name in quotes, but it got {found}. Write e.g. "
+            'if inbox.reply("invite") == "yes":')
+
+
+def _e455(message: str = "invite", line: int = 3) -> str:
+    return (f"this send line has replies (ask …), but message {show_name(message)} (line "
+            f"{line}) asks for a reply too. Keep the replies in one place.")
+
+
+def _w312(message: str = "invite", days: int = 1) -> str:
+    unit = "day" if days == 1 else "days"
+    return (f"send {show_name(message)} … after {days} {unit} waits for the story clock, but "
+            "no clock line in this game moves it, so the message never arrives. Add a "
+            "clock next day line, or send it after some scenes instead.")
+
+
+def _w313(message: str = "invte", suggestion: str | None = "invite") -> str:
+    text = (f'inbox.reply("{show(message)}") reads the reply to message '
+            f"{show_name(message)}, but no send line sends it with replies, so it is always "
+            '"".')
+    if suggestion is not None:
+        text += " " + _did_you_mean(suggestion, message)
+    return text
+
+
+def _w314(message: str = "invite", found: str = "maybe", replies: str = '"yes" or "no"'
+          ) -> str:
+    return (f'inbox.reply("{show(message)}") is compared with "{show(found)}", which isn\'t '
+            f"one of its replies ({replies}), so that is never true. Check the spelling.")
+
+
 def _w311(look: str = "pigeon") -> str:
     return (f"open {look} opens the Inbox at the newest message that came by {look}, but "
             f"nothing in this game comes by {look}: no send line or contact uses it, and it "
@@ -195,7 +257,8 @@ def _w311(look: str = "pigeon") -> str:
 
 TEMPLATES: dict[str, Callable[..., str]] = {
     "E448": _e448, "E449": _e449, "E450": _e450, "E451": _e451, "E452": _e452,
-    "E453": _e453, "W311": _w311,
+    "E453": _e453, "E454": _e454, "E455": _e455, "W311": _w311, "W312": _w312,
+    "W313": _w313, "W314": _w314,
 }
 
 __all__ = ["LOOKS", "TEMPLATES"]

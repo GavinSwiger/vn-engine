@@ -132,7 +132,7 @@ def test_whole_game_checks(tmp_path):
                              '{"Ren": "Hey."}]\n')
     assert result.errors == ()
     for value, part in (("3", "it is a number"), ("[]", "is empty"),
-                        ('["Hi.", {"ask": "come", "yes": "Yes."}]', "line 2 of message bad "
+                        ('[{"ask": "come", "yes": "Yes."}, "Hi."]', "line 1 of message bad "
                                                                      "asks for a reply"),
                         ('["Hi.", ("x",)]', "it is a tuple"),
                         ('["Hi.", ""]', "line 2 of message bad is empty")):

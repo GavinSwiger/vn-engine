@@ -376,6 +376,17 @@ class Codex:
         self._threads = kept(self._threads + (thread,))
         self._state = None
 
+    def replace_delivery(self, delivery: Delivery) -> bool:
+        """F65 round 3: the delivery with ``delivery.key`` becomes ``delivery`` (a reply
+        picked); False when no delivery has that key."""
+        threads = self._threads
+        for i, found in enumerate(threads):
+            if found.key == delivery.key:
+                self._threads = threads[:i] + (delivery,) + threads[i + 1:]
+                self._state = None
+                return True
+        return False
+
     def mark_delivery_read(self, key: object) -> bool:
         """F65: the Inbox page's one write: a delivery's read mark; True if it is new. False,
         writing nothing, for a key not in the inbox."""

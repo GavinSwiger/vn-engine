@@ -485,6 +485,7 @@ class Interpreter:
         # calendar's start) and the built-in ``clock`` view bound to this interpreter.
         self.clock: clock_mod.ClockState = clock_mod.EMPTY_CLOCK
         clock_mod.bind_view(G, self)
+        send_mod.bind_view(G, self)                         # F65 round 3: inbox.reply
         # F65 trigger core: armed and retired triggers (story state, runtime-held like
         # ``clock``) and the declarations, ``trigger_table`` (runtime/triggers.py).
         self.triggers: triggers_mod.TriggerState = triggers_mod.EMPTY_TRIGGERS
@@ -1117,7 +1118,8 @@ class Interpreter:
         if self.waiting_for is not None:
             self.finish_wait()
         elif type(current) is nodes.Say:
-            if not itemuse_mod.forward_use(self, current):      # F64: a remembered use
+            if (not itemuse_mod.forward_use(self, current)      # F64: a remembered use
+                    and not send_mod.forward_reply(self, current)):   # F65: a reply
                 _on_advance(self, Advance(current.sid))
         elif type(current) is Menu:
             key = t.remembered_pick(current.sid)
@@ -2014,6 +2016,7 @@ register_event(StepForward, rollback_mod.on_step_forward)   # F14 (04 §7.4)
 register_event(MinigameDone, minigame_mod.on_minigame_done)  # F23 (04 §5.4)
 register_event(MinigameUsed, minigame_mod.on_minigame_used)  # F23 (04 §7.5)
 register_event(itemuse_mod.UseItem, itemuse_mod.on_use_item)  # F64 round 2: Use
+register_event(send_mod.ReplyMessage, send_mod.on_reply)     # F65 round 3: a reply
 
 
 def story_variables(G: dict, reserved: Iterable[str]) -> dict[str, object]:

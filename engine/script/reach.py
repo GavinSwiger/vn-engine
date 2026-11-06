@@ -32,6 +32,11 @@ How (pure: nothing here runs author code):
   coin 30`` adds and ``lock item coin 5`` takes (within 0 and the item's most), and a
   ``minigame`` makes every count "anything" (a minigame can give and take items). While the
   story has its own variable named ``items``, only ``codex.count`` is read this way.
+- **Replies** (F65 round 3): ``inbox.reply("invite")`` is watched the same way: it starts as
+  "", and each ``send invite`` that offers replies adds their ids (the player may answer at
+  any time after), so a comparison with a reply the message never offers is never true. A
+  message whose value this module can't read may offer anything. Not while the story has
+  its own ``inbox``.
 
 ``analyze(program, starts)`` returns a ``SceneReach`` for each scene with a condition on a
 way in, or that can't be reached although a ``jump``, ``call`` or choice leads to it
@@ -48,6 +53,7 @@ from typing import Final
 
 from engine.script.choicecheck import CheckRoll
 from engine.script.codex import WORD_ITEM, CodexLock
+from engine.script.inbox import SendStep
 from engine.script.choicepresent import reaction_text
 from engine.script.menu import Menu
 from engine.script.minigame import Minigame
@@ -242,6 +248,7 @@ class _Guard:
 
 
 COUNT_ROOTS: Final = ("items", "codex")      # F64: <root>.count("<item>")
+_OWN_INBOX: Final = "!inbox"                 # in ``roots``: the story has its own inbox
 
 
 def count_key(item: str) -> str:
@@ -249,14 +256,31 @@ def count_key(item: str) -> str:
     return f'items.count("{item}")'
 
 
-class _Counts(ast.NodeTransformer):
-    """F64: each ``<root>.count("<item>")`` becomes a name, ``count_key(item)``."""
+def reply_key(message: str) -> str:
+    """F65 round 3: the watched name of a message's reply."""
+    return f'inbox.reply("{message}")'
 
-    def __init__(self, roots: tuple[str, ...]) -> None:
+
+_REPLY_PREFIX: Final = 'inbox.reply("'
+
+
+class _Counts(ast.NodeTransformer):
+    """F64: each ``<root>.count("<item>")`` becomes a name, ``count_key(item)``; F65 round 3:
+    each ``inbox.reply("<message>")`` too, ``reply_key(message)`` (unless ``replies`` is
+    off: the story has its own ``inbox``)."""
+
+    def __init__(self, roots: tuple[str, ...], replies: bool = True) -> None:
         self.roots = roots
+        self.replies = replies
 
     def visit_Call(self, node: ast.Call) -> ast.AST:
         func = node.func
+        if (self.replies and isinstance(func, ast.Attribute) and func.attr == "reply"
+                and isinstance(func.value, ast.Name) and func.value.id == "inbox"
+                and len(node.args) == 1 and not node.keywords
+                and isinstance(node.args[0], ast.Constant)
+                and type(node.args[0].value) is str):
+            return ast.copy_location(ast.Name(reply_key(node.args[0].value), ast.Load()), node)
         if (isinstance(func, ast.Attribute) and func.attr == "count"
                 and isinstance(func.value, ast.Name) and func.value.id in self.roots
                 and len(node.args) == 1 and not node.keywords
@@ -271,8 +295,9 @@ def _guard(source: str, want: bool, roots: tuple[str, ...] = COUNT_ROOTS) -> _Gu
         tree = ast.parse(source.strip(), mode="eval")
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return _Guard(None, frozenset(), want, source)
-    if "count" in source and roots:
-        tree = _Counts(roots).visit(tree)
+    replies = "reply" in source and _OWN_INBOX not in roots
+    if ("count" in source and roots) or replies:
+        tree = _Counts(roots, replies).visit(tree)
     names = frozenset(n.id for n in ast.walk(tree) if isinstance(n, ast.Name))
     return _Guard(tree, names, want, source)
 
@@ -345,6 +370,7 @@ class _Walk:
     record: bool = False
     roots: tuple[str, ...] = COUNT_ROOTS              # F64: whose .count(...) is an item's
     caps: Mapping[str, int] = field(default_factory=dict)   # F64: item → its most held
+    asks: Mapping[str, frozenset | None] = field(default_factory=dict)  # F65: message → ids
 
     def scene(self, name: str, state: State) -> None:
         label = self.program.labels.get(name)
@@ -421,7 +447,28 @@ class _Walk:
                     self.set_any(state, name, scene, stmt, f"minigame {stmt.name}")
         if isinstance(stmt, CodexLock) and stmt.kind == WORD_ITEM:
             self.count(scene, stmt, state)
+        if isinstance(stmt, SendStep):
+            self.send(scene, stmt, state)
         return state
+
+    def send(self, scene: str, stmt: SendStep, state: State) -> None:
+        """F65 round 3: ``send <message>`` that offers replies on a watched reply."""
+        name = reply_key(stmt.message)
+        if name not in self.watched:
+            return
+        ids = frozenset(stmt.replies) if stmt.replies else self.asks.get(stmt.message,
+                                                                         frozenset())
+        if not stmt.replies and stmt.message not in self.asks:
+            return
+        values = state.get(name, ANY)
+        if ids is None or values is ANY:
+            state[name] = ANY
+        elif ids:
+            out = values | ids
+            state[name] = ANY if len(out) > VALUES_MAX else out
+        else:
+            return
+        self.note(name, scene, stmt, stmt.written())
 
     def count(self, scene: str, stmt: CodexLock, state: State) -> None:
         """F64: ``unlock|lock item <name> [<n>]`` on a watched count."""
@@ -507,9 +554,29 @@ _COUNT_PREFIX: Final = 'items.count("'
 
 
 def _count_roots(program: Program) -> tuple[str, ...]:
-    """F64: ``codex``, and ``items`` unless the story has a variable of its own by that name."""
+    """F64: ``codex``, and ``items`` unless the story has a variable of its own by that name;
+    F65 round 3: ``_OWN_INBOX`` when it has its own ``inbox`` (no reply is read)."""
     from engine.script.itemcounts import program_binds_items
-    return ("codex",) if program_binds_items(program) else COUNT_ROOTS
+    roots = ("codex",) if program_binds_items(program) else COUNT_ROOTS
+    if any(node.name == "inbox" for node in (*program.defines, *program.defaults)):
+        roots += (_OWN_INBOX,)
+    return roots
+
+
+def _asks(program: Program) -> dict[str, frozenset | None]:
+    """F65 round 3: each message's reply ids from its define's plain value (None: a value
+    this module can't read, so any reply)."""
+    from engine.script.inbox import message_ask, message_problem, plain_value
+    out: dict[str, frozenset | None] = {}
+    for node in (*program.defines, *program.defaults):
+        if node.name in out:
+            continue
+        plain, value = plain_value(node.value.source)
+        if not plain:
+            out[node.name] = None
+        elif message_problem(value) is None:
+            out[node.name] = frozenset(key for key, _ in message_ask(value))
+    return out
 
 
 def _guards_of(program: Program, roots: tuple[str, ...] = COUNT_ROOTS) -> list[_Link]:
@@ -537,6 +604,8 @@ def _sets_in(program: Program, watched: frozenset[str]) -> dict[str, frozenset[s
                 found |= {w for w in watched if w.startswith(_COUNT_PREFIX)}
             elif isinstance(stmt, CodexLock) and stmt.kind == WORD_ITEM:
                 found.add(count_key(stmt.name))
+            elif isinstance(stmt, SendStep):                # F65 round 3: replies may come
+                found.add(reply_key(stmt.message))
         direct[name] = found & watched
     links = {name: {s.target for s in _statements(label.block)
                     if isinstance(s, (Jump, Call))}
@@ -574,6 +643,8 @@ def _first_values(program: Program, watched: frozenset[str], walk: _Walk) -> Sta
     for name in watched:                            # F64: a new game holds no items
         if name.startswith(_COUNT_PREFIX):
             state[name] = frozenset({0})
+        elif name.startswith(_REPLY_PREFIX):        # F65 round 3: no reply yet
+            state[name] = frozenset({""})
     for node in (*program.defines, *program.defaults):
         if node.name not in watched:
             continue
@@ -599,7 +670,9 @@ def analyze(program: Program, starts: Iterable[str]) -> dict[str, SceneReach]:
     plain_links = _guards_of(program, roots)
     watched = frozenset(name for link in plain_links for g in link.guards for name in g.names)
     walk = _Walk(program, watched, _sets_in(program, watched) if watched else {}, roots=roots,
-                 caps={e.name: e.cap for e in program.codex if e.kind == WORD_ITEM})
+                 caps={e.name: e.cap for e in program.codex if e.kind == WORD_ITEM},
+                 asks=_asks(program) if any(n.startswith(_REPLY_PREFIX) for n in watched)
+                 else {})
     walk.record = True
     first = _first_values(program, watched, walk)
     entry: dict[str, State] = {}
