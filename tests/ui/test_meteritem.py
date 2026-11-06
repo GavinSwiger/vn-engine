@@ -19,7 +19,8 @@ from engine.core.geometry import Viewport
 from engine.runtime.interpreter import Status
 from engine.runtime.points import MeterSpec, Points
 from engine.ui.meteritem import MeterItem, MeterReading, marks, shown_look
-from engine.ui.statuscorner import PULSE_S, CornerStyle, StatusCorner, corner_style
+from engine.ui.statuscorner import (PULSE_GROW, PULSE_RING, PULSE_S, CornerStyle,
+                                    StatusCorner, corner_style)
 from engine.ui.theme import plain_theme
 from tests.ui.test_statuscorner import BERRY, corner, game_shell, m20, _frame
 
@@ -92,19 +93,29 @@ def test_values_update_live_and_resize():
     assert after - before == pytest.approx(m20("12,345", S) - m20("0", S))
 
 
-def test_the_pulse_rises_and_falls_and_reduce_motion_has_none():
+def test_the_pulse_grows_and_fades_and_reduce_motion_has_none():
     layer = corner()
     layer.set_item("m", "top_left", item("bar", HANA))
     layer.update(1.0)
+    assert (layer.views()[0].pulse, layer.views()[0].spread) == (0.0, 0.0)
     layer.pulse("m")
-    assert layer.views()[0].pulse == 0.0
-    layer.update(PULSE_S / 2)
-    assert layer.views()[0].pulse == pytest.approx(1.0)
-    layer.update(PULSE_S)
-    assert layer.views()[0].pulse == 0.0
+    seen = []
+    for _ in range(5):                                   # 0, 0.1, 0.2, 0.3 s in, then done
+        view = layer.views()[0]
+        seen.append((round(view.pulse, 3), round(view.spread, 3)))
+        layer.update(PULSE_S / 4)
+    assert PULSE_S == pytest.approx(0.4)
+    assert seen == [(1.0, PULSE_RING), (0.75, PULSE_RING + PULSE_GROW * 0.4375),
+                    (0.5, PULSE_RING + PULSE_GROW * 0.75),
+                    (0.25, PULSE_RING + PULSE_GROW * 0.9375), (0.0, 0.0)]
+    assert [s for s, _ in seen] == sorted([s for s, _ in seen], reverse=True)   # fades
+    assert [g for _, g in seen[:4]] == sorted(g for _, g in seen[:4])           # grows
+    layer.pulse("m")                                     # a second change starts it again
+    assert layer.views()[0].pulse == 1.0
     cut = corner(reduce=True)
     cut.set_item("m", "top_left", item("bar", HANA))
     cut.pulse("m")
+    assert cut.views()[0].pulse == 0.0
     cut.update(PULSE_S / 2)
     assert cut.views()[0].pulse == 0.0
 
@@ -206,9 +217,9 @@ def test_meter_corner_follows_the_shown_list_and_cuts_after_a_reset():
     corner_._reduce_motion = lambda: False
     points.add("affection", -9)
     owner.sync()
-    corner_.update(PULSE_S / 2)
+    corner_.update(PULSE_S / 4)
     views = {v.key: v for v in corner_.views()}
-    assert views[("meter", "affection")].pulse > 0.9
+    assert views[("meter", "affection")].pulse == pytest.approx(0.75)
     # a load: the reset drops them at once; the next sync refills as cuts, with no pulse
     owner.reset()
     assert corner_.keys() == ()
@@ -221,3 +232,26 @@ def test_meter_corner_follows_the_shown_list_and_cuts_after_a_reset():
     owner.sync()
     corner_.update(1.0)
     assert corner_.keys() == ()
+
+
+def test_the_pulse_ring_moves_out_as_it_fades():
+    """Drawn: just after a rank change the ring hugs the panel; halfway it has moved about
+    ``PULSE_GROW`` units out (the pixel there changes); at the end nothing is left."""
+    shell, _ = game_shell()
+    shell.corner._reduce_motion = lambda: False
+    shell.corner.set_item("m", "top_right", item("bar", MeterReading(4, 0, 5, "Friend")))
+    shell.update_layer(1.0, focused=True)
+    box = shell.corner.views()[0].box
+    far = (round(box.x) - PULSE_RING - 6, int(box.y + box.h / 2))   # the ring's band at 0.2 s
+    near = (int(box.x) - PULSE_RING + 1, int(box.y + box.h / 2))
+    plain = _frame(shell)
+    shell.corner.pulse("m")
+    start = _frame(shell)
+    assert start.get_at(near) != plain.get_at(near) and start.get_at(far) == plain.get_at(far)
+    shell.update_layer(PULSE_S / 2, focused=True)
+    assert round(shell.corner.views()[0].spread) == PULSE_RING + 7     # 3 + 10 × 0.75
+    middle = _frame(shell)
+    assert middle.get_at(far) != plain.get_at(far)
+    shell.update_layer(PULSE_S, focused=True)
+    end = _frame(shell)
+    assert end.get_at(far) == plain.get_at(far) and end.get_at(near) == plain.get_at(near)

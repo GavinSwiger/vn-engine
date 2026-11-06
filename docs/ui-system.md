@@ -1142,8 +1142,10 @@ Full spec: specs/F61-status-corner/SPEC.md. Module: `engine/ui/statuscorner.py`.
 - **Contrast.** W67 checks `corner.text_color` (4.5:1) and `corner.accent_color` (3:1) on the
   fill at `corner.fill_opacity`, over black and white, once the author sets a corner color
   or the opacity; every built-in scheme meets both at the default 0.90.
-- **Pulse (F62).** `pulse(key)` rings an item's panel once in `corner.accent_color`, 3 units
-  outside it, rising and falling over 0.6 s; none under reduced motion.
+- **Pulse (F62).** `pulse(key)` sends one ring out from an item's panel in
+  `corner.accent_color` (3 units wide): over 0.4 s it moves from 3 to 13 units outside the
+  panel, eased out, while it fades from full to nothing, on the corner's fade clock. A new
+  rank change starts it again. None under reduced motion.
 
 ### Shown meters (F62)
 

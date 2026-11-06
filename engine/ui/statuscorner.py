@@ -49,8 +49,11 @@ whole layer is a cut, as the say window's hide is.
 **Motion.** An added item fades in and a removed one fades out over ``corner.fade_ms``
 (linear); under reduced motion both are cuts. Restacking is a cut. ``set_item`` and
 ``remove_item`` take ``fade=False`` for a cut (an owner refilling after a load). F62:
-``pulse(key)`` rings the item's panel once in the accent color for ``PULSE_S`` (a meter's
-rank changed); none under reduced motion.
+``pulse(key)`` sends one ring out from the item's panel in the accent color (a meter's rank
+changed): over ``PULSE_S`` it grows from ``PULSE_RING`` to ``PULSE_RING + PULSE_GROW``
+outside the panel (eased out) while it fades from full to nothing, on the same clock as the
+fades (``update``), so it is frame-rate independent and a test can step it; none under
+reduced motion.
 
 **Sources** (F62): ``add_source(fn)``: ``fn()`` runs at the start of every ``update``, so an
 owner can bring its items in line with the game state each frame (``app/meters.py``).
@@ -60,7 +63,6 @@ palette, and ``[theme.scheme]`` styles it; W67 checks ``corner.text_color`` and
 ``corner.accent_color`` on the fill (``app/ui_contrast.PAIRS``).
 """
 
-import math
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Final, Protocol
@@ -88,8 +90,9 @@ MIDDLE_Y: Final = CANVAS_H / 2            # a top stack ends by here
 INDICATOR_TOPLEFT: Final = (24, 24)
 INDICATOR_ROW_W: Final = 320
 INDICATOR_ROW_H: Final = 32               # used when there is no quick menu to measure
-PULSE_S: Final = 0.6                      # F62: one rank-change pulse, in seconds
-PULSE_RING: Final = 3                     # its ring, outside the panel, canvas units
+PULSE_S: Final = 0.4                      # F62: one rank-change pulse, in seconds
+PULSE_RING: Final = 3                     # its ring's width and first gap, canvas units
+PULSE_GROW: Final = 10                    # how much farther out the ring ends
 
 # ``[theme.corner]`` tokens that follow another token when unset (W67 resolves them too).
 CORNER_FOLLOWS: Final[Mapping[str, str]] = {
@@ -295,7 +298,8 @@ class CornerView:
     place: str
     box: Box | None             # None: it doesn't fit
     opacity: float
-    pulse: float = 0.0          # F62: the ring's strength now, 0 to 1
+    pulse: float = 0.0          # F62: the ring's strength now, 1 (just pulsed) to 0
+    spread: float = 0.0         # F62: the ring's gap outside the panel now, canvas units
 
 
 class StatusCorner:
@@ -423,7 +427,9 @@ class StatusCorner:
         dt = max(0.0, float(dt))
         for entry in list(self._entries):
             if entry.pulse > 0:
-                entry.pulse = max(0.0, entry.pulse - dt)
+                entry.pulse = entry.pulse - dt
+                if entry.pulse <= _EPSILON:
+                    entry.pulse = 0.0
             if entry.phase == "in":
                 entry.t += dt
                 if fade <= 0 or entry.t >= fade - _EPSILON:
@@ -434,11 +440,14 @@ class StatusCorner:
                     self._drop(entry)
 
     @staticmethod
-    def _pulse(entry: _Entry) -> float:
-        """The pulse ring's strength: one smooth rise and fall over ``PULSE_S``."""
+    def _pulse(entry: _Entry) -> tuple[float, float]:
+        """The pulse ring now: (strength, gap outside the panel). It fades linearly from 1
+        and moves out eased (fast, then settling) over ``PULSE_S``; (0, 0) when none."""
         if entry.pulse <= 0:
-            return 0.0
-        return math.sin(math.pi * (1.0 - entry.pulse / PULSE_S))
+            return 0.0, 0.0
+        progress = 1.0 - min(1.0, entry.pulse / PULSE_S)
+        eased = 1.0 - (1.0 - progress) ** 2
+        return 1.0 - progress, PULSE_RING + PULSE_GROW * eased
 
     def _opacity(self, entry: _Entry, fade: float) -> float:
         if entry.phase == "in":
@@ -477,7 +486,7 @@ class StatusCorner:
         boxes = self.layout(reserved)
         fade = self._fade_s(self.style)
         return tuple(CornerView(e.key, e.place, boxes.get(e.key), self._opacity(e, fade),
-                                self._pulse(e)) for e in self._entries)
+                                *self._pulse(e)) for e in self._entries)
 
     def overflow(self, reserved: Iterable[Box] = ()) -> tuple[Hashable, ...]:
         """The keys that don't fit their corner now (not drawn)."""
@@ -502,14 +511,14 @@ class StatusCorner:
             if box is None or opacity <= 0.0:
                 continue
             painter.shape(box, style.frame, alpha=opacity)
-            pulse = self._pulse(entry)
+            pulse, spread = self._pulse(entry)
             if pulse > 0.0:                                     # F62: a rank changed
                 frame = style.frame
+                gap = round(spread)              # whole units: few cached ring shapes
                 ring = FrameSpec(frame.fill_color, 0.0, style.accent_color, PULSE_RING,
-                                 frame.corner_radius + PULSE_RING)
-                painter.shape(Box(box.x - PULSE_RING, box.y - PULSE_RING,
-                                  box.w + 2 * PULSE_RING, box.h + 2 * PULSE_RING), ring,
-                              alpha=opacity * pulse)
+                                 frame.corner_radius + gap)
+                painter.shape(Box(box.x - gap, box.y - gap, box.w + 2 * gap,
+                                  box.h + 2 * gap), ring, alpha=opacity * pulse)
             inner = Box(box.x + style.side_padding, box.y + style.top_padding,
                         box.w - 2 * style.side_padding, box.h - 2 * style.top_padding)
             entry.item.draw(canvas, inner, self._context(style, entry.place, opacity))
