@@ -1062,7 +1062,7 @@ def test_ac_f21_39_codex_docs(tmp_path):
     flat = " ".join(section.split())
     for words in ("**Tips are kept across playthroughs.**",
                   "**Items belong to this playthrough.**", "**`codex.tips`**",
-                  "**`codex.items`**", "**`lock item name`** takes an item away",
+                  "**`items.held`**", "**`lock item name`** takes an item away",
                   "`[codex] notify`", "`[codex] show_locked`", "`codex.new.fill_color`",
                   "`codex.locked.text_color`", "`codex.image_height`", "`codex_empty`",
                   "after History", "`[title] entries`"):
@@ -1077,7 +1077,7 @@ def test_ac_f21_39_codex_docs(tmp_path):
     declarations = [line for line in walk.splitlines()
                     if line.startswith("lock ") or line.startswith('    "')][:6]
     assert len(declarations) == 6 and "\n".join(declarations) in code
-    for pattern in (r'^    if "red_lantern" in codex\.items:$',
+    for pattern in (r'^    if "red_lantern" in items\.held:$',
                     r'^        "Ask about the river god" if "river_god" in codex\.tips:$',
                     r"^    unlock item red_lantern$", r"^    unlock tip lanterns$",
                     r"^    lock item red_lantern$"):

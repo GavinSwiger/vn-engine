@@ -18,8 +18,8 @@ child's name index, so nothing about a statement is hand-listed here (PR-F45-17)
   Help pane shows, the Docs line left out while a word's docs step is pending (``07`` I-4).
 - **Codex names** (2026-11-02, AC-F45-67..69). ``lock tip|item … image <words>`` offers
   picture names; in a Python line (``$``, ``if``, ``elif``, a choice's ``if``) a string
-  offers tip and item names (only one kind before ``in codex.tips``/``codex.items``), and
-  ``codex.`` offers ``tips`` and ``items``.
+  offers tip and item names (only one kind before ``in codex.tips``/``items.held``, or the
+  old ``codex.items``), and ``codex.`` offers ``tips`` (v1: the bag is ``items.held``).
 - **Verbs and quoted names** (F31 s5, AC-F45-72). After a ``VERB_STATEMENTS`` word (``file``)
   completion offers the second words its docs' syntaxes start with (``write``, ``delete``,
   ``exists``, ``read``); a ``QUOTED_KINDS`` kind (``audio``, ``meta_file``) is offered only
@@ -64,7 +64,7 @@ TAG_KIND: Final = "tag"                  # a text tag name, after "{" in a text 
 CLOSE_TAG_KIND: Final = "close tag"      # the innermost open style tag, after "{/"
 TEXT_KEYS: Final = ("dialogue", "narration")   # the doc keys whose strings hold text tags
 CODEX_FIELD_KIND: Final = "codex"        # ``tips``/``items`` after ``codex.`` in Python
-CODEX_FIELDS: Final = ("tips", "items")
+CODEX_FIELDS: Final = ("tips",)        # v1: codex.items is items.held now (W323)
 PYTHON_KEYS: Final = ("$", "if", "elif")  # statement words followed by Python
 # Name kinds a syntax's ``<word> <kind>`` pair can name (2026-11-02, AC-F45-52): ``lock route
 # <label>``, ``until <ending>``, ``unlock tip|item <name>`` (a ``<name>`` after a choice of
@@ -82,7 +82,8 @@ _TAG_TYPED = re.compile(r"/?[a-z_]*")
 _TAG_NAME_CHARS = re.compile(r"[a-z_]*")
 _CHOICE_IF = re.compile(r'"[ \t]+if[ \t]')
 _CODEX_DOT = re.compile(r"(?:^|[^\w.])codex\.(\w*)$")
-_IN_CODEX = re.compile(r'[^"]*"[ \t]*(?:not[ \t]+)?in[ \t]+codex\.(tips|items)\b')
+_IN_CODEX = re.compile(
+    r'[^"]*"[ \t]*(?:not[ \t]+)?in[ \t]+(?:codex\.(tips|items)|items\.(held))\b')
 _WORDS = re.compile(r"\S+")
 
 
@@ -283,7 +284,8 @@ def _codex_context(line: str, before: str, quoted: bool) -> Context | None:
     if len(typed) > PREFIX_MAX or not all(is_word_char(c) for c in typed):
         return None
     after = _IN_CODEX.match(line, column)
-    kinds = ("tip", "item") if after is None else (after.group(1)[:-1],)
+    kinds = ("tip", "item") if after is None else (
+        ("tip",) if after.group(1) == "tips" else ("item",))
     return Context(kinds, typed, start, column)
 
 

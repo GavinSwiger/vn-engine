@@ -95,3 +95,16 @@ def test_theme_kit_is_read_as_game_kit_and_studio_moves_it():
     new = "\n".join(apply_lines(text.split("\n"), plan.edits))
     assert tomllib.loads(new) == {"game": {"title": "x", "kit": "mystery"},
                                   "theme": {"preset": "noir"}}
+
+
+def test_codex_count_and_items_warn_once_each_at_their_first_read(tmp_path):
+    top = 'lock item coin "Coins" count\nlock item key "Key"\ndefault n = 0\n'
+    result = _load(tmp_path, top, ['$ n = codex.count("coin")', 'if "key" in codex.items:',
+                                   '    "Yes."', '$ n = codex.count("coin") + items.count("coin")',
+                                   'if "key" in items.held:', '    "Held."'])
+    assert not result.errors
+    assert [w[1:] for w in _w323(result.warnings)] == [
+        (5, "codex.count is a spelling from before version 1. It still works for now, but "
+            "write items.count(...) instead."),
+        (6, "codex.items is a spelling from before version 1. It still works for now, but "
+            "write items.held instead.")]

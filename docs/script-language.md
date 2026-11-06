@@ -773,7 +773,7 @@ label stall:
 ```
 ```
 label bridge:
-    if "red_lantern" in codex.items:
+    if "red_lantern" in items.held:
         hana "Is that... the lantern from the stall?"
     menu:
         "Ask about the river god" if "river_god" in codex.tips:
@@ -819,11 +819,13 @@ tip. None of them waits or shows anything else, and the next line already sees t
 Unlocking an entry the player already has does nothing.
 
 **Read** them anywhere Python runs: **`codex.tips`** (the tips the player has, in the order
-they are declared) and **`codex.items`** (the items the player holds, in the order they got
-them) are lists of names: `"red_lantern" in codex.items`, `len(codex.tips)`. You can't
+they are declared) and **`items.held`** (the items the player holds, in the order they got
+them) are lists of names: `"red_lantern" in items.held`, `len(codex.tips)`. You can't
 change them, give them a `default`, or read them in a `define` (use a `lambda`): use
-`unlock` and `lock`. A copy (`$ seen = codex.items`) is an ordinary list. `tip` and `item`
-are still free as variable names; `codex` is the engine's.
+`unlock` and `lock`. A copy (`$ seen = items.held`) is an ordinary list. `tip` and `item`
+are still free as variable names; `codex` is the engine's, and so is `items` unless your
+story has a variable of its own by that name. Before version 1 the held items were
+`codex.items` and a count `codex.count("coin")`; both still work, and the check warns (W323).
 
 **Item counts and money.**
 
@@ -860,9 +862,9 @@ as "Coins ×30".
   anywhere after the title, items only. See "Shops" under `minigame`.
 - **Read a count** with **`items.count("coin")`** anywhere Python runs: `if
   items.count("coin") >= 5:`, `$ left = items.count("coin")`. It is 0 when the player has none.
-  To show it in a line, copy it to a variable first, as above. `codex.count("coin")` is the
-  same thing; use it if your story has a variable of its own named `items` (then `items` stays
-  yours, and `items.count` is that variable's).
+  To show it in a line, copy it to a variable first, as above. If your story has a
+  variable of its own named `items`, `items` stays yours (and `items.count` is that
+  variable's), so rename it to read the bag.
 - Counts are saved, loaded and rolled back with the items. A save made before counts loads
   with one of each item it held.
 - The story map follows counts like variables: a scene behind `if items.count("coin") >= 30:`
@@ -943,21 +945,22 @@ each changed under `[words]`.
 | `the tip title has 75 characters; keep it to 60.` / `a tip paragraph can use {b}, {i}, and {color}, but not {var}.` | Plain titles up to 60 characters; only `{b}`, `{i}`, `{color}` in the text. |
 | `there is no tip "lantern". Did you mean "lanterns"? Declare tips at the top level, e.g. lock tip lantern "Title".` / `brass_key is an item, not a tip. Write unlock item brass_key.` | Fix the name, or declare the entry. |
 | `this story has 1,204 tips; the engine allows 1,000.` | Up to 1,000 tips, 1,000 items, and 24 categories. |
-| `there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock`. |
+| `there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `items.held`; change them with `unlock` and `lock`. |
 | `the amount in unlock item coin is a whole number from 1 to 999,999, but found "0". Write e.g. unlock item coin 3.` / `lock item coin takes a number after the name, but found "all". …` / `a tip is given or forgotten all at once, so unlock tip lanterns takes no number. …` | Write a whole number after an item's name, or none; to take some away, use `lock item`. |
 | `tip lanterns can't have a count: a tip is known or not. …` / `tip lanterns can't be the money: …` | Only items have `count` and `money`. |
 | `tip lanterns can't be used: only an item has a Use button, …` / `use needs the name of a label, e.g. use bridge.` / `there is no label named "drink_te". Did you mean "drink_tea"?` | Write `use` and a scene's label name on an item's declaration. |
 | `a count always starts at 0, so write count 0 to 999 (or count 999) …` / `the most of coin a player can hold is a whole number from 1 to 999,999, but found "0". …` | Write `count`, `count 999` or `count 0 to 999`. |
 | `gold and coin (script/items.vns, line 1) are both marked money, but the bag shows one purse. Remove money from one of them.` | Keep `money` on one item. |
 | `there is no item named "coins". Did you mean "coin"? …` / `"lanterns" is a tip, not an item, so it has no count. …` / `items.count needs an item's name in quotes, e.g. items.count("coin"), not 3.` | Count a declared item by its name in quotes. (Also while playing, when the name is computed.) |
-| `there is no items.total. items has one thing, count: …` / `Python can't change items. …` | Read `items.count("coin")`; change counts with `unlock item` and `lock item`. |
+| `there is no items.total. items has two things: …` / `Python can't change items. …` | Read `items.count("coin")` or `items.held`; change counts with `unlock item` and `lock item`. |
 | `item brass_key has no count, so the player holds at most one and the 3 here acts as 1. …` (warning) | Add `count` to the item's declaration, or drop the number. |
-| `this story has its own variable named items, so items.count("coin") reads that variable, not the bag. Write codex.count("coin") to count the item.` (warning) | Use `codex.count`, or rename your variable. |
+| `this story has its own variable named items, so items.count("coin") reads that variable, not the bag. Rename your variable to count the item.` (warning) | Rename your variable. |
+| `codex.items is a spelling from before version 1. It still works for now, but write items.held instead.` (warning W323; also `codex.count`) | Write `items.held` and `items.count("coin")`. |
 | `coin holds at most 999, so unlock item coin 2,000 stops there. …` (warning) | Raise the item's most, or give less. |
 | `define hint couldn't be set: it reads codex, which holds items only once a game has started. Use a lambda or a default.` (when the game starts) | Use `define hint = lambda: …` or a `default`. |
 | `the category "festival" differs from "Festival" (script/codex.vns, line 1) only in capitals or spaces, so they show as two tabs. Use one spelling.` (warning, dev runs) | Spell the category one way. |
 | `tip river_god is declared, but no unlock tip river_god line names it, so players get it only if code unlocks it.` (warning, dev runs) | Add an `unlock tip` line, or remove the tip. |
-| `lock item brass_key does nothing here, because the player doesn't have it.` (warning, dev runs) | Check for the item first: `if "brass_key" in codex.items:`. |
+| `lock item brass_key does nothing here, because the player doesn't have it.` (warning, dev runs) | Check for the item first: `if "brass_key" in items.held:`. |
 
 ### show hotbar, hide hotbar
 
@@ -4281,7 +4284,7 @@ you can look one up or mention it when you ask for help.
 | E183 | `persistent data is now 1.3 MB, over the 1 MB limit, so it can't be saved. …` / `persistent data now has 10,001 names, over the 10,000 limit. …` | Store flags and counts, not long text or big lists. |
 | E184 | `default persistent.a.b sets one name after "persistent.", …` (when the game loads) | One name per `default persistent.` line. |
 | E185 | `define title couldn't be set: it reads persistent.cleared, but define values are set once at launch …` (at launch) | Use a `lambda` or a `default`. |
-| E256 | `Python can't change codex. Use unlock tip, unlock item, and lock item.` / `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `define hint couldn't be set: it reads codex, …` (at launch) | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock` (see [lock tip, lock item, unlock](#lock-tip-lock-item-unlock-codex)). |
+| E256 | `Python can't change codex. Use unlock tip, unlock item, and lock item.` / `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `define hint couldn't be set: it reads codex, …` (at launch) | Read `codex.tips` and `items.held`; change them with `unlock` and `lock` (see [lock tip, lock item, unlock](#lock-tip-lock-item-unlock-codex)). |
 | W56 | `persistent.hana_rememebrs is read here but never set or given a default. …` (warning, dev runs) | Fix the spelling or add a `default`. |
 | E272 | `the argument words holds a set, which can't be saved. Use a list instead.` / `lantern_memory can't use pairs=40: …` (the plugin's `check_args` refused it) | Give values a variable can hold, that the minigame accepts. |
 | E275 | `minigame stargazing stopped with an error in minigames/stargazing.py, line 88: division by zero. Fix the plugin; the log has the details.` | Fix the plugin at that line. |
@@ -4972,7 +4975,7 @@ story goes on after a warning.
 - 2026-11-02: F21 built (step 5): `lock tip, lock item, unlock (codex)` in section 7: tips
   (kept across playthroughs) and items (this playthrough) declared with a title, a category,
   a picture, and paragraphs; `unlock tip`, `unlock item`, `lock item`, and `lock tip` in a
-  label; `codex.tips` and `codex.items` as read-only lists; rollback; the Codex page in the
+  label; `codex.tips` and `items.held` as read-only lists; rollback; the Codex page in the
   game menu and, when listed, on the title; `[codex]`, `[theme.codex]`, the seven words, and
   E250–E256 and W140–W142. Section 6 and Reserved words say `codex` is an engine name and
   `tip` and `item` aren't reserved; section 9 lists `codex`; section 15 names the Codex

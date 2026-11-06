@@ -1,7 +1,7 @@
 """F64 round 1: the whole-game checks of item counts and the purse (specs/F64-items/SPEC.md).
 
 Why this module exists: an item's count is read in Python as ``items.count("coin")`` (or
-``codex.count("coin")``), with the item's name as a quoted argument the bindings pass never
+``codex.count("coin")``, its spelling from before version 1, W323), with the item's name as a quoted argument the bindings pass never
 looks at, and the purse is one item marked ``money`` across every file. So, once every file is
 read (nothing runs):
 
@@ -11,8 +11,8 @@ read (nothing runs):
   when no ``lock item`` declares that name (did-you-mean; its ``tip`` form for a tip, its
   ``text`` form for a number); E441 for ``items.<other>`` or a change of ``items``. These hold
   only while ``items`` is the engine's: a story that sets a variable of its own named
-  ``items`` (``default``, ``define``, or a ``$`` line) keeps it, and W306 says to use
-  ``codex.count`` where it counts a declared item through it;
+  ``items`` (``default``, ``define``, or a ``$`` line) keeps it, and W306 says to rename it
+  where it counts a declared item through it;
 - each ``unlock item <name> <n>``: W305 when the item has no count (it holds one), W307 when
   ``n`` is over its count's most.
 
@@ -35,6 +35,7 @@ from engine.script.suggest import suggest
 ITEMS = "items"                       # the engine view (soft: a story's own variable wins)
 CODEX = "codex"
 COUNT = "count"
+HELD = "held"                         # v1: items.held, the held names (was codex.items)
 
 
 def binds_items(pieces: Iterable[Piece], names: Iterable[str]) -> bool:
@@ -71,14 +72,15 @@ def _count_call(node: ast.AST, roots: tuple[str, ...]) -> tuple[str, object] | N
 
 
 def _items_misuse(tree: ast.AST) -> tuple[int, str, str] | None:
-    """The first ``items.<attr>`` that isn't a read of ``count``: (line, form, attr)."""
+    """The first ``items.<attr>`` that isn't a read of ``count`` or ``held``: (line, form,
+    attr)."""
     found = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) \
                 and node.value.id == ITEMS:
             if not isinstance(node.ctx, ast.Load):
                 found.append((node.lineno, node.col_offset, "change", node.attr))
-            elif node.attr != COUNT and not node.attr.startswith("__"):
+            elif node.attr not in (COUNT, HELD) and not node.attr.startswith("__"):
                 found.append((node.lineno, node.col_offset, "unknown", node.attr))
     if not found:
         return None

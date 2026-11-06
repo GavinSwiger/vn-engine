@@ -39,10 +39,12 @@ for a plain item, so a plain item still holds one), ``take(name, n)`` removes do
 drops the name at 0. The counts are saved in ``ItemsState.counts`` (a save from before F64
 holds one of each); ``merged`` clamps a saved count to the item's ``cap`` now. ``purse()`` is
 the money item and its count. The engine name ``items`` (``ItemsReader``, read-only,
-``items.count("coin")``) is bound only when the story has no variable of its own named
-``items`` (``itemcounts.program_binds_items``): then it is reserved for this interpreter, never
-saved; otherwise the story's own ``items`` is left alone and ``codex.count`` reads counts.
-A bad name is E440, any other use of ``items`` E441.
+``items.count("coin")``, and ``items.held``, the held names as ``codex.items`` gives them) is
+bound only when the story has no variable of its own named ``items``
+(``itemcounts.program_binds_items``): then it is reserved for this interpreter, never saved;
+otherwise the story's own ``items`` is left alone (W306). A bad name is E440, any other use of
+``items`` E441. v1 name freeze: ``items`` is the one way to read the bag; ``codex.count`` and
+``codex.items`` still work, as deprecated aliases (W323 in the check, ``script/renamed.py``).
 
 **F65 round 1 (codex kinds, chats you can reread).** A kind is a description in
 ``core/codexkinds`` (its page, tab word, order, fields; tips and items were the first two),
@@ -93,6 +95,7 @@ TIP_KIND: Final = "tip"                 # F12 unlock kinds: tips (revocable) and
 READ_KIND: Final = "codex_read"
 ATTRS: Final[tuple[str, ...]] = ("tips", "items", "count")  # what ``codex`` has (E255, E256)
 ITEMS_NAME: Final = "items"             # F64: the engine view of the counts (soft name)
+HELD: Final = "held"                    # v1: items.held, the held names (was codex.items)
 CHAT_KIND: Final = CHAT.name            # F65: the Inbox's threads
 
 _story_log = get_logger("story")        # W141 (dev, run)
@@ -567,8 +570,9 @@ _ITEMS_BOUND: "weakref.WeakKeyDictionary[ItemsReader, Codex]" = weakref.WeakKeyD
 
 
 class ItemsReader:
-    """``items`` in author Python (F64): ``items.count("coin")`` only. Read-only; before a
-    game starts every read is E441's define form; any other attribute E441's unknown form."""
+    """``items`` in author Python (F64): ``items.count("coin")`` and (v1) ``items.held``, a
+    fresh ``list`` of the held names per read. Read-only; before a game starts every read is
+    E441's define form; any other attribute E441's unknown form."""
 
     __slots__ = ("__weakref__",)
 
@@ -580,6 +584,8 @@ class ItemsReader:
             raise AuthorRefusal("E441", format_message("E441", ("define", name)))
         if name == "count":
             return _counter(codex)
+        if name == HELD:
+            return list(codex.items())
         raise _ItemsNoAttr(name)
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -589,7 +595,7 @@ class ItemsReader:
         raise AuthorRefusal("E441", format_message("E441", ("change", name)))
 
     def __dir__(self) -> list[str]:
-        return ["count"]
+        return ["count", HELD]
 
     def __repr__(self) -> str:
         return "<items>"

@@ -25,12 +25,13 @@ def test_ac67_picture_names_after_image_in_a_codex_declaration():
 def test_ac68_tip_and_item_names_in_python_strings():
     assert offered('$ seen = "ri" in codex.tips', 11) == [("river_god", "tip")]
     assert offered('if "b" in codex.items:', 5) == [("brass_key", "item")]
+    assert offered('if "b" in items.held:', 5) == [("brass_key", "item")]
     assert offered('$ x = "l') == [("lanterns", "tip")]              # either kind
     assert offered('    "Take the boat" if "ri" in codex.tips:', 26) == [("river_god", "tip")]
     assert offered('    hana "ri') is None                          # dialogue: no names
 
 
 def test_ac69_codex_dot_offers_its_fields():
-    assert offered("$ n = len(codex.") == [("items", "codex"), ("tips", "codex")]
+    assert offered("$ n = len(codex.") == [("tips", "codex")]
     assert offered("if codex.ti") == [("tips", "codex")]
     assert auto_open("$ x = codex.", 12) and not auto_open("$ x = mycodex.", 14)

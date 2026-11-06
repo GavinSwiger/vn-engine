@@ -3550,8 +3550,8 @@ def _e441(form: str = "unknown", *args: object) -> str:
     if form == "define":
         return ("it reads items, which holds counts only once a game has started. Use a "
                 "lambda or a default.")
-    return (f'there is no items.{name}. items has one thing, count: items.count("coin") is '
-            "how many coins the player holds.")
+    return (f'there is no items.{name}. items has two things: items.count("coin") is how '
+            "many coins the player holds, and items.held lists the items the player holds.")
 
 
 def _w305(name: str = "brass_key", amount: int = 3) -> str:
@@ -3563,8 +3563,8 @@ def _w305(name: str = "brass_key", amount: int = 3) -> str:
 
 def _w306(name: str = "coin") -> str:
     return ("this story has its own variable named items, so "
-            f'items.count("{show_name(name)}") reads that variable, not the bag. Write '
-            f'codex.count("{show_name(name)}") to count the item.')
+            f'items.count("{show_name(name)}") reads that variable, not the bag. Rename your '
+            "variable to count the item.")
 
 
 def _w307(name: str = "coin", amount: int = 2000, most: int = 999) -> str:

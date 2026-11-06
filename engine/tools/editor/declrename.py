@@ -13,7 +13,8 @@ change.", then apply one ``scriptedit.Plan`` (one undo step per file).
   lines, conditions, ``define``/``default`` values, minigame arguments, ``points`` amounts)
   is read with ``ast``: a character, variable, transition or minigame data set is a bare
   name; a meter is ``points.n``, ``points["n"]`` or ``points.highest("n")``; a remembered
-  variable is ``persistent.n``; a tip or item is ``"n" in codex.tips|items``.
+  variable is ``persistent.n``; a tip or item is ``"n" in codex.tips|items`` (an item also
+  ``"n" in items.held``).
 - **Statement slots**: who speaks (a say line's first word), ``points n …``,
   ``lock|unlock tip|item n``, ``with n``, ``at n``, ``minigame … into n``, ``{var=n}`` and
   ``{username=n}`` tags, and the declaration itself. Positions also move their
@@ -218,8 +219,10 @@ def _py_targets(tree: ast.AST, kind: str, old: str) -> Iterator[tuple[ast.AST, s
         elif kind in (dec.TIP, dec.ITEM) and isinstance(node, ast.Compare) \
                 and _const(node.left, old) and len(node.comparators) == 1:
             view = node.comparators[0]
-            if isinstance(view, ast.Attribute) and _is(view.value, "codex") \
-                    and view.attr == ("tips" if kind == dec.TIP else "items"):
+            if isinstance(view, ast.Attribute) and (
+                    (_is(view.value, "codex")
+                     and view.attr == ("tips" if kind == dec.TIP else "items"))
+                    or (kind == dec.ITEM and _is(view.value, "items") and view.attr == "held")):
                 yield node.left, "string"
 
 

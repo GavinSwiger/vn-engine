@@ -1518,6 +1518,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
         bindings.iter_pieces(inp.nodes, values=True),
         bindings.Defines.from_nodes(collected.define_defs, inp.nodes), sink.add,
         uses=out.uses, meters=frozenset(collected.meter_defs))      # F22: E233, E234
+    out.warnings += renamed.codex_warnings(out.uses.reads_of("codex"))  # v1: W323
     out.warnings += meterranks.check_story(inp.nodes, sink.add)     # F62: E233, E416, W290
     out.warnings += itemcounts.check_story(inp.nodes, sink.add)     # F64: E439-E441, W305-W307
     out.warnings += showmeter.check_story(inp.nodes, sink.add,      # F62 round 2: E233,

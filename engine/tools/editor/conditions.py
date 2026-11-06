@@ -24,7 +24,7 @@ variable        ``met_daichi`` / ``not met_daichi``    met_daichi is yes / no
 variable        ``persistent.festivals == 2``          (a persistent name)
 meter           ``points.hana > 3``                    hana meter is more than 3
 tip             ``"river_god" in codex.tips``          has tip river_god
-item            ``"key" not in codex.items``           doesn't have item key
+item            ``"key" not in items.held``            doesn't have item key
 ending          ``"sad" in persistent.endings``        ending sad seen
 route           ``"promise" in persistent.routes``     route promise open
 playthrough     ``persistent.playthrough >= 2``        playthrough is at least 2
@@ -82,9 +82,12 @@ YES: Final = "yes"
 NO: Final = "no"
 
 # The lists a has/hasn't row looks in.
-_LISTS: Final = {TIP: "codex.tips", ITEM: "codex.items", ENDING: "persistent.endings",
+_LISTS: Final = {TIP: "codex.tips", ITEM: "items.held", ENDING: "persistent.endings",
                  ROUTE: "persistent.routes"}
-_KIND_OF_LIST: Final = {source: kind for kind, source in _LISTS.items()}
+# v1: ``codex.items`` (before version 1, W323) still reads as an item row; rows write
+# ``items.held``.
+_KIND_OF_LIST: Final = {**{source: kind for kind, source in _LISTS.items()},
+                        "codex.items": ITEM}
 _PLAYTHROUGH_NAME: Final = "persistent.playthrough"
 # persistent names the engine keeps (not a plain persistent variable).
 _PERSISTENT_ENGINE: Final = frozenset(("endings", "routes", "playthrough"))

@@ -176,6 +176,6 @@ label shed_room:
         lock item shed_key
     if shed_state["action"] != "exit":
         jump shed_room
-    if "candles" in codex.items:
+    if "candles" in items.held:
         "I tucked a candle into my sleeve for later."
     return

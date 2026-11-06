@@ -6642,9 +6642,9 @@ ac = "AC-F21-07"
 feature = "F21"
 code = "-"
 needs = "load"
-each = [['S', 'if "brass_key" in codex.items:⏎[8]"A."'], ['S', '$ seen = codex.items'],
-        ['S', '$ n = len(codex.tips)'], ['S', '$ s = list(codex.items)⏎[4]$ s.append("x")'],
-        ['T', 'define f = lambda: len(codex.items)'], ['T', 'default had = "brass_key" in codex.items']]
+each = [['S', 'if "brass_key" in items.held:⏎[8]"A."'], ['S', '$ seen = items.held'],
+        ['S', '$ n = len(codex.tips)'], ['S', '$ s = list(items.held)⏎[4]$ s.append("x")'],
+        ['T', 'define f = lambda: len(items.held)'], ['T', 'default had = "brass_key" in items.held']]
 edit = { "<x>" = '<y>' }
 where = "-"
 

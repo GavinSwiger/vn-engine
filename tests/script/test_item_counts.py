@@ -115,7 +115,7 @@ def test_count_reads_are_checked(tmp_path, line, code, start):
 def test_count_reads_that_are_fine(tmp_path):
     result = _load(tmp_path, TOP, ['if items.count("coin") > 1 and codex.count("key"):',
                                    '    "x"', '$ n = items.count("coin")'])
-    assert not result.errors and not _warned(result)
+    assert not result.errors and [w.code for w in _warned(result)] == ["W323"]  # codex.count
 
 
 def test_a_story_variable_named_items(tmp_path):
@@ -123,7 +123,7 @@ def test_a_story_variable_named_items(tmp_path):
                    ['$ items.append("x")', 'if items.count("coin") > 0:', '    "x"'])
     assert not result.errors
     assert [w.code for w in _warned(result)] == ["W306"]
-    assert 'Write codex.count("coin")' in _warned(result)[0].message
+    assert "Rename your variable" in _warned(result)[0].message
 
 
 def test_amount_warnings(tmp_path):

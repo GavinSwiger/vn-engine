@@ -54,10 +54,15 @@ def _at_before(program, store=None, **kwargs):
     ('$ s = list(codex.items)⏎[4]$ s.append("x")', None),
     ("$ k = f()", "define f = lambda: len(codex.items)"),
     (None, 'default had = "brass_key" in codex.items'),
-], ids=["if", "seen", "len", "copy", "lambda", "default"])
+    ('if "brass_key" in items.held:⏎[8]"A."', None),
+    ("$ seen = items.held", None),
+], ids=["if", "seen", "len", "copy", "lambda", "default", "held", "held_copy"])
 def test_ac07_reading_codex_runs(tmp_path, S, T):
+    """``codex.items`` is the spelling from before version 1 (W323, still read)."""
     result = load_result(tmp_path / "c", S=S, T=T)
-    assert not result.errors and not result.warnings
+    assert not result.errors
+    assert not [w for w in result.warnings if w.code != "W323"]
+    assert bool(result.warnings) == ("codex.items" in (S or "") + (T or ""))
     commands = run_c(result.program)
     assert type(commands[-1]) is StoryEnded and not any(type(c) is StoryFailed
                                                          for c in commands)

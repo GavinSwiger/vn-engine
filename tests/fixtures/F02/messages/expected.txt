@@ -2747,9 +2747,11 @@ script/main.vns, line 10: Python can't change codex.items. Use unlock item and l
 
 [F21-07-E255-items-4]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 10: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-items-5]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 10: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-items-6]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
@@ -2759,9 +2761,11 @@ script/main.vns, line 10: Python can't change codex.items. Use unlock item and l
 
 [F21-07-E255-items-8]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 10: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-items-9]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 10: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-tips-1]
 script/main.vns, line 10: Python can't change codex.tips. Use unlock tip.
@@ -2771,15 +2775,19 @@ script/main.vns, line 10: Python can't change codex.tips. Use unlock tip.
 
 [F21-07-E255-pieces-1]
 script/main.vns, line 11: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 11: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-pieces-2]
 script/main.vns, line 12: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 12: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E255-pieces-3]
 script/main.vns, line 12: Python can't change codex.items. Use unlock item and lock item.
+script/main.vns, line 12: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E234-first]
 script/main.vns, line 10: Python can't change points.hana. Use the points statement, e.g. points hana = 3.
+script/main.vns, line 10: codex.items is a spelling from before version 1. It still works for now, but write items.held instead.
 
 [F21-07-E62-1]
 script/main.vns, line 10: "codex" is a name the engine uses. Pick another name, such as "my_codex".
