@@ -301,7 +301,7 @@ def _pages(program, interp, *, can_jump=None, **options):
 
 def test_ac_f20_56_entries(run1, tmp_path):
     assert DEFAULT_ORDER["game"] == ("return", "skip_minigame", "history", "codex",
-                                     "flowchart", "save", "load", "settings", "help",
+                                     "inbox", "flowchart", "save", "load", "settings", "help",
                                      "main_menu", "quit")
     assert DEFAULT_ORDER["title"] == ("new_game", "load", "flowchart", "settings", "extras",
                                       "codex", "help", "quit")

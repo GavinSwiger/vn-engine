@@ -372,7 +372,8 @@ def test_ac15_game_state_has_no_new_field():
         "position", "position_at", "call_stack", "variables", "dice", "identity_scheme",
         "stage", "audio", "choices", "history", "chapter", "points", "rollback", "nvl",
         "items", "minigame", "flow", "glitch",              # F21, F23, F20, F28
-        "window_title", "ui", "clock"]                      # F30, F32, F63
+        "window_title", "ui", "clock",                      # F30, F32, F63
+        "triggers"]                                         # F65 trigger core
 
 
 @pytest.mark.parametrize("wait", [1, 2, 3, 4])

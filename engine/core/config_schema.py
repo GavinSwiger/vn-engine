@@ -1646,7 +1646,7 @@ class WordsConfig:
     # to reread; a genre kit names it, e.g. "Letters", when this is left as is), and what the
     # player's own messages are called there.
     inbox: str = _word("Inbox", doc="the menu button and heading of the page of finished "
-                                    "chats to reread; a genre kit can rename it")
+                                    "chats to reread; the genre can rename it")
     inbox_me: str = _word("You", doc="who the player's own messages are from, on the Inbox "
                                      "page")
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
