@@ -176,8 +176,9 @@ def test_ac19_file_dialogs(studio, studio_game, tmp_path):
     select(ed, "audio/bgm/theme.ogg")
     ed.answers[:] = [1]
     ed.press(ed.tree, "<Delete>")
-    assert ed.dialogs[2] == ("ask", "Delete `audio/bgm/theme.ogg`? It is removed from the "
-                             "disk, not moved to the trash. This can't be undone.",
+    assert ed.dialogs[2] == ("ask", "Move `audio/bgm/theme.ogg` to the Recycle Bin? You "
+                             "can restore it from there." if window.files.recycle.AVAILABLE
+                             else window.files.delete_message("audio/bgm/theme.ogg"),
                              ("Delete", "Cancel"), 1, 1)
     assert (studio_game / "images" / "hana" / "happy.png").exists()
     assert (studio_game / "audio" / "bgm" / "theme.ogg").exists()

@@ -167,8 +167,7 @@ def test_ac_f41_19_delete_runs_the_category_delete_and_the_row_goes(studio, tmp_
     button(pane.body, cu.DELETE).invoke()
     ed.root.update()
     assert (game / "images/bg/old_park.png").exists()
-    assert ed.dialogs[-1][1] == "Delete images/bg/old_park.png from the game folder? " \
-                                "This can't be undone."
+    assert ed.dialogs[-1][1] == files.DELETE_FILE_ASK.format(ref="images/bg/old_park.png")
     ed.answers.append(0)
     button(pane.body, cu.DELETE).invoke()
     ed.root.update()

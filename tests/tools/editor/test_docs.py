@@ -99,7 +99,7 @@ def test_ac_f45_48_page_covers_studio():
                    "New script file", "**Rename**", "New game…", "F7 (**Check now**)",
                    "**Problems**", "`E`", "`W`", "Show warnings", "Ctrl+Space", "**Insert**",
                    "**Help**", "**Story map**", "(Ctrl+2)", "Ctrl+= and Ctrl+-", "out of date",
-                   "Find scene", "(Ctrl+G)", "Delete** is permanent", "screen-reader"):
+                   "Find scene", "(Ctrl+G)", "Delete** uses the Recycle Bin", "screen-reader"):
         assert needed in flat, needed
 
 

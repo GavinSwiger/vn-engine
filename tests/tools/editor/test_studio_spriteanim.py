@@ -13,6 +13,7 @@ import pytest
 from engine.script.messages import show
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import settingsmodel as sm
+from engine.tools.editor.files import DELETE_FILE_ASK as db_ask
 from tests.tools.editor.conftest import png
 from tests.tools.editor.test_studio_database import (  # noqa: F401  (fixtures)
     helper, open_database, sample_game, studio)
@@ -150,8 +151,8 @@ def test_ac_f38_11_add_frame_saves_next_name_remove_deletes_after_ask_nine_disab
     blink = panel.rows["blink"]
     blink.gallery._choose(ref("happy_blink2.png"))
     assert str(blink.remove.cget("state")) == "normal"
-    ask = ("ask", f"Delete {show(ref('happy_blink2.png'))} from the game folder? This "
-           "can't be undone.", ("Delete", "Cancel"), 1, 1)
+    ask = ("ask", db_ask.format(ref=show(ref("happy_blink2.png"))),
+           ("Delete", "Cancel"), 1, 1)
     ed.answers.append(1)                                     # Cancel
     blink.remove.invoke()
     assert ed.dialogs[-1] == ask and (game / HANA / "happy_blink2.png").is_file()

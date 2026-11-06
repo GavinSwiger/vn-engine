@@ -18,8 +18,9 @@ it happens:
 
 Writes go through ``safefile.write_atomic`` (exclusive temp, ``os.replace``); a new file gets
 ``0o666 & ~umask`` and a replaced file keeps its mode (``07`` I-7). Rename never replaces
-(POSIX link-then-unlink, Windows ``os.rename``). Delete is ``safefile.remove_file``. Sources
-are read with ``safefile.read_regular``: never through a FIFO or device, never past the cap.
+(POSIX link-then-unlink, Windows ``os.rename``). Delete is ``recycle.to_recycle_bin`` (the
+Recycle Bin; ``safefile.remove_file`` off Windows). Sources are read with
+``safefile.read_regular``: never through a FIFO or device, never past the cap.
 Messages name game refs and the source's file name only, never a path (``04`` §8.2).
 
 Imports only ``engine.core``, ``engine.script`` and the standard library (ADR-0008).
@@ -61,6 +62,7 @@ from engine.script.messages import format_message, show
 from engine.script.metafiles import name_problem
 from engine.script.source import decode_script
 from engine.script.words import ROLE_LABEL, check_name, is_word_char
+from engine.tools.editor import recycle
 
 MAIN_REF = "script/main.vns"
 SCRIPT_FOLDER = "script"
@@ -93,6 +95,11 @@ EXISTS = "`{ref}` already exists."
 LOCKED = "Couldn't {verb} `{ref}`: the file is read-only or locked."
 SYSTEM = "Couldn't {verb} `{ref}`: the system reported an error."
 GONE = "Couldn't {verb} `{ref}`: the file was moved or deleted."
+KEPT = "`{ref}` was kept: nothing was deleted."
+# The Database's and the animation panel's Delete question for one file.
+DELETE_FILE_ASK = ("Move {ref} to the Recycle Bin? You can restore it from there."
+                   if recycle.AVAILABLE else
+                   "Delete {ref} from the game folder? This can't be undone.")
 CHANGED = "`{ref}` changed on disk after it was picked, so it wasn't replaced."
 TRUST = "Minigames are Python code that the game runs. Only add code you trust."
 NOT_REGULAR = "`{name}` is not a regular file."
@@ -1082,9 +1089,13 @@ def rename_message(ref: str, new_name: str, *, unsaved: bool = False) -> str:
 
 
 def delete_message(ref: str, *, unsaved: bool = False) -> str:
-    """The delete confirmation (design §6.3; G6 for unsaved edits)."""
-    text = (f"Delete `{show(ref)}`? It is removed from the disk, not moved to the trash. "
-            "This can't be undone.")
+    """The delete confirmation (design §6.3; G6 for unsaved edits): Move to the Recycle
+    Bin on Windows, else a removal that can't be undone."""
+    if recycle.AVAILABLE:
+        text = f"Move `{show(ref)}` to the Recycle Bin? You can restore it from there."
+    else:
+        text = (f"Delete `{show(ref)}`? It is removed from the disk, not moved to the "
+                "trash. This can't be undone.")
     if unsaved:
         text += f"\n\n`{show(ref)}` has unsaved changes, which will be lost."
     return text
@@ -1096,8 +1107,8 @@ def clash_message(ref: str) -> str:
 
 
 def delete_file(paths: GamePaths, ref: str) -> None | Refusal:
-    """Delete the file ``ref`` from disk (not the trash) after (E). Only ``REMOVED`` counts
-    as success."""
+    """Delete the file ``ref`` after (E): to the Recycle Bin on Windows
+    (``recycle.to_recycle_bin``), else from the disk. Only ``REMOVED`` counts as success."""
     fixed = fixed_reason(ref)
     if fixed is not None:
         return Refusal(fixed)
@@ -1114,8 +1125,10 @@ def delete_file(paths: GamePaths, ref: str) -> None | Refusal:
     target = _existing(folder, name, ref, "delete")
     if isinstance(target, Refusal):
         return target
-    result = safefile.remove_file(target)
+    result = recycle.to_recycle_bin(target)
     paths.invalidate_listings()
+    if result is recycle.KEPT:
+        return Refusal(KEPT.format(ref=show(ref)))
     if result is safefile.RemoveKind.REMOVED:
         return None
     if result is safefile.RemoveKind.MISSING:

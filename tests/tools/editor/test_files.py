@@ -290,7 +290,7 @@ def test_ac21_rename_and_delete(tmp_path, studio_game, monkeypatch):
     for kind in safefile.RemoveKind:
         if kind is safefile.RemoveKind.REMOVED:
             continue
-        monkeypatch.setattr(files.safefile, "remove_file", lambda _path, k=kind: k)
+        monkeypatch.setattr(files.recycle, "to_recycle_bin", lambda _path, k=kind: k)
         assert isinstance(files.delete_file(paths, "images/bg/photo.jpg"), files.Refusal)
     assert (game / "images" / "bg" / "photo.jpg").exists()
 
@@ -300,6 +300,63 @@ def test_ac21_rename_and_delete(tmp_path, studio_game, monkeypatch):
     document.retarget(doc, paths, "script/ch4.vns")
     document.save(doc, "# edited\n" + S_SCRIPTS["ch2.vns"].rstrip("\n"))
     assert (game / "script" / "ch4.vns").read_text().startswith("# edited")
+
+
+def test_delete_goes_to_the_recycle_bin(tmp_path, studio_game, monkeypatch):
+    """v1: Delete sends a regular file to the Recycle Bin on Windows (one shell call with
+    FOF_ALLOWUNDO on its absolute path); a link is removed itself, never recycled; No to
+    Windows' own question keeps the file; off Windows the question says it can't be undone."""
+    from engine.tools.editor import recycle
+
+    game = S(tmp_path, studio_game, "recycle")
+    paths = paths_of(game)
+    calls: list[str] = []
+    shell = recycle._shell_delete
+
+    def record(full):
+        calls.append(full)
+        return shell(full)
+
+    monkeypatch.setattr(recycle, "AVAILABLE", True)
+    monkeypatch.setattr(recycle, "_shell_delete", record)
+    assert recycle.FLAGS & recycle.FOF_ALLOWUNDO and recycle.FLAGS & recycle.FOF_WANTNUKEWARNING
+    assert files.delete_message("images/bg/room.png").startswith(
+        "Move `images/bg/room.png` to the Recycle Bin?")
+    room = game / "images" / "bg" / "room.png"
+    assert files.delete_file(paths, "images/bg/room.png") is None
+    assert calls == [os.path.abspath(room)] and not room.exists()
+
+    photo = game / "images" / "bg" / "photo.jpg"
+    monkeypatch.setattr(recycle, "_shell_delete", lambda full: (0, True))
+    assert files.delete_file(paths, "images/bg/photo.jpg") == files.Refusal(
+        files.KEPT.format(ref="images/bg/photo.jpg"))
+    monkeypatch.setattr(recycle, "_shell_delete", lambda full: (32, False))
+    assert "read-only or locked" in files.delete_file(paths, "images/bg/photo.jpg").text
+    assert photo.exists()
+
+    calls.clear()
+    monkeypatch.setattr(recycle, "_shell_delete", record)
+    link = game / "images" / "bg" / "alias.png"
+    if try_link_file(link, photo):
+        assert files.delete_file(paths, "images/bg/alias.png") is None
+        assert calls == [] and not os.path.lexists(link) and photo.exists()
+
+    monkeypatch.setattr(recycle, "AVAILABLE", False)
+    assert "can't be undone" in files.delete_message("images/bg/photo.jpg")
+    assert files.delete_file(paths, "images/bg/photo.jpg") is None
+    assert calls == [] and not photo.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32" or not os.environ.get("VN_REAL_RECYCLE"),
+                    reason="puts one small file in the real Recycle Bin (VN_REAL_RECYCLE=1)")
+def test_delete_really_reaches_the_recycle_bin(tmp_path, monkeypatch):
+    from engine.tools.editor import recycle
+
+    monkeypatch.undo()                                  # the real SHFileOperationW
+    target = tmp_path / "vn-engine recycle test.txt"
+    target.write_text("restore me")
+    assert recycle.to_recycle_bin(target) is safefile.RemoveKind.REMOVED
+    assert not target.exists()
 
 
 # --- AC-F45-22: containment, links and junctions --------------------------------------------

@@ -25,7 +25,7 @@ Minigames are Python code that the game runs. Only add code you trust.
 
 **New script file** makes a `.vns` file and, unless you untick it, its `include` line in
 `main.vns`. **Rename** doesn't change lines that use the old
-name; the next check lists them. **Delete** is permanent.
+name; the next check lists them. **Delete** uses the Recycle Bin (Windows).
 `main.vns`, `config.toml`, and folders can't be renamed or deleted.
 
 **File ▸ New game…** copies the starter game into an empty or new folder and opens it.

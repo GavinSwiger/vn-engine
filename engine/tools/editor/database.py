@@ -141,7 +141,7 @@ ABOUT: Mapping[str, str] = {        # an empty category's form explains what it 
     **ABOUT_MORE}
 REFUSED_BUTTONS = (db.SHOW_USES, "OK")
 DELETE_ASK = "Delete {name}? Its line is removed from {ref}; Edit ▸ Undo there brings it back."
-DELETE_FILE_ASK = "Delete {ref} from the game folder? This can't be undone."
+DELETE_FILE_ASK = files.DELETE_FILE_ASK          # Recycle Bin on Windows
 USES_HEAD = "{name} is used in {lines}:"
 NOT_CHECKED = "Not checked yet"
 NEW_CHARACTER_ASK = "Name of the new character, as players will see it:"

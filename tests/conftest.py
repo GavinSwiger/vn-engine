@@ -127,6 +127,25 @@ def _studio_look_folder(tmp_path_factory, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_recycle_bin(monkeypatch):
+    """Studio's Delete never fills the real Recycle Bin from a test: the shell call is a
+    plain unlink that answers as ``SHFileOperationW`` would (0, or an error code with the
+    file still there). ``test_files``'s opt-in test runs the real call."""
+    import os
+
+    from engine.tools.editor import recycle
+
+    def unlink(full: str) -> tuple[int, bool]:
+        try:
+            os.unlink(full)
+        except OSError as error:
+            return error.errno or 1, False
+        return 0, False
+
+    monkeypatch.setattr(recycle, "_shell_delete", unlink)
+
+
+@pytest.fixture(autouse=True)
 def _close_log_setup():
     """A test that begins logging and fails midway must not leave handlers attached."""
     yield

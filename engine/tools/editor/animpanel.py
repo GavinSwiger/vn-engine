@@ -65,7 +65,7 @@ STOP = "■ Stop"
 WRONG_SIZE = ("{file} is {w}×{h}, but {look} is {lw}×{lh}, so the game won't use it. "
               "Frames must be the same size as their look.")
 ANIMATION_OFF = "Sprite animation is turned off in Game settings ▸ Effects & comfort."
-DELETE_FILE_ASK = "Delete {ref} from the game folder? This can't be undone."   # database's
+DELETE_FILE_ASK = files.DELETE_FILE_ASK          # Recycle Bin on Windows
 
 # --- Sizes and timing ---------------------------------------------------------------------------
 

@@ -12,8 +12,8 @@ text, and two actions:
 
 - **Open in {category}** selects the entry in its own category (a scene: **Show on map**,
   the story map with its box focused; a plain ``define``: **Open in Editor** at its line);
-- **Delete…** runs that category's own Delete with its own question (a file: deleted from
-  the game folder after "This can't be undone."; a line: removed as one undo step; a scene:
+- **Delete…** runs that category's own Delete with its own question (a file: to the
+  Recycle Bin on Windows, ``files.delete_file``; a line: removed as one undo step; a scene:
   F46's Delete scene on the map). It is offered only where the category offers Delete.
 
 A deleted row hides until the next check result, which lists what is left. The states

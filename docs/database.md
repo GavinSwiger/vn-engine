@@ -305,8 +305,8 @@ sound, why it is listed, and two buttons:
   **Show on map**, which selects its box on the Story map; a plain `define` has **Open in
   Editor**.
 - **Delete…** is that category's own Delete, with its own question first: a file is
-  deleted from the game folder ("This can't be undone"), a line is removed (Edit ▸ Undo
-  brings it back), and a scene is deleted from the Story map as **Delete scene** does.
+  moved to the Recycle Bin on Windows (deleted for good elsewhere), a line is removed
+  (Edit ▸ Undo brings it back), and a scene is deleted from the Story map as **Delete scene** does.
   A deleted row leaves the list.
 
 Type in the search box to find a row by name. Before the first check the list says
