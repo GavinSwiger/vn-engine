@@ -324,7 +324,15 @@ def shown_value(interp: "Interpreter", name: str) -> object:
     return getattr(holder, attr)
 
 
+def uses_clock(program: Any) -> bool:
+    """Whether the script has a ``clock`` line or ``show clock`` (here, not in ``app``:
+    only ``app/loading.py`` of the app layer imports ``engine.script``, 07 I-7)."""
+    from engine.script.clock import ClockStep
+    from engine.script.clockshow import ClockShow
+    return any(isinstance(stmt, (ClockStep, ClockShow)) for stmt in program.iter_statements())
+
+
 __all__ = ["ClockChanged", "ClockListener", "ClockState", "ClockView", "DAY_CARD_HOLD",
            "DAY_CARD_KIND", "EMPTY_CLOCK", "bind_view", "calendar", "clock_json", "day_card",
            "listen", "merged", "now", "resolved", "run_clock", "run_clock_show", "shown_value",
-           "target", "unlisten"]
+           "target", "unlisten", "uses_clock"]

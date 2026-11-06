@@ -40,7 +40,7 @@ from engine.render.typewriter import TypeState
 from engine.runtime import itemuse
 from engine.runtime.interpreter import Status
 from engine.runtime.itemuse import UseItem
-from engine.script.words import canonical_name
+from engine.runtime.character import canonical_name     # via runtime (07 I-7)
 from engine.ui.hotbaritem import HotbarItem, HotbarSlot
 from engine.ui.input import UiEvent
 from engine.ui.nav import InputKind

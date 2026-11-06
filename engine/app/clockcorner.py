@@ -25,9 +25,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Final
 
 from engine.runtime import clock as clock_mod
+from engine.runtime.clock import uses_clock
 from engine.runtime.interpreter import Status
-from engine.script.clock import ClockStep
-from engine.script.clockshow import ClockShow
 from engine.ui.clockitem import ClockItem, ClockReading
 
 if TYPE_CHECKING:
@@ -44,11 +43,6 @@ def reading(interp: "Interpreter") -> ClockReading:
     cal = clock_mod.calendar(interp)
     at = clock_mod.now(interp)
     return ClockReading(cal.date(at.day), cal.parts[at.part])
-
-
-def uses_clock(program: "Program") -> bool:
-    """Whether the script has a ``clock`` line or ``show clock``."""
-    return any(isinstance(stmt, (ClockStep, ClockShow)) for stmt in program.iter_statements())
 
 
 class ClockCorner:
