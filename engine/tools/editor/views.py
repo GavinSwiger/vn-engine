@@ -2480,6 +2480,10 @@ GLYPHS: dict[str, tuple[str, str]] = {   # name -> (Fluent code point, fallback;
     "events": ("\uE9D5", ""),           # F46: the side pane's Events tab (Checklist)
     "database": ("\uE8F1", ""),         # F47: the Database tab (Library)
     "settings": ("\uE713", ""),         # F47 W4: the Game settings tab (Settings)
+    # F41 Clean up's empty states (not checked / errors / nothing to clean).
+    "info": ("\uE946", "\u24D8"),
+    "error": ("\uEA39", "\u2297"),
+    "success": ("\uE930", "\u2713"),
 }
 
 
@@ -2490,8 +2494,11 @@ def icon_family(root: tk.Misc) -> str | None:
 
 
 def glyph(name: str, family: str | None) -> str:
-    """Icon ``name``'s character in ``family``, or its fallback symbol."""
-    fluent, fallback = GLYPHS[name]
+    """Icon ``name``'s character in ``family``, or its fallback symbol ("" for a name with
+    no glyph: the place shows no icon rather than failing)."""
+    fluent, fallback = GLYPHS.get(name, ("", ""))
+    if not fluent:
+        return fallback
     return fluent if family is not None else fallback
 
 

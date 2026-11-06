@@ -227,3 +227,19 @@ def test_ac_f41_22_narrow_window_drop_down_shows_clean_up_and_its_count(studio, 
     values = list(pane.cat_choice.box.cget("values"))
     assert values[-1] == "Clean up (5)"
     assert pane.cat_choice.var.get() == "Clean up (5)"
+
+
+def test_clean_up_with_a_story_error_says_fix_it_first(studio, tmp_path, helper):
+    """FRICTION 6: with an error in the story, Clean up shows "fix the errors first" (it
+    raised ``KeyError: 'error'`` from the icon lookup), and its button opens Problems."""
+    game = cleanup_game(tmp_path)
+    with open(game / "script/main.vns", "a", encoding="utf-8") as f:
+        f.write("\nlabel broken:\n    jump nowhere_at_all\n")
+    ed = studio(game, mapped=True)
+    apply_check(ed, game)
+    pane = open_database(ed, CLEANUP)
+    empty = pane.cleanup_empties[cu.STATE_ERRORS]
+    assert empty.shown
+    assert empty.title.cget("text") == "Fix the errors in Problems first."
+    assert empty.hint.cget("text") == "Clean up needs a story that loads."
+    assert empty.button is not None and empty.button.cget("text") == "Show Problems"
