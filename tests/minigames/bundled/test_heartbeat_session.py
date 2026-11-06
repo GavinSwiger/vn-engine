@@ -159,7 +159,7 @@ def test_ac_f57_07_tokens_schemes_and_sound(game, tmp_path):
         "target.text_color": "button.text_color", "ring.line_color": "slider.fill_color",
         "hit_color": "button.focused.border_color",
         "miss_color": "button.disabled.text_color", "dot.empty_color": "button.border_color"}
-    assert len(SCHEMES) == 6
+    assert {"sakura", "pocket", "amber", "synthwave", "vaporwave", "groovy"} <= set(SCHEMES)
     for scheme in SCHEMES:
         config, tables = _tables(tmp_path, f'[theme]\npreset = "{scheme}"\n')
         w = HostU(game, config=config, tables=tables, cfg=config.theme)

@@ -300,7 +300,7 @@ def test_ac_f53_07_engine_colors_only(game, tmp_path):
     for module in ("code_lock", "stay_still", "hand_game"):
         text = (BUNDLED_DIR / f"{module}.py").read_text(encoding="utf-8")
         assert not _COLOR.findall(text), module
-    assert len(SCHEMES) == 6
+    assert {"sakura", "pocket", "amber", "synthwave", "vaporwave", "groovy"} <= set(SCHEMES)
     for scheme in SCHEMES:
         root = tmp_path / scheme
         root.mkdir()
