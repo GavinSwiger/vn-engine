@@ -23,11 +23,22 @@ def test_insert_messages_offers_send_and_open():
     assert [f.name_kind for f in SEND.fields[:2]] == ["message", "contact"]
 
 
+_NOW = {"arrives": "", "after": "", "replies": ""}
+
+
 @pytest.mark.parametrize("form,line,values,summary", [
-    (SEND, "send invite from hana", {"message": "invite", "contact": "hana", "look": ""},
-     "invite from hana"),
+    (SEND, "send invite from hana", {"message": "invite", "contact": "hana", "look": "",
+                                     **_NOW}, "invite from hana"),
     (SEND, "send late from ren on radio", {"message": "late", "contact": "ren",
-                                            "look": "radio"}, "late from ren, by radio"),
+                                            "look": "radio", **_NOW}, "late from ren, by radio"),
+    # F65 round 3: Arrives and Replies.
+    (SEND, "send invite from hana after 1 day",
+     {"message": "invite", "contact": "hana", "look": "", "arrives": "days", "after": "1",
+      "replies": ""}, "invite from hana, after 1 day"),
+    (SEND, 'send late from ren on radio after 2 scenes ask "On my way." "Start without me."',
+     {"message": "late", "contact": "ren", "look": "radio", "arrives": "scenes", "after": "2",
+      "replies": "On my way. / Start without me."},
+     "late from ren, by radio, after 2 scenes, replies: On my way. / Start without me."),
     (OPEN, "open inbox", {"at": "inbox"}, "the Inbox"),
     (OPEN, "open pigeon", {"at": "pigeon"}, "the Inbox, newest by pigeon"),
 ])
@@ -58,3 +69,26 @@ def test_syntax_colours_send_and_open_only_in_their_place():
     assert color_spans("    open pigeon")[0] == (4, 8, "keyword")
     assert color_spans('    send "On my way."')[0] == (4, 8, "speaker")      # ADR-0010
     assert color_spans('    open "Come in."')[0] == (4, 8, "speaker")
+
+
+def test_send_form_round_3_fields():
+    from engine.tools.editor.fieldhints import form_hint
+    from engine.tools.editor.forms_inbox import replies_of
+    keys = [f.key for f in SEND.fields]
+    assert keys[3:] == ["arrives", "after", "replies"]
+    assert all(form_hint("send", key) for key in keys)
+    assert [f.shown_for(o) for f in SEND.fields[3:4] for o in f.options] == [
+        "Now", "After some days", "After some scenes"]
+    # Forgiving input: a missing or bad count is 1, "Now" drops the count, replies are
+    # trimmed, deduplicated, at most four, with quotes made plain.
+    base = {"message": "invite", "contact": "hana", "look": ""}
+    assert SEND.write({**base, "arrives": "days", "after": ""}) == \
+        "send invite from hana after 1 day"
+    assert SEND.write({**base, "arrives": "scenes", "after": "0"}) == \
+        "send invite from hana after 1 scene"
+    assert SEND.write({**base, "arrives": "", "after": "3"}) == "send invite from hana"
+    assert replies_of(' Yes /No/ yes/Yes / say "hi" /a/b ') == ("Yes", "No", "yes", "say 'hi'")
+    line = SEND.write({**base, "replies": "Yes/No"})
+    assert line == 'send invite from hana ask "Yes" "No"'
+    parsed = parse_text(template(S=line))
+    assert parsed.errors == [] and SEND.read(first_say(parsed), line)["replies"] == "Yes / No"

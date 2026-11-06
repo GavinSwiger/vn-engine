@@ -84,7 +84,13 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
              "contact": "Who it is from (a lock contact line). Their thread in the Inbox "
                         "gets the message.",
              "look": "How this one arrives, if not the contact's usual way: a pigeon, a "
-                     "letter, a phone, a radio, a terminal or a voice in your head."},
+                     "letter, a phone, a radio, a terminal or a voice in your head.",
+             "arrives": "When it reaches the Inbox: now, after some days of story time "
+                        "(clock lines move it), or after the story enters some more scenes.",
+             "after": "How many days or scenes it takes to arrive (1 or more).",
+             "replies": "Answers the player can pick in the Inbox, split with /, such as "
+                        "I'll be there. / Not this year. Empty: no reply. The story reads "
+                        "the pick with inbox.reply(\"invite\")."},
     "open": {"at": "Where the Inbox opens: on the newest message, or on the newest that "
                    "came one way (by pigeon, say). The story waits until it is closed."},
     "points": {"meter": "The meter to change (made on the Database's Meters page).",
