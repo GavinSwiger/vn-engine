@@ -1733,13 +1733,20 @@ playthroughs, like the codex's dots.
 reaches the next day (see [clock](#clock-story-time): `clock next day`, or `clock next`
 past the last part of the day); `after 3 days` waits three. `after 2 scenes` holds it
 until the story has entered two more scenes (a `jump`, a `call`, or a scene's start;
-coming back from a `call` doesn't count). Then it arrives as if sent there: the arrival
+coming back from a `call` doesn't count). `after 2 parts` holds it for two parts of the day
+(`[calendar] parts`), counted across days: sent in the evening of a day with Morning,
+Afternoon and Evening, it arrives the next afternoon. Parts count as time passing, so a
+`clock` line that skips parts passes them too: `clock next day` from the morning passes the
+rest of that day, so `after 1 part` sent in the morning arrives with the next morning, and
+`clock go to Night` arrives anything due by then. Going back to an earlier day with `clock
+go to day 1` passes nothing; the message waits until the clock comes forward to its time
+again. Then it arrives as if sent there: the arrival
 notice shows, the date is the day it arrived, and the message's text is read then. While
 it waits, a save keeps it on its way, going back before the `send` line takes it back,
 and going forward brings it again without a second notice. Running the same `send` line
-again before the message arrives starts its wait again. Parts of the day aren't a delay:
-send it from the scene that comes later instead. In a dev run, F3 lists the messages
-still on their way ("message invite from hana: day 3").
+again before the message arrives starts its wait again. In a dev run, F3 lists the
+messages still on their way ("message invite from hana: day 3", "message late from ren: day
+2, Afternoon").
 
 ```
 label morning:
@@ -1813,11 +1820,11 @@ open, and both stay free as variable names. `contact` is a word only after `lock
 | `there is no define called invte to send. Did you mean "invite"? …` | Fix the name, or write the message as a define. |
 | `line 2 of message invite asks for a reply, but more lines follow it. …` | Put the ask on the message's last line. |
 | `line 2 of message invite asks for a reply, but it has 5 replies; a message offers 1 to 4. …` | Give 1 to 4 short replies. |
-| `send … after needs a number and days or scenes, …` / `send … after counts days or scenes, not parts of the day. …` | Write `after 1 day` or `after 2 scenes`. |
+| `send … after needs a number and days, parts or scenes, …` | Write `after 1 day`, `after 2 parts` or `after 2 scenes`. |
 | `send … ask needs 1 to 4 replies in quotes, …` | Write `ask "Yes" "No"`. |
 | `this send line has replies (ask …), but message invite (line 3) asks for a reply too. …` (E455) | Keep the replies in one place. |
-| `send invite … after 1 day waits for the story clock, but no clock line in this game moves it, …` (warning W312) | Add a `clock next day` line, or use `after 2 scenes`. |
-| `message … can never happen: after 9 days is past [calendar] last_day (5), …` (warning W316) | Use a shorter delay, or a later `last_day`. |
+| `send invite … after 1 day waits for the story clock, but no clock line in this game moves it, …` (warning W312; also for `after 2 parts`) | Add a `clock next day` (or `clock next`) line, or use `after 2 scenes`. |
+| `message … can never happen: after 9 days is past [calendar] last_day (5), …` / `… after 24 parts of the day is past [calendar] last_day (5), …` (warning W316) | Use a shorter delay, or a later `last_day`. |
 | `inbox.reply("invte") reads the reply to message invte, but no send line sends it with replies, …` (warning W313) | Fix the name, or give the message replies. |
 | `inbox.reply("invite") is compared with "maybe", which isn't one of its replies ("no" or "yes"), …` (warning W314) | Compare with one of its reply ids. |
 | `message invite must be text, or a list of lines like a phone chat's, …` | Make it text or a list. |

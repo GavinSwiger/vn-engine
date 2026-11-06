@@ -37,17 +37,21 @@ Story time is already saved state (F63) and announces itself through one hook,
 1. **Declarations are script data, never saved.** `script/triggers.Trigger`: `kind` (the
    owner's word, used in every message), `name` (`id` = `kind:name`, the saved key), the
    declaring line, a compiled `when`, `once`, `Timing` (`day` from, `part` in, and the
-   relative `after_days` / `after_scenes`), `where`, `live` (waits from the start) or
+   relative `after_days` / `after_parts` / `after_scenes`), `where`, `live` (waits from the start) or
    armed, and a static `payload`. A kind registers once
    (`runtime/triggers.register_kind(word, collect, on_fire, pick)`); each interpreter builds
    its table from every kind's `collect(program)`.
 2. **Saved state is small and additive.** `GameState.triggers` holds the armed instances
-   (id, due day, scenes left, the owner's plain `data`) and the retired ids, written only
+   (id, due day and, for `after N parts`, due part, scenes left, the owner's plain
+   `data`) and the retired ids, written only
    when not empty. An older save has none. A saved id the script no longer declares is kept
    and ignored. A save never holds a condition: conditions always come from the script,
    so a save can't make code run.
-3. **Relative timing counts from arming.** `after N days` / `after N scenes` mean "from when
-   the owner armed it" (the Inbox's `send`). A block live from the start has nothing to
+3. **Relative timing counts from arming.** `after N days` / `after N parts` / `after N
+   scenes` mean "from when the owner armed it" (the Inbox's `send`). Parts of the day are a
+   position on the calendar (day × parts + part): arming saves the due day and part, and
+   any clock change that reaches or passes it fits, so `clock next day` passes every part
+   it skips and going back to an earlier day passes none. A block live from the start has nothing to
    count from, so the check refuses that pairing (E458).
 4. **Evaluation points.** Pushed kinds (with `on_fire`) are evaluated at every
    `ClockChanged` and every scene entered, after counting armed scenes down. Picked kinds

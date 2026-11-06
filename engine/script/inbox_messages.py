@@ -41,9 +41,9 @@ def _e448(form: str = "word", found: str = "", suggestion: str | None = None) ->
     has a character send), ``from`` (no ``from`` after the message), ``contact`` (nothing
     after ``from``), ``quoted`` (a contact in quotes), ``device`` (``on`` and a look this
     engine doesn't have), ``extra``, ``colon``; round 3: ``after`` (no number or unit after
-    ``after``), ``part`` (``after 1 part``), ``count`` (a number out of range; ``suggestion``
-    the most), ``ask`` (replies that aren't 1 to 4 short texts; ``found`` says why),
-    ``twice`` (``on``, ``after`` or ``ask`` again)."""
+    ``after``), ``count`` (a number out of range; ``suggestion`` the most), ``ask``
+    (replies that aren't 1 to 4 short texts; ``found`` says why), ``twice`` (``on``,
+    ``after`` or ``ask`` again)."""
     if form == "speaker":
         return ("send is a character here, but this line has no text in quotes. To make send "
                 f'speak, write e.g. send "On my way." To deliver a message, write {_SEND}.')
@@ -59,11 +59,9 @@ def _e448(form: str = "word", found: str = "", suggestion: str | None = None) ->
     if form == "device":
         return _look(found, suggestion) + " Write e.g. send invite from hana on pigeon."
     if form == "after":
-        return (f"send … after needs a number and days or scenes, but {_found(found)}. Write "
-                "e.g. send invite from hana after 1 day, or after 2 scenes.")
-    if form == "part":
-        return ("send … after counts days or scenes, not parts of the day. Write e.g. send "
-                "invite from hana after 1 day, or send it from the scene that comes later.")
+        return (f"send … after needs a number and days, parts or scenes, but {_found(found)}. "
+                "Write e.g. send invite from hana after 1 day, after 2 parts, or after 2 "
+                "scenes.")
     if form == "count":
         return (f"send … after takes a whole number from 1 to {suggestion or 10_000}, but "
                 f"found {_quoted(found)}. Write e.g. send invite from hana after 2 days.")
@@ -226,11 +224,13 @@ def _e455(message: str = "invite", line: int = 3) -> str:
             f"{line}) asks for a reply too. Keep the replies in one place.")
 
 
-def _w312(message: str = "invite", days: int = 1) -> str:
-    unit = "day" if days == 1 else "days"
-    return (f"send {show_name(message)} … after {days} {unit} waits for the story clock, but "
+def _w312(message: str = "invite", days: int = 1, unit: str = "day") -> str:
+    """``unit`` is ``day`` or ``part`` (``after N parts``: the clock line is clock next)."""
+    words = unit if days == 1 else unit + "s"
+    line = "clock next day" if unit == "day" else "clock next"
+    return (f"send {show_name(message)} … after {days} {words} waits for the story clock, but "
             "no clock line in this game moves it, so the message never arrives. Add a "
-            "clock next day line, or send it after some scenes instead.")
+            f"{line} line, or send it after some scenes instead.")
 
 
 def _w313(message: str = "invte", suggestion: str | None = "invite") -> str:

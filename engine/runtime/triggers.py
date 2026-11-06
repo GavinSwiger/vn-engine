@@ -24,14 +24,24 @@ kinds in registration order): the declarations, never saved. **The state**
 hidden item), so an older save loads; a save from before the trigger core has neither key
 (``EMPTY_TRIGGERS``) and writes nothing new (``triggers_json``).
 
-**When a trigger fits** (``due``): it is armed (and its ``after`` days and scenes have come),
-or it is ``live`` with no ``after`` timing and not retired; the clock is on or after
-``timing.day`` and, with ``timing.part``, in that part of the day; and its ``when`` is true.
+**When a trigger fits** (``due``): it is armed (and its ``after`` days, parts and scenes
+have come), or it is ``live`` with no ``after`` timing and not retired; the clock is on or
+after ``timing.day`` and, with ``timing.part``, in that part of the day; and its ``when`` is
+true.
 The condition runs as an ``if`` condition does: under the watchdog (``Interpreter._test``),
 with ``print`` naming its line, and an exception is the same story error an ``if`` would give
 (E85…, E85m), at the declaring line. **Firing** (``take``): a ``once`` armed instance is
 removed, a ``once`` live trigger is retired; a repeating one stays and fires again whenever it
 fits.
+
+**After N parts** counts the parts of the day the clock passes, as a position on the
+calendar: arming at evening of day 3 with ``after 2 parts`` in a three-part day is due from
+the afternoon of day 4 (``Armed.day`` 4, ``Armed.part`` 1). Any ``clock`` line that passes
+that point fires it: ``clock next day`` from the morning passes all of that day's parts, so
+``after 1 part`` sent in the morning arrives with the next morning, not later. Going back to
+an earlier day with ``clock go to day 1`` passes nothing; the message waits until the clock
+comes forward to its point again. A part past a calendar that has fewer parts now is its
+last part (as ``clock.resolved``).
 
 **Evaluation points**, pushed kinds only, in declaration order:
 
@@ -88,19 +98,21 @@ _ID_RE: Final = re.compile(r"[a-z][a-z_]{0,19}:[^\x00-\x1f\x7f\ud800-\udfff]{1,1
 
 @dataclass(frozen=True, slots=True, eq=False)
 class Armed:
-    """One armed instance: ``day`` (due from this story day) and ``scenes`` (scenes still to
-    enter) are None once met or when not asked for; ``data`` is the owner's plain value."""
+    """One armed instance: ``day`` (due from this story day; with ``part``, from that part
+    of it: ``after N parts``) and ``scenes`` (scenes still to enter) are None once met or
+    when not asked for; ``data`` is the owner's plain value."""
 
     id: str
     day: int | None = None
     scenes: int | None = None
     data: Value = None
+    part: int | None = None
 
     def __eq__(self, other: object) -> bool:
         if type(other) is not Armed:
             return NotImplemented
         return (self.id == other.id and self.day == other.day and self.scenes == other.scenes
-                and same_value(self.data, other.data))
+                and self.part == other.part and same_value(self.data, other.data))
 
     __hash__ = None  # type: ignore[assignment]
 
@@ -108,6 +120,8 @@ class Armed:
         out: dict[str, object] = {"id": self.id}
         if self.day is not None:
             out["day"] = self.day
+        if self.part is not None:
+            out["part"] = self.part
         if self.scenes is not None:
             out["scenes"] = self.scenes
         if self.data is not None:
@@ -118,7 +132,8 @@ class Armed:
 @dataclass(frozen=True, slots=True)
 class TriggerState:
     """``GameState.triggers`` (module docstring). JSON ``{"armed": [{"id", "day"?,
-    "scenes"?, "data"?}, …], "retired": [id, …]}``, each key only when not empty."""
+    "part"?, "scenes"?, "data"?}, …], "retired": [id, …]}``, each key only when not empty
+    (``part`` only with ``day``)."""
 
     armed: tuple[Armed, ...] = ()
     retired: frozenset[str] = frozenset()
@@ -147,16 +162,17 @@ class TriggerState:
         armed: list[Armed] = []
         for entry in armed_raw:
             if (type(entry) is not dict or "id" not in entry
-                    or not entry.keys() <= {"id", "day", "scenes", "data"}):
+                    or not entry.keys() <= {"id", "day", "part", "scenes", "data"}):
                 raise StateInvalid("triggers")
-            day, scenes = entry.get("day"), entry.get("scenes")
+            day, part, scenes = entry.get("day"), entry.get("part"), entry.get("scenes")
             if (not _id_ok(entry["id"])
                     or (day is not None and not _int_in(day, 1, 2 * DAY_MAX))
+                    or (part is not None and (day is None or not _int_in(part, 0, 99)))
                     or (scenes is not None and not _int_in(scenes, 1, SCENES_MAX))
                     or ("data" in entry and (entry["data"] is None
                                              or data_problem(entry["data"]) is not None))):
                 raise StateInvalid("triggers")
-            armed.append(Armed(entry["id"], day, scenes, plain_copy(entry.get("data"))))
+            armed.append(Armed(entry["id"], day, scenes, plain_copy(entry.get("data")), part))
         if len({a.id for a in armed}) != len(armed):
             raise StateInvalid("triggers")
         if not armed and not retired_raw:
@@ -317,8 +333,9 @@ def _declared(interp: "Interpreter", trigger_id: str) -> Trigger:
 # --- Arming and retiring -----------------------------------------------------------------------
 
 def arm(interp: "Interpreter", trigger_id: str, data: Value = None) -> None:
-    """Arm the declared trigger ``trigger_id``: its ``after`` days and scenes count from now,
-    and ``data`` is saved with it (``data_problem`` must be None: ``ValueError``). Arming
+    """Arm the declared trigger ``trigger_id``: its ``after`` days, parts and scenes count
+    from now (module docstring, "After N parts"), and ``data`` is saved with it
+    (``data_problem`` must be None: ``ValueError``). Arming
     one that is already armed starts it again with the new ``data``; arming a retired one
     un-retires it. Over ``ARMED_MAX`` armed: E457 (an ``AuthorRefusal``, so the owner's
     statement reports it at its line)."""
@@ -327,13 +344,19 @@ def arm(interp: "Interpreter", trigger_id: str, data: Value = None) -> None:
     if problem is not None:
         raise ValueError(f"arm: data can't be saved ({problem})")
     timing = trigger.timing
-    day = (clock_mod.now(interp).day + timing.after_days if timing.after_days else None)
+    now = clock_mod.now(interp)
+    day = now.day + timing.after_days if timing.after_days else None
+    part = None
+    if timing.after_parts:
+        count = len(clock_mod.calendar(interp).parts)
+        day, part = divmod(now.day * count + now.part + timing.after_parts, count)
     scenes = timing.after_scenes or None
     state = interp.triggers
     armed = tuple(a for a in state.armed if a.id != trigger_id)
     if len(armed) >= ARMED_MAX:
         raise AuthorRefusal.of("E457", trigger.kind, ARMED_MAX)
-    interp.triggers = TriggerState(armed + (Armed(trigger_id, day, scenes, plain_copy(data)),),
+    interp.triggers = TriggerState(armed + (Armed(trigger_id, day, scenes, plain_copy(data),
+                                                  part),),
                                    state.retired - {trigger_id})
 
 
@@ -408,7 +431,7 @@ def fits(interp: "Interpreter", trigger: Trigger) -> Fired | None:
     if armed is None:
         if not trigger.live or timing.relative or trigger.id in state.retired:
             return None
-    elif armed.scenes is not None or (armed.day is not None and now.day < armed.day):
+    elif armed.scenes is not None or (armed.day is not None and _before(interp, now, armed)):
         return None
     if timing.day is not None and now.day < timing.day:
         return None
@@ -417,6 +440,14 @@ def fits(interp: "Interpreter", trigger: Trigger) -> Fired | None:
     if trigger.when is not None and not _test(interp, trigger):
         return None
     return Fired(trigger, armed.data if armed is not None else None, armed is not None)
+
+
+def _before(interp: "Interpreter", now: clock_mod.ClockState, armed: Armed) -> bool:
+    """Whether the clock is still before ``armed``'s day (and part)."""
+    if armed.part is None:
+        return now.day < armed.day                      # type: ignore[operator]
+    last = len(clock_mod.calendar(interp).parts) - 1
+    return (now.day, now.part) < (armed.day, min(armed.part, last))
 
 
 def evaluate(interp: "Interpreter") -> int:
@@ -451,7 +482,7 @@ def scene_entered(interp: "Interpreter") -> bool:
     state = interp.triggers
     if any(a.scenes is not None for a in state.armed):
         interp.triggers = TriggerState(tuple(
-            a if a.scenes is None else Armed(a.id, a.day, a.scenes - 1 or None, a.data)
+            a if a.scenes is None else Armed(a.id, a.day, a.scenes - 1 or None, a.data, a.part)
             for a in state.armed), state.retired)
     try:
         evaluate(interp)

@@ -9,10 +9,13 @@ The run-time side (saved state, evaluation points, the first-fit pick) is
 ``runtime/triggers.py``; docs/architecture.md "Trigger core" has the whole picture.
 
 - ``Timing``: ``day`` (not before this story day), ``part`` (only in this part of the day, an
-  index into the calendar's parts), and the relative ``after_days`` / ``after_scenes``, which
-  count from the moment the owning system *arms* the trigger (``runtime/triggers.arm``: the
-  Inbox's ``send … after 1 day``). A day number is resolved by the owner's statement (a date
-  in quotes through ``Calendar.find_date``), so this module sees only numbers.
+  index into the calendar's parts), and the relative ``after_days`` / ``after_parts`` /
+  ``after_scenes``, which count from the moment the owning system *arms* the trigger
+  (``runtime/triggers.arm``: the Inbox's ``send … after 1 day``). ``after_parts`` counts
+  the parts of the day the clock passes, across days (evening + 2 parts is the next
+  afternoon in a three-part day; ``clock next day`` passes every part it skips). A day
+  number is resolved by the owner's statement (a date in quotes through
+  ``Calendar.find_date``), so this module sees only numbers.
 - ``Trigger``: ``kind`` (the owner's word: ``event``, ``message``, ``place``, ``thought``;
   every message names it, so authors read about their events), ``name`` (unique in the kind;
   ``id`` is ``kind:name``, the saved key), ``at`` (the declaring line, where errors point),
@@ -23,9 +26,9 @@ The run-time side (saved state, evaluation points, the first-fit pick) is
 - ``check_triggers(triggers, add, calendar, picked=…)``: E459 (two of one kind share a name),
   E458 (a trigger live from the start with ``after`` timing: nothing to count from) to
   ``add``; returns W316 (can never fit: a day past ``[calendar] last_day``, ``after N days``
-  past it, a part the calendar doesn't have, or a condition never true) and W315 (for kinds
-  picked first-fit: an earlier block at the same place that always fits and repeats hides
-  this one).
+  or ``after N parts`` past it, a part the calendar doesn't have, or a condition never
+  true) and W315 (for kinds picked first-fit: an earlier block at the same place that
+  always fits and repeats hides this one).
 
 **How the condition is read** (pure: nothing here runs author code). The ``when`` source is
 read as Python's tree. ``clock.day``, ``clock.part``, ``clock.weekday``, ``clock.month`` and
@@ -62,6 +65,7 @@ KIND_RE: Final = re.compile(r"[a-z][a-z_]{0,19}")
 NAME_MAX: Final = 100                   # code points of a trigger's name
 WHERE_MAX: Final = 100                  # code points of a ``where``
 SCENES_MAX: Final = 10_000              # after N scenes, at most
+AFTER_PARTS_MAX: Final = 10_000         # after N parts of the day, at most
 SCAN_DAYS: Final = 1_000                # days the check tries one condition on, at most
 CLOCK_VALUES: Final = ("day", "part", "weekday", "month", "season")
 NEVER: Final = "never"
@@ -89,18 +93,21 @@ class Timing:
     part: int | None = None
     after_days: int | None = None
     after_scenes: int | None = None
+    after_parts: int | None = None
 
     def __post_init__(self) -> None:
         for value, low, high in ((self.day, 1, DAY_MAX), (self.part, 0, 99),
                                  (self.after_days, 0, DAY_MAX),
-                                 (self.after_scenes, 0, SCENES_MAX)):
+                                 (self.after_scenes, 0, SCENES_MAX),
+                                 (self.after_parts, 0, AFTER_PARTS_MAX)):
             if value is not None and (type(value) is not int or not low <= value <= high):
                 raise ValueError(f"Timing: {value!r} is out of range")
 
     @property
     def relative(self) -> bool:
         """Counts from when the trigger is armed (``after …``)."""
-        return self.after_days is not None or self.after_scenes is not None
+        return (self.after_days is not None or self.after_scenes is not None
+                or self.after_parts is not None)
 
 
 ANY_TIME: Final = Timing()
@@ -159,6 +166,8 @@ def check_triggers(triggers: Sequence[Trigger], add: Callable[[Diagnostic], obje
         timing = trigger.timing
         if trigger.live and timing.relative:
             unit, count = (("days", timing.after_days) if timing.after_days is not None
+                           else ("parts", timing.after_parts)
+                           if timing.after_parts is not None
                            else ("scenes", timing.after_scenes))
             _error(add, trigger, "E458", (trigger.kind, trigger.name, unit, count))
             continue
@@ -229,11 +238,15 @@ def verdict(trigger: Trigger, calendar: Calendar | None) -> tuple[str, tuple]:
         lo = max(calendar.start_day, timing.day or 1)
         if timing.after_days is not None:
             lo = max(lo, calendar.start_day + timing.after_days)
+        if timing.after_parts is not None:     # at the soonest: armed in the first part
+            lo = max(lo, calendar.start_day + timing.after_parts // len(calendar.parts))
         if calendar.last_day is not None:
             hi = calendar.last_day
             if lo > hi:
                 if timing.day is not None and timing.day > hi:
                     return NEVER, ("past_last", timing.day, hi)
+                if timing.after_days is None and timing.after_parts is not None:
+                    return NEVER, ("after_parts", timing.after_parts, hi)
                 return NEVER, ("after", timing.after_days, hi)
         parts = (timing.part,) if timing.part is not None else tuple(range(len(calendar.parts)))
     if trigger.when is None:
@@ -388,5 +401,5 @@ def _value(node: ast.AST, env: dict[str, object] | None) -> object:
     return _UNKNOWN
 
 
-__all__ = ["ALWAYS", "ANY_TIME", "CLOCK_VALUES", "MAYBE", "NEVER", "SCAN_DAYS", "Timing",
-           "Trigger", "check_triggers", "verdict"]
+__all__ = ["AFTER_PARTS_MAX", "ALWAYS", "ANY_TIME", "CLOCK_VALUES", "MAYBE", "NEVER",
+           "SCAN_DAYS", "Timing", "Trigger", "check_triggers", "verdict"]

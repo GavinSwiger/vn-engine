@@ -1,4 +1,5 @@
-"""F65 round 3, the script side: ``send … after 1 day`` / ``after 2 scenes`` and ``ask "…"``
+"""F65 round 3, the script side: ``send … after 1 day`` / ``after 2 parts`` / ``after 2 scenes``
+and ``ask "…"``
 on the line (E448's new forms), a message that ends with an ask (the phone chat's shapes),
 the whole-game checks E455, W312–W314 and the trigger core's W316 for delays, and the story
 map's reach reading ``inbox.reply`` like a variable (``script/inbox.py``, ``reach.py``)."""
@@ -25,31 +26,44 @@ def _stmt(row):
     return parsed, first_say(parsed)
 
 
-@pytest.mark.parametrize("row,days,scenes,replies", [
-    ("send invite from hana after 1 day", 1, None, ()),
-    ("send invite from hana on letters after 3 days", 3, None, ()),
-    ("send invite from hana after 2 scenes", None, 2, ()),
-    ("send invite from hana after 1 scene", None, 1, ()),
-    ('send late from hana ask "On my way." "Start without me."', None, None,
+@pytest.mark.parametrize("row,days,scenes,parts,replies", [
+    ("send invite from hana after 1 day", 1, None, None, ()),
+    ("send invite from hana on letters after 3 days", 3, None, None, ()),
+    ("send invite from hana after 2 scenes", None, 2, None, ()),
+    ("send invite from hana after 1 scene", None, 1, None, ()),
+    ("send invite from hana after 1 part", None, None, 1, ()),
+    ("send invite from hana on letters after 2 parts", None, None, 2, ()),
+    ('send late from hana ask "On my way." "Start without me."', None, None, None,
      ("On my way.", "Start without me.")),
-    ('send late from hana after 2 days ask "Yes"', 2, None, ("Yes",)),
+    ('send late from hana after 2 days ask "Yes"', 2, None, None, ("Yes",)),
+    ('send late from hana after 3 parts ask "Yes"', None, None, 3, ("Yes",)),
 ])
-def test_send_after_and_ask(row, days, scenes, replies):
+def test_send_after_and_ask(row, days, scenes, parts, replies):
     parsed, node = _stmt(row)
     assert parsed.errors == [] and type(node) is SendStep
-    assert (node.after_days, node.after_scenes, node.replies) == (days, scenes, replies)
+    assert (node.after_days, node.after_scenes, node.after_parts, node.replies) == (
+        days, scenes, parts, replies)
     assert node.written() == row
     # The delay and the replies keep the line's sid (and a saved waiting message).
     assert node.identity_key() == ("send", node.message, "hana", node.device or "")
 
 
+def test_after_parts_in_any_order():
+    parsed, node = _stmt('send late from hana ask "Yes" after 2 parts on letters')
+    assert parsed.errors == [] and (node.after_parts, node.device, node.replies) == (
+        2, "letters", ("Yes",))
+    assert node.written() == 'send late from hana on letters after 2 parts ask "Yes"'
+
+
 @pytest.mark.parametrize("row,part", [
-    ("send invite from hana after", "needs a number and days or scenes"),
-    ("send invite from hana after 2", "needs a number and days or scenes"),
-    ("send invite from hana after two days", "needs a number and days or scenes"),
-    ("send invite from hana after 2 weeks", "needs a number and days or scenes"),
-    ("send invite from hana after 1 part", "not parts of the day"),
+    ("send invite from hana after", "needs a number and days, parts or scenes"),
+    ("send invite from hana after 2", "needs a number and days, parts or scenes"),
+    ("send invite from hana after two days", "needs a number and days, parts or scenes"),
+    ("send invite from hana after 2 weeks", "needs a number and days, parts or scenes"),
     ("send invite from hana after 0 days", "whole number from 1 to"),
+    ("send invite from hana after 0 parts", "whole number from 1 to"),
+    ("send invite from hana after 10001 parts", "whole number from 1 to 10,000"),
+    ("send invite from hana after 1 part after 1 day", "has after twice"),
     ("send invite from hana after 1 day after 2 days", "has after twice"),
     ("send invite from hana ask", "found none"),
     ('send invite from hana ask "A" "B" "C" "D" "E"', "found 5"),
@@ -89,6 +103,10 @@ def test_delays_are_trigger_timing():
     program = SimpleNamespace(iter_statements=lambda: iter([first_say(parsed)]))
     (trigger,) = collect(program)
     assert trigger.timing.after_days == 2 and not trigger.live and trigger.once
+    parsed = parse_text(template(S="send invite from hana after 3 parts"))
+    program = SimpleNamespace(iter_statements=lambda: iter([first_say(parsed)]))
+    (trigger,) = collect(program)
+    assert trigger.timing.after_parts == 3 and trigger.timing.relative
 
 
 def test_whole_game_checks(tmp_path):
@@ -103,6 +121,10 @@ def test_whole_game_checks(tmp_path):
     assert "never arrives" in w.message
     assert not [w for w in _load(tmp_path / "c", ["send late from hana after 2 scenes"],
                                  top=TOP).warnings if w.code == "W312"]
+    # W312 for parts: the same, naming clock next.
+    result = _load(tmp_path / "b2", ["send late from hana after 1 part"], top=TOP)
+    (w,) = [w for w in result.warnings if w.code == "W312"]
+    assert "after 1 part waits" in w.message and "clock next line" in w.message
     # W316 (the trigger core): past [calendar] last_day, counting from the first day.
     result = _load(tmp_path / "d", ["send late from hana after 9 days", "clock next day"],
                    top=TOP, config=CONFIG)
@@ -110,6 +132,14 @@ def test_whole_game_checks(tmp_path):
     assert "message" in w.message and "last_day (5)" in w.message
     assert not [w for w in _load(tmp_path / "e", ["send late from hana after 2 days",
                                                   "clock next day"], top=TOP,
+                                 config=CONFIG).warnings if w.code in ("W316", "W312")]
+    # W316 for parts (the default calendar's four parts): 24 parts is day 7 at the soonest.
+    result = _load(tmp_path / "f", ["send late from hana after 24 parts", "clock next"],
+                   top=TOP, config=CONFIG)
+    (w,) = [w for w in result.warnings if w.code == "W316"]
+    assert "after 24 parts of the day" in w.message and "last_day (5)" in w.message
+    assert not [w for w in _load(tmp_path / "g", ["send late from hana after 16 parts",
+                                                  "clock next"], top=TOP,
                                  config=CONFIG).warnings if w.code in ("W316", "W312")]
 
 

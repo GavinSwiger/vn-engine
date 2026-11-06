@@ -25,7 +25,7 @@ def _e459(kind: str = "event", name: str = "hana_library", line: int = 12) -> st
 
 def _e458(kind: str = "event", name: str = "hana_library", unit: str = "days",
           count: int = 1) -> str:
-    """``unit`` is ``days`` or ``scenes``."""
+    """``unit`` is ``days``, ``parts`` or ``scenes``."""
     head = (f"{kind} {show_name(name)} waits from the start of the game, so \"after {count} "
             f"{unit}\" has nothing to count from.")
     if unit == "scenes":
@@ -42,8 +42,9 @@ def _e457(kind: str = "message", limit: int = 1000) -> str:
 def _w316(form: str = "never", kind: str = "event", name: str = "hana_library",
           a: object = "clock.day > 40", b: object = " on days 1 to 30") -> str:
     """``past_last`` (``a`` the day, ``b`` the last day), ``after`` (``a`` the days, ``b``
-    the last day), ``part`` (``a`` the part's number from 1, ``b`` how many parts),
-    ``never`` (``a`` the condition as written, ``b`` the days it was read over, or "")."""
+    the last day), ``after_parts`` (``a`` the parts of the day, ``b`` the last day),
+    ``part`` (``a`` the part's number from 1, ``b`` how many parts), ``never`` (``a`` the
+    condition as written, ``b`` the days it was read over, or "")."""
     head = f"{kind} {show_name(name)} can never happen: "
     if form == "past_last":
         return head + (f"it waits for day {a}, after [calendar] last_day ({b}). Pick an "
@@ -51,6 +52,9 @@ def _w316(form: str = "never", kind: str = "event", name: str = "hana_library",
     if form == "after":
         return head + (f"after {a} days is past [calendar] last_day ({b}), even counting "
                        "from the first day.")
+    if form == "after_parts":
+        return head + (f"after {a} parts of the day is past [calendar] last_day ({b}), even "
+                       "counting from the first part of the first day.")
     if form == "part":
         return head + (f"it waits for part {a} of the day, but this calendar has {b} parts. "
                        "Check [calendar] parts in config.toml.")

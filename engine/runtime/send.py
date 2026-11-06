@@ -9,9 +9,9 @@ the story goes on, and an ``open`` line stops the story at the Inbox. Both are s
   ``once``, with the line's ``after`` timing; ``on_fire`` delivers). ``run_send`` arms the
   line's trigger and, when it fits (always without ``after``), takes it and delivers at
   once: nothing stays armed, so the save is as before. With ``after 1 day`` / ``after 2
-  scenes`` it stays armed (saved in ``GameState.triggers``) until a clock change or a scene
-  entered makes it fit; the message's value is read then, and the notice shows then (never
-  on a quiet re-run). ``pending`` lists what waits, for the F3 overlay.
+  parts`` / ``after 2 scenes`` it stays armed (saved in ``GameState.triggers``) until a
+  clock change or a scene entered makes it fit; the message's value is read then, and the
+  notice shows then (never on a quiet re-run). ``pending`` lists what waits, for the F3 overlay.
 - **Delivering** (``deliver``) reads the message's variable now (a define, or a default the
   story changed), checks it (``script/inbox.message_problem``; a value a save can't keep or
   that isn't a message is the story error E453 at the ``send`` line), turns it into lines
@@ -163,7 +163,8 @@ def run_open(interp: "Interpreter", stmt: OpenStep) -> "Step":
 
 def pending(interp: "Interpreter") -> list[str]:
     """Round 3: the messages waiting to arrive, for the F3 overlay ("invite from hana: day
-    3", "late from ren: in 2 scenes"), in the order they were sent."""
+    3", "note from hana: day 4, Afternoon" for ``after N parts``, "late from ren: in 2
+    scenes"), in the order they were sent."""
     table = getattr(interp, "trigger_table", None)
     out: list[str] = []
     for armed in interp.triggers.armed:
@@ -174,6 +175,9 @@ def pending(interp: "Interpreter") -> list[str]:
         when = (f"day {armed.day}" if armed.day is not None
                 else f"in {armed.scenes} scene{'' if armed.scenes == 1 else 's'}"
                 if armed.scenes is not None else "now")
+        if armed.day is not None and armed.part is not None:
+            parts = clock_mod.calendar(interp).parts
+            when += f", {parts[min(armed.part, len(parts) - 1)]}"
         out.append(f"{stmt.message} from {stmt.contact}: {when}")
     return out
 

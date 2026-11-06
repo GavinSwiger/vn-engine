@@ -103,6 +103,13 @@ def test_the_state_json_and_old_saves():
                                "retired": ["event:a", "event:b"]}
     assert TriggerState.from_json(state.to_json()) == state
     assert TriggerState.from_json({}) is EMPTY_TRIGGERS
+    parts = TriggerState((Armed("message:late", 4, None, None, 2),))      # after N parts
+    assert parts.to_json() == {"armed": [{"id": "message:late", "day": 4, "part": 2}]}
+    assert TriggerState.from_json(parts.to_json()) == parts
+    for bad in ({"armed": [{"id": "a:b", "part": 1}]},
+                {"armed": [{"id": "a:b", "day": 2, "part": 100}]}):
+        with pytest.raises(StateInvalid):
+            TriggerState.from_json(bad)
     for bad in ([], {"x": []}, {"armed": [{"day": 1}]}, {"armed": [{"id": "nokind"}]},
                 {"armed": [{"id": "a:b", "day": 0}]}, {"armed": [{"id": "a:b", "scenes": 0}]},
                 {"armed": [{"id": "a:b", "data": None}]}, {"armed": [{"id": "a:b", "data": 1.5}]},

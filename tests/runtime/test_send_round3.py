@@ -113,6 +113,42 @@ def test_after_scenes_counts_scenes_entered(tmp_path):
     assert interp.checkpoint().triggers == three.triggers
 
 
+CAL3 = Calendar(parts=("Morning", "Afternoon", "Evening"), day_card=False)
+
+
+def test_after_parts_counts_parts_across_days(tmp_path):
+    lines = ["clock next", "clock next", '"Evening."', "send late from ren after 2 parts",
+             '"Sent."', "clock next", '"Morning two."', "clock next", '"Afternoon two."',
+             '"Later."']
+    interp = _start(story_game(tmp_path, lines, top=TOP), CAL3)
+    out = _advance(interp)                                      # evening + 2 parts
+    assert not _arrived(out) and pending(interp) == ["late from ren: day 2, Afternoon"]
+    held = interp.checkpoint()
+    assert held.to_json()["triggers"]["armed"][0] == {"id": held.triggers.armed[0].id,
+                                                      "day": 2, "part": 1}
+    assert round_trip(held) == held
+    out = _advance(interp)                                      # day 2 morning: not yet
+    assert not _arrived(out) and interp.codex.deliveries() == ()
+    out = _advance(interp)                                      # day 2 afternoon
+    assert len(_arrived(out)) == 1 and pending(interp) == []
+    arrived = interp.checkpoint()
+    _back(interp)
+    assert interp.codex.deliveries() == ()
+    out = _forward(interp, 1)
+    assert not _arrived(out) and interp.checkpoint().items == arrived.items
+    assert interp.checkpoint().triggers == arrived.triggers
+
+
+def test_clock_next_day_passes_the_parts_it_skips(tmp_path):
+    lines = ['"Morning."', "send late from ren after 1 part", '"Sent."', "clock next day",
+             '"Next morning."']
+    interp = _start(story_game(tmp_path, lines, top=TOP), CAL3)
+    _advance(interp)
+    assert pending(interp) == ["late from ren: day 1, Afternoon"]
+    out = _advance(interp)
+    assert len(_arrived(out)) == 1 and pending(interp) == []
+
+
 def test_a_message_sent_without_after_still_arrives_at_once(tmp_path):
     interp = _start(story_game(tmp_path, ["send late from ren", '"One."'], top=TOP))
     assert len(interp.codex.deliveries()) == 1 and pending(interp) == []

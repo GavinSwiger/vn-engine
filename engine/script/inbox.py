@@ -42,11 +42,12 @@ the line and fired at once, or, with round 3's ``after 1 day``, when its timing 
 contact no ``lock contact`` declares), E452 (a message no define or default declares, or a
 define whose literal value isn't a message), W311 (``open <look>`` when nothing comes by that
 look). Round 3: E448's ``after``/``ask`` forms (parse), E452's ask forms, E455 (replies on
-the line and in the message), W312 (``after N days`` in a game whose clock never moves),
-the trigger core's W316 (a delay past ``[calendar] last_day``), W313 (``inbox.reply`` of a
-message sent without replies) and W314 (compared with a reply it never offers). Run time:
-E453, E454 (``runtime/send.py``). ``SendStep`` and ``OpenStep`` never branch; reach reads
-``inbox.reply("m")`` like a variable that a ``send m`` with replies may change.
+the line and in the message), W312 (``after N days`` or ``after N parts`` in a game whose
+clock never moves), the trigger core's W316 (a delay past ``[calendar] last_day``), W313
+(``inbox.reply`` of a message sent without replies) and W314 (compared with a reply it never
+offers). Run time: E453, E454 (``runtime/send.py``). ``SendStep`` and ``OpenStep`` never
+branch; reach reads ``inbox.reply("m")`` like a variable that a ``send m`` with replies may
+change.
 """
 
 import ast
@@ -69,7 +70,7 @@ from engine.script.statement_docs import StatementDoc, register_doc
 from engine.script.statements import (NoText, ParseContext, PositionalWord, StatementSpec,
                                       register_positional)
 from engine.script.suggest import suggest
-from engine.script.triggers import SCENES_MAX, Timing, Trigger
+from engine.script.triggers import AFTER_PARTS_MAX, SCENES_MAX, Timing, Trigger
 from engine.script.words import canonical_name, check_name
 
 TEMPLATES.update(inbox_messages.TEMPLATES)
@@ -86,6 +87,7 @@ WORD_ASK: Final = "ask"
 WORD_REPLY: Final = "reply"              # inbox.reply("invite") in author Python
 DAY_UNITS: Final = ("day", "days")
 SCENE_UNITS: Final = ("scene", "scenes")
+PART_UNITS: Final = ("part", "parts")    # parts of the day ([calendar] parts)
 REPLIES_MAX: Final = 4                   # reply options a message offers (phone chat's)
 REPLY_MAX: Final = 80                    # a reply's text (code points; phone chat's)
 IGNORE: Final = "ignore"                 # a phone chat's ignore key: accepted, not shown
@@ -119,12 +121,13 @@ class ContactDecl(Node):
 
 @dataclass(slots=True, kw_only=True)
 class SendStep(Statement):
-    """``send <message> from <contact> [on <look>] [after <n> days|scenes] [ask "…" …]``.
-    Not a checkpoint; never branches. Round 3: ``after_days`` / ``after_scenes`` (at most
-    one is set) hold the message until then; ``replies`` are the line's own reply options
-    (the player's texts; a message's own ask is in its define). The delay and the replies
-    are left out of the identity key, so changing them keeps the line's sid (and a saved
-    waiting message)."""
+    """``send <message> from <contact> [on <look>] [after <n> days|parts|scenes] [ask "…"
+    …]``. Not a checkpoint; never branches. Round 3: ``after_days`` / ``after_parts`` /
+    ``after_scenes`` (at most one is set) hold the message until then (parts of the day
+    count as the trigger core counts them, across days); ``replies`` are the line's own
+    reply options (the player's texts; a message's own ask is in its define). The delay and
+    the replies are left out of the identity key, so changing them keeps the line's sid (and
+    a saved waiting message)."""
 
     message: str
     contact: str
@@ -132,6 +135,7 @@ class SendStep(Statement):
     after_days: int | None = None
     after_scenes: int | None = None
     replies: tuple[str, ...] = ()
+    after_parts: int | None = None
 
     def identity_key(self) -> tuple[str, ...]:
         return (WORD_SEND, self.message, self.contact, self.device or "")
@@ -139,16 +143,18 @@ class SendStep(Statement):
     def written(self) -> str:
         """The line as Studio writes it back."""
         tail = f" on {self.device}" if self.device else ""
-        tail += after_words(self.after_days, self.after_scenes)
+        tail += after_words(self.after_days, self.after_scenes, self.after_parts)
         if self.replies:
             tail += " " + WORD_ASK + "".join(f' "{quote(r)}"' for r in self.replies)
         return f"send {self.message} from {self.contact}{tail}"
 
 
-def after_words(days: int | None, scenes: int | None) -> str:
-    """`` after 1 day`` / `` after 2 scenes`` ("" for neither)."""
+def after_words(days: int | None, scenes: int | None, parts: int | None = None) -> str:
+    """`` after 1 day`` / `` after 2 parts`` / `` after 2 scenes`` ("" for none)."""
     if days is not None:
         return f" {WORD_AFTER} {days} {'day' if days == 1 else 'days'}"
+    if parts is not None:
+        return f" {WORD_AFTER} {parts} {'part' if parts == 1 else 'parts'}"
     if scenes is not None:
         return f" {WORD_AFTER} {scenes} {'scene' if scenes == 1 else 'scenes'}"
     return ""
@@ -236,6 +242,7 @@ def parse_send(raw: RawStatement, ctx: ParseContext) -> SendStep | None:
     device: str | None = None
     days: int | None = None
     scenes: int | None = None
+    parts: int | None = None
     replies: tuple[str, ...] = ()
     seen: set[str] = set()
     at = 4
@@ -260,7 +267,7 @@ def parse_send(raw: RawStatement, ctx: ParseContext) -> SendStep | None:
             timing = _after_timing(raw, ctx, at)
             if timing is None:
                 return None
-            days, scenes = timing
+            days, scenes, parts = timing
             at += 3
         else:
             stop = at + 1
@@ -273,28 +280,29 @@ def parse_send(raw: RawStatement, ctx: ParseContext) -> SendStep | None:
             at = stop
     return SendStep(file=raw.file, line=raw.line, end_line=raw.end_line, column=raw.column,
                     message=message, contact=contact, device=device, after_days=days,
-                    after_scenes=scenes, replies=replies)
+                    after_scenes=scenes, replies=replies, after_parts=parts)
 
 
 def _after_timing(raw: RawStatement, ctx: ParseContext, at: int
-                  ) -> tuple[int | None, int | None] | None:
-    """``after <n> day(s)|scene(s)`` from token ``at`` (``after``): ``(days, scenes)``."""
+                  ) -> tuple[int | None, int | None, int | None] | None:
+    """``after <n> day(s)|part(s)|scene(s)`` from token ``at`` (``after``): ``(days,
+    scenes, parts)``, one of them set."""
     tokens = raw.tokens
     count = tokens[at + 1] if len(tokens) > at + 1 else None
     unit = tokens[at + 2].text if len(tokens) > at + 2 and tokens[at + 2].kind == NAME else ""
-    if unit in ("part", "parts"):
-        ctx.error("E448", "part")
-        return None
     if (count is None or count.kind != NAME or not count.text.isdigit()
-            or unit not in DAY_UNITS + SCENE_UNITS):
+            or unit not in DAY_UNITS + SCENE_UNITS + PART_UNITS):
         ctx.error("E448", "after", _after(raw, at + 1))
         return None
-    most = DAY_MAX if unit in DAY_UNITS else SCENES_MAX
+    most = (DAY_MAX if unit in DAY_UNITS else AFTER_PARTS_MAX if unit in PART_UNITS
+            else SCENES_MAX)
     n = int(count.text) if len(count.text) <= 6 else most + 1
     if not 1 <= n <= most:
         ctx.error("E448", "count", count.text, f"{most:,}")
         return None
-    return (n, None) if unit in DAY_UNITS else (None, n)
+    if unit in DAY_UNITS:
+        return n, None, None
+    return (None, None, n) if unit in PART_UNITS else (None, n, None)
 
 
 def reply_problem(text: object) -> str | None:
@@ -722,9 +730,9 @@ def check_story(nodes: Iterable[Node], add: Callable[[Diagnostic], object],
 def _check_round3(nodes: list[Node], steps: list[Statement],
                   values: dict[str, Define | Default], add: Callable[[Diagnostic], object],
                   config: Any) -> list[ScriptWarning]:
-    """Round 3: E455 (replies on the line and in the message), W312 (``after N days`` with no
-    ``clock`` line), the trigger core's W316 for delays past ``[calendar] last_day``, and
-    W313/W314 for ``inbox.reply`` in author Python."""
+    """Round 3: E455 (replies on the line and in the message), W312 (``after N days`` or
+    ``after N parts`` with no ``clock`` line), the trigger core's W316 for delays past
+    ``[calendar] last_day``, and W313/W314 for ``inbox.reply`` in author Python."""
     from engine.core.storyclock import calendar_of
     from engine.script.clock import ClockStep
     from engine.script.triggers import check_triggers
@@ -750,11 +758,14 @@ def _check_round3(nodes: list[Node], steps: list[Statement],
     clock_lines = any(isinstance(node, Label) and any(
         isinstance(stmt, ClockStep) for stmt, _ in walk_block(node.block)) for node in nodes)
     for stmt in sends:
-        if stmt.after_days is not None and not clock_lines:
+        clocked = (stmt.after_days, "day") if stmt.after_days is not None else (
+            stmt.after_parts, "part")
+        if clocked[0] is not None and not clock_lines:
             warnings.append(ScriptWarning(
-                format_message("W312", (stmt.message, stmt.after_days)), code="W312",
+                format_message("W312", (stmt.message, *clocked)), code="W312",
                 file=stmt.file.ref, line=stmt.line))
-    timed = [send_trigger(s) for s in sends if s.after_days is not None]
+    timed = [send_trigger(s) for s in sends
+             if s.after_days is not None or s.after_parts is not None]
     if timed and config is not None and clock_lines and "clock" not in values:
         calendar, _problems = calendar_of(config)
         warnings += check_triggers(timed, add, calendar)
@@ -837,7 +848,8 @@ def _check_reads(nodes: list[Node], replies: dict[str, set[str] | None]
 def send_trigger(stmt: SendStep) -> Trigger:
     """``stmt`` as a trigger of kind ``message``: named by its sid, armed by the line
     (``live=False``), ``once``, the line as its payload, and round 3's ``after`` timing."""
-    timing = Timing(after_days=stmt.after_days, after_scenes=stmt.after_scenes)
+    timing = Timing(after_days=stmt.after_days, after_scenes=stmt.after_scenes,
+                    after_parts=stmt.after_parts)
     return Trigger(TRIGGER_KIND, stmt.sid or f"{stmt.file.ref}:{stmt.line}", stmt, once=True,
                    live=False, timing=timing, payload=stmt)
 
@@ -861,10 +873,12 @@ DOCS_HEADING: Final = "Messages"          # docs/script-language.md
 for _doc in (
         StatementDoc(
             WORD_SEND, "Send a message", "Messages",
-            'send <message> from <contact> [on <look>] [after <n> days|scenes] [ask "…" …]',
+            'send <message> from <contact> [on <look>] [after <n> days|parts|scenes] '
+            '[ask "…" …]',
             "Delivers a message to the Inbox, in the contact's thread, with a notice that it "
-            "arrived: now, or after some days or scenes. The message is a define: one text, "
-            "or a list of lines, which may end with replies the player picks.",
+            "arrived: now, or after some days, parts of the day or scenes. The message is "
+            "a define: one text, or a list of lines, which may end with replies the player "
+            "picks.",
             "send invite from hana", DOCS_HEADING, "F65", fields=("invite", "hana")),
         StatementDoc(
             WORD_OPEN, "Open the Inbox", "Messages", "open inbox|<look>",
