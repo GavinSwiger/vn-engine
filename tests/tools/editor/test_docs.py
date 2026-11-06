@@ -119,7 +119,7 @@ def test_ac_f45_48_page_names_the_preview_only_checks():
     flat = _flat(_text())
     match = re.search(r"shown on Preview only: ([^.]*)\.", flat)
     assert match is not None
-    for needed in ("text warnings", "W111", "minigames"):
+    for needed in ("text-fit warnings", "W111", "minigames"):
         assert needed in match.group(1), needed
 
 

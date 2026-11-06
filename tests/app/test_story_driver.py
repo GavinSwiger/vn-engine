@@ -548,6 +548,8 @@ def test_ac_f03_70_the_example_game_plays_to_the_end(tmp_path, user_roots, scrip
                                          NvlPage,                                 # F17
                                          CodexAdded,                              # F21
                                          MeterNotice,                             # F62
+                                         CheckRolled,                             # F59
+                                         MessageArrived, OpenInbox,               # F65
                                          StartMinigame,                           # F23
                                          Glitch,                                  # F28 s3
                                          WindowTitle, FakeCrash,                  # F30 s3, s4
