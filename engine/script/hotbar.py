@@ -29,7 +29,6 @@ from engine.core.constants import CONFIG_FILENAME
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import TEMPLATES, _did_you_mean, format_message, show, show_name
 from engine.script.nodes import Node, Statement
-from engine.script.statement_docs import StatementDoc, register_doc
 from engine.script.suggest import suggest
 from engine.script.words import canonical_name
 
@@ -130,23 +129,10 @@ def picture_warnings(statements: Iterable[Statement], tags: Iterable[str]
             for stmt in statements if isinstance(stmt, HotbarShow)]
 
 
-# --- Studio docs (F45): Insert --------------------------------------------------------------------
-
+# Studio's docs rows (Insert, help) for show hotbar / hide hotbar are in docs_table.py, after
+# the sprite rows, so a plain show/hide line's help stays the sprite's.
 DOCS_HEADING: Final = "show hotbar, hide hotbar"          # docs/script-language.md
 
-for _doc in (
-        StatementDoc(
-            "show", "Show the hotbar", "Story flow", "show hotbar",
-            "Puts quick slots for usable items in a corner of the screen; number keys 1 to 8 "
-            "use them. It stays, and saves keep it, until hide hotbar.", "show hotbar",
-            DOCS_HEADING, "F64"),
-        StatementDoc(
-            "hide", "Hide the hotbar", "Story flow", "hide hotbar",
-            "Takes the hotbar off the screen. Items can still be used from the bag.",
-            "hide hotbar", DOCS_HEADING, "F64"),
-):
-    register_doc(_doc)
-del _doc
 
 __all__ = ["DOCS_HEADING", "HotbarShow", "WORD_HOTBAR", "check_story", "is_hotbar_line",
            "parse_hotbar_line", "picture_warnings"]

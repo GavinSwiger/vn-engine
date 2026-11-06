@@ -132,6 +132,17 @@ ROWS: tuple[StatementDoc, ...] = (
         "hide", "Hide the clock", "Time", "hide clock",
         "Takes the clock off the screen. Story time keeps going.", "hide clock",
         "show clock, hide clock", "F63"),
+    # F64 round 2: show hotbar / hide hotbar (``hotbar.py``), after the sprite rows so a plain
+    # show/hide line's help stays the sprite's.
+    StatementDoc(
+        "show", "Show the hotbar", "Story flow", "show hotbar",
+        "Puts quick slots for usable items in a corner of the screen; number keys 1 to 8 use "
+        "them. It stays, and saves keep it, until hide hotbar.", "show hotbar",
+        "show hotbar, hide hotbar", "F64"),
+    StatementDoc(
+        "hide", "Hide the hotbar", "Story flow", "hide hotbar",
+        "Takes the hotbar off the screen. Items can still be used from the bag.",
+        "hide hotbar", "show hotbar, hide hotbar", "F64"),
     StatementDoc(
         "at", "Position", "Stage", "at <position> | at <x> [<y>]",
         "Where a shown sprite stands: left, center, right, a named position, or numbers.",
