@@ -18,6 +18,10 @@ appear, and all of them are in the [Glossary](#glossary).
 
 ## Before you start
 
+**Have the vn-engine Studio app** (a folder with `vn-engine Studio.exe` in it)? Then you
+don't need Python or a terminal: skip the Python and `pip` parts below, and in Step 1 double
+click **vn-engine Studio.exe** instead. You still need the pictures.
+
 You need:
 
 - A Windows computer.
@@ -56,6 +60,10 @@ You should see "Successfully installed pygame-ce" at the end.
    ```
    python -m engine edit
    ```
+
+With the vn-engine Studio app, double click **vn-engine Studio.exe** in its folder instead.
+The first time, Windows may say "Windows protected your PC": click **More info**, then
+**Run anyway**. The app keeps your games in **Documents\vn-engine**.
 
 You should see Studio open on *Paper Lanterns*, the example game that comes with
 vn-engine. You can look around it any time. Next you make a game of your own.
