@@ -55,6 +55,7 @@ ALL_SETTINGS: Final = "all"
 LOOKS: Final = "looks"                  # W9: Styles & playthrough looks
 SCHEMES: Final = "schemes"              # F49: Color scheme (cards: schememodel, schemecards)
 KITS: Final = "kits"                    # F60: Kit (kitmodel, kitcards, kitpage)
+CALENDAR: Final = "calendar"            # F63: Calendar (calendarmodel, calendarpage)
 BROKEN_TEXT: Final = ("config.toml has a mistake on line {line}, so these settings can't be "
                       "shown. Fix it in the Editor.")
 DEFAULT_TEXT: Final = "Default: {value}"
@@ -358,6 +359,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.codex", "Codex page"),
         Row("theme.codex.new", "New entry mark"),
         Row("theme.codex.locked", "Locked entries"))),
+    PageDef(CALENDAR, "Calendar", ()),                              # F63: generated
     PageDef("flowchart", "Flowchart", (
         Row("flowchart", "Flowchart page"),
         Row("theme.flowchart", "Look"),
@@ -895,7 +897,7 @@ def section_values(section: str, text: str | None) -> dict[str, object]:
 
 
 __all__ = ["ALL_SETTINGS", "BROKEN_TEXT", "CONFIG_FILENAME", "DEFAULT_TEXT", "Field", "HELPS",
-           "KINDS", "KITS", "LABELS", "LOOKS", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row", "SCHEMES",
+           "CALENDAR", "KINDS", "KITS", "LABELS", "LOOKS", "NOT_SET", "P2_PAGES", "PAGES", "Page", "PageDef", "Row", "SCHEMES",
            "Section",
            "TABLE_REASON", "TEXT_ONLY", "WidgetKind", "WidgetSpec", "all_keys", "is_look",
            "look_page", "look_title", "looks", "new_look_change", "new_look_problem",

@@ -18,6 +18,8 @@ editing `config.toml` by hand. Pick a page on the left; its fields are on the ri
   never locks the setting), default effect lengths and sizes, effect colours, auto-advance
   and skipping.
 - **Chapters & codex**: the chapter title card, and the Codex page and its notices.
+- **Calendar**: story time: the parts of the day, the start, the last day, how dates read,
+  the day card and the clock's corner (see below).
 - **Flowchart**: the players' Flowchart page: whether it shows, which choices get a box,
   jumping, and every box's look.
 - **Content warning**: when it shows, its text and how long players wait.
@@ -100,6 +102,35 @@ meter (Sanity for Horror, Affection for Romance).
 
 All settings lists the same key as `[theme] kit` ("Genre kit"), so searching for "kit"
 finds it.
+
+## Calendar
+
+The **Calendar** page sets up story time (`clock next`, `show clock`, the day card) and
+writes `[calendar]`. Each change is one step that Ctrl+Z takes back.
+
+- **Parts of the day**: the list in order. Type a name and press **Add** (it goes after the
+  selected part), or select one to **Rename**, **Remove**, **Move up** or **Move down**.
+  Until you change it, the list is grey and shows the kit's parts (Horror: Dusk, Midnight,
+  Witching hour, Dawn) or the engine's (Morning, Afternoon, Evening, Night); the first change
+  writes the whole list.
+- **Starts on**: a day number, or a date such as Monday 1 April. The hint shows how the first
+  day reads.
+- **Last day**: optional; `clock.days_left()` counts down to it.
+- **How a date reads**: the wording, with fields in curly brackets (`Night {day}`,
+  `{season}, day {season_day}`). The hint lists the fields this calendar has and shows a
+  date as it reads.
+- **Card at a new day**: the date card that shows when a new day starts. On unless you turn
+  it off.
+- **Clock corner**: where `show clock` puts the date and the part of the day. Unset, the
+  dashed corner is the kit's (or the top right).
+- **Weekdays, months and seasons**: press **Show** beside the heading to name your own week
+  days, months and seasons (names with commas between) and the days in a season. The
+  section opens by itself when one is set.
+
+Beside the fields (under them in a narrow window), the preview draws the day card in the
+chapter card's colors and the clock in its corner on a small stage, both in your color
+scheme, and changes as you type. If the start is a date the calendar can't read, the page
+says so at the top.
 
 If `config.toml` has a mistake, the tab shows only the line to fix and **Open in Editor**.
 A setting written in a way the form can't change, such as `textbox = { … }` on one line,
