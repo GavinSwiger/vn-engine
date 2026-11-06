@@ -10,15 +10,21 @@ never crash or hang on hostile input (SEC-F01-01, 07, 08).
 for anything invalid), so the error screen can still show a valid ``[game] title``.
 """
 
+import dataclasses
 import difflib
 import logging
 import re
 import tomllib
+import unicodedata
 from collections.abc import Iterable
 from types import MappingProxyType
 
 from engine.core.config_schema import (
     LOOK_SECTIONS,
+    METER_SECTION,
+    METER_TABLE_NAME_MAX,
+    METER_TABLES_MAX,
+    MeterTable,
     LOOK_WORDS_REFUSED,
     PLAYTHROUGH_AREAS,
     SECTIONS,
@@ -236,10 +242,12 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
             sections[section] = walk.table(SECTIONS[section], content, (section,))
         elif section in LOOK_SECTIONS and isinstance(content, dict):          # F32
             sections[section] = walk.looks(section, content)
+        elif section == METER_SECTION and isinstance(content, dict):          # F62 round 2
+            sections[section] = walk.meters(content)
         elif isinstance(content, dict):
             line = locator.line_of(section)
             message = f"{_where(line)}: unknown section [{echo(section)}]"
-            close = did_you_mean(section, [*SECTIONS, *LOOK_SECTIONS])
+            close = did_you_mean(section, [*SECTIONS, *LOOK_SECTIONS, METER_SECTION])
             if close is not None:
                 message += f" — did you mean [{close}]?"
             walk.warnings.append((line, message))
@@ -249,7 +257,8 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
                                         "section such as [game]"))
 
     config = Config(**{name: sections.get(name, cls()) for name, cls in SECTIONS.items()},
-                    **{name: sections[name] for name in LOOK_SECTIONS if name in sections})
+                    **{name: sections[name] for name in (*LOOK_SECTIONS, METER_SECTION)
+                       if name in sections})
     walk.errors.extend(_content_warning_errors(config, doc, locator))
     walk.warnings.sort(key=lambda item: _line_order(item[0]))
     walk.errors.sort(key=lambda error: _line_order(error.line))
@@ -554,6 +563,38 @@ class _Walk:
                     f"found {describe(table)}", file=CONFIG_FILENAME, line=line))
                 continue
             tables[key] = self._look_table(section, table, path, line)
+        return MappingProxyType(tables)
+
+    def meters(self, content: dict) -> object:
+        """F62 round 2: the valid ``[meter.<name>]`` tables by name, read-only. Too many
+        tables give one error and none is read; a name that can't be a meter's skips its
+        table (error); a bad value is the usual error and its key stays unset. Whether a
+        meter of that name exists is the story's to say (W291, ``script/showmeter.py``)."""
+        if len(content) > METER_TABLES_MAX:
+            self.errors.append(ConfigError(
+                f"there are {len(content)} [{METER_SECTION}] tables, but at most "
+                f"{METER_TABLES_MAX} are allowed.", file=CONFIG_FILENAME,
+                line=self.locator.line_of(METER_SECTION)))
+            return MappingProxyType({})
+        tables: dict[str, MeterTable] = {}
+        for name, table in content.items():
+            path = (METER_SECTION, name)
+            line = self.locator.line_of(*path)
+            key = name if name.isascii() else unicodedata.normalize("NFKC", name)
+            if not (key.isidentifier() and len(key) <= METER_TABLE_NAME_MAX):
+                self.errors.append(ConfigError(
+                    f"[{METER_SECTION}.{toml_key(name)}] isn't a meter name. Use the name "
+                    "from the points line, such as [meter.hana].",
+                    file=CONFIG_FILENAME, line=line))
+                continue
+            if not isinstance(table, dict):
+                self.errors.append(ConfigError(
+                    f"[{METER_SECTION}] {name} must be a section, such as "
+                    f"[{METER_SECTION}.{name}], but found {describe(table)}",
+                    file=CONFIG_FILENAME, line=line))
+                continue
+            found = self.table(MeterTable, table, path)
+            tables[key] = dataclasses.replace(found, line=line)  # type: ignore[type-var]
         return MappingProxyType(tables)
 
     def _look_table(self, section: str, content: dict, path: tuple[str, ...],

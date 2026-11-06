@@ -25,9 +25,11 @@ def test_ac63_every_config_key_and_section_has_a_description():
     keys = list(_keys(cs.SECTIONS))
     assert len(keys) > 400
     looks = list(_keys({f"{name}.x": cls for name, cls in cs.LOOK_SECTIONS.items()}))
+    looks += list(_keys({f"{cs.METER_SECTION}.x": cs.MeterTable}))       # F62 round 2
     assert [f"[{s}] {k}" for s, k in keys + looks if not cs.key_doc(s, k).strip()] == []
-    assert [s for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS] if not cs.key_doc(s, "")] == []
-    assert set(cs.SECTION_DOCS) == set(cs.SECTIONS) | set(cs.LOOK_SECTIONS)
+    named = [*cs.LOOK_SECTIONS, cs.METER_SECTION]
+    assert [s for s in [*cs.SECTIONS, *named] if not cs.key_doc(s, "")] == []
+    assert set(cs.SECTION_DOCS) == set(cs.SECTIONS) | set(named)
     theme_names = {k for s, k in keys if s.startswith("theme")} \
         | {f"{s}.{k}" for s, k in keys if s.startswith("theme")}
     assert set(cs.THEME_DOCS) - theme_names == set()          # no stale rows
@@ -48,8 +50,10 @@ JARGON = re.compile(
 def test_descriptions_use_plain_words():
     keys = list(_keys(cs.SECTIONS))
     looks = list(_keys({f"{name}.x": cls for name, cls in cs.LOOK_SECTIONS.items()}))
+    looks += list(_keys({f"{cs.METER_SECTION}.x": cs.MeterTable}))       # F62 round 2
     texts = {f"[{s}] {k}": cs.key_doc(s, k) for s, k in keys + looks}
-    texts |= {f"[{s}]": cs.key_doc(s, "") for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS]}
+    texts |= {f"[{s}]": cs.key_doc(s, "")
+              for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS, cs.METER_SECTION]}
     texts |= {f"THEME_DOCS {k}": v for k, v in cs.THEME_DOCS.items()}
     texts |= {f"WORD_DOCS {k}": v for k, v in cs.WORD_DOCS.items()}
     assert len(texts) > 400

@@ -53,6 +53,7 @@ from engine.core.kits import KITS, kit_ids
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
 from engine.core.schemes import SCHEMES, scheme_ids
+from engine.core.skins import CORNER_PLACES, METER_LOOKS
 from engine.core.settings_schema import TIMING_LEVELS
 
 RGB = tuple[int, int, int]
@@ -2104,6 +2105,45 @@ class PlaythroughTableKeys:
         "when not set, the main title buttons"))
 
 
+# --- [meter.<name>] (F62 round 2, specs/F62-visible-meters) ---------------------------------
+# How one meter is drawn when the story shows it (``show meter <name>``). Every key is optional;
+# an unset key comes from the kit, then the skins defaults (``kits.meter_look``). The name is
+# the meter's as declared on a ``points`` line; a name no meter has is W291 at load
+# (``script/showmeter.py``), since config.toml is read before the story.
+
+METER_SECTION = "meter"
+METER_TABLES_MAX = 200                   # = points.METERS_MAX: one table per meter at most
+METER_TABLE_NAME_MAX = 64                # = points.METER_NAME_MAX
+METER_LABEL_MAX = 30                     # code points of the label shown beside the meter
+METER_LOOK_LABELS: Mapping[str, str] = MappingProxyType({
+    "bar": "Bar", "number": "Number", "hearts": "Hearts", "pips": "Pips", "dial": "Dial"})
+CORNER_PLACE_LABELS: Mapping[str, str] = MappingProxyType({
+    "top_left": "Top left", "top_right": "Top right", "bottom_left": "Bottom left",
+    "bottom_right": "Bottom right"})
+
+
+@dataclass(frozen=True)
+class MeterTable:
+    """One valid ``[meter.<name>]``: ``look`` (``skins.METER_LOOKS``), ``place``
+    (``skins.CORNER_PLACES``) and ``label``, each None when not set; ``line`` is the
+    table's line in config.toml (for W291). ``Config.meter`` maps names to these, and
+    ``kits.meter_look`` reads them."""
+    look: str | None = field(default=None, metadata=spec(
+        Choice(*METER_LOOKS, labels=METER_LOOK_LABELS),
+        "how the meter is drawn: a bar, a number, hearts, pips or a dial"))
+    place: str | None = field(default=None, metadata=spec(
+        Choice(*CORNER_PLACES, labels=CORNER_PLACE_LABELS),
+        "which corner of the screen the meter sits in"))
+    label: str | None = field(default=None, metadata=spec(
+        OneLine(METER_LABEL_MAX, why="the meter's name shown beside it"),
+        "the name shown beside the meter; when not set, the meter's own name"))
+    line: int | None = None
+
+
+def _no_meters() -> Mapping[str, MeterTable]:
+    return MappingProxyType({})
+
+
 # config.toml section → the keys of each of its named tables (``_validate`` routes these to
 # ``_Walk.looks``; they are not in ``SECTIONS``, whose values are one dataclass each).
 LOOK_SECTIONS: Mapping[str, type] = MappingProxyType({
@@ -2144,6 +2184,8 @@ class Config:
     # F32: the valid [style.<name>] tables by name and [playthrough.N] tables by N.
     style: Mapping[str, LookTable] = field(default_factory=_no_looks)
     playthrough: Mapping[int, LookTable] = field(default_factory=_no_looks)
+    # F62 round 2: the valid [meter.<name>] tables by meter name.
+    meter: Mapping[str, MeterTable] = field(default_factory=_no_meters)
 
 
 @dataclass(frozen=True)
@@ -2215,6 +2257,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "meta": "showing the player's computer user name in the story",
     "animation": "characters blinking and moving their mouths while they talk",
     "style": "a named look the story can switch to while it plays",
+    "meter": "how a meter looks when the story shows it on screen",
     "playthrough": "a different title screen for players from a given playthrough on",
 })
 
@@ -2475,6 +2518,9 @@ def section_class(section: str) -> type | None:
     section = look_base(section)
     if section in LOOK_SECTIONS:
         return LOOK_SECTIONS[section]
+    head, _, rest = section.partition(".")
+    if head == METER_SECTION:                                            # F62 round 2
+        return MeterTable if rest and "." not in rest else None
     cls: type | None = SECTIONS.get(section.split(".")[0])
     for part in section.split(".")[1:]:
         found = config_fields(cls).get(part) if cls is not None else None
