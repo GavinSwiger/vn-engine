@@ -79,6 +79,28 @@ A style can have its own scheme while the story has it on: on **Styles & playthr
 looks**, each style's first field is **Color scheme** ("not set" keeps the main look's
 scheme). All settings lists the same key as `[theme] preset`.
 
+## Kit
+
+A **kit** dresses your game for its genre in one go. The **Kit** page, under Color scheme,
+shows **No kit** and seven kits as cards: Romance, Horror, Mystery, Fantasy, Cozy, Sci-fi
+and Letters. Each card draws a little stage in the kit's colors, with a meter in the kit's
+look (a bar, a number, hearts, pips or a dial) in its corner, named after the kit's first
+meter (Sanity for Horror, Affection for Romance).
+
+- **Click a card** (or use the arrow keys) to read what it does: a one-line description,
+  how meters you show will look and where they sit, and the meters it suggests with their
+  ranges and ranks (Horror: Sanity 0–100, from Breaking to Steady). Nothing is written yet.
+- **Apply** (or Enter, or a double-click) writes `kit = "horror"` under `[theme]`. With
+  **Also use its color scheme** ticked (Horror's is Blood Moon), it writes
+  `preset = "blood_moon"` too. Both are one step that Ctrl+Z takes back. The box starts
+  unticked when you use an imported palette, so your palette stays unless you tick it.
+- **Use no kit** (on the No kit card) removes the line; the engine's plain defaults apply.
+- Anything you set yourself still wins over the kit. If `config.toml` names a kit this
+  version doesn't have, the page says so.
+
+All settings lists the same key as `[theme] kit` ("Genre kit"), so searching for "kit"
+finds it.
+
 If `config.toml` has a mistake, the tab shows only the line to fix and **Open in Editor**.
 A setting written in a way the form can't change, such as `textbox = { … }` on one line,
 says so and offers **Edit as script**. Lists of your own entries, such as stage positions,

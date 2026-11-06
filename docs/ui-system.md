@@ -321,6 +321,18 @@ way from five picked colors (`palette.complete_roles`), so they give no W67 warn
   warnings name the style's scheme, else the main one). If either color is yours, it is
   left out.
 
+**Genre kits (F60).** `[theme] kit = "<id>"` dresses the shared systems for a genre:
+`romance`, `horror`, `mystery`, `fantasy`, `cozy`, `scifi` or `letters`
+(`engine/core/kits.py`; Studio: Game settings > Kit). A kit fills in only what the author
+left unset; today that is how a shown meter looks (`bar`, `number`, `hearts`, `pips` or
+`dial`, from `skins.METER_LOOKS`), which corner it sits in (`skins.CORNER_PLACES`) and the
+meter presets Studio suggests. Lookup order for a meter: its own `[meter.<name>]` table
+(F62 round 2), then the kit, then the defaults (`bar`, `top_left`, a label from the
+variable name): `kits.meter_look(config, meter)`. A kit suggests a color scheme but never
+sets one: Studio's Apply writes `preset` too only when asked. An unknown id gives one
+config warning (with a did-you-mean) and the game runs with no kit. Messages, clock,
+items and checks join the kit as those systems land.
+
 ### Token list
 
 | Token | Type | Default | Purpose |
@@ -1229,3 +1241,5 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   the fraction kept on a level change, C5) and its reduced-motion rule.
 - 2026-11-04: F52 (builder): §9 "Text field and on-screen keyboard" built (no longer
   proposed), with the as-built text inset, key width and W67 note.
+- 2026-11-06: F60 (builder): "Genre kits" under the color schemes: `[theme] kit`, what a
+  kit sets, and the meter look order (`[meter.<name>]` > kit > defaults).
