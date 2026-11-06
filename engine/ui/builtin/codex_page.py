@@ -58,6 +58,14 @@ now (``app/hotbar.ItemUser``); its ``hint`` ("Belt: 2", the item's hotbar slot) 
 the left of that row and the button takes the right half. The button is a focus group of its
 own, shown and hidden as the selection moves (``groups_changed``).
 
+F65 (codex kinds): which kinds a view lists, in what order, and with which fields comes from
+``core/codexkinds``: ``KINDS`` are the kinds on the ``codex`` page, a kind's ``order`` picks
+how ``codex_tabs`` makes its rows (``declared``: tips, with locked ones under
+``show_locked``; ``obtained`` and ``newest``: the port's own order), ``on_title`` which ones
+the title's page lists, and ``"count"`` in ``shows`` which rows end with "×n". A port lists
+a kind other than tips and items with ``listed(kind)`` (optional, ``port_listed``);
+``ui/builtin/kind_page.KindPage`` is the page of any other kind (the Inbox).
+
 Theme (01 §6): ``codex.new.fill_color`` (None: ``button.marker.fill_color``),
 ``codex.locked.text_color`` (None: ``button.disabled.text_color``), ``codex.image_height``.
 Words: ``codex`` (the heading), ``codex_tips``, ``codex_items``, ``codex_locked``,
@@ -70,6 +78,7 @@ from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
+from engine.core.codexkinds import ORDER_DECLARED, codex_kind, codex_kinds, page_kinds
 from engine.render.text import FontSpec
 from engine.render.textlayout import LayoutContext, LineLayout, Page
 from engine.runtime.codex import CodexCategory, CodexEntry
@@ -116,7 +125,7 @@ if TYPE_CHECKING:
 
 RGB = tuple[int, int, int]
 HEADING: Final = "codex"              # the [words] key of the heading and both entries
-KINDS: Final = frozenset({"tip", "item"})
+KINDS: Final = frozenset(k.name for k in page_kinds(HEADING))      # F65: tips and items
 SOLID_ASPECT: Final = (16, 9)         # a SolidColor picture is a 16:9 box
 BODY_LAYOUT_CACHE: Final = 8          # entries whose body layouts are kept
 LAZY_ESTIMATE: Final = 1.1            # an unlaid paragraph's lines: 1.1 × its width / the body's
@@ -146,7 +155,19 @@ class CodexPort(Protocol):
     def picture(self, image: str) -> "str | RGB | None": ...
 
     # F64, optional (``getattr``): ``count(name)`` (held count), ``bag_word()`` ("" for
-    # none), ``purse()`` (the money's shown word and count, or None).
+    # none), ``purse()`` (the money's shown word and count, or None). F65, optional:
+    # ``listed(kind)``, the names of another codex kind in its order (``port_listed``).
+
+
+def port_listed(port: object, kind: str) -> Sequence[str]:
+    """F65: the names the port lists for ``kind``: ``tips()``, ``items()``, else the port's
+    ``listed(kind)`` (() for a port without it)."""
+    if kind == "tip":
+        return port.tips()                                      # type: ignore[attr-defined]
+    if kind == "item":
+        return port.items()                                     # type: ignore[attr-defined]
+    listed = getattr(port, "listed", None)
+    return listed(kind) if listed is not None else ()
 
 
 def port_count(port: object, name: str) -> int:
@@ -167,8 +188,10 @@ def purse_text(word: str, count: int) -> str:
 
 
 def row_title(port: object, entry: CodexEntry) -> str:
-    """F64: a row's title: a counted item's ends with "×n"."""
-    if entry.kind == "item" and getattr(entry, "counted", False):
+    """F64: a row's title: a counted item's ends with "×n" (F65: a kind that shows a
+    count)."""
+    kind = codex_kind(entry.kind)
+    if kind is not None and "count" in kind.shows and getattr(entry, "counted", False):
         return f"{entry.title} ×{port_count(port, entry.name):,}"
     return entry.title
 
@@ -231,8 +254,9 @@ def category_key(category: CodexCategory) -> str:
 
 def codex_tabs(port: CodexPort, flt: CodexFilter, word: Callable[[str], str], *,
                title: bool = False) -> tuple[CodexTab, ...]:
-    """04 §7.10 "Model": the tabs and their rows (module docstring)."""
-    kinds = flt.kinds & {"tip"} if title else flt.kinds
+    """04 §7.10 "Model": the tabs and their rows (module docstring). F65: each kind in
+    ``codexkinds`` order, its rows made by its ``order``."""
+    kinds = flt.kinds & {k.name for k in codex_kinds() if k.on_title} if title else flt.kinds
     wanted = flt.categories
 
     def passes(entry: CodexEntry) -> bool:
@@ -241,22 +265,26 @@ def codex_tabs(port: CodexPort, flt: CodexFilter, word: Callable[[str], str], *,
 
     entries = tuple(port.entries())
     rows: dict[CodexCategory, list[CodexRow]] = {}
-    if "tip" in kinds:
-        unlocked = set(port.tips())
-        locked = bool(port.show_locked)
-        for entry in entries:
-            if entry.kind != "tip" or not passes(entry):
-                continue
-            if entry.name in unlocked:
-                rows.setdefault(entry.category, []).append(CodexRow(entry))
-            elif locked:
-                rows.setdefault(entry.category, []).append(CodexRow(entry, True))
-    if "item" in kinds:
-        by_name = {e.name: e for e in entries if e.kind == "item"}
-        for name in port.items():
-            entry = by_name.get(name)
-            if entry is not None and passes(entry):
-                rows.setdefault(entry.category, []).append(CodexRow(entry))
+    for kind in codex_kinds():
+        if kind.name not in kinds:
+            continue
+        names = port_listed(port, kind.name)
+        if kind.order == ORDER_DECLARED:                # tips: declaration order
+            unlocked = set(names)
+            locked = bool(port.show_locked)
+            for entry in entries:
+                if entry.kind != kind.name or not passes(entry):
+                    continue
+                if entry.name in unlocked:
+                    rows.setdefault(entry.category, []).append(CodexRow(entry))
+                elif locked:
+                    rows.setdefault(entry.category, []).append(CodexRow(entry, True))
+        else:                                           # the port's order
+            by_name = {e.name: e for e in entries if e.kind == kind.name}
+            for name in names:
+                entry = by_name.get(name)
+                if entry is not None and passes(entry):
+                    rows.setdefault(entry.category, []).append(CodexRow(entry))
     tabs = []
     for category in port.categories():
         found = rows.get(category)
@@ -530,13 +558,15 @@ class CodexView:
         self._open_tab(tab, row)
 
     def _sign(self) -> tuple:
-        """What the model is made from: the tips, the items, and (F64) their counts."""
+        """What the model is made from: the tips, the items, and (F64) their counts; F65: the
+        names of the view's other kinds."""
         port = self.port
         items = tuple(port.items())
         counts = tuple(port_count(port, n) for n in items) \
             if getattr(port, "count", None) is not None else ()
+        others = tuple(tuple(port_listed(port, k)) for k in sorted(self.filter.kinds - KINDS))
         return (tuple(port.tips()), items, counts, port_purse(port) if self.show_purse
-                else None)
+                else None, others)
 
     def _word(self, key: str) -> str:
         """``[words]``, but the items' default tab is the port's bag word when it has one
@@ -999,5 +1029,5 @@ class CodexPage(MenuPageBase):
 
 __all__ = ["CodexFilter", "CodexPage", "CodexPort", "CodexRow", "CodexTab", "CodexUi",
            "CodexView", "PickAction", "UseAction", "category_key", "codex_tabs", "fit_picture",
-           "locked_color", "new_dot_color", "port_count", "port_purse", "purse_text",
+           "locked_color", "new_dot_color", "port_count", "port_listed", "port_purse", "purse_text",
            "row_title"]

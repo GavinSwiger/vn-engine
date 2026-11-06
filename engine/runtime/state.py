@@ -30,6 +30,7 @@ from engine.runtime.clock import EMPTY_CLOCK, ClockState, clock_json
 from engine.runtime.flowchart import EMPTY_FLOW, FlowState
 from engine.runtime.glitch import EMPTY_GLITCH, GlitchState
 from engine.runtime.history import EMPTY_HISTORY, HistoryState
+from engine.runtime.inbox import InboxThread, threads_from_json, threads_json
 from engine.runtime.limits import (CALL_DEPTH_MAX, HINT_MAX_PATH, INT_LIMIT,
                                    POSITION_MAX_CHARS, STATE_MAX_DEPTH, STATE_MAX_ITEMS,
                                    STATE_MAX_NAMES, STATE_NAME_MAX_CHARS)
@@ -103,11 +104,16 @@ class ItemsState:
     a save from before F64 (no ``counts``) loads as one of each held item.
 
     F64 round 2: ``bar`` is whether ``show hotbar`` put the hotbar on screen; JSON adds
-    ``"bar": true`` only then, so older saves load with it hidden."""
+    ``"bar": true`` only then, so older saves load with it hidden.
+
+    F65: ``inbox`` holds the Inbox's threads, oldest first (``runtime/inbox.py``: the codex's
+    ``chat`` kind); JSON adds ``"inbox": [...]`` only when there is one, so older saves load
+    with an empty inbox."""
 
     held: tuple[str, ...] = ()
     counts: tuple[int, ...] = ()
     bar: bool = False
+    inbox: "tuple[InboxThread, ...]" = ()
 
     def count_of(self, index: int) -> int:
         return self.counts[index] if self.counts else 1
@@ -118,6 +124,8 @@ class ItemsState:
             out["counts"] = list(self.counts)
         if self.bar:
             out["bar"] = True
+        if self.inbox:
+            out["inbox"] = threads_json(self.inbox)
         return out
 
     @staticmethod
@@ -126,7 +134,8 @@ class ItemsState:
         ``ITEMS_HELD_MAX`` different names, each ``points.saved_name_ok`` (F22's saved-name
         check, shared: no live word set, F21 07 I-8). Anything else is
         ``StateInvalid("items")``, never echoing the input."""
-        if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts", "bar"}:
+        if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts", "bar",
+                                                                   "inbox"}:
             raise StateInvalid("items")
         held = obj["held"]
         if type(held) is not list or len(held) > ITEMS_HELD_MAX:
@@ -144,9 +153,15 @@ class ItemsState:
         bar = obj.get("bar", False)         # F64 round 2: only ever written as true
         if bar is not True and "bar" in obj:
             raise StateInvalid("items")
-        if not held and not bar:
+        inbox: tuple[InboxThread, ...] = ()
+        if "inbox" in obj:                  # F65; absent (an older save): no threads
+            try:
+                inbox = threads_from_json(obj["inbox"])
+            except Exception:
+                raise StateInvalid("items") from None
+        if not held and not bar and not inbox:
             return EMPTY_ITEMS
-        return ItemsState(tuple(held), counts, bar)
+        return ItemsState(tuple(held), counts, bar, inbox)
 
 
 EMPTY_ITEMS: Final = ItemsState()

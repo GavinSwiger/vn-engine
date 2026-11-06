@@ -40,6 +40,7 @@ from engine.ui.menus import EntryContext, MenuEntry
 from engine.core.logsetup import get_logger
 from engine.ui.shell import GameShell, ShellPorts
 from engine.ui.textrouting import TextServices
+from engine.core.kits import kit_words
 from engine.ui.theme import resolve_theme, resolve_words
 
 if TYPE_CHECKING:
@@ -85,7 +86,7 @@ def install_ui(app: "App") -> GameShell:
     textbox = _overlay_host(app)
     theme = resolve_theme(config, assets, textbox_faces=textbox.faces)
     warn_contrast(theme, dev=app.dev)                # W67 (dev), after W64 resolved the frames
-    words = resolve_words(config.words)
+    words = resolve_words(config.words, kit=kit_words(config))     # F65: the kit's words
     start = app.start
     skip_title = start is not None and (start.label is not None or bool(start.values))
     check_fit(config, theme, words, assets, dev=app.dev)          # W193 (F33, dev)

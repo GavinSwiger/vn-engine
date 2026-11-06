@@ -44,8 +44,8 @@ MenuName = Literal["title", "game", "quick", "extras"]
 
 DEFAULT_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "title": ("new_game", "load", "flowchart", "settings", "extras", "codex", "help", "quit"),
-    "game": ("return", "skip_minigame", "history", "codex", "flowchart", "save", "load",
-             "settings", "help", "main_menu", "quit"),
+    "game": ("return", "skip_minigame", "history", "codex", "inbox", "flowchart", "save",
+             "load", "settings", "help", "main_menu", "quit"),
     "quick": ("back", "history", "skip", "auto", "save", "q_save", "q_load", "settings",
               "hide", "menu"),
     # F34 (07 I-4): the Extras screen's pages, opened from the title's one ``extras``

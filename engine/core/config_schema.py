@@ -1642,6 +1642,13 @@ class WordsConfig:
                                             "moment, such as during a menu")
     hotbar: str = _word("Hotbar", doc="the quick slots' name in the bag beside Use, when "
                                       "neither the hotbar settings nor the genre name them")
+    # F65 round 1: the game-menu button and heading of the Inbox page (finished phone chats
+    # to reread; a genre kit names it, e.g. "Letters", when this is left as is), and what the
+    # player's own messages are called there.
+    inbox: str = _word("Inbox", doc="the menu button and heading of the page of finished "
+                                    "chats to reread; a genre kit can rename it")
+    inbox_me: str = _word("You", doc="who the player's own messages are from, on the Inbox "
+                                     "page")
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
     # heading), the box and panel words, the reasons, and the jump questions. Drafted by the
     # F20 designers, for vn-narrative-designer.

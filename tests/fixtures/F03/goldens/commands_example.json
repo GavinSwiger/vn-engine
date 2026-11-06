@@ -4628,6 +4628,60 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "are you still up?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "i took the lantern frame out of the reeds. i'm keeping it"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "Good. Keep it somewhere safe."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "on my windowsill. so it can see the river"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "my train is at 6:50. the early one"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "I'll be at the station."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "you don't have to!!"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "but ok"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "goodnight. thanks for coming back"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "river_end/c59f69eb805e",
         "text": "Six fifty. I set three alarms, and then a fourth."
@@ -4639,6 +4693,72 @@
       "held": [
        "festival_map",
        "fortune_slip"
+      ],
+      "inbox": [
+       {
+        "contact": "Hana",
+        "device": "phone",
+        "key": "bc488b1c0fb0b935.1",
+        "lines": [
+         [
+          "time",
+          "",
+          "10:32 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "are you still up?"
+         ],
+         [
+          "them",
+          "Hana",
+          "i took the lantern frame out of the reeds. i'm keeping it"
+         ],
+         [
+          "me",
+          "",
+          "Good. Keep it somewhere safe."
+         ],
+         [
+          "them",
+          "Hana",
+          "on my windowsill. so it can see the river"
+         ],
+         [
+          "time",
+          "",
+          "10:41 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "my train is at 6:50. the early one"
+         ],
+         [
+          "me",
+          "",
+          "I'll be at the station."
+         ],
+         [
+          "them",
+          "Hana",
+          "you don't have to!!"
+         ],
+         [
+          "them",
+          "Hana",
+          "but ok"
+         ],
+         [
+          "them",
+          "Hana",
+          "goodnight. thanks for coming back"
+         ]
+        ],
+        "sid": "river_end/74e57d8f5129",
+        "time": "10:32 PM"
+       }
       ]
      },
      "minigame": {
@@ -13898,6 +14018,60 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "are you still up?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "i took the lantern frame out of the reeds. i'm keeping it"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "Good. Keep it somewhere safe."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "on my windowsill. so it can see the river"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "my train is at 6:50. the early one"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "I'll be at the station."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "you don't have to!!"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "but ok"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "goodnight. thanks for coming back"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "river_end/c59f69eb805e",
         "text": "Six fifty. I set three alarms, and then a fourth."
@@ -13908,6 +14082,72 @@
      "items": {
       "held": [
        "festival_map"
+      ],
+      "inbox": [
+       {
+        "contact": "Hana",
+        "device": "phone",
+        "key": "bc488b1c0fb0b935.1",
+        "lines": [
+         [
+          "time",
+          "",
+          "10:32 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "are you still up?"
+         ],
+         [
+          "them",
+          "Hana",
+          "i took the lantern frame out of the reeds. i'm keeping it"
+         ],
+         [
+          "me",
+          "",
+          "Good. Keep it somewhere safe."
+         ],
+         [
+          "them",
+          "Hana",
+          "on my windowsill. so it can see the river"
+         ],
+         [
+          "time",
+          "",
+          "10:41 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "my train is at 6:50. the early one"
+         ],
+         [
+          "me",
+          "",
+          "I'll be at the station."
+         ],
+         [
+          "them",
+          "Hana",
+          "you don't have to!!"
+         ],
+         [
+          "them",
+          "Hana",
+          "but ok"
+         ],
+         [
+          "them",
+          "Hana",
+          "goodnight. thanks for coming back"
+         ]
+        ],
+        "sid": "river_end/74e57d8f5129",
+        "time": "10:32 PM"
+       }
       ]
      },
      "minigame": {
@@ -17790,6 +18030,60 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "are you still up?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "i took the lantern frame out of the reeds. i'm keeping it"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "Good. Keep it somewhere safe."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "on my windowsill. so it can see the river"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "my train is at 6:50. the early one"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "I'll be at the station."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "you don't have to!!"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "but ok"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "goodnight. thanks for coming back"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "river_end/c59f69eb805e",
         "text": "Six fifty. I set three alarms, and then a fourth."
@@ -17801,6 +18095,72 @@
       "held": [
        "festival_map",
        "fortune_slip"
+      ],
+      "inbox": [
+       {
+        "contact": "Hana",
+        "device": "phone",
+        "key": "bc488b1c0fb0b935.1",
+        "lines": [
+         [
+          "time",
+          "",
+          "10:32 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "are you still up?"
+         ],
+         [
+          "them",
+          "Hana",
+          "i took the lantern frame out of the reeds. i'm keeping it"
+         ],
+         [
+          "me",
+          "",
+          "Good. Keep it somewhere safe."
+         ],
+         [
+          "them",
+          "Hana",
+          "on my windowsill. so it can see the river"
+         ],
+         [
+          "time",
+          "",
+          "10:41 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "my train is at 6:50. the early one"
+         ],
+         [
+          "me",
+          "",
+          "I'll be at the station."
+         ],
+         [
+          "them",
+          "Hana",
+          "you don't have to!!"
+         ],
+         [
+          "them",
+          "Hana",
+          "but ok"
+         ],
+         [
+          "them",
+          "Hana",
+          "goodnight. thanks for coming back"
+         ]
+        ],
+        "sid": "river_end/74e57d8f5129",
+        "time": "10:32 PM"
+       }
       ]
      },
      "minigame": {
@@ -22343,6 +22703,60 @@
        },
        {
         "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "are you still up?"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "i took the lantern frame out of the reeds. i'm keeping it"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "Good. Keep it somewhere safe."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "on my windowsill. so it can see the river"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "my train is at 6:50. the early one"
+       },
+       {
+        "kind": "choice",
+        "name": "",
+        "sid": "river_end/74e57d8f5129",
+        "text": "I'll be at the station."
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "you don't have to!!"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "but ok"
+       },
+       {
+        "kind": "line",
+        "name": "Hana",
+        "sid": "river_end/74e57d8f5129",
+        "text": "goodnight. thanks for coming back"
+       },
+       {
+        "kind": "line",
         "name": "",
         "sid": "river_end/c59f69eb805e",
         "text": "Six fifty. I set three alarms, and then a fourth."
@@ -22354,6 +22768,72 @@
       "held": [
        "festival_map",
        "fortune_slip"
+      ],
+      "inbox": [
+       {
+        "contact": "Hana",
+        "device": "phone",
+        "key": "bc488b1c0fb0b935.1",
+        "lines": [
+         [
+          "time",
+          "",
+          "10:32 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "are you still up?"
+         ],
+         [
+          "them",
+          "Hana",
+          "i took the lantern frame out of the reeds. i'm keeping it"
+         ],
+         [
+          "me",
+          "",
+          "Good. Keep it somewhere safe."
+         ],
+         [
+          "them",
+          "Hana",
+          "on my windowsill. so it can see the river"
+         ],
+         [
+          "time",
+          "",
+          "10:41 PM"
+         ],
+         [
+          "them",
+          "Hana",
+          "my train is at 6:50. the early one"
+         ],
+         [
+          "me",
+          "",
+          "I'll be at the station."
+         ],
+         [
+          "them",
+          "Hana",
+          "you don't have to!!"
+         ],
+         [
+          "them",
+          "Hana",
+          "but ok"
+         ],
+         [
+          "them",
+          "Hana",
+          "goodnight. thanks for coming back"
+         ]
+        ],
+        "sid": "river_end/74e57d8f5129",
+        "time": "10:32 PM"
+       }
       ]
      },
      "minigame": {

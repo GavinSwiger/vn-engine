@@ -19,9 +19,9 @@ def ids(entries) -> list[str]:
 def test_default_order_table():
     assert DEFAULT_ORDER["title"] == ("new_game", "load", "flowchart", "settings", "extras",
                                       "codex", "help", "quit")            # F21 s3, F20 s8
-    assert DEFAULT_ORDER["game"] == ("return", "skip_minigame", "history", "codex",
+    assert DEFAULT_ORDER["game"] == ("return", "skip_minigame", "history", "codex", "inbox",
                                      "flowchart", "save", "load", "settings", "help",
-                                     "main_menu", "quit")                 # F23, F20 s8
+                                     "main_menu", "quit")                 # F23, F20 s8, F65
     assert DEFAULT_ORDER["quick"][-2:] == ("hide", "menu")
 
 

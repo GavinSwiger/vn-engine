@@ -33,6 +33,8 @@ tag codes in a paragraph, E60–E64 for a name. The whole-game checks (E251, E25
 W140, W142) are ``checks.py``'s; ``Program.codex`` and ``Program.codex_categories`` are
 built by ``program.py`` with ``build_entries``.
 
+**F65 (codex kinds).** ``KINDS`` and ``DEFAULT_WORDS`` come from ``core/codexkinds``' declared
+kinds, whose descriptions also give the page, tab word and order each kind is listed in.
 **Registration (07 I-4).** Importing this module registers the declaration's identity
 (``"codex:" + name``) and, since F21 step 2, calls ``register_words()`` (the two rows and
 their docs) once, after F19's ``routes`` (its import above); ``script/__init__.py`` imports
@@ -43,6 +45,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Final, Literal
 
+from engine.core.codexkinds import declared_kinds
 from engine.script.chapter import _shown
 from engine.script.diagnostics import Diagnostic
 from engine.script.identity import register_declaration
@@ -66,7 +69,8 @@ WORD_MONEY: Final = "money"               # F64: the purse's item
 WORD_PRICE: Final = "price"               # F64 round 2: the default shop price
 WORD_USE: Final = "use"                   # F64 round 2: the scene Use runs
 WORD_TO: Final = "to"
-KINDS: Final[tuple[str, ...]] = (WORD_TIP, WORD_ITEM)
+# F65: the declared kinds of ``core/codexkinds`` (tips and items); each has a LockTarget row.
+KINDS: Final[tuple[str, ...]] = tuple(k.name for k in declared_kinds())
 NAME_MAX: Final = 64                      # code points (E252)
 TITLE_MAX: Final = 60                     # code points as shown (E252)
 CATEGORY_MAX: Final = 24                  # code points as shown (E252)
@@ -80,7 +84,7 @@ ITEM_COUNT_MAX: Final = 999_999           # F64: the most of one item a player c
 # any of the others).
 _DECL_WORDS: Final = (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY, WORD_PRICE, WORD_USE)
 # The ``[words]`` key of each kind's default category (01 §6).
-DEFAULT_WORDS: Final[dict[str, str]] = {WORD_TIP: "codex_tips", WORD_ITEM: "codex_items"}
+DEFAULT_WORDS: Final[dict[str, str]] = {k.name: k.tab_word for k in declared_kinds()}
 
 
 # --- Values and nodes (04 §4) -------------------------------------------------------------------

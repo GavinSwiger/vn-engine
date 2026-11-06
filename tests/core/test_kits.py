@@ -44,8 +44,13 @@ def test_each_kit_is_well_formed(found):
         assert ats == sorted(set(ats)), s.name                   # rising, as F62 checks
         assert all(label.strip() and s.low <= at <= s.high for label, at in s.ranks)
     # Reserved for later phases, empty and read-only for now.
-    for section in (found.messages, found.checks):
-        assert section == {} and isinstance(section, MappingProxyType)
+    assert found.checks == {} and isinstance(found.checks, MappingProxyType)
+    # F65: the Inbox page's name and the default device look.
+    assert isinstance(found.messages, MappingProxyType)
+    assert set(found.messages) == {kits.MESSAGES_TITLE, kits.MESSAGES_DEVICE}
+    title = found.messages[kits.MESSAGES_TITLE]
+    assert title == title.strip() and 0 < len(title) <= 16
+    assert found.messages[kits.MESSAGES_DEVICE] in kits.DEVICE_LOOKS
     # F63: the clock's parts of the day and day wording, within [calendar]'s own limits.
     clock = found.clock
     assert clock is not None and 1 <= len(clock.parts) <= PARTS_MAX
@@ -145,3 +150,15 @@ def test_the_module_imports_only_core():
     modules = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
     assert all(m == "__future__" or not m.startswith("engine.") or m.startswith("engine.core")
                for m in modules)
+
+
+def test_f65_messages_words_and_device_looks():
+    """F65: each kit names the Inbox page and picks a device look; every look is some kit's;
+    ``kit_words`` gives the page's word, and the device look falls back to the phone."""
+    looks = {k.messages[kits.MESSAGES_DEVICE] for k in KITS.values()}
+    assert looks == set(kits.DEVICE_LOOKS)
+    letters = SimpleNamespace(theme=SimpleNamespace(kit="letters"))
+    assert kits.kit_words(letters) == {"inbox": "Letters"}
+    assert kits.device_look(letters) == "letters"
+    plain = SimpleNamespace(theme=SimpleNamespace(kit=None))
+    assert kits.kit_words(plain) == {} and kits.device_look(plain) == "phone"

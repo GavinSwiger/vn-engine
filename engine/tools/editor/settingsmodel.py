@@ -360,7 +360,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.codex.new", "New entry mark"),
         Row("theme.codex.locked", "Locked entries"),
         Row("hotbar", "Hotbar: quick slots for usable items"),          # F64 round 2
-        Row("words", "Using items", ("codex_use", "use_not_now", "hotbar")))),
+        Row("words", "Using items", ("codex_use", "use_not_now", "hotbar")),
+        Row("words", "Inbox: finished chats to reread", ("inbox", "inbox_me")))),   # F65
     PageDef(CALENDAR, "Calendar", ()),                              # F63: generated
     PageDef("flowchart", "Flowchart", (
         Row("flowchart", "Flowchart page"),
@@ -397,7 +398,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
     PageDef("words", "Button words", (
         Row("words", "Title screen and game menu", (
             "new_game", "load", "save", "settings", "history", "extras", "help", "codex",
-            "flowchart", "main_menu", "quit", "return", "skip_minigame")),
+            "inbox", "flowchart", "main_menu", "quit", "return", "skip_minigame")),
         Row("words", "Quick menu", ("hide", "menu", "q_save", "q_load", "skip", "auto",
                                     "back")),
         Row("words", "Questions", (

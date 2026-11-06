@@ -26,7 +26,8 @@ and ``outcome`` callables are the plugin's own code, always called inside one gu
   ``interp.defer`` (never applied inside ``post``, F18 I-3); ``apply`` freezes the result
   (E276), applies the changes in order through ``interp.points``/``interp.codex`` (F22's
   E236, F21's E253 texts; E276's change form), stores the result in the ``into`` variable,
-  and sets F14's wall for ``rollback fixed`` (``Minigame.fixed``).
+  hands a finished phone chat to F65's ``inbox.record_chat`` (its lines into History, the
+  chat into the Inbox), and sets F14's wall for ``rollback fixed`` (``Minigame.fixed``).
 - ``on_minigame_used`` and the ``minigame_used`` pause (``ROLLBACK_PAUSES``, appended at
   import): after a used input back is refused and forward ignored. ``Minigame`` joins F14's
   ``CHAIN_STOPS`` here: a forward chain lands on it and presents it, live.
@@ -695,7 +696,8 @@ def e276_result(game: str, e: Unsaveable, target: str | None, file: str | None) 
 def apply(interp: "Interpreter", m: Minigame, ev: MinigameDone) -> "Step":
     """The accepted outcome (SR-F23-07), as ``run()``'s deferred step: (1) the result frozen
     (E276); (2) the changes checked, then applied in order (``Points``, ``Codex``: tips are
-    the store's, ``CodexAdded`` held in change order); (3) ``G[target]``; (4) F14's wall for
+    the store's, ``CodexAdded`` held in change order); (3) ``G[target]``, then F65's
+    ``record_chat``; (4) F14's wall for
     ``rollback fixed``; (5) no wait. Then the successor."""
     from engine.runtime.interpreter import Step         # below the interpreter
     sig = interp.minigames.get(m.name)
@@ -719,6 +721,8 @@ def apply(interp: "Interpreter", m: Minigame, ev: MinigameDone) -> "Step":
             codex.unlock_tip(change.name)
     if m.target is not None:                            # 3.
         interp.G[m.target] = result
+    from engine.runtime.inbox import record_chat        # F65: History, the Inbox
+    record_chat(interp, m, sig, interp.minigame_wait, result)
     if m.fixed:                                         # 4. (F14 A3, D2)
         interp.timeline.block_pending = True
     interp.minigame_wait = None                         # 5.

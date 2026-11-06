@@ -10,8 +10,8 @@ its own: it only fills in what the author left unset.
   scheme it suggests; Studio offers to apply it with the kit, config never does),
   ``meters`` (``MeterDress``: the default ``look`` and ``place`` of a shown meter and the
   "+ Meter" ``suggestions``), ``clock`` (``ClockDress``, F63: the parts of the day and how a
-  day is worded), and ``messages``, ``items``, ``checks``: reserved, empty until those
-  systems land.
+  day is worded), ``items`` (F64) and ``messages`` (F65), filled below, and ``checks``:
+  reserved, empty until that system lands.
 - ``KITS`` / ``kit(id)`` / ``kit_ids()``: the registry, in Studio's order.
 - ``kit_of(config)``: the kit ``[theme] kit`` names, or None (no kit: today's behavior).
 - ``meter_look(config, meter)``: how meter ``meter`` is shown, as ``(look, place, label)``,
@@ -21,6 +21,11 @@ its own: it only fills in what the author left unset.
   ``bag_words(config)`` gives ``(bag, money)``: ``[codex] bag_word`` / ``money_word`` when
   set, else the kit's, else "" (the page's own "Items", the money item's own title).
   Round 2: ``ITEMS_HOTBAR``, the hotbar's name (Belt, Pockets; ``hotbar_word``).
+- F65: each kit's ``messages`` holds ``MESSAGES_TITLE`` (the Inbox page's name: Messages,
+  Letters, Comms) and ``MESSAGES_DEVICE`` (the default device look: one of
+  ``DEVICE_LOOKS``), from ``MESSAGE_WORDS``. ``kit_words(config)`` gives the ``[words]``
+  a kit fills in, by key (the pages of ``codexkinds`` kinds with a ``kit_title``), for
+  ``ui/theme.Words`` to use where the author left the word at its default.
 
 Pure data, read-only; imports only ``core``.
 """
@@ -32,6 +37,7 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Final
 
+from engine.core.codexkinds import codex_kinds
 from engine.core.skins import CORNER_PLACES, DEFAULT_CORNER_PLACE, DEFAULT_METER_LOOK, METER_LOOKS
 
 _EMPTY: Final[Mapping[str, Any]] = MappingProxyType({})
@@ -179,10 +185,25 @@ HOTBAR_WORDS: Final[Mapping[str, str]] = MappingProxyType({
     "romance": "Pocket", "horror": "Pockets", "mystery": "Pockets", "fantasy": "Belt",
     "cozy": "Apron", "scifi": "Quick slots", "letters": "Desk",
 })
+# F65: the kits' ``messages`` sections (the Inbox page's name, the default device look).
+MESSAGES_TITLE: Final = "title"
+MESSAGES_DEVICE: Final = "device"
+DEVICE_LOOKS: Final = ("phone", "letters", "pigeon", "radio", "terminal", "mind")
+MESSAGE_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
+    "romance": ("Messages", "phone"),
+    "horror": ("Whispers", "mind"),
+    "mystery": ("Dispatches", "radio"),
+    "fantasy": ("Pigeon post", "pigeon"),
+    "cozy": ("Messages", "phone"),
+    "scifi": ("Comms", "terminal"),
+    "letters": ("Letters", "letters"),
+})
 KITS = MappingProxyType({  # type: ignore[misc]
     id_: replace(k, items=MappingProxyType({ITEMS_BAG: ITEM_WORDS[id_][0],
                                             ITEMS_MONEY: ITEM_WORDS[id_][1],
-                                            ITEMS_HOTBAR: HOTBAR_WORDS[id_]}))
+                                            ITEMS_HOTBAR: HOTBAR_WORDS[id_]}),
+                 messages=MappingProxyType({MESSAGES_TITLE: MESSAGE_WORDS[id_][0],
+                                            MESSAGES_DEVICE: MESSAGE_WORDS[id_][1]}))
     for id_, k in KITS.items()})
 
 
@@ -266,7 +287,33 @@ def hotbar_word(config: Any) -> str:
     return word if isinstance(word, str) else ""
 
 
-__all__ = ["HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY", "ITEM_WORDS",
-           "bag_words", "hotbar_word",
+def kit_words(config: Any) -> dict[str, str]:
+    """F65: the ``[words]`` the kit fills in, by key: each codex kind's page with a
+    ``kit_title`` (``("messages", "title")`` names the ``inbox`` page). ``{}`` with no kit.
+    ``ui/theme.Words`` uses one only where the author left that word at its default."""
+    found = kit_of(config)
+    if found is None:
+        return {}
+    out: dict[str, str] = {}
+    for kind in codex_kinds():
+        if kind.kit_title is None:
+            continue
+        section, key = kind.kit_title
+        word = getattr(found, section, _EMPTY).get(key, "")
+        if isinstance(word, str) and word.strip():
+            out.setdefault(kind.page, word.strip())
+    return out
+
+
+def device_look(config: Any) -> str:
+    """F65: the kit's default device look ("phone" with no kit)."""
+    found = kit_of(config)
+    look = found.messages.get(MESSAGES_DEVICE, "") if found is not None else ""
+    return look if look in DEVICE_LOOKS else DEVICE_LOOKS[0]
+
+
+__all__ = ["DEVICE_LOOKS", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
+           "ITEM_WORDS", "MESSAGES_DEVICE", "MESSAGES_TITLE", "MESSAGE_WORDS",
+           "bag_words", "device_look", "hotbar_word", "kit_words",
            "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
            "meter_label", "meter_look"]

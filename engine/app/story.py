@@ -111,6 +111,7 @@ from engine.app.clockcorner import install_clock
 from engine.app.checkroll import install_check_roll
 from engine.app.choices import install_choices
 from engine.app.codex import install_codex
+from engine.app.inbox import install_inbox
 from engine.app.extras import install_extras, preview_all
 from engine.app.flowchart import install_flowchart
 from engine.app.flowchart_ui import install_flowchart_page
@@ -504,6 +505,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_fourthwall(app)                                  # F30: title bar, fake crash
     install_check_roll(app)                                  # F59: the dice of a check
     install_codex(app, interp, images)                       # F21 (I-11): notices, Codex
+    install_inbox(app, interp)                               # F65: the Inbox page
     install_minigames(app, interp, images)                   # F23 s4: after F21, before F16
     install_flowchart(app, interp)                           # F20 (07 I-12): App.flow
     install_flowchart_page(app, interp)                      # F20 s8: page, entries

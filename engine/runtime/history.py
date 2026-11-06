@@ -4,7 +4,8 @@ Why this module exists: the lines read so far and the choices picked are a displ
 (architecture "Display records") kept in ``GameState.history``, so saves carry it and a
 restore or rollback trims it with no extra work. ``take_checkpoint`` step 2a records each
 line taken at a checkpoint (``add_line``) and F07's ``on_choose`` each accepted pick
-(``add_pick``); F59's roll adds its result as a nameless line (``add_note``); nothing else
+(``add_pick``); F59's roll adds its result as a nameless line (``add_note``); F65's finished
+phone chat adds its messages (``add_message``, ``runtime/inbox.record_chat``); nothing else
 records. Restore, load, rollback, and hot reload only set it
 from the state, at the restore's commit (I-3).
 
@@ -100,6 +101,18 @@ class HistoryState:
         if not text or text.isspace():
             return self
         return self._add(HistoryEntry("line", sid, "", _shown(text, TEXT_MAX)))
+
+    def add_message(self, sid: str, name: str, text: str, *, mine: bool = False
+                    ) -> "HistoryState":
+        """F65: a finished phone chat's message (``sid`` the minigame line's): a named line,
+        or with ``mine`` (the player's message or reply) a choice row. Blank text records
+        nothing."""
+        if not text or text.isspace():
+            return self
+        if mine:
+            return self._add(HistoryEntry("choice", sid, "", _shown(text, TEXT_MAX)))
+        return self._add(HistoryEntry("line", sid, _shown(name, NAME_MAX),
+                                      _shown(text, TEXT_MAX)))
 
     def _add(self, entry: HistoryEntry) -> "HistoryState":
         entries = self.entries

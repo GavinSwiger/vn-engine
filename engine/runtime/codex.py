@@ -44,6 +44,18 @@ the money item and its count. The engine name ``items`` (``ItemsReader``, read-o
 saved; otherwise the story's own ``items`` is left alone and ``codex.count`` reads counts.
 A bad name is E440, any other use of ``items`` E441.
 
+**F65 round 1 (codex kinds, chats you can reread).** A kind is a description in
+``core/codexkinds`` (its page, tab word, order, fields; tips and items were the first two),
+and ``Codex`` is the one store for all of them: tips in the persistent store, everything
+else in ``GameState.items``. ``listed(kind)`` gives any kind's names in its page's order
+(``tips()``, ``items()``, or the inbox's thread keys newest first). The ``chat`` kind's
+entries are **threads** (``runtime/inbox.py``): ``threads()`` (oldest first), ``add_thread``
+(the oldest drop past ``inbox.THREADS_MAX``/``CHARS_MAX``; no notice: the player just read
+it), saved in ``ItemsState.inbox`` by ``state``/``merged``/``install`` like the held list,
+so rollback and loads replay them. ``thread_read``/``mark_thread_read`` keep the Inbox's
+read marks in the persistent kind ``inbox.READ_KIND`` (as tips' and items' marks are), so
+reading a thread survives a load. The page's port (``app/inbox.py``) builds its rows.
+
 ``CodexEntry`` and ``CodexCategory`` are ``script/codex.py``'s, re-exported here (F22 I-1
 rule), so ``ui`` never imports ``engine.script``. Layering as ``points.py``: below the
 interpreter, importing it only under ``TYPE_CHECKING`` or inside a function. Pure: no file,
@@ -57,10 +69,13 @@ from typing import TYPE_CHECKING, Final
 from engine.core.logsetup import get_logger
 from engine.runtime.commands import CodexAdded, Command
 from engine.runtime.errors import AuthorRefusal
+from engine.runtime.inbox import READ_KIND as INBOX_READ_KIND
+from engine.runtime.inbox import InboxThread, kept
 from engine.runtime.persistent import PersistentStore
 from engine.runtime.state import EMPTY_ITEMS, ITEMS_HELD_MAX, ItemsState
 from engine.runtime.values import kind_words
 from engine.runtime.values import register_kind as register_value_kind
+from engine.core.codexkinds import CHAT
 from engine.script.codex import WORD_ITEM, WORD_TIP, CodexCategory, CodexEntry, CodexLock
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
@@ -74,6 +89,7 @@ TIP_KIND: Final = "tip"                 # F12 unlock kinds: tips (revocable) and
 READ_KIND: Final = "codex_read"
 ATTRS: Final[tuple[str, ...]] = ("tips", "items", "count")  # what ``codex`` has (E255, E256)
 ITEMS_NAME: Final = "items"             # F64: the engine view of the counts (soft name)
+CHAT_KIND: Final = CHAT.name            # F65: the Inbox's threads
 
 _story_log = get_logger("story")        # W141 (dev, run)
 
@@ -156,7 +172,7 @@ class Codex:
     ``_hold``, so a ``CodexAdded`` is released with the burst (F03 I-3)."""
 
     __slots__ = ("index", "_store", "_hold", "dev", "log", "_held", "_counts", "_state",
-                 "_items", "_tips", "_tips_gen", "w141_warned", "_bar")
+                 "_items", "_tips", "_tips_gen", "w141_warned", "_bar", "_threads")
 
     def __init__(self, index: CodexIndex, store: PersistentStore,
                  hold: Callable[[Command], None], *, dev: bool = False,
@@ -169,6 +185,7 @@ class Codex:
         self._held: list[str] = []
         self._counts: dict[str, int] = {}           # F64: held name -> count (absent: 1)
         self._bar = False                           # F64 round 2: show hotbar
+        self._threads: tuple[InboxThread, ...] = ()  # F65: the Inbox, oldest first
         self._state: ItemsState | None = EMPTY_ITEMS
         self._items: tuple[str, ...] | None = ()
         self._tips: tuple[str, ...] = ()
@@ -223,6 +240,28 @@ class Codex:
     def bar_shown(self) -> bool:
         """F64 round 2: ``show hotbar`` is in force (story state, saved with the items)."""
         return self._bar
+
+    def threads(self) -> tuple[InboxThread, ...]:
+        """F65: the Inbox's threads, oldest first."""
+        return self._threads
+
+    def listed(self, kind: str) -> tuple[str, ...]:
+        """F65: kind ``kind``'s names in its page's order (``core/codexkinds``): the unlocked
+        tips, the held items, the thread keys newest first; () for any other kind."""
+        if kind == WORD_TIP:
+            return self.tips()
+        if kind == WORD_ITEM:
+            return self.items()
+        if kind == CHAT_KIND:
+            return tuple(t.key for t in reversed(self._threads))
+        return ()
+
+    def thread_read(self, key: object) -> bool:
+        return type(key) is str and self._store.is_unlocked(INBOX_READ_KIND, key)
+
+    def has_thread(self, key: object) -> bool:
+        """``inbox.READ_KIND``'s ``known`` recognizer: a thread in this inbox."""
+        return type(key) is str and any(t.key == key for t in self._threads)
 
     # Changing --------------------------------------------------------------------------------
 
@@ -298,6 +337,18 @@ class Codex:
         entry = self._entry(name, WORD_TIP)
         return self._store.relock(TIP_KIND, entry.name)
 
+    def add_thread(self, thread: InboxThread) -> None:
+        """F65: a finished chat joins the Inbox (``inbox.record_chat``)."""
+        self._threads = kept(self._threads + (thread,))
+        self._state = None
+
+    def mark_thread_read(self, key: object) -> bool:
+        """F65: the Inbox page's one write: a thread's read mark; True if it is new. False,
+        writing nothing, for a key not in the inbox."""
+        if not self.has_thread(key):
+            return False
+        return self._store.unlock(INBOX_READ_KIND, key)  # type: ignore[arg-type]
+
     def mark_read(self, name: object) -> bool:
         """The presentation port's one write (04 §7.7, 07 I-13): a declared entry's read
         mark; True if it is new. False, writing nothing, for an undeclared name."""
@@ -319,8 +370,9 @@ class Codex:
             held = tuple(self._held)
             counts = self._counts
             numbers = tuple(counts.get(n, 1) for n in held) if counts else ()
-            state = self._state = (ItemsState(held, numbers, self._bar)
-                                   if held or self._bar else EMPTY_ITEMS)
+            threads = self._threads
+            state = self._state = (ItemsState(held, numbers, self._bar, threads)
+                                   if held or self._bar or threads else EMPTY_ITEMS)
         return state
 
     def new_game(self) -> None:
@@ -328,6 +380,7 @@ class Codex:
         self._held = []
         self._counts = {}
         self._bar = False
+        self._threads = ()
         self._state = EMPTY_ITEMS
         self._items = ()
 
@@ -357,7 +410,8 @@ class Codex:
         numbers = tuple(counts) if any(n != 1 for n in counts) else ()
         if tuple(held) == saved.held and numbers == saved.counts:
             return saved
-        return ItemsState(tuple(held), numbers, saved.bar) if held or saved.bar             else EMPTY_ITEMS
+        return ItemsState(tuple(held), numbers, saved.bar, saved.inbox) \
+            if held or saved.bar or saved.inbox else EMPTY_ITEMS
 
     def install(self, held: "tuple[str, ...] | ItemsState") -> None:
         """Make ``held`` (from ``merged``, or a ``state()`` to put back) the held list:
@@ -367,11 +421,13 @@ class Codex:
             self._held = list(held.held)
             self._counts = {n: c for n, c in zip(held.held, held.counts) if c != 1}
             self._bar = held.bar
+            self._threads = held.inbox
             self._state = held
         else:
             self._held = list(held)                         # type: ignore[arg-type]
             self._counts = {}
             self._bar = False
+            self._threads = ()
             self._state = None
         self._items = None
 
@@ -539,13 +595,14 @@ def run_codex_lock(interp: "Interpreter", stmt: CodexLock) -> "Step":
 
 def install(interp: "Interpreter") -> Codex:
     """Per interpreter (F39: again with a new program): the index, the ``Codex``, the store's
-    kinds ``"tip"`` (revocable, ``known`` = ``is_tip``) and ``"codex_read"`` (``known`` =
-    ``has``), and ``G``'s ``codex`` reader bound to it (a hand-built ``G`` gets one)."""
+    kinds ``"tip"`` (revocable, ``known`` = ``is_tip``), ``"codex_read"`` (``known`` =
+    ``has``) and F65's ``"inbox_read"`` (``known`` = ``has_thread``), and ``G``'s ``codex`` reader bound to it (a hand-built ``G`` gets one)."""
     store = interp.persistent
     index = CodexIndex.build(interp.program)
     codex = Codex(index, store, interp._hold, dev=interp.dev)
     store.register_kind(TIP_KIND, known=index.is_tip, revocable=True)
     store.register_kind(READ_KIND, known=index.has)
+    store.register_kind(INBOX_READ_KIND, known=codex.has_thread)    # F65
     reader = interp.G.get("codex")
     if type(reader) is not CodexReader:
         reader = interp.G["codex"] = CodexReader()
