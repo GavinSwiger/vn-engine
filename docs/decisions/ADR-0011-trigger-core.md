@@ -2,8 +2,9 @@
 
 Status: **accepted** — 2026-11-06 (built with F65 round 3, `specs/skins-contract.md` "Phases 2-4")
 Proposed by: the skins plan (docs/proposals/engine-features.html, "Trigger core"
-foundation). First used by: nothing yet; Inbox delays (I-09), Events (I-02), Places' "open
-when" (I-04) and Thoughts (I-06) will sit on it.
+foundation). First used by: the Inbox's `send` (F65 round 2, kind `message`: each `send`
+line a trigger armed by its line and fired at once until round 3 adds `after`); Inbox
+delays (I-09), Events (I-02), Places' "open when" (I-04) and Thoughts (I-06) will sit on it.
 
 ## Context
 

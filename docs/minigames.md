@@ -685,11 +685,14 @@ When the chat closes, it stays readable:
   of the player's messages and picked replies as a choice row. Time dividers are left out.
 - **The Inbox.** The whole chat is kept on the **Inbox** page of the game menu, after
   Codex. The button appears once the first chat has finished. The page lists one row per
-  finished chat, newest first, named by the contact and the opening time ("Sayori · 11:42
-  PM"). A dot marks a chat the player hasn't opened on the page yet. The right side shows
-  the chat as it played: "Sayori: you awake?", the player's own messages as "You: …"
-  (`[words] inbox_me`), and later time dividers in italics. Playing the same chat again adds
-  a second row.
+  contact, the most recent first; a chat joins the row of its contact (the declared
+  contact whose shown name it uses, see "Messages" in
+  [script-language.md](script-language.md)), so every chat with Sayori is one thread. A dot
+  marks a row with something the player hasn't opened on the page yet. The right side shows
+  the contact's chats and messages, newest first, each under its opening time, as it
+  played: "Sayori: you awake?", the player's own messages as "You: …" (`[words] inbox_me`),
+  and later time dividers in italics. Playing the same chat again adds it to the thread
+  again.
 - **Saves and going back.** The Inbox is part of the story, like the items a player holds:
   a save keeps it, loading puts it back, and rolling back to before the chat takes the row
   away again. Whether a row has been opened is remembered across saves and playthroughs.

@@ -1597,9 +1597,10 @@ layouts come out the same each time.
 
 **Phone chats.** When a `minigame phone_chat` closes, the messages the player saw join the
 history log (the contact's under the sender's name, the player's as choice rows), and the
-whole chat stays on the game menu's **Inbox** page to read again, newest first, with a dot on
-any chat not opened there yet. The Inbox is saved and rolled back with the story. See
-"Reading a chat again" in [minigames.md](minigames.md).
+whole chat stays on the game menu's **Inbox** page to read again, in the contact's thread,
+with a dot until it is opened there. The Inbox is saved and rolled back with the story. See
+"Reading a chat again" in [minigames.md](minigames.md), and "Messages" below for letters and
+messages contacts send while the story goes on.
 
 **Shops.** `minigame shop stock=stall_stock into bought` opens a shop where the player buys
 items with the story's money (the item marked `money`). The stock is a `define` of items and
@@ -1626,6 +1627,102 @@ minigame with its test outcome.
 | `minigames/my_poems.py replaces the bundled minigame "poem_game", …` (warning, dev runs) | Rename yours to keep both. |
 
 Errors while a minigame runs (E272 and E275–E279) are in section 22.
+
+### Messages
+
+Letters, texts and transmissions that arrive while the story goes on, and stay in the
+**Inbox** to read again. Three lines do it: `lock contact` says who writes, `send` delivers a
+message, and `open` stops the story at the Inbox.
+
+```
+lock contact hana "Hana" on pigeon image hana portrait
+lock contact ren "Ren"
+
+define invite = [
+    "Meet me at the bridge when the lanterns are lit.",
+    "Bring the red one. You'll see why.",
+    ]
+define late = "Running late, save me a seat!"
+
+label morning:
+    send invite from hana
+    "I went down to breakfast."
+    send late from ren
+    open pigeon
+    "I folded the note into my sleeve."
+```
+
+**Contacts.** `lock contact <name> "shown name" [on <look>] [image <picture>]` goes at the
+top level of a file, like `lock tip`. The name is what the script uses (`from hana`); the
+shown name (1 to 40 characters) is what the Inbox and the notices say. `on` picks the
+device look their messages come by: `phone`, `letters`, `pigeon`, `radio`, `terminal` or
+`mind`. Without it, the kit's look is used (`[theme] kit`: Fantasy sends pigeons, Letters
+sends letters, Sci-fi a terminal, Horror a voice in your head), else a phone. `image` is a
+picture name for the contact's thread and their notices. A contact has no thread until
+they send something; there is no `unlock contact`.
+
+**Messages.** A message is a `define` (or a `default`) of one text, or of a list of lines
+in the phone chat's format:
+
+- `"Meet me at the bridge."`: a line from the contact.
+- `{"me": "I'll be there."}`: a line the player wrote (shown as "You: …").
+- `{"time": "Day 3"}`: a divider.
+- `{"Ren": "Hana told me too!"}`: a line from someone else.
+
+A message has 1 to 200 lines of up to 2,000 characters. Replies the player picks
+(`{"ask": …}`) come in a later version; for now, a chat the player answers is
+`minigame phone_chat`. The value is read when the `send` line runs, so a `default` the
+story changed sends its new text.
+
+**send.** `send <message> from <contact>` puts the message in the contact's thread. `send
+invite from hana on letters` sends this one by another look. The player sees:
+
+- A notice, worded by the look: "A pigeon lands on the sill with a note from Hana.", "A
+  letter from Hana has arrived.", "New message from Ren.", "The radio crackles. It's
+  Ren.", "Incoming transmission from Ren." or "Hana's voice, inside your head." The
+  contact's picture is its icon.
+- An **Inbox** button in the quick menu (after History) in any game with a `send` line,
+  and the Inbox in the game menu, both with the number not read yet: "Inbox (2)". With a
+  kit, the button takes the kit's name for the page: "Pigeon post (2)", "Letters (1)".
+- One row per contact on the Inbox page, the most recent first, with a dot until it is
+  opened. The right side shows the contact's messages, newest first, each under a line
+  saying how it came ("Arrived by pigeon · Day 3"; the date when the game uses the story
+  clock). Letters, pigeons and voices read as a letter, signed "— Hana"; phones, radios
+  and terminals as chat lines, "Ren: Running late". A finished phone chat joins the thread
+  of the contact whose shown name it uses.
+
+A `send` is a story step: a save keeps what arrived, going back before the line takes the
+message out again, going forward brings it back (without a second notice), and New Game
+empties the Inbox. Whether a thread was opened is remembered across saves and
+playthroughs, like the codex's dots.
+
+**open.** `open inbox` opens the Inbox on the newest thread, and the story waits until the
+player closes it; then the next line runs. `open pigeon` (or any look) opens it on the
+newest thread that something came to by that look. While skipping, the story goes past
+`open` without stopping; a headless run passes it too.
+
+**Words.** `send` and `open` are statements only at the start of a line with a name after
+them: `send "On my way."` and `open "Come in."` stay dialogue by characters called send and
+open, and both stay free as variable names. `contact` is a word only after `lock`; `from`,
+`on` and `inbox` only in these lines.
+
+| Message | Fix |
+|---|---|
+| `send invite needs from and a contact after it. …` | Write `send invite from hana`. |
+| `write the contact's name without quotes: send … from hana. …` | Use the contact's script name, not its shown name. |
+| `there is no device look called "pigon". Did you mean "pigeon"? …` | Use phone, letters, pigeon, radio, terminal or mind. |
+| `open opens the Inbox, but "door" is not inbox or a device look. …` | Write `open inbox` or `open pigeon`. |
+| `lock contact needs the contact's name and the name to show in quotes, …` | Write `lock contact hana "Hana"`. |
+| `lock contact declares a contact, so it goes at the top level of a file, …` | Move it above the labels. |
+| `there is already a contact called hana (line 3). …` | Give each contact its own name. |
+| `there is no contact called hnaa. Did you mean "hana"? …` | Fix the name, or declare the contact. |
+| `there is no define called invte to send. Did you mean "invite"? …` | Fix the name, or write the message as a define. |
+| `line 2 of message invite asks for a reply. …` | Remove the ask, or use `minigame phone_chat`. |
+| `message invite must be text, or a list of lines like a phone chat's, …` | Make it text or a list. |
+| `open pigeon opens the Inbox at the newest message that came by pigeon, but nothing in this game comes by pigeon. …` (warning) | Send something by that look, or write `open inbox`. |
+
+A message whose value goes wrong while the game runs (a `default` changed into something
+that isn't a message) stops the story at the `send` line (E453, section 22).
 
 ---
 
@@ -3728,7 +3825,7 @@ an ordinary name. So a game written today never breaks when a later version adds
   by a character of that name. `$` lines, conditions, and values are Python, where the word
   is always a name: `$ event = 3`. The first is `clock` (story time): `clock next` moves
   time, `clock "Tick."` is a character speaking, and when a `clock` line is neither, the
-  error says how to write each.
+  error says how to write each. `send` and `open` (Messages) work the same way.
 - Names an engine name gives you (like `points.highest` and `points.rank`) are taken on
   that name only: a meter can't be called `rank`, but a variable can.
 
@@ -4060,6 +4157,7 @@ you can look one up or mention it when you ask for help.
 | E276 | `stargazing finished with a set, which can't be saved, so it can't go into found. …` | Make the plugin finish with text, a number, a list, or a dictionary. |
 | E277 | `minigame stargazing ran for 5 seconds … without finishing, so it is probably stuck in a loop. …` | Check any `while` loop at that line. |
 | E279 | `minigame stargazing has no outcome for this headless run. Give one in the inputs, e.g. finish 3, or give the plugin a test outcome.` (headless runs) | Add `finish …` to the inputs, or a `test_outcome` to the plugin. |
+| E453 | `there is no variable called invite to send. …` / `line 2 of message invite asks for a reply. …` | Keep the message a `define` of text or a list of lines (see [Messages](#messages)). |
 | E85 | `this Python stopped with an error: … the log has the details.` | Check the values the line uses. |
 
 When the mistake is inside a helper written in a `define`, the message names the line that

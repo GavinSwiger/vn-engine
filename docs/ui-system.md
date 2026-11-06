@@ -1208,27 +1208,57 @@ for every use), `engine/ui/builtin/codex_page.py` (`UseAction`).
   takes the right half. Use closes the game menu and the item's scene starts at once. The
   button is a focus group of its own (keys and gamepad reach it from the list or the body).
 
-### Inbox page (F65 round 1)
+### Inbox page (F65 rounds 1 and 2)
 
-Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can reread".
-Modules: `engine/core/codexkinds.py` (codex kinds), `engine/ui/builtin/kind_page.py`
-(`KindPage`), `engine/app/inbox.py` (the port and the game-menu entry).
+Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can reread",
+"Contacts and send", "Open on cue". Modules: `engine/core/codexkinds.py` (codex kinds),
+`engine/core/kits.py` (`DEVICE_WORDS`), `engine/ui/builtin/kind_page.py` (`KindPage`),
+`engine/app/inbox.py` (the port, the entries, the notice, `open`).
 
 - **Codex kinds.** Every page of collected entries is the Codex view (§9 "Codex view") over
   the kinds registered for that page: tips and items on the Codex page, finished chats on
   the Inbox page. A kind's description gives its page, default tab word, row order
   (declared, obtained, newest first) and which fields it shows; later kinds (contacts,
   goals, thoughts, profiles) reuse the same list, unread dot, detail panel, keys and mouse.
-- **Where.** The game menu's `inbox` entry, after `codex`, shown once a chat has finished.
-  Its label and the page heading are `[words] inbox`; with a genre kit and that word left
-  as is, the kit's `messages` title (Messages, Whispers, Dispatches, Pigeon post, Comms,
-  Letters).
-- **Rows.** One per finished chat, newest first: the contact, then " · " and the chat's
-  opening time when it has one. The unread dot (`codex.new.fill_color`) stays until the
-  chat is shown on the page. One tab, so no tab row.
-- **Detail.** The title is the row's. One paragraph per message, 12 apart: the sender's
-  name and a colon in bold, then the text; the player's messages under `[words] inbox_me`
-  ("You"); later time dividers in italics (the opening time is in the title). No picture, purse, pick or Use button.
+- **Where.** The game menu's `inbox` entry, after `codex`, shown once something has
+  arrived, or from the start in a game with a `send` line. In such a game the quick menu
+  also has an `inbox` button, after History, that opens the game menu on this page. Both
+  labels and the page heading are `[words] inbox`; with a genre kit and that word left as
+  is, the kit's `messages` title (Messages, Whispers, Dispatches, Pigeon post, Comms,
+  Letters). Both labels end with the unread count while there is one: "Inbox (2)"
+  (`MenuEntry.badge`; the sidebar fit and the pill's layout measure the label with it).
+- **Rows.** One per contact (round 2), the most recent first: the contact's shown name. A
+  finished phone chat joins the declared contact whose shown name it uses, else a row of
+  its own per contact name, so a round 1 save's per-chat rows become each contact's
+  thread. The unread dot (`codex.new.fill_color`) stays until the thread is shown on the
+  page, which marks every message in it read. One tab, so no tab row.
+- **Detail.** The title is the contact's name, with the contact's picture (`image` on its
+  `lock contact` line) in the Codex view's picture box. The messages, newest first, each
+  under an italic line saying how it came, worded by its device look (below) with the
+  story date when the game uses the clock ("Arrived by pigeon · Day 3"); a phone chat's
+  line is its opening time. A **letter look** (letters, pigeon, mind) shows the contact's
+  lines as plain paragraphs and signs them, "— Hana" in italics; a **chat look** (phone,
+  radio, terminal) shows "Hana: …" with the name in bold. The player's lines are under
+  `[words] inbox_me` ("You"); dividers in italics. No purse, pick or Use button.
+- **Device looks** (`kits.DEVICE_WORDS`; the look is `send … on`, else the contact's `on`,
+  else the kit's `messages` device, else phone). Round 3's `[device.<name>]` overrides:
+
+  | Look | Arrival notice | Line above a message | Reads as |
+  |---|---|---|---|
+  | phone | New message from Ren. | Message | chat |
+  | letters | A letter from Hana has arrived. | Letter | letter |
+  | pigeon | A pigeon lands on the sill with a note from Hana. | Arrived by pigeon | letter |
+  | radio | The radio crackles. It's Ren. | Over the radio | chat |
+  | terminal | Incoming transmission from Ren. | Transmission | chat |
+  | mind | Hana's voice, inside your head. | A thought | letter |
+
+- **Arrival notice.** An info notice (§9 "Notice"), with the contact's
+  picture as its icon when it is a file. Shown when the `send` line runs (also while
+  skipping), never on a quiet forward re-run or during a scene replay.
+- **`open`.** `open inbox` / `open <look>` opens the game menu on this page, its newest
+  thread (the newest that came by that look) selected and shown, the page's default
+  widget focused; the story holds (a story wait, no checkpoint) until the menu closes,
+  then goes on at once. While skipping it is passed without opening.
 - **Colors and motion.** The Codex view's tokens (`codex.*`, `list.*`, `panel.*`), so the
   page follows the theme, the scheme and W67 as the Codex page does; nothing moves.
 
@@ -1404,3 +1434,7 @@ handler).
   ring that grows and fades over 0.4 s.
 - 2026-11-06: F65 round 1 (builder): §9 "Inbox page": codex kinds, the Inbox page's rows
   and detail, and the kit's name for it.
+- 2026-11-06: F65 round 2 (builder): §9 "Inbox page": one row per contact, the detail
+  newest first and worded by device look (letter or chat), the device-look table, the
+  arrival notice, the quick menu's Inbox button and the unread count on both labels, and
+  `open`.
