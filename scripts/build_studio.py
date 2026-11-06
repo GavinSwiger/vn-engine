@@ -17,6 +17,8 @@ pygame-ce, ``engine/data`` (fonts, New game's sample and starter), the guides
   this build's staging folder (it is nowhere in the repository, so no player build can
   contain it): ``paths.is_editor_build()`` is true only in this app (I-15);
 - ``licenses/``: the notices a built game ships (``engine.tools.build.licenses``) and Tcl/Tk's;
+- ``LICENSE.txt``, ``GAME-TERMS.txt`` and ``BETA-LICENCE.txt`` from the repository root
+  (``LICENCE_FILES``): Studio's licence, the terms for games made with it, the beta's;
 - ``player/``: the prebuilt player runtime Build game copies, from
   ``engine.tools.build.runtime.build_player_runtime`` (``paths.player_runtime_dir``);
 - ``Start here.txt`` (``START_HERE_TEXT``) for someone who just unzipped the app, and the
@@ -45,12 +47,15 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from engine.core.paths import EDITOR_BUILD_MODULE, EDITOR_BUILD_VALUE  # noqa: E402
+from engine.tools.build.spec import PYGAME_COLLECTION  # noqa: E402
 
 APP_NAME = "vn-engine Studio"
 ENTRY_SCRIPT = "studio.py"
 CONTENTS_DIR = "_internal"
 LICENSES_DIR = "licenses"
 PLAYER_DIR = "player"
+# The licence documents at the repository root, copied to the top of the app folder.
+LICENCE_FILES = ("LICENSE.txt", "GAME-TERMS.txt", "BETA-LICENCE.txt")
 START_HERE = "Start here.txt"
 # (file in docs/, name in the app folder): copied when present.
 PDFS = (("first-game-guide.pdf", "Beginner's guide.pdf"),
@@ -107,6 +112,13 @@ anyway.
 
 To update, delete this "vn-engine Studio" folder and unzip the new one in its place. Your
 games stay safe, because they are in Documents\\vn-engine, not in this folder.
+
+
+7. Licence
+
+LICENSE.txt in this folder is the licence for vn-engine Studio. GAME-TERMS.txt says what
+you may do with the games you make: they are yours, and you may sell them. If you are
+testing a pre-release copy, BETA-LICENCE.txt applies too.
 """
 PDF_LINES = {"Beginner's guide.pdf": ("\"Beginner's guide.pdf\" in this folder is the same "
                                       "guide, to print or read on its own."),
@@ -240,6 +252,7 @@ def spec_text(*, staging: Path, marker: Path, icon: Path, docs: Path, game: Path
         "    runtime_hooks=[],\n"
         f"    excludes={list(EXCLUDES)!r},\n"
         "    noarchive=False,\n"
+        f"    module_collection_mode={PYGAME_COLLECTION!r},\n"
         ")\n"
         "pyz = PYZ(a.pure)\n"
         "exe = EXE(\n"
@@ -308,6 +321,17 @@ def add_player(app: Path, staging: Path) -> bool:
     runtime = Path(build_player_runtime(staging / "player-out"))
     shutil.move(str(runtime), str(app / PLAYER_DIR))
     return True
+
+
+def add_licence_files(app: Path, repo: Path = REPO) -> list[str]:
+    """``LICENCE_FILES`` from ``repo``, copied to the top of ``app``; the names copied. A
+    missing one stops the build: the app never ships without its licence."""
+    for name in LICENCE_FILES:
+        source = repo / name
+        if not source.is_file() or source.is_symlink():
+            raise SystemExit(f"build_studio: {name} is missing from {repo}")
+        shutil.copyfile(source, app / name)
+    return list(LICENCE_FILES)
 
 
 def add_pdfs(app: Path, docs: Path = REPO / "docs") -> list[str]:
@@ -399,6 +423,7 @@ def main(argv: list[str]) -> int:
                        cwd=str(staging), check=True)
         app = staging / "dist" / APP_NAME
         write_licenses(app)
+        add_licence_files(app)
         if not args.no_player:
             add_player(app, staging)
         write_start_here(app, add_pdfs(app))

@@ -2,4 +2,13 @@ vn-engine
 
 This game is made with vn-engine.
 
-Copyright (c) 2026 the vn-engine authors. All rights reserved.
+vn-engine is copyright (c) 2026 Gavin Swiger. All rights reserved.
+
+The game's author uses vn-engine under the vn-engine Game Terms. You may install and play
+this game. The engine (the game's .exe and the _internal folder) may not be taken out of
+the game to use on its own, to run or make other games, or to make another game engine or
+editor. The game itself, its story, pictures, music and sounds, belongs to its author.
+
+vn-engine includes components made by others, under their own licences: the other files
+in this folder. Nothing here limits the rights those licences give you, such as replacing
+pygame-ce with your own build.

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]    # 77: PEP 639 license expressions and license-files
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,10 @@ name = "vn-engine"
 dynamic = ["version"]
 description = "A Python engine for making visual novels."
 readme = "README.md"
+# Proprietary: all rights reserved, with the permissions in LICENSE.txt (Studio and the
+# engine), GAME-TERMS.txt (games made with it) and BETA-LICENCE.txt (beta testers).
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE.txt", "GAME-TERMS.txt", "BETA-LICENCE.txt"]
 requires-python = ">=3.12"
 # A range for development installs only. CI and builds install the exact, hashed
 # versions in requirements-ci.txt (SEC-F01-22).

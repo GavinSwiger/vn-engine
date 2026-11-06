@@ -326,7 +326,28 @@ def test_start_here_and_pdfs(tmp_path):
                   "Beginner's guide.pdf"):
         assert words in text, words
     assert "Feature overview.pdf" not in text
+    for name in bs.LICENCE_FILES:
+        assert name in text, name
     assert not any(dash in text for dash in ("–", "—", " - "))
+
+
+def test_licence_files_go_to_the_app_folder_top(tmp_path):
+    bs = _build_studio()
+    app = tmp_path / bs.APP_NAME
+    app.mkdir()
+    assert bs.add_licence_files(app) == ["LICENSE.txt", "GAME-TERMS.txt", "BETA-LICENCE.txt"]
+    for name in bs.LICENCE_FILES:
+        assert (app / name).read_bytes() == (REPO / name).read_bytes()
+        assert (REPO / name).read_text(encoding="utf-8").startswith("# DRAFT")
+    with pytest.raises(SystemExit, match="GAME-TERMS.txt"):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / "LICENSE.txt").write_text("x", encoding="utf-8")
+        bs.add_licence_files(app, repo)
+    # pygame-ce (LGPL) ships as loose files beside the exe, not in its archive.
+    assert "module_collection_mode={'pygame': 'pyc'}" in bs.spec_text(
+        staging=tmp_path, marker=tmp_path, icon=tmp_path / "i.ico", docs=tmp_path,
+        game=tmp_path)
 
 
 def test_zip_holds_the_app_folder_at_its_top(tmp_path):

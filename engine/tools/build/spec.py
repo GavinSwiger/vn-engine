@@ -13,6 +13,7 @@ readable spec text):
   so any plugin's standard-library import works without a new PyInstaller run).
   ``excludes``: ``EXCLUDES`` (``engine.tools``, ``PyInstaller`` and the standard-library
   parts builds never ship, ``plugins.NOT_BUNDLED``: ``tkinter`` and the like).
+  ``module_collection_mode``: ``PYGAME_COLLECTION``, pygame-ce as loose files (LGPL).
 - ``datas``: only ``engine/data/fonts`` and ``engine/data/icon.png``, placed at
   ``engine/data/...`` inside the bundle so ``engine_data_dir()`` finds them under
   ``_MEIPASS`` (I-5). ``engine/data/starter/`` and ``engine/data/sample/`` never ship.
@@ -48,6 +49,10 @@ ENTRY_SCRIPT: Final = "main.py"
 COLLECT_NAME: Final = "app"              # dist/app/* is moved into the build folder
 CONTENTS_DIR: Final = "_internal"
 EXCLUDES: Final = ("engine.tools", "PyInstaller", *sorted(NOT_BUNDLED))
+# pygame-ce is LGPL 2.1: its Python modules ship as loose .pyc files in _internal/pygame,
+# beside its .pyd modules and DLLs, not inside the exe's archive, so a player can replace
+# the whole package with their own build (§6; notices/pygame-ce.txt says so).
+PYGAME_COLLECTION: Final = {"pygame": "pyc"}
 # Network and OpenSSL binaries the engine never uses at run time (P8): stdlib ``platform``
 # (which ``engine.app.platform`` imports for the OS name) imports ``socket`` inside ``node()``,
 # and ``hashlib`` imports the OpenSSL-backed ``_hashlib`` (libcrypto-3.dll, about 5 MB) when
@@ -184,6 +189,7 @@ def spec_text(*, exe_stem: str, icon: Path | None, root: Path | None = None) -> 
         "    runtime_hooks=[],\n"
         f"    excludes={list(EXCLUDES)!r},\n"
         "    noarchive=False,\n"
+        f"    module_collection_mode={PYGAME_COLLECTION!r},\n"
         ")\n"
         "pyz = PYZ(a.pure)\n"
         "exe = EXE(\n"

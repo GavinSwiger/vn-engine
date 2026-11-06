@@ -17,11 +17,14 @@ with ``importlib.util.find_spec`` (pygame is not imported). Python's own DLLs
 ``LICENSE.txt`` holds their notices.
 
 One file per package:
-- ``vn-engine.txt``: the engine's own notice, **the one place to change** when the engine's
-  license is chosen (D4: undecided, "All rights reserved" for now).
+- ``vn-engine.txt``: the engine's own notice, for players: the engine's copyright, that the
+  game uses it under the vn-engine Game Terms (``GAME-TERMS.txt`` at the repository root)
+  and that it may not be taken out of the game.
 - ``Python.txt``: a short header, then Python's ``LICENSE.txt`` from ``sys.base_prefix``
   (Windows layout) or the standard library folder (POSIX).
-- ``pygame-ce.txt``: a header (where it ships, the source), then the wheel's ``LGPL.txt``.
+- ``pygame-ce.txt``: a header (where it ships, the source, that players may replace it with
+  their own build, LGPL 2.1 §6), then the wheel's ``LGPL.txt``. The whole package ships as
+  loose files in ``_internal/pygame`` (``spec.PYGAME_COLLECTION``), so it is replaceable.
 - ``PyInstaller.txt``: a header, then PyInstaller's ``COPYING.txt`` from its installed
   distribution (read with ``importlib.metadata``; PyInstaller is never imported).
 - ``OFL.txt``: ``engine/data/fonts/OFL.txt`` (the Noto fonts).

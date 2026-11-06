@@ -1,0 +1,58 @@
+# DRAFT for legal review: written without a lawyer, not yet reviewed. Still to decide: governing law and a contact address.
+
+vn-engine Game Terms
+
+Terms for games made with vn-engine. Copyright (c) 2026 Gavin Swiger.
+
+These terms say what you may do with the games you make with vn-engine, and what your
+players may do with them. "The engine" means the files of vn-engine that Build game puts in
+a built game: the game's .exe and the _internal folder. Your own game files are not part of
+the engine.
+
+1. Your game is yours
+
+You own your game: its story, scripts, characters, pictures, music, sounds and any code you
+wrote for it, such as minigames and plugins. We claim no rights in it.
+
+2. You may sell and share your built games
+
+You may copy, sell, give away and distribute games built with vn-engine, including the
+engine files inside them, on any store or website, anywhere in the world, with no royalty
+or fee to us. Stores, publishers and distributors may distribute them for you.
+
+3. Keep the notices
+
+Every copy of a built game you distribute must include the licenses folder that Build game
+puts in it, unchanged. You may add your own notices beside it.
+
+4. Players
+
+Anyone who gets a copy of your game may install and play it. You may give your players your
+own terms for your game, as long as they don't contradict these terms.
+
+5. The engine stays in the game
+
+Nobody, including you and your players, may take the engine out of a game to use it on its
+own, to run or make other games with it, or to make a game engine, editor or tool that
+competes with vn-engine or vn-engine Studio. Changing a game's own files (for example a mod
+or a fan translation of that game) is up to the game's author.
+
+Some components inside the engine, such as pygame-ce, are under their own licences, which
+are in the licenses folder. Those licences may let anyone replace or change those
+components, and these terms don't limit that.
+
+6. Credit
+
+A "Made with vn-engine" credit, in your game's credits or on its store page, is welcome but
+not required. Please don't suggest that we made, endorse or sponsor your game, and don't
+use "vn-engine" as your game's name.
+
+7. Your content is your responsibility
+
+You are responsible for what is in your game, and for having the rights to everything you
+put in it, such as pictures, music and fonts made by others.
+
+8. No warranty, limited liability
+
+The engine is provided "as is". The "No warranty" and "Limitation of liability" sections of
+the vn-engine Studio Licence (LICENSE.txt) apply to it, in your game too.

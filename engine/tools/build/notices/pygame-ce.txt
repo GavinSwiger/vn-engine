@@ -1,6 +1,7 @@
 pygame-ce
 pygame-ce ships inside _internal/pygame as separate files, so it can be
-replaced with another build of the same version.
+replaced with another build of the same version. You may replace those files
+with your own build of pygame-ce, including a modified one, as the GNU LGPL allows.
 Source: https://github.com/pygame-community/pygame-ce
 License: GNU Lesser General Public License, version 2.1
 Full text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt

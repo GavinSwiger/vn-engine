@@ -112,6 +112,7 @@ def test_ac_f42_39_build_side_children_spec_and_redaction(tmp_path, monkeypatch)
                      if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
     analysis = {k.arg: ast.literal_eval(k.value) for k in calls_by_name["Analysis"].keywords}
     assert analysis["pathex"] == []
+    assert analysis["module_collection_mode"] == {"pygame": "pyc"}    # LGPL: loose files
     assert [dest for _, dest in analysis["datas"]] == ["engine/data/fonts", "engine/data"]
     assert {"tkinter", "_tkinter", "engine.tools", "PyInstaller", "idlelib", "test"} <= set(
         analysis["excludes"])

@@ -70,3 +70,18 @@ The id names your game's per-user folders (logs now; saves and settings later), 
 must be unique to your game: 1 to 40 characters, each a lower-case letter, a digit, or
 `-`, starting with a letter or digit. The example game ships with the line commented
 out, so a copied template never shares an id with another game.
+
+## Licence
+
+vn-engine and vn-engine Studio are copyright (c) 2026 Gavin Swiger, all rights reserved,
+and are licensed, not sold:
+
+- [LICENSE.txt](LICENSE.txt): the vn-engine Studio Licence, for using Studio and the
+  engine to make games.
+- [GAME-TERMS.txt](GAME-TERMS.txt): what you may do with games made with vn-engine. They
+  are yours, and you may sell them anywhere, royalty-free, with the engine inside.
+- [BETA-LICENCE.txt](BETA-LICENCE.txt): the licence for beta testers of pre-release versions.
+
+The components made by others (Python, pygame-ce, SDL, the Noto fonts and so on) are under
+their own licences; a built game carries them in its `licenses/` folder
+(`engine/tools/build/notices/`). All three documents are drafts awaiting legal review.

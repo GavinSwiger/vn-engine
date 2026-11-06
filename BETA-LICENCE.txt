@@ -1,0 +1,47 @@
+# DRAFT for legal review: written without a lawyer, not yet reviewed. Still to decide: governing law, a contact address, and whether testers may keep using the last beta version after the beta ends (this draft says yes).
+
+vn-engine Studio Beta Tester Licence
+
+Copyright (c) 2026 Gavin Swiger. All rights reserved.
+
+Thank you for testing vn-engine Studio. This licence covers the pre-release (beta) versions
+of vn-engine Studio and vn-engine ("the beta") that Gavin Swiger ("we", "us") gives you.
+
+1. What you may do
+
+During the beta you may install and use the beta for free, for yourself, to make games. The
+licence is for you alone; you can't transfer it.
+
+2. Your games are yours
+
+You keep all rights to the games you make with the beta. You may release them, for free or
+for sale, under the vn-engine Game Terms (GAME-TERMS.txt), during the beta and after it.
+Games you release keep those rights after the beta ends.
+
+3. Don't pass the beta on
+
+Don't share, copy for others, sell or post the beta app, its download link or its files.
+Anyone who wants to test it can ask us. Section 2 of the vn-engine Studio Licence
+(LICENSE.txt), "What you may not do", applies to the beta too.
+
+4. When the beta ends
+
+The beta ends when the first paid version of vn-engine Studio is released, or earlier if we
+tell you it has ended. After that, you need a paid licence to use any new version. You may
+keep using the beta version you already have, under this licence.
+
+5. Beta software
+
+The beta is unfinished: it may have bugs, change, or lose work, so keep backups of your
+games. It is provided "as is"; the "No warranty" and "Limitation of liability" sections of
+the vn-engine Studio Licence apply to it.
+
+6. Feedback
+
+If you send us feedback, ideas or bug reports, we may use them in any way, without paying
+or crediting you.
+
+7. Everything else
+
+For anything this licence doesn't cover, the vn-engine Studio Licence applies. Where the two
+say different things about the beta, this licence wins.

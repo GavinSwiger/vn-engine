@@ -19,7 +19,11 @@ def test_pr_f42_14_every_bundled_dll_has_a_notice_and_licenses_are_collected(tmp
     by_name = {notice.name: notice.data for notice in notices.files}
     assert {"vn-engine.txt", "Python.txt", "pygame-ce.txt", "PyInstaller.txt",
             "OFL.txt"} <= set(by_name)
-    assert b"All rights reserved." in by_name["vn-engine.txt"]
+    engine_notice = by_name["vn-engine.txt"]
+    for words in (b"made with vn-engine", b"Gavin Swiger", b"vn-engine Game Terms",
+                  b"may not be taken out of\r\nthe game"):
+        assert words in engine_notice, words
+    assert b"your own build of pygame-ce" in by_name["pygame-ce.txt"]       # LGPL 2.1 §6
     assert b"PYTHON SOFTWARE FOUNDATION LICENSE" in by_name["Python.txt"]
     if dlls:
         assert b"GNU LESSER GENERAL PUBLIC LICENSE" in by_name["pygame-ce.txt"]
