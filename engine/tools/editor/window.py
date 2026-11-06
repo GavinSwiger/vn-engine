@@ -715,6 +715,8 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
     def _on_tab_changed(self, _event: tk.Event | None = None) -> None:
         self.close_completion()
         self._schedule_refresh()            # the gutter of the editor now on screen
+        if not self.closed and self.current_tab() != "editor":
+            self.catch_up_index()           # typing on the Editor tab left it behind
         if not self.closed:
             on_show = self.tabs[self.notebook.index("current")].on_show
             if on_show is not None:
@@ -1005,6 +1007,7 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
     def _drop_record(self, ref: str) -> None:
         """Forget an open file (deleted): its widget goes, and the editor shows the first
         script, or nothing."""
+        self.catch_up_index()                   # the index of the text as it is now
         record = self.files.pop(ref, None)
         if record is None:
             return

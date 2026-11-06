@@ -90,6 +90,33 @@ def wait_follow(ed, calls: list) -> None:
     ed.root.update()
 
 
+def test_typing_on_the_editor_tab_parses_nothing_until_the_map_shows(
+        studio, lanterns, monkeypatch):
+    """v1 finding 3: with the Editor tab on screen, the follow clock's ticks parse no scene;
+    showing the Story map parses the changed scene once and draws the new arrow."""
+    monkeypatch.setattr(livemap, "FOLLOW_MS", 20)
+    ed = studio_l(studio, lanterns)
+    win, view = ed.win, ed.story_map
+    win.select_tab("editor")
+    ed.root.update()
+    calls: list[int] = []
+    follow = win.follow
+    monkeypatch.setattr(win, "follow", lambda: (calls.append(1), follow())[1])
+    parsed: list[str] = []
+    parse = scenes.parse_chunk
+    monkeypatch.setattr(scenes, "parse_chunk", lambda ref, chunk, **kw: (
+        parsed.append(chunk.split(":", 1)[0].split()[1]), parse(ref, chunk, **kw))[1])
+    main = win.files[MAIN]
+    main.widget.mark_set("insert", "15.0")
+    main.widget.insert("insert", "    jump river\n")
+    wait_follow(ed, calls)
+    assert calls and parsed == [] and win._index_stale
+    win.select_tab("map")
+    ed.root.update()
+    assert parsed == ["festival"] and not win._index_stale
+    assert ("festival", "river", "jump") in edges(view)
+
+
 def test_ac_f46_04_the_map_follows_typing_and_choice_arrows_show_their_text(
         studio, lanterns, monkeypatch):
     assert (livemap.FOLLOW_MS, livemap.FOLLOW_MAX_MS) == (80, 250)     # F58 C1

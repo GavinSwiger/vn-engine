@@ -324,6 +324,7 @@ class MapWiring:
         ``throttle`` tick (F58 PR-22) marks no scene newly "out of date"."""
         if self.closed or not self._map_dirty or self._iconic():
             return                              # F58 PR-21: minimised, nothing is drawn
+        self.catch_up_index()
         self._map_dirty = False
         self.story_map.sketches_changed()       # 3.1: on idle, the sketches in view
         labels, links, stale = self.map_data()
@@ -575,6 +576,14 @@ class MapWiring:
         throttle, self._follow_throttle = self._follow_throttle, False
         if self.closed:
             return
+        if not self._index_watched():
+            # v1 finding 3: on the Editor tab nothing shows the scene index (the map, its
+            # Events tab and the scene preview live in the Story map tab), so typing doesn't
+            # re-parse the scene on each tick. The index catches up when another tab shows
+            # (``catch_up_index``) or when the check after the typing pause asks for it.
+            self._index_stale = True
+            self._map_dirty = True
+            return
         changed = self._reindex()
         if not changed and (throttle or not self._after_throttle):
             return
@@ -593,10 +602,34 @@ class MapWiring:
         if changed:
             self.assist_texts_changed()         # F58 D6: Stale as soon as a scene changes
 
+    _index_stale = False                    # typing on the Editor tab skipped a follow
+
+    def _index_watched(self) -> bool:
+        """Something follows the scene index while typing: any tab but the Editor (the
+        Story map with its Events tab and scene preview, or a page whose ``on_show``
+        follows), or an open assistant card that goes Stale when its scene changes."""
+        try:
+            if self.current_tab() != "editor":
+                return True
+        except (tk.TclError, IndexError):
+            return True
+        cards = getattr(self, "assist_cards", None)
+        return bool(cards) and any(card.state == "open" for card in cards)
+
+    def catch_up_index(self) -> None:
+        """The follow typing skipped (``follow``), now: before the map draws, when a tab
+        is shown, and before an open file's index is kept as a closed file's."""
+        if self._index_stale and not self.closed:
+            self._index_stale = False
+            if self._reindex():
+                self._map_dirty = True
+                self.assist_texts_changed()
+
     def _reindex(self) -> bool:
         """``scenes.reindex`` each open script whose ``changes`` its index hasn't seen;
         True when any was re-read. The Events tab's scene is parsed even when unchanged
         (``want``)."""
+        self._index_stale = False
         positions = self._positions()
         changed = False
         shown = self.story.ref if self.story is not None else None
