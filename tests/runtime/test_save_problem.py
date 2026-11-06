@@ -239,3 +239,58 @@ def test_600k_members_ci_guard(shape):
     median = statistics.median(times)
     print(f"save_problem median: {median * 1000:.2f} ms")
     assert median <= 0.25
+
+
+# --- Version 1's records (v1 review S2): each reads back by its own from_json -------------------
+
+def _with(**fields) -> GameState:
+    from dataclasses import replace
+    return replace(make_state({"trust": 1}), **fields)
+
+
+def _records():
+    from engine.runtime.clock import ClockState
+    from engine.runtime.inbox import Delivery, InboxLine
+    from engine.runtime.points import PointsState
+    from engine.runtime.state import ItemsState
+    from engine.runtime.triggers import Armed, TriggerState
+    line = InboxLine("them", "Hana", "Meet me at the bridge.")
+    delivery = Delivery("0123456789abcdef.1", "start/0123456789ab", "Hana", "Day 2", "pigeon",
+                        (line,), "hana", "invite", (("yes", "I will."), ("no", "Not yet.")),
+                        "yes")
+    good = {
+        "clock": ClockState(3, 1, True),
+        "triggers": TriggerState((Armed("message:hana/invite", 4, None, {"n": [1]}, 1),),
+                                 frozenset({"event:fair"})),
+        "points": PointsState({"trust": 3, "luck": -2}, ("trust",)),
+        "items": ItemsState(("coin", "map"), (12, 1), True, (delivery,)),
+    }
+    bad = [
+        ("clock", {"clock": ClockState(0, 3, False)}),                  # day 0 off the start
+        ("clock", {"clock": ClockState(10**9, 0, False)}),
+        ("triggers", {"triggers": TriggerState((Armed("message:x", 0),))}),
+        ("triggers", {"triggers": TriggerState((Armed("message:x"), Armed("message:x")))}),
+        ("triggers", {"triggers": TriggerState((), frozenset({"no id"}))}),
+        ("points", {"points": PointsState({"trust": 1}, ("luck",))}),   # shown, not held
+        ("points", {"points": PointsState({"trust": 10**10})}),
+        ("items", {"items": ItemsState(("coin",), (10**7,))}),           # over 999,999
+        ("items", {"items": ItemsState(("coin", "coin"))}),
+        ("items", {"items": ItemsState(("coin", "map"), (2,))}),          # counts not parallel
+        ("inbox", {"items": ItemsState(inbox=(Delivery("bad", "s", "", "", "", (line,)),))}),
+        ("inbox", {"items": ItemsState(inbox=(delivery.__class__(
+            **{**{f: getattr(delivery, f) for f in delivery.__slots__}, "reply": "maybe"}),))}),
+        ("lone_surrogate", {"items": ItemsState(inbox=(Delivery(
+            delivery.key, delivery.sid, chr(0xD83D) + chr(0xDE00), "", "",
+            (line,)),))}),
+    ]
+    return good, bad
+
+
+def test_version_1_records_read_back_or_name_their_field():
+    good, bad = _records()
+    state = _with(**good)
+    assert state.save_problem() is None and loads_back_equal(state)
+    for word, fields in bad:
+        broken = _with(**fields)
+        assert broken.save_problem() == word, (word, fields)
+        assert not loads_back_equal(broken), word

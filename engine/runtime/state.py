@@ -17,7 +17,7 @@ change that isn't additive bumps ``STATE_FORMAT`` and adds a migration here.
 
 import re
 import unicodedata
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, fields
 from itertools import chain
 from types import MappingProxyType
@@ -329,7 +329,14 @@ class GameState:
         ``window_title`` (F30) needs none: it is a ``TitleEffect``'s text, bounded at load
         (a lone surrogate round-trips as an escape). ``ui`` (F32) is ``UiState.save_problem``:
         ``ui_style`` for a style name ``from_json`` refuses (only a load given no style names
-        lets one through); its reasons are bounded at load.
+        lets one through); its reasons are bounded at load. Version 1's records
+        (``_records_problem``) are each written as ``to_json`` writes them and read back by
+        their own ``from_json``, which must give the same value: ``clock`` (F63), ``triggers``
+        (F65: armed timing and data, retired ids), ``items`` (F21 names and F64 counts),
+        ``inbox`` (F65 deliveries, their asks and replies; and ``lone_surrogate`` for any of
+        their texts) and ``points`` (F22 values and F62's shown meters). ``hotbar`` (F64)
+        needs none: it is written ``true`` only when set and read back so. Their sizes are the runtime's own caps, so this costs a few milliseconds at
+        most (an Inbox at ``DELIVERIES_MAX`` short deliveries is the largest).
 
         Changes nothing. The value walk goes one nesting level at a time with C-level
         passes, so its Python work is per level, not per value: about 6-40 ms at 600,000
@@ -364,6 +371,9 @@ class GameState:
         if problem is not None:
             return problem
         problem = self.ui.save_problem()                    # F32
+        if problem is not None:
+            return problem
+        problem = _records_problem(self)                    # F62-F65 (version 1)
         if problem is not None:
             return problem
         if not _names_valid(variables.keys()):
@@ -563,6 +573,57 @@ def _position_problem(sid: object, at: object, reason: str) -> str | None:
     if _SURROGATE_PAIR.search(sid) or _SURROGATE_PAIR.search(label):
         return "lone_surrogate"
     return None
+
+
+def _records_problem(state: GameState) -> str | None:
+    """``save_problem`` for version 1's records (its docstring): a reason word for the first
+    one that its ``from_json`` refuses or reads back different, else None."""
+    clock = state.clock
+    if clock != EMPTY_CLOCK and _read_back(ClockState.from_json, clock.to_json()) != clock:
+        return "clock"
+    triggers = state.triggers
+    if triggers != EMPTY_TRIGGERS and \
+            _read_back(TriggerState.from_json, triggers.to_json()) != triggers:
+        return "triggers"
+    points = state.points
+    if len(points) or points.shown:
+        if _read_back(PointsState.from_json, points.to_json()) != points:
+            return "points"
+    items = state.items
+    if items is EMPTY_ITEMS:
+        return None
+    if len(items.counts) not in (0, len(items.held)):
+        return "items"
+    back = _read_back(ItemsState.from_json, items.to_json())
+    if not isinstance(back, ItemsState) or back.held != items.held or any(
+            back.count_of(i) != items.count_of(i) for i in range(len(items.held))):
+        return "items"
+    if items.inbox:
+        if _read_back(deliveries_from_json, deliveries_json(items.inbox)) != items.inbox:
+            return "inbox"
+        if _has_surrogate(_delivery_texts(items.inbox)):
+            return "lone_surrogate"
+    return None
+
+
+def _read_back(read: Callable[[object], object], data: object) -> object:
+    """``read(data)``, or None when it refuses (``StateInvalid``, or ``ValueError`` from
+    ``deliveries_from_json``)."""
+    try:
+        return read(data)
+    except (StateInvalid, ValueError, TypeError):
+        return None
+
+
+def _delivery_texts(deliveries: Iterable[Delivery]) -> Iterator[str]:
+    for d in deliveries:
+        yield from (d.key, d.sid, d.contact, d.time, d.device, d.sender, d.message, d.reply)
+        for line in d.lines:
+            yield line.name
+            yield line.text
+        for key, text in d.ask:
+            yield key
+            yield text
 
 
 def _names_valid(names: Iterable[object]) -> bool:
