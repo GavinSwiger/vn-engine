@@ -245,9 +245,9 @@ def plain_text_problem(text: str, limit: int) -> tuple[object, ...] | None:
         return ("empty",)
     if "\n" in text or "\r" in text:
         return ("newline",)
-    if "{" in text.replace("{{", "") or "}" in text.replace("}}", ""):
+    if "{" in text.replace("{{", ""):
         return ("tags",)
-    shown = text.replace("{{", "{").replace("}}", "}")
+    shown = text.replace("{{", "{")
     if len(shown) > limit:
         return ("long", len(shown), limit)
     return None
@@ -273,7 +273,7 @@ def _parse_ranks(raw: RawStatement, ctx: ParseContext, chunks: list, low: int,
         if problem is not None:
             ctx.error("E412", *problem)
             return None
-        label = label.replace("{{", "{").replace("}}", "}")
+        label = label.replace("{{", "{")
         if index + 1 >= len(chunks) or chunks[index + 1].kind != NUMBER:
             ctx.error("E411", "at", label)
             return None
@@ -331,7 +331,7 @@ def _parse_change(raw: RawStatement, ctx: ParseContext) -> PointsChange | None:
         if problem is not None:
             ctx.error("E415", *problem)
             return None
-        notice = notice.replace("{{", "{").replace("}}", "}")
+        notice = notice.replace("{{", "{")
     amount, _ = ctx.compile(source, line=span.line, column=span.column, mode="eval",
                             role=ROLE_VALUE, lambdas=span.lambdas, length=length,
                             comment_free=comment_free)

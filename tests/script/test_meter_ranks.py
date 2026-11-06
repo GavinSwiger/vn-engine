@@ -16,7 +16,7 @@ def test_ranks_parse_for_every_name():
     node = parsed.nodes[-1]
     assert type(node) is PointsDecl and node.ranks == (("A", 0), ("B", 5))
     assert [spec.ranks for spec in node.specs()] == [(("A", 0), ("B", 5))] * 2
-    assert parse_text(template(T='points a ranks "{{x}}" 1')).nodes[-1].ranks == (("{x}", 1),)
+    assert parse_text(template(T='points a ranks "{{x}" 1')).nodes[-1].ranks == (("{x}", 1),)
 
 
 def test_ranks_stays_free_as_a_meter_name():
@@ -52,7 +52,7 @@ def test_notices_parse_with_every_operator():
         assert type(node) is PointsChange and node.notice == "Hana will remember that."
         assert node.identity_key() == ("points", "a", op, "bonus * 2")
     assert first_say(parse_text(template(S="points a += 1"))).notice is None
-    assert first_say(parse_text(template(S='points a += 1 "{{wink}}"'))).notice == "{wink}"
+    assert first_say(parse_text(template(S='points a += 1 "{{wink}"'))).notice == "{wink}"
 
 
 def test_split_notice_keeps_python_strings():

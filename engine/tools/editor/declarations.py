@@ -79,7 +79,8 @@ from engine.script.musicroom import TITLE_MAX as TRACK_TITLE_MAX
 from engine.script.musicroom import TRACKS_MAX
 from engine.script.musicroom import UNTIL_MAX as TRACK_UNTIL_MAX
 from engine.core.startvalues import StartValueError, parse_literal
-from engine.script.points import METER_NAME_MAX, POINTS_LIMIT, STATEMENT_PARTS
+from engine.script.points import (METER_NAME_MAX, POINTS_LIMIT, RANK_LABEL_MAX, RANKS_MAX,
+                                  STATEMENT_PARTS, WORD_RANKS)
 from engine.script.replay import TITLE_MAX as REPLAY_TITLE_MAX
 from engine.script.replay import VALUES_MAX as REPLAY_VALUES_MAX
 from engine.script.routes import PERSISTENT_VIEWS, ROUTE_TITLE_MAX
@@ -450,7 +451,7 @@ def meter_start(values: Mapping[str, object]) -> int:
 
 def meter_ok(values: Mapping[str, object]) -> bool:
     """True when ``values`` make a valid ``points`` declaration (whole numbers within the
-    engine's limit, low below high, start in range)."""
+    engine's limit, low below high, start in range; F62: ranks as ``ranks_problem`` takes)."""
     low, high, start = (values.get(key) for key in METER_KEYS)
     for value in (low, high, start):
         if value is not None and (type(value) is not int or abs(value) > POINTS_LIMIT):
@@ -459,7 +460,45 @@ def meter_ok(values: Mapping[str, object]) -> bool:
         return False
     if low is not None and not low < high:                           # type: ignore[operator]
         return False
+    if ranks_problem(values) is not None:
+        return False
     return start is None or low is None or low <= start <= high      # type: ignore[operator]
+
+
+RANK_EMPTY: Final = "Each rank needs a label."
+RANK_LONG: Final = "Keep each rank label to {limit} characters."
+RANK_TWICE: Final = "Two ranks are called “{label}”. Give each its own label."
+RANK_RANGE: Final = "The rank “{label}” starts at {at}, outside {low} to {high}."
+RANK_RISING: Final = "List ranks from lowest to highest: “{label}” must start above {before}."
+RANK_MANY: Final = "A meter can have at most {limit} ranks."
+
+
+def ranks_problem(values: Mapping[str, object]) -> str | None:
+    """F62: why ``values["ranks"]`` (``(label, at)`` pairs, the order written) can't be
+    written, in plain words, or None. The engine's rules: labels 1–40 characters, each once,
+    on one line; numbers whole, inside the range, each higher than the one before."""
+    ranks = values.get("ranks") or ()
+    low, high = values.get("low"), values.get("high")
+    low = low if type(low) is int else -POINTS_LIMIT
+    high = high if type(high) is int else POINTS_LIMIT
+    if len(ranks) > RANKS_MAX:                                       # type: ignore[arg-type]
+        return RANK_MANY.format(limit=RANKS_MAX)
+    seen: set[str] = set()
+    before: int | None = None
+    for label, at in ranks:                                          # type: ignore[union-attr]
+        if type(label) is not str or not label.strip() or "\n" in label:
+            return RANK_EMPTY
+        if len(label) > RANK_LABEL_MAX:
+            return RANK_LONG.format(limit=RANK_LABEL_MAX)
+        if label in seen:
+            return RANK_TWICE.format(label=label)
+        if type(at) is not int or not low <= at <= high:
+            return RANK_RANGE.format(label=label, at=at, low=low, high=high)
+        if before is not None and at <= before:
+            return RANK_RISING.format(label=label, before=before)
+        seen.add(label)
+        before = at
+    return None
 
 
 def _meter_name(token: str) -> str | None:
@@ -485,7 +524,8 @@ def meter_read(code: str) -> tuple[tuple[str, ...], dict[str, object] | None] | 
     names: list[str] = []
     i = 0
     while i < len(rest) and rest[i] not in ("to", "start", ",", ":") \
-            and not rest[i].startswith('"') and not re.match(r"-?[\d.]", rest[i]):
+            and not rest[i].startswith('"') and not re.match(r"-?[\d.]", rest[i]) \
+            and not (rest[i] == WORD_RANKS and rest[i + 1:i + 2] and rest[i + 1].startswith('"')):
         name = _meter_name(rest[i])
         if name is None:
             return None
@@ -506,13 +546,28 @@ def meter_read(code: str) -> tuple[tuple[str, ...], dict[str, object] | None] | 
         values["start"] = start
         bad = bad or start is None
         i += 2
+    if i < len(rest) and rest[i] == WORD_RANKS:                     # F62
+        ranks: list[tuple[str, int]] = []
+        i += 1
+        while i + 1 < len(rest) and rest[i].startswith('"'):
+            text = unquote(rest[i])
+            label = shown_text(text) if text is not None else None
+            at = _int_token(rest[i + 1])
+            if label is None or at is None:
+                bad = True
+                break
+            ranks.append((label, at))
+            i += 2
+        values["ranks"] = tuple(ranks)
+        bad = bad or not ranks
     bad = bad or i != len(rest) or not meter_ok(values)
     return tuple(names), None if bad else values
 
 
 def meter_line(names: Iterable[str], values: Mapping[str, object]) -> str:
-    """``points <names> [lo to hi] [start n]``; ``start`` only when it isn't the engine's
-    own start (``meter_start`` without it). Raises ValueError for values it can't write."""
+    """``points <names> [lo to hi] [start n] [ranks "label" at …]``; ``start`` only when it
+    isn't the engine's own start (``meter_start`` without it). Raises ValueError for values it
+    can't write."""
     if not meter_ok(values):
         raise ValueError("bad meter")
     parts = ["points", *names]
@@ -521,7 +576,17 @@ def meter_line(names: Iterable[str], values: Mapping[str, object]) -> str:
         parts += [str(low), "to", str(high)]
     if start is not None and start != meter_start({"low": low, "high": high}):
         parts += ["start", str(start)]
+    ranks = values.get("ranks") or ()
+    if ranks:                                                        # F62
+        parts.append(WORD_RANKS)
+        for label, at in ranks:                                      # type: ignore[union-attr]
+            parts += [quote_text(written_text(str(label))), str(at)]
     return " ".join(parts)
+
+
+def quote_text(text: str) -> str:
+    """``text`` as one script string token (``unquote``'s reverse)."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
 
 
 # --- Codex (F21 lock tip|item) and routes (F19 lock route) ---

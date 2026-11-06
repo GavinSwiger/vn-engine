@@ -66,7 +66,9 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
             "value": "The new value or amount: a number, \"text in quotes\", True or False."},
     "points": {"meter": "The meter to change (made on the Database's Meters page).",
                "op": "+= adds, -= takes away, = sets it to the amount.",
-               "amount": "A whole number."},
+               "amount": "A whole number.",
+               "notice": "Words players see in a corner as it changes, e.g. "
+                         "Hana will remember that. Empty: no notice."},
     "if": {"keyword": "if starts a test; elif (else if) and else follow one.",
            "condition": "When the lines below play. Build it with the condition builder."},
     "ending": {"name": "Which ending this is (made on the Database's Endings page, or new).",
@@ -193,6 +195,7 @@ DATABASE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "Lowest": "The meter never goes below this.",
         "Highest": "The meter never goes above this.",
         "Start": "Its value when a new game starts.",
+        "Ranks": "Names for parts of the range, lowest first. Each starts at its number.",
     },
     db.CATEGORY_CODEX: {
         "Script name": _NAME,

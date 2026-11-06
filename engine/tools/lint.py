@@ -260,8 +260,12 @@ def _positions(config: Config, uses: Mapping[str, Iterable[object]],
 def _points_names(text: str) -> list[str]:
     """The meter names of a ``points a b 0 to 10 start 3`` line's rest."""
     names: list[str] = []
-    for word in text.split("#", 1)[0].split():
+    words = text.split("#", 1)[0].split()
+    for index, word in enumerate(words):
         if word in _POINTS_STOP or _IDENTIFIER.fullmatch(word) is None:
+            break
+        if word == "ranks" and words[index + 1:index + 2] \
+                and words[index + 1].startswith('"'):        # F62: ranks "Friend" 4 (ADR-0010)
             break
         names.append(word)
     return names

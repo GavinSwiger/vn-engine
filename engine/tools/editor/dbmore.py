@@ -90,6 +90,11 @@ RANGE = "Has a lowest and highest"
 LOW_HIGH_BAD = "The lowest must be below the highest."
 START_BAD = "The start must be from {low} to {high}."
 METER_HINT = "In the script: points.{name}"
+ADD_RANK = "+ Rank"
+REMOVE_RANK = "Remove this rank"
+RANKS_NONE = "No ranks. Ranks name parts of the range, like Stranger, Friend, Close."
+RANKS_HINT = 'In the script: points.rank("{name}") == "{label}"'
+RANK_NO_ROOM = "There's no room above {at} for another rank. Raise the highest first."
 KIND_TIP_ITEM = "Tips stay learned in every playthrough; items reset."
 CATEGORY_HINT = "Empty: listed under “{default}”."
 NO_PICTURE = "No picture"
@@ -127,6 +132,7 @@ LABEL_SCRIPT_NAME = "Script name"
 LABEL_LOW = "Lowest"
 LABEL_HIGH = "Highest"
 LABEL_START = "Start"
+LABEL_RANKS = "Ranks"
 LABEL_KIND = "Kind"
 LABEL_TITLE = "Title"
 LABEL_CATEGORY = "Category"
@@ -186,6 +192,14 @@ def _label_at(text: str, line: int) -> str | None:
 def _paragraphs(text: str) -> tuple[str, ...]:
     return tuple(line.strip() for line in str(text).split("\n") if line.strip())
 
+
+
+def _ranks_hint(name: str, values: Mapping[str, object]) -> str:
+    """F62: how the script reads the meter's rank (its top label), or what ranks are."""
+    ranks = values.get("ranks") or ()
+    if not ranks:
+        return RANKS_NONE
+    return RANKS_HINT.format(name=name, label=ranks[-1][0])
 
 class MoreCategories:
     """The P2 categories of ``database.DatabasePane`` (a mixin: it uses the pane's rows,
@@ -364,7 +378,8 @@ class MoreCategories:
         if entry.kind == dec.POSITION:
             return ("stage",)
         if entry.kind == dec.METER and values is not None:
-            return shape + (values.get("low") is None, entry.decl.group)
+            return shape + (values.get("low") is None, entry.decl.group,
+                            len(values.get("ranks") or ()))
         if entry.kind == dec.TRANSITION and values is not None:
             return shape + (values.get("kind"),)
         if entry.kind == dec.ROUTE:
@@ -566,6 +581,7 @@ class MoreCategories:
                                  hi=POINTS_LIMIT, width=10,
                                  on_change=lambda v: self._meter_start(entry, v))
         grid.row(LABEL_START, f["start"])
+        ranks_hint = self._ranks_rows(grid, form, entry, values)        # F62
         self._game_now_row(grid, entry.name)            # type: ignore[attr-defined]  (F40)
         hint = ttk.Label(grid.frame, text=METER_HINT.format(name=entry.name),
                          style="Hint.TLabel")
@@ -585,9 +601,95 @@ class MoreCategories:
                 f["low"].set(int(now["low"]))
                 f["high"].set(int(now["high"]))
             f["start"].set(dec.meter_start(now))
+            for index, (label, at) in enumerate(now.get("ranks") or ()):
+                if f"rank{index}" in f:
+                    f[f"rank{index}"].set(str(label))
+                    f[f"at{index}"].set(int(at))
+            ranks_hint.configure(text=_ranks_hint(entry.name, now))
             hint.configure(text=METER_HINT.format(name=entry.name))
 
         form.update = update
+
+    def _ranks_rows(self, grid: FormGrid, form: Any, entry: db.Entry,
+                    values: Mapping[str, object]) -> ttk.Label:
+        """F62: the Ranks table, a label and its starting number per row, lowest first, with
+        **+ Rank** and a remove button per row. Returns the hint under it."""
+        f = form.fields
+        ranks = values.get("ranks") or ()
+        for index, (label, at) in enumerate(ranks):
+            line = ttk.Frame(grid.frame)
+            f[f"rank{index}"] = TextField(
+                line, str(label), width=16, check=lambda t: bool(t.strip()),
+                on_change=lambda v, i=index: self._rank_change(entry, i, label=str(v)))
+            f[f"rank{index}"].widget.pack(side="left")
+            ttk.Label(line, text=STARTS_AT).pack(side="left", padx=(self._px(8), self._px(4)))
+            f[f"at{index}"] = NumberField(
+                line, int(at), lo=-POINTS_LIMIT, hi=POINTS_LIMIT, width=8,
+                on_change=lambda v, i=index: self._rank_change(entry, i, at=int(v)))
+            f[f"at{index}"].widget.pack(side="left")
+            ttk.Button(line, text="×", width=2, style="Ghost.TButton",
+                       command=lambda i=index: self._rank_remove(entry, i)).pack(
+                side="left", padx=(self._px(6), 0))
+            grid.row("" if index else LABEL_RANKS, line)
+        add = ttk.Button(grid.frame, text=ADD_RANK, style="Secondary.TButton",
+                         command=lambda: self._rank_add(entry))
+        f["add_rank"] = add
+        row = grid.row("" if ranks else LABEL_RANKS, add, hint=_ranks_hint(entry.name, values))
+        assert row.hint is not None
+        return row.hint
+
+    def _rank_edit(self, entry: db.Entry, ranks: list[tuple[str, int]],
+                   field: Any = None) -> bool:
+        values = self._now_values(entry)
+        if values is None:
+            return self._edit(entry, {})
+        problem = dec.ranks_problem({**values, "ranks": tuple(ranks)})
+        if problem is not None:
+            if field is not None:
+                self._refuse_field(field, problem)
+            else:
+                show_error(self.root, problem)
+            return False
+        return self._edit(entry, {"ranks": tuple(ranks)})
+
+    def _rank_change(self, entry: db.Entry, index: int, *, label: str | None = None,
+                     at: int | None = None) -> bool:
+        values = self._now_values(entry)
+        ranks = list((values or {}).get("ranks") or ())
+        if index >= len(ranks):
+            return self._edit(entry, {})
+        old_label, old_at = ranks[index]
+        ranks[index] = (old_label if label is None else label.strip(),
+                        old_at if at is None else at)
+        field = self.form.fields.get(f"rank{index}" if label is not None else f"at{index}")
+        return self._rank_edit(entry, ranks, field)
+
+    def _rank_add(self, entry: db.Entry) -> bool:
+        values = self._now_values(entry)
+        if values is None:
+            return self._edit(entry, {})
+        ranks = list(values.get("ranks") or ())
+        high = values.get("high")
+        if ranks:
+            at = int(ranks[-1][1]) + 1
+            if type(high) is int and at > high:
+                show_error(self.root, RANK_NO_ROOM.format(at=ranks[-1][1]))
+                return False
+        else:
+            at = dec.meter_start(values)
+        taken = {label for label, _ in ranks}
+        number = len(ranks) + 1
+        while f"Rank {number}" in taken:
+            number += 1
+        return self._rank_edit(entry, ranks + [(f"Rank {number}", at)])
+
+    def _rank_remove(self, entry: db.Entry, index: int) -> bool:
+        values = self._now_values(entry)
+        ranks = list((values or {}).get("ranks") or ())
+        if index >= len(ranks):
+            return self._edit(entry, {})
+        del ranks[index]
+        return self._rank_edit(entry, ranks)
 
     def _now_values(self, entry: db.Entry) -> dict[str, object] | None:
         decl = self._fresh(entry)
@@ -600,7 +702,9 @@ class MoreCategories:
         if not on:
             return self._edit(entry, {"low": None, "high": None})
         start = dec.meter_start(values)
-        low, high = min(NEW_METER_RANGE[0], start), max(NEW_METER_RANGE[1], start)
+        ats = [int(at) for _, at in values.get("ranks") or ()]       # F62: keep ranks inside
+        low = min(NEW_METER_RANGE[0], start, *ats)
+        high = max(NEW_METER_RANGE[1], start, *ats)
         return self._edit(entry, {"low": low, "high": high})
 
     def _meter_bound(self, entry: db.Entry, which: str, value: object) -> bool:
@@ -611,6 +715,10 @@ class MoreCategories:
         low, high = int(values["low"]), int(values["high"])
         if not low < high:
             self._refuse_field(self.form.fields[which], LOW_HIGH_BAD)
+            return False
+        problem = dec.ranks_problem(values)                  # F62: ranks stay in range
+        if problem is not None:
+            self._refuse_field(self.form.fields[which], problem)
             return False
         change: dict[str, object] = {which: int(value)}
         start = values.get("start")

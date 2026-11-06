@@ -854,12 +854,13 @@ class _UseWalk:
                 if node.id != own:
                     self.name(node.id, ref, line)
             elif isinstance(node, ast.Attribute) and _is_name(node.value, "points"):
-                if node.attr != "highest":                           # points.highest(…)
+                if node.attr not in ("highest", "rank"):             # points.highest(…)
                     self.add("meter_use", node.attr, ref, line)      # points.hana
             elif isinstance(node, ast.Subscript) and _is_name(node.value, "points"):
                 self.add("meter_use", _text_of(node.slice), ref, line)  # points["hana"]
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
-                    and _is_name(node.func.value, "points") and node.func.attr == "highest":
+                    and _is_name(node.func.value, "points") \
+                    and node.func.attr in ("highest", "rank"):       # F62: points.rank("hana")
                 for arg in node.args:
                     self.add("meter_use", _text_of(arg), ref, line)
             elif isinstance(node, ast.Compare) and len(node.comparators) == 1:

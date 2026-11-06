@@ -198,7 +198,8 @@ def _py_targets(tree: ast.AST, kind: str, old: str) -> Iterator[tuple[ast.AST, s
                 and _is(node.value, "points") and _const(node.slice, old):
             yield node.slice, "string"
         elif kind == dec.METER and isinstance(node, ast.Call) \
-                and isinstance(node.func, ast.Attribute) and node.func.attr == "highest" \
+                and isinstance(node.func, ast.Attribute) \
+                and node.func.attr in ("highest", "rank") \
                 and _is(node.func.value, "points"):
             for arg in node.args:
                 if _const(arg, old):

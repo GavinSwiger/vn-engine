@@ -119,7 +119,7 @@ _NUMBER = re.compile(r"-?(?:\d+(?:\.\d*)?|\.\d+)")
 _NAME = re.compile(r"[^\W\d]\w*")
 _LITERAL = re.compile(r'-?\d+(?:\.\d+)?|"(?:[^"\\\n]|\\.)*"|True|False')
 _SET = re.compile(rf"\$ ({_NAME.pattern}) (=|\+=|-=) ({_LITERAL.pattern})")
-_POINTS = re.compile(r"points (\S+) (\+=|-=|=) (-?\d+)")
+_POINTS = re.compile(r'points (\S+) (\+=|-=|=) (-?\d+)(?: ("(?:[^"\\]|\\.)*"))?')
 _IF_HEAD = re.compile(r"(if|elif)[ \t]+(.+?)[ \t]*:", re.DOTALL)
 _ELSE_HEAD = re.compile(r"else[ \t]*:")
 
@@ -570,9 +570,19 @@ def _points_read(node: Statement, code: str) -> dict[str, str] | None:
     if not isinstance(node, PointsChange):
         return None
     match = _POINTS.fullmatch(_collapse(code))
-    if match is None:
+    if match is None or (match.group(4) is None) != (node.notice is None):
         return None
-    return {"meter": match.group(1), "op": match.group(2), "amount": match.group(3)}
+    values = {"meter": match.group(1), "op": match.group(2), "amount": match.group(3)}
+    if node.notice is not None:                         # F62: the change notice
+        values["notice"] = node.notice
+    return values
+
+
+def _points_write(values: Values) -> str:
+    """``points <meter> <op> <amount> ["notice"]`` (F62: ``{`` written ``{{``)."""
+    notice = values.get("notice", "").strip()
+    return _join(f"points {values['meter']} {values['op']} {values['amount']}",
+                 quote(notice.replace("{", "{{")) if notice else "")
 
 
 def _if_read(node: Statement, code: str) -> dict[str, str] | None:
@@ -661,9 +671,11 @@ FORMS: tuple[CommandForm, ...] = (
         PointsChange,
         (Field("meter", "Meter", "name", "meter"),
          Field("op", "Change", "pick", options=("+=", "-=", "=")),
-         Field("amount", "Amount", "number")),
-        _points_read, lambda v: f"points {v['meter']} {v['op']} {v['amount']}",
-        lambda v: f"{v['meter']} {v['op']} {v['amount']}"),
+         Field("amount", "Amount", "number"),
+         Field("notice", "Notice text", "text", optional=True)),
+        _points_read, _points_write,
+        lambda v: _join(f"{v['meter']} {v['op']} {v['amount']}",
+                        f"· “{v['notice']}”" if v.get("notice") else "")),
     CommandForm(
         "if", "If", "If", (("if", ""), ("elif", ""), ("else", "")), If,
         (Field("keyword", "Branch", "pick", options=("if", "elif", "else")),
