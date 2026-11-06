@@ -24,15 +24,20 @@ imports ``engine.app`` and the runtime never reads config. So, once per windowed
   controller's presenter pushes a ``PresentScreen`` over the menu on this port, and its
   word is ``[words] present_choice``.
 
+- F64 round 2: the game menu's page gets the Use button (``UseAction`` over
+  ``app/hotbar.ItemUser``, with the item's hotbar slot as its hint), and the hotbar is
+  installed here (``install_hotbar``), after the meters' corner source.
+
 This module imports ``engine.script`` only for type checking (TR-F21-06).
 """
 
 from typing import TYPE_CHECKING
 
+from engine.app.hotbar import install_hotbar
 from engine.core.kits import bag_words
 from engine.runtime.commands import CodexAdded
 from engine.runtime.images import ImageFile, SolidColor
-from engine.ui.builtin.codex_page import HEADING, CodexPage
+from engine.ui.builtin.codex_page import HEADING, CodexPage, UseAction
 from engine.ui.builtin.present_picker import PresentScreen
 from engine.ui.menus import MenuEntry
 
@@ -114,10 +119,13 @@ def install_codex(app: "App", interp: "Interpreter",
     """Register the ``CodexAdded`` handler and, with a shell, the two codex entries
     (module docstring). Returns the port."""
 
-    def codex() -> "Codex":
+    def live() -> "Interpreter":
         story = getattr(app, "story", None)
-        live = getattr(story, "interp", None)
-        return (live if live is not None else interp).codex
+        found = getattr(story, "interp", None)
+        return found if found is not None else interp
+
+    def codex() -> "Codex":
+        return live().codex
 
     def on_added(cmd: CodexAdded) -> None:
         shell = getattr(app, "shell", None)
@@ -130,10 +138,17 @@ def install_codex(app: "App", interp: "Interpreter",
     app.router.register(CodexAdded, on_added)
     port = AppCodexPort(codex, images, show_locked=app.config.codex.show_locked,
                         words=bag_words(app.config))
+    user, hotbar = install_hotbar(app, live, port)              # F64 round 2
     shell = getattr(app, "shell", None)
     if shell is not None:
+        def hint(name: str) -> str:
+            slot = hotbar.slot_of(name) if hotbar is not None else None
+            return f"{hotbar.word()}: {slot}" if slot is not None else ""  # type: ignore
+
+        use = UseAction(shell.words.get("codex_use"), user.has_use, user.can_use,
+                        user.request, hint)
         shell.menus.add("game", MenuEntry(
-            HEADING, page=lambda host: CodexPage(port, from_title=False),
+            HEADING, page=lambda host: CodexPage(port, from_title=False, use=use),
             visible=lambda: len(codex().index) > 0))
         shell.menus.add("title", MenuEntry(
             HEADING, page=lambda host: CodexPage(port, from_title=True),

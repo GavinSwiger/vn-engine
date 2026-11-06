@@ -358,7 +358,9 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("codex", "Codex"),
         Row("theme.codex", "Codex page"),
         Row("theme.codex.new", "New entry mark"),
-        Row("theme.codex.locked", "Locked entries"))),
+        Row("theme.codex.locked", "Locked entries"),
+        Row("hotbar", "Hotbar: quick slots for usable items"),          # F64 round 2
+        Row("words", "Using items", ("codex_use", "use_not_now", "hotbar")))),
     PageDef(CALENDAR, "Calendar", ()),                              # F63: generated
     PageDef("flowchart", "Flowchart", (
         Row("flowchart", "Flowchart page"),

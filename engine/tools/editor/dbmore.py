@@ -146,6 +146,8 @@ LABEL_MONEY = "Money"
 COUNT_TEXT = "Can hold more than one"
 MONEY_TEXT = "This is the money"
 LABEL_PRICE = "Price"                    # F64 round 2: a shop's default price
+LABEL_USE = "Use scene"                  # F64 round 2: the scene the bag's Use runs
+USE_NONE = "(none: no Use button)"
 LABEL_HEADING = "Heading"
 LABEL_WHERE = "Where"
 LABEL_SECONDS = "Seconds"
@@ -848,6 +850,8 @@ class MoreCategories(MeterSetup):
                 f["most"].set(int(now.get("count") or dec.ITEM_COUNT_MAX))
                 f["money"].set(now.get("money") is True)
                 f["price"].set(_price_text(now.get("price")))
+                if "use" in f:                                       # F64 round 2
+                    f["use"].set(now.get("use"))
             f["text"].set("\n\n".join(now.get("text") or ()))
             if "name" in f:
                 f["name"].set(entry.name)
@@ -873,6 +877,14 @@ class MoreCategories(MeterSetup):
                                on_change=lambda v: self._edit(
                                    entry, {"price": _price_value(str(v))}))
         grid.row(LABEL_PRICE, f["price"].widget)
+        scenes = sorted(self.win._scene_names()) if hasattr(self.win, "_scene_names") else []
+        use = values.get("use")
+        if use is not None and use not in scenes:
+            scenes.append(str(use))                     # a scene not found keeps its name
+        f["use"] = ChoiceField(grid.frame, [(None, USE_NONE)] + [(s, s) for s in scenes],
+                               use, width=24,
+                               on_change=lambda v: self._edit(entry, {"use": v or None}))
+        grid.row(LABEL_USE, f["use"].widget)
 
     def _codex_count(self, entry: db.Entry, on: bool) -> bool:
         """F64: Count on keeps (or sets) the most held; off makes a plain item again."""

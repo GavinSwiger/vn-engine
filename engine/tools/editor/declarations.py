@@ -592,6 +592,9 @@ def quote_text(text: str) -> str:
 
 # --- Codex (F21 lock tip|item) and routes (F19 lock route) ---
 
+# F64 round 2: an item's Use scene, a label name as the script writes it.
+_USE_NAME = re.compile(r"(?!\d)\w{1,64}")
+
 def codex_ok(values: Mapping[str, object]) -> bool:
     """True when ``values`` make a valid codex entry (a title, lengths within the engine's
     limits, a picture name made of image words, paragraphs of text)."""
@@ -612,6 +615,9 @@ def codex_ok(values: Mapping[str, object]) -> bool:
         return False
     price = values.get("price")                                      # F64 round 2
     if price is not None and (type(price) is not int or not 0 <= price <= ITEM_COUNT_MAX):
+        return False
+    use = values.get("use")                                          # F64 round 2: Use
+    if use is not None and (type(use) is not str or not _USE_NAME.fullmatch(use)):
         return False
     return all(type(p) is str and len(p) <= CODEX_PARAGRAPH_MAX for p in text)  # type: ignore[union-attr]
 
@@ -634,7 +640,8 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
     count: int | None = None
     money = False
     price: int | None = None
-    while i < len(rest) and rest[i] in ("count", "money", "image", "price"):  # F64
+    use: str | None = None
+    while i < len(rest) and rest[i] in ("count", "money", "image", "price", "use"):  # F64
         word = rest[i]
         if word == "money" and not money:
             money, i = True, i + 1
@@ -643,6 +650,10 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
                                           and len(rest[i + 1]) <= 9):
                 return None
             price, i = int(rest[i + 1]), i + 2
+        elif word == "use" and use is None:                          # F64 round 2: Use
+            if i + 1 >= len(rest) or not _USE_NAME.fullmatch(rest[i + 1]):
+                return None
+            use, i = rest[i + 1], i + 2
         elif word == "count" and count is None:
             i += 1
             if i + 2 < len(rest) and rest[i] == "0" and rest[i + 1] == "to":
@@ -658,7 +669,7 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
             count = found
         elif word == "image" and image is None:
             stop = i + 1
-            while stop < len(rest) and rest[stop] not in ("count", "money", "price"):
+            while stop < len(rest) and rest[stop] not in ("count", "money", "price", "use"):
                 stop += 1
             words = rest[i + 1:stop]
             if any(w in (",", ":") or w.startswith('"') for w in words):
@@ -692,6 +703,8 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
         values["money"] = True
     if price is not None:                   # F64 round 2: only when written
         values["price"] = price
+    if use is not None:                     # F64 round 2: the Use scene, when written
+        values["use"] = use
     return values if codex_ok(values) else None
 
 
@@ -712,7 +725,9 @@ def count_words(values: Mapping[str, object]) -> str:
         out += " count" if count == ITEM_COUNT_MAX else f" count 0 to {count}"
     out += " money" if money else ""
     price = values.get("price")                                      # F64 round 2
-    return out + (f" price {price}" if type(price) is int else "")
+    out += f" price {price}" if type(price) is int else ""
+    use = values.get("use")                                          # F64 round 2: Use
+    return out + (f" use {use}" if type(use) is str and use else "")
 
 
 def codex_lines(kind: str, name: str, values: Mapping[str, object]) -> tuple[str, ...]:

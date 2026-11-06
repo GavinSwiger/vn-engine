@@ -52,6 +52,12 @@ title's or a picker's) the money item's word and count ("Coins ×30", the port's
 are drawn at the right of the top row, also when the bag is empty. Ports without these
 methods (F23's) show the page as before.
 
+F64 round 2 (Use): with a ``UseAction`` (the game menu's page only), an item that has a Use
+scene shows a Use button where the pick button goes, enabled only while the item can be used
+now (``app/hotbar.ItemUser``); its ``hint`` ("Belt: 2", the item's hotbar slot) is drawn at
+the left of that row and the button takes the right half. The button is a focus group of its
+own, shown and hidden as the selection moves (``groups_changed``).
+
 Theme (01 §6): ``codex.new.fill_color`` (None: ``button.marker.fill_color``),
 ``codex.locked.text_color`` (None: ``button.disabled.text_color``), ``codex.image_height``.
 Words: ``codex`` (the heading), ``codex_tips``, ``codex_items``, ``codex_locked``,
@@ -191,6 +197,18 @@ class PickAction:
 
     word: str
     on_pick: Callable[[str], None]
+
+
+@dataclass(frozen=True)
+class UseAction:
+    """F64 round 2: the bag's Use button: its word, which items have one (``has``), which
+    can be used now (``can``), the call, and the hint beside it ("" for none)."""
+
+    word: str
+    has: Callable[[str], bool]
+    can: Callable[[str], bool]
+    on_use: Callable[[str], None]
+    hint: Callable[[str], str] = lambda _name: ""
 
 
 @dataclass(frozen=True)
@@ -397,8 +415,9 @@ class CodexView:
     def __init__(self, port: CodexPort, *, ui: CodexUi, filter: CodexFilter = CodexFilter(),
                  pick: PickAction | None = None, title: bool = False,
                  scope: "Callable[[], FocusScope | None] | None" = None,
-                 purse: bool = False) -> None:
+                 purse: bool = False, use: UseAction | None = None) -> None:
         self.port = port
+        self.use = use if not title and pick is None else None
         self.show_purse = purse and not title
         self.ui = ui
         self.filter = filter
@@ -438,6 +457,9 @@ class CodexView:
         self.pick_button = Button(lambda: pick.word if pick is not None else "", self._pick,
                                   enabled=lambda: self.selected is not None) \
             if pick is not None else None
+        self.use_button = Button(lambda: self.use.word if self.use is not None else "",
+                                 self._use, enabled=self._can_use) \
+            if self.use is not None else None
 
     # -- building --
 
@@ -463,8 +485,35 @@ class CodexView:
         groups.append(FocusGroup([self.body]))
         if self.pick_button is not None:
             groups.append(FocusGroup([self.pick_button]))
-        self._shown = (len(self.tabs) > 1, True, self.pick_button is not None)
+        if self.use_button is not None and self._use_shown():          # F64: Use
+            groups.append(FocusGroup([self.use_button]))
+        self._shown = (len(self.tabs) > 1, True, self.pick_button is not None,
+                       self._use_shown())
         return groups
+
+    # -- F64 round 2: Use --
+
+    def _use_shown(self) -> bool:
+        """The selected entry is an item with a Use scene (and this view has Use)."""
+        name = self.selected
+        if self.use is None or name is None:
+            return False
+        entry = next((r.entry for r in self.rows() if r.entry.name == name), None)
+        return entry is not None and entry.kind == "item" and self.use.has(name)
+
+    def _can_use(self) -> bool:
+        return (self._use_shown() and self.use is not None
+                and self.use.can(self.selected))           # type: ignore[arg-type]
+
+    def _use(self) -> None:
+        if self.use is not None and self.selected is not None and self._can_use():
+            self.use.on_use(self.selected)
+
+    def use_hint(self) -> str:
+        """The hint beside Use for the selected item ("" for none)."""
+        if not self._use_shown():
+            return ""
+        return self.use.hint(self.selected)                # type: ignore[union-attr,arg-type]
 
     def _refresh(self) -> None:
         """The model again, keeping ``selected`` while it is still listed (else the
@@ -540,8 +589,10 @@ class CodexView:
     def _layout_for(self, entry: CodexEntry | None, title_lines: int = CODEX_TITLE_LINES
                     ) -> CodexLayout:
         cfg = self.cfg
+        use = (self.use is not None and entry is not None and entry.kind == "item"
+               and self.use.has(entry.name))                       # F64: Use's row
         return codex_layout(self.box, self.scale, tabs=len(self.tabs),
-                            pick=self.pick is not None,
+                            pick=self.pick is not None or use,
                             picture=entry is not None and entry.image is not None,
                             purse=self.show_purse and port_purse(self.port) is not None,
                             title_lines=title_lines, image_height=cfg.codex.image_height,
@@ -587,6 +638,11 @@ class CodexView:
         self.body.box = layout.body
         if self.pick_button is not None and layout.pick is not None:
             self.pick_button.box = layout.pick
+        if self.use_button is not None and layout.pick is not None:    # F64: Use
+            pick = layout.pick
+            half = round(pick.w / 2)
+            self.use_button.box = (Box(pick.right - half, pick.y, half, pick.h)
+                                   if self.use_hint() else pick)
 
     def _fit(self, text: str, width: float, size: int, measure) -> str:
         key = (text, width, size, measure is self._heading_measure)
@@ -727,6 +783,9 @@ class CodexView:
         elif w is not None and w is self.pick_button and nav is Nav.ACTIVATE:
             self.pick_button.activate()
             return True
+        elif w is not None and w is self.use_button and nav is Nav.ACTIVATE:
+            self.use_button.activate()
+            return True
         return False
 
     # -- the host's calls --
@@ -737,11 +796,12 @@ class CodexView:
         Before that, at most one more body paragraph is laid out (``_fill_step``)."""
         self._fill_step()
         signature = self._sign()
-        if signature == self._signature:
+        if signature != self._signature:
+            self._refresh()
+        elif self.use is None:
             return
-        self._refresh()
         shown = (len(self.tabs) > 1, bool(self.tabs), self.pick_button is not None
-                 and bool(self.tabs))
+                 and bool(self.tabs), self._use_shown())
         if self._shown is not None and shown != self._shown:
             self.groups_changed = True
 
@@ -780,6 +840,12 @@ class CodexView:
             return
         if layout.picture is not None and entry.image is not None:
             self._draw_picture(canvas, entry.image, layout.picture)
+        hint = self.use_hint()                                   # F64: "Belt: 2"
+        if hint and layout.pick is not None:
+            pick = layout.pick
+            room = pick.w - round(pick.w / 2) - CODEX_GAP
+            p.text(hint, (pick.x, pick.y + pick.h / 2), area="panel", anchor="midleft",
+                   max_width=room)
         style = p.style("panel.heading")
         size = scaled(self.cfg.panel.heading.text_size, self.scale)
         font = dataclasses.replace(style.font, size=size)
@@ -893,9 +959,11 @@ class CodexPage(MenuPageBase):
 
     heading = HEADING
 
-    def __init__(self, port: CodexPort, *, from_title: bool) -> None:
+    def __init__(self, port: CodexPort, *, from_title: bool,
+                 use: UseAction | None = None) -> None:
         self.port = port
         self.from_title = from_title
+        self.use = use                                  # F64 round 2: the game menu's
         self.host: "PageHost | None" = None
         self.view: CodexView | None = None
 
@@ -903,7 +971,8 @@ class CodexPage(MenuPageBase):
         self.host = host
         if self.view is None:
             self.view = CodexView(self.port, ui=host.shell, title=self.from_title,
-                                  scope=lambda: host.scope, purse=not self.from_title)
+                                  scope=lambda: host.scope, purse=not self.from_title,
+                                  use=self.use)
         return self.view.build(body, host.painter.text_scale())
 
     def update(self, dt: float) -> None:
@@ -929,6 +998,6 @@ class CodexPage(MenuPageBase):
 
 
 __all__ = ["CodexFilter", "CodexPage", "CodexPort", "CodexRow", "CodexTab", "CodexUi",
-           "CodexView", "PickAction", "category_key", "codex_tabs", "fit_picture",
+           "CodexView", "PickAction", "UseAction", "category_key", "codex_tabs", "fit_picture",
            "locked_color", "new_dot_color", "port_count", "port_purse", "purse_text",
            "row_title"]

@@ -1172,6 +1172,41 @@ item), `engine/app/meters.py` (keeps the corner in line with the story's shown l
 - **Motion.** Shown and hidden meters fade with the corner; values change at once; a rank
   change pulses the panel. After a load or New Game the meters reappear at once (a cut).
 
+### Hotbar and the bag's Use button (F64 round 2)
+
+Spec: specs/F64-items/SPEC.md "Round 2". Modules: `engine/ui/hotbaritem.py` (the item),
+`engine/app/hotbar.py` (what the slots hold, the corner, input, and `ItemUser`, the one door
+for every use), `engine/ui/builtin/codex_page.py` (`UseAction`).
+
+- **Where.** A status-corner item (F61), so it never covers the say window, the NVL column,
+  the quick menu or the indicator row, and hides with the corner (under menus, with the box
+  hidden, in minigames). `[hotbar] place`, else bottom left: above the say window's left
+  edge. 4–8 slots fit one panel in every corner (8 slots ≈ 590 units at 100% text).
+- **Slots** (`s` = corner text size after the player's scale). One row, 0.75`s` apart; each
+  a 2.2`s` square well with an `s`/12 accent outline, and under it a strip one small line
+  tall (0.65`s`, at least 14): the number key at the left, a counted item's "×3" at the
+  right. A held item's picture is fitted into the well (inset 4 outlines); without one, its
+  title's first letters ("JT", "Ma") in the corner text color. An empty slot is the outline
+  and its key.
+- **Colors.** Text in `corner.text_color`, outlines in `corner.accent_color`, and no text
+  over a picture, so the corner's two W67 pairs cover the hotbar in all 28 schemes
+  (tests/ui/test_hotbaritem.py).
+- **Input.** 1–8 and the keypad use slot n (no Ctrl, Alt, Meta; no key repeat). A left click
+  on a slot uses it and never advances the line. Gamepad: X rings the first slot (outline
+  doubled, plus an inner ring), D-pad left/right move (wrapping), A uses it, B or X leaves;
+  while ringed, the slots take the pad. Keys work only while the hotbar is on screen.
+- **Refusals.** An empty slot does nothing. An item that can't be used now (the line still
+  typing or stopped at `{w}`, a menu, a minigame, a pause, another item's scene) shows the
+  notice "Not now" (`[words] use_not_now`).
+- **Motion.** The panel fades in and out with the corner (`corner.fade_ms`), a cut under
+  Reduce motion and after a load or New Game; nothing else moves.
+- **The bag's Use button.** On the game menu's Codex page, an item with a Use scene shows
+  Use in the detail panel's bottom row (where a picker's pick button goes), enabled only
+  while the item can be used now. When the item is on the hotbar the row's left half says
+  where ("Belt: 1": `[hotbar] word`, else the kit's, else `[words] hotbar`) and the button
+  takes the right half. Use closes the game menu and the item's scene starts at once. The
+  button is a focus group of its own (keys and gamepad reach it from the list or the body).
+
 ### Check roll (F59)
 
 Spec: specs/F59-choice-checks/SPEC.md and proposal I-05. Modules:

@@ -92,3 +92,16 @@ def test_w309_picture_called_hotbar(tmp_path):
     assert picture_warnings(statements, ("bg",)) == []
     found = picture_warnings(statements, ("hotbar", "bg"))
     assert [w.code for w in found] == ["W309"] and "show hotbar at center" in found[0].message
+
+
+def test_studio_reads_and_writes_use():
+    from engine.tools.editor import declarations as dec
+    line = 'lock item tea "Tea" in "Things" count 0 to 9 price 5 use drink_tea'
+    values = dec._codex_read(line.split()[3:], [])
+    assert values is not None and values["use"] == "drink_tea" and values["price"] == 5
+    assert dec.codex_lines("item", "tea", values)[0] == line
+    assert dec.codex_lines("item", "tea", {**values, "use": None})[0] == \
+        'lock item tea "Tea" in "Things" count 0 to 9 price 5'
+    assert not dec.codex_ok({**values, "use": "9lives"})
+    image = dec._codex_read('"Tea" image tea cup use drink_tea'.split(), [])
+    assert image is not None and image["image"] == "tea cup" and image["use"] == "drink_tea"

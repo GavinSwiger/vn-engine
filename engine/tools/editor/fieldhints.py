@@ -231,6 +231,9 @@ DATABASE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "Money": "Shown at the top of the bag, as Coins ×30. One item can be the money.",
         "Price": "What a shop asks for one, in the money. Empty: no price; a shop's stock "
                  "can still set one (Database ▸ Minigame data ▸ Shops).",
+        "Use scene": "Gives the item a Use button in the bag (and a hotbar slot). It runs "
+                     "this scene between lines, then the story goes on; the scene takes "
+                     "the item with lock item if using it uses it up.",
     },
     ROUTE: {
         "Script name": _NAME,
