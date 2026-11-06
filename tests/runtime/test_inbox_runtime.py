@@ -103,7 +103,8 @@ def test_saved_threads_refuse_anything_else():
     good = deliveries_json((thread,))
     assert deliveries_from_json(json.loads(json.dumps(good))) == (thread,)
     state = ItemsState(inbox=(thread,))
-    assert ItemsState.from_json(state.to_json()) == state
+    assert ItemsState.from_json({"held": [], "inbox": good}) == state   # a development save
+    assert "inbox" not in state.to_json()                               # version 1: top level
     assert ItemsState.from_json({"held": []}) is EMPTY_ITEMS          # before F65
     assert "inbox" not in ItemsState(("key",)).to_json()
 
@@ -111,6 +112,14 @@ def test_saved_threads_refuse_anything_else():
         data = copy.deepcopy(good)
         fn(data)
         return {"held": [], "inbox": data}
+
+    base = {"format": 1, "identity_scheme": 1, "position": {"sid": "s", "at": ["start", []]},
+            "call_stack": [], "variables": {}, "dice": "0" * 16}
+    assert GameState.from_json({**base, "inbox": good}).items == state
+    with pytest.raises(StateInvalid):                               # never in both places
+        GameState.from_json({**base, "inbox": good, "items": {"held": [], "inbox": good}})
+    with pytest.raises(StateInvalid):
+        GameState.from_json({**base, "inbox": broken(lambda d: d.clear())["inbox"]})
 
     for fn in (lambda d: d.clear(), lambda d: d[0].pop("time"),
                lambda d: d[0].__setitem__("extra", 1),
@@ -170,9 +179,13 @@ def test_a_finished_chat_joins_history_and_the_inbox_and_rolls_back(tmp_path):
     # Saved exactly; a save from before F65 loads with an empty inbox.
     data = json.loads(json.dumps(after.to_json()))
     assert GameState.from_json(data) == after
+    assert "inbox" not in data["items"]                     # version 1: a top-level key
     old = copy.deepcopy(data)
-    old["items"].pop("inbox")
+    old.pop("inbox")
     assert GameState.from_json(old).items == EMPTY_ITEMS
+    dev = copy.deepcopy(data)                               # a development save: in items
+    dev["items"]["inbox"] = dev.pop("inbox")
+    assert GameState.from_json(dev) == after
     # Rolled back: the chat's start has no thread; the later state brings it back.
     assert interp.restore(before).result is RestoreResult.OK
     assert interp.codex.deliveries() == () and interp.checkpoint().items.inbox == ()

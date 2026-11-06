@@ -189,7 +189,7 @@ def test_a_reply_is_a_step_with_history_and_read_by_inbox_reply(tmp_path):
     assert "She will come." in str(interp.current.body)
     # Saved with the reply; a load reads it.
     assert round_trip(after) == after
-    saved = after.to_json()["items"]["inbox"][0]
+    saved = after.to_json()["inbox"][0]
     assert saved["ask"] == [["yes", "I will."], ["no", "Not this year."]]
     assert saved["reply"] == "yes"
     # Back once: the same line, unanswered; forward gives the same reply again.
@@ -289,5 +289,5 @@ def test_a_round_2_save_state_loads(tmp_path):
     lines = ["send late from ren", '"One."']
     interp = _start(story_game(tmp_path, lines, top=TOP))
     data = interp.checkpoint().to_json()
-    assert "ask" not in data["items"]["inbox"][0]
+    assert "ask" not in data["inbox"][0]
     assert GameState.from_json(data) == interp.checkpoint()

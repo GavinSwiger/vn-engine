@@ -64,9 +64,10 @@ _REQUIRED_KEYS: Final = frozenset(("format", "identity_scheme", "position", "cal
 _OPTIONAL_KEYS: Final = frozenset(("stage", "audio", "choices", "history", "chapter",
                                    "points", "rollback", "nvl", "items", "minigame", "flow",
                                    "glitch", "window_title", "ui_style", "save_block",
-                                   "load_block", "clock", "triggers"))
+                                   "load_block", "clock", "triggers", "hotbar", "inbox"))
 # later features: one key each (F04, F08, F07, F13, F18, F22, F14, F17, F21, F23, F20, F28,
-# F30); F32's ``ui`` is three keys (its 04 §3, C6)
+# F30); F32's ``ui`` is three keys (its 04 §3, C6); F64's ``hotbar`` and F65's ``inbox`` hold
+# ``ItemsState.bar`` and ``.inbox`` (version 1; development saves kept them in ``items``)
 ITEMS_HELD_MAX: Final = 1_000               # F21: names in a saved ``items`` (declared + hidden)
 ITEM_COUNT_SAVED_MAX: Final = 999_999       # F64: the most of one item a save may hold
 # F03's engine names, frozen here (F22 07 I-9, F14 07 I-1): a name the engine reserves after a
@@ -110,12 +111,13 @@ class ItemsState:
     ``()`` means one of each. JSON adds ``"counts": [n, …]`` only when some count isn't 1, so
     a save from before F64 (no ``counts``) loads as one of each held item.
 
-    F64 round 2: ``bar`` is whether ``show hotbar`` put the hotbar on screen; JSON adds
-    ``"bar": true`` only then, so older saves load with it hidden.
-
-    F65: ``inbox`` holds the Inbox's deliveries (finished chats and, round 2, sent messages),
-    oldest first (``runtime/inbox.py``); JSON adds ``"inbox": [...]`` only when there is one,
-    so older saves load with an empty inbox."""
+    F64 round 2: ``bar`` is whether ``show hotbar`` put the hotbar on screen. F65: ``inbox``
+    holds the Inbox's deliveries (finished chats and, round 2, sent messages), oldest first
+    (``runtime/inbox.py``). Both are saved as top-level keys of their own, not in ``items``
+    (``items_extra_json``: ``"hotbar": true`` only when shown, ``"inbox": [...]`` only when
+    there is one), so older saves load with the hotbar hidden and an empty inbox.
+    ``from_json`` still reads ``"bar"`` and ``"inbox"`` inside ``items``: development saves
+    from before version 1 wrote them there."""
 
     held: tuple[str, ...] = ()
     counts: tuple[int, ...] = ()
@@ -126,21 +128,20 @@ class ItemsState:
         return self.counts[index] if self.counts else 1
 
     def to_json(self) -> dict[str, Value]:
+        """``items``: ``{"held": [...], "counts"?: [...]}``. ``bar`` and ``inbox`` are
+        ``items_extra_json``'s top-level keys."""
         out: dict[str, Value] = {"held": list(self.held)}
         if self.counts and any(n != 1 for n in self.counts):
             out["counts"] = list(self.counts)
-        if self.bar:
-            out["bar"] = True
-        if self.inbox:
-            out["inbox"] = deliveries_json(self.inbox)
         return out
 
     @staticmethod
     def from_json(obj: object) -> "ItemsState":
-        """Validate untrusted ``obj``: exactly ``{"held": [...]}`` with at most
-        ``ITEMS_HELD_MAX`` different names, each ``points.saved_name_ok`` (F22's saved-name
-        check, shared: no live word set, F21 07 I-8). Anything else is
-        ``StateInvalid("items")``, never echoing the input."""
+        """Validate untrusted ``obj``: ``{"held": [...]}`` with at most ``ITEMS_HELD_MAX``
+        different names, each ``points.saved_name_ok`` (F22's saved-name check, shared: no
+        live word set, F21 07 I-8), and ``counts``; a development save's ``bar`` and
+        ``inbox`` too. Anything else is ``StateInvalid("items")``, never echoing the
+        input."""
         if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts", "bar",
                                                                    "inbox"}:
             raise StateInvalid("items")
@@ -161,7 +162,7 @@ class ItemsState:
         if bar is not True and "bar" in obj:
             raise StateInvalid("items")
         inbox: tuple[Delivery, ...] = ()
-        if "inbox" in obj:                  # F65; absent (an older save): no threads
+        if "inbox" in obj:                  # F65 (a development save); absent: no threads
             try:
                 inbox = deliveries_from_json(obj["inbox"])
             except Exception:
@@ -172,6 +173,42 @@ class ItemsState:
 
 
 EMPTY_ITEMS: Final = ItemsState()
+
+
+def items_extra_json(items: ItemsState) -> dict[str, object]:
+    """F64's ``"hotbar": true`` only when the hotbar is shown and F65's ``"inbox": [...]``
+    only when there is a delivery: top-level keys, so a state with neither writes what it
+    wrote before them."""
+    out: dict[str, object] = {}
+    if items.bar:
+        out["hotbar"] = True
+    if items.inbox:
+        out["inbox"] = deliveries_json(items.inbox)
+    return out
+
+
+def _items_from_json(obj: dict) -> ItemsState:
+    """``items`` with the top-level ``hotbar`` and ``inbox`` (version 1). A development save
+    holds them inside ``items`` instead; a state holding them in both places is refused."""
+    items = EMPTY_ITEMS                     # F21: a state from before F21 holds no items
+    if "items" in obj:
+        items = ItemsState.from_json(obj["items"])          # StateInvalid("items") only
+    if "hotbar" not in obj and "inbox" not in obj:
+        return items
+    if items.bar or items.inbox:
+        raise StateInvalid("items")
+    bar = obj.get("hotbar", False)
+    if bar is not True and "hotbar" in obj:
+        raise StateInvalid("hotbar")
+    inbox: tuple[Delivery, ...] = ()
+    if "inbox" in obj:
+        try:
+            inbox = deliveries_from_json(obj["inbox"])
+        except Exception:
+            raise StateInvalid("inbox") from None
+    if not items.held and not bar and not inbox:
+        return EMPTY_ITEMS
+    return ItemsState(items.held, items.counts, bar, inbox)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -250,8 +287,8 @@ class GameState:
             "flow": self.flow.to_json(),                        # F20: always written
             "glitch": self.glitch.to_json(),                    # F28: always written
         } | _title_json(self.window_title) | self.ui.to_json() \
-            | clock_json(self.clock) | triggers_json(self.triggers)   # F30, F32, F63, F65:
-                                                                    # only when set
+            | clock_json(self.clock) | triggers_json(self.triggers) \
+            | items_extra_json(self.items)      # F30, F32, F63, F65, F64/F65: only when set
 
     def save_problem(self) -> str | None:
         """F11 C11: a reason word (``^[a-z_]{1,40}$``) if this state, written out and read
@@ -435,9 +472,7 @@ def _from_json(obj: object) -> GameState:
     if "nvl" in obj:
         nvl = NvlState.from_json(obj["nvl"])                # StateInvalid("nvl") only
 
-    items = EMPTY_ITEMS                     # F21: a state from before F21 holds no items
-    if "items" in obj:
-        items = ItemsState.from_json(obj["items"])          # StateInvalid("items") only
+    items = _items_from_json(obj)           # F21, F64's hotbar, F65's inbox
 
     minigame = EMPTY_MINIGAME               # F23: a state from before F23 waits at none
     if "minigame" in obj:                   # StateInvalid("minigame") only

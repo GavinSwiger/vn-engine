@@ -116,7 +116,7 @@ def test_send_is_saved_rolled_back_and_rerun_forward_exactly(tmp_path):
     assert interp.checkpoint().items == three.items and not _arrived(out)
     # Saved exactly, from and message included; a load puts the threads back.
     assert round_trip(three) == three
-    saved = three.to_json()["items"]["inbox"]
+    saved = three.to_json()["inbox"]
     assert [(d["from"], d["message"]) for d in saved] == [("hana", "invite"), ("ren", "late")]
     interp.restore(round_trip(two))
     interp.run(10_000)

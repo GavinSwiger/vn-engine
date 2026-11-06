@@ -2,11 +2,13 @@
 saves inside a use's scene, going back and forward over a use, and ``show hotbar`` /
 ``hide hotbar`` (specs/F64-items/SPEC.md "Round 2")."""
 
+import pytest
+
 from engine.runtime import itemuse
 from engine.runtime.commands import Advance, Say, StepBack, StepForward
 from engine.runtime.interpreter import RestoreResult, Status
 from engine.runtime.itemuse import NO_ITEM, NOT_HELD, NOT_NOW, UseItem
-from engine.runtime.state import EMPTY_ITEMS, ItemsState
+from engine.runtime.state import EMPTY_ITEMS, GameState, ItemsState, StateInvalid
 from tests.runtime.conftest import round_trip
 from tests.runtime.effects_story import launched, story_game, take_all
 
@@ -129,7 +131,15 @@ def test_show_and_hide_hotbar_saved(tmp_path):
     shown = interp.checkpoint()
     assert interp.codex.bar_shown() and shown.items.bar
     assert round_trip(shown).items == ItemsState((), (), True)
-    assert shown.items.to_json() == {"held": [], "bar": True}
+    data = shown.to_json()                  # version 1: a top-level key, not in items
+    assert data["items"] == {"held": []} and data["hotbar"] is True
+    old = {**data, "items": {"held": [], "bar": True}}          # a development save
+    del old["hotbar"]
+    assert GameState.from_json(old).items == shown.items
+    with pytest.raises(StateInvalid):                           # never in both places
+        GameState.from_json({**old, "hotbar": True})
+    with pytest.raises(StateInvalid):
+        GameState.from_json({**data, "hotbar": False})
     _post(interp, Advance(interp.current.sid))
     assert not interp.codex.bar_shown() and interp.checkpoint().items is EMPTY_ITEMS
     _post(interp, StepBack(1))
