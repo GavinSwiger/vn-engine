@@ -2728,13 +2728,13 @@ script/main.vns, line 10: lanterns is a tip, not an item. Write unlock tip lante
 script/main.vns, line 10: brass_key is an item, not a tip. Write lock item brass_key.
 
 [F21-07-E255-unknown-1]
-script/main.vns, line 10: there is no codex.itmes. Did you mean "items"? codex has tips and items.
+script/main.vns, line 10: there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.
 
 [F21-07-E255-unknown-2]
-script/main.vns, line 10: there is no codex.tps. Did you mean "tips"? codex has tips and items.
+script/main.vns, line 10: there is no codex.tps. Did you mean "tips"? codex has tips, items, and count.
 
 [F21-07-E255-unknown-3]
-script/main.vns, line 10: there is no codex.qqqq. codex has tips and items.
+script/main.vns, line 10: there is no codex.qqqq. codex has tips, items, and count.
 
 [F21-07-E255-items-1]
 script/main.vns, line 10: Python can't change codex.items. Use unlock item and lock item.

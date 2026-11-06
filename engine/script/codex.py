@@ -14,6 +14,14 @@ body=codex_body)`` and the same for ``item``.
   E250's ``declare`` form; anything else left over is F19's E244 ``need`` form.
 
 ``tip``, ``item``, and ``in`` are read only in these positions and stay usable as names.
+
+**F64 round 1 (item counts, the purse; specs/F64-items/SPEC.md).** An item declaration can
+have ``count`` (up to ``ITEM_COUNT_MAX``), ``count <n>`` or ``count 0 to <n>`` (at most ``n``
+held), and ``money`` (the purse's item; implies ``count``), anywhere after the title (``in``
+still before ``image``; a picture's words stop at ``in``, ``count``, ``money``). In a label, ``unlock item
+<name> <n>`` adds ``n`` and ``lock item <name> <n>`` takes ``n`` (never below 0); no number is
+1, as before. ``count`` and ``money`` are words only there (ADR-0010). Messages: E436 (the
+amount), E437 (``count``/``money`` on a tip), E438 (the count's range).
 Messages: E250 (shape), E252 (lengths and tags), F04's image-name codes for ``image``, F05's
 tag codes in a paragraph, E60–E64 for a name. The whole-game checks (E251, E253, E254,
 W140, W142) are ``checks.py``'s; ``Program.codex`` and ``Program.codex_categories`` are
@@ -35,7 +43,7 @@ from engine.script.identity import register_declaration
 from engine.script.lexer import HEAD_NARRATION, STRING, RawStatement
 from engine.script.nodes import Node, Statement
 from engine.script.routes import WORD_LOCK, LOCK_TARGETS, LockTarget, register_target
-from engine.script.stage import TEXT, WORD, _Chunk, _image_name, _written
+from engine.script.stage import NUMBER, TEXT, WORD, _Chunk, _image_name, _written
 from engine.script.statement_docs import StatementDoc, register_doc
 from engine.script.statements import ParseContext, line_body
 from engine.script.texttags import NameMark, PauseMark, Span, TaggedText, VarMark, WaitMark
@@ -47,6 +55,9 @@ WORD_TIP: Final = "tip"
 WORD_ITEM: Final = "item"
 WORD_IN: Final = "in"
 WORD_IMAGE: Final = "image"
+WORD_COUNT: Final = "count"               # F64: lock item coin "Coins" count 0 to 999
+WORD_MONEY: Final = "money"               # F64: the purse's item
+WORD_TO: Final = "to"
 KINDS: Final[tuple[str, ...]] = (WORD_TIP, WORD_ITEM)
 NAME_MAX: Final = 64                      # code points (E252)
 TITLE_MAX: Final = 60                     # code points as shown (E252)
@@ -56,6 +67,7 @@ PARAGRAPH_MAX: Final = 2_000              # code points of one paragraph as writ
 TIPS_MAX: Final = 1_000                   # tip declarations in a story (E254)
 ITEMS_MAX: Final = 1_000                  # item declarations in a story (E254)
 CATEGORIES_MAX: Final = 24                # categories, the defaults included (E254)
+ITEM_COUNT_MAX: Final = 999_999           # F64: the most of one item a player can hold
 # The ``[words]`` key of each kind's default category (01 §6).
 DEFAULT_WORDS: Final[dict[str, str]] = {WORD_TIP: "codex_tips", WORD_ITEM: "codex_items"}
 
@@ -86,6 +98,9 @@ class CodexEntry:
     sid: str
     file: str
     line: int
+    cap: int = 1                          # F64: the most held (1: a plain item)
+    counted: bool = False                 # F64: declared with ``count`` (shown as "×n")
+    money: bool = False                   # F64: the purse's item
 
 
 @dataclass(slots=True, kw_only=True)
@@ -99,19 +114,25 @@ class CodexEntryDecl(Node):
     category: str | None = None
     image: str | None = None
     paragraphs: tuple[TaggedText, ...] = ()
+    count: int | None = None              # F64: ``count``'s most held; None: a plain item
+    money: bool = False                   # F64: ``money``
 
 
 @dataclass(slots=True, kw_only=True)
 class CodexLock(Statement):
-    """``lock|unlock tip|item <name>`` in a label. ``VOICE_TRANSPARENT``; not a
-    checkpoint."""
+    """``lock|unlock tip|item <name> [<amount>]`` in a label. ``VOICE_TRANSPARENT``; not a
+    checkpoint. ``amount`` (F64) is how many to add or take (1 when none is written); a
+    written amount joins the identity, so a plain line keeps its sid."""
 
     unlock: bool
     kind: Kind
     name: str
+    amount: int = 1
+    written: bool = False                 # F64: an amount was written
 
     def identity_key(self) -> tuple[str, ...]:
-        return ("unlock" if self.unlock else "lock", self.kind, self.name)
+        key = ("unlock" if self.unlock else "lock", self.kind, self.name)
+        return key + (str(self.amount),) if self.written else key
 
 
 # --- Parsing (04 §6.1) --------------------------------------------------------------------------
@@ -171,44 +192,117 @@ def _decl(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
         return None
     at = 2
     category: str | None = None
-    if at < len(chunks) and _is_word(chunks[at], WORD_IN):
-        if at + 1 >= len(chunks) or chunks[at + 1].kind != TEXT:
-            ctx.error("E250", "in")
-            return None
-        category = _plain(ctx, _string(raw, chunks[at + 1]), "category", CATEGORY_MAX, kind)
-        if category is None:
-            return None
-        at += 2
     image: str | None = None
-    if at < len(chunks) and _is_word(chunks[at], WORD_IMAGE):
-        stop = at + 1
-        while (stop < len(chunks) and chunks[stop].kind != TEXT
-               and not _is_word(chunks[stop], WORD_IN)):
-            stop += 1
-        image = _image_name(ctx, WORD_IMAGE, raw, chunks[at + 1:stop])
-        if image is None:
+    count: int | None = None
+    money = False
+    seen: set[str] = set()
+    while at < len(chunks):
+        chunk = chunks[at]
+        word = chunk.text if chunk.kind == WORD else ""
+        if word in seen or word not in (WORD_IN, WORD_IMAGE, WORD_COUNT, WORD_MONEY)                 or (word == WORD_IN and WORD_IMAGE in seen):     # F21: in before image
+            break
+        seen.add(word)
+        if word in (WORD_COUNT, WORD_MONEY) and kind != WORD_ITEM:
+            ctx.error("E437", word, name)
             return None
-        at = stop
+        if word == WORD_IN:
+            if at + 1 >= len(chunks) or chunks[at + 1].kind != TEXT:
+                ctx.error("E250", "in")
+                return None
+            category = _plain(ctx, _string(raw, chunks[at + 1]), "category", CATEGORY_MAX,
+                              kind)
+            if category is None:
+                return None
+            at += 2
+        elif word == WORD_IMAGE:
+            stop = at + 1
+            while (stop < len(chunks) and chunks[stop].kind != TEXT
+                   and not any(_is_word(chunks[stop], w)
+                               for w in (WORD_IN, WORD_COUNT, WORD_MONEY))):
+                stop += 1
+            image = _image_name(ctx, WORD_IMAGE, raw, chunks[at + 1:stop])
+            if image is None:
+                return None
+            at = stop
+        elif word == WORD_COUNT:
+            found = _count(ctx, chunks, at + 1, name)
+            if found is None:
+                return None
+            count, at = found
+        else:
+            money = True
+            at += 1
     if at < len(chunks):
         ctx.error("E250", "left", _written(raw, chunks[at:]), kind)
         return None
+    if money and count is None:
+        count = ITEM_COUNT_MAX                       # money is always counted
     return CodexEntryDecl(file=raw.file, line=raw.line, end_line=raw.end_line,
                           column=raw.column, kind=kind, name=name, title=title,
-                          category=category, image=image)
+                          category=category, image=image, count=count, money=money)
+
+
+def _whole(written: str) -> int | None:
+    """A whole number as written (digits only, no sign or point), or None."""
+    if written.isascii() and written.isdigit() and len(written) <= 9:
+        return int(written)
+    return None
+
+
+def _count(ctx: ParseContext, chunks: list[_Chunk], at: int,
+           name: str) -> tuple[int, int] | None:
+    """``count``'s range from ``chunks[at]``: nothing (``ITEM_COUNT_MAX``), ``<n>``, or
+    ``0 to <n>``; the most held and the next index. E438 for anything else."""
+    if at >= len(chunks) or chunks[at].kind != NUMBER:
+        return ITEM_COUNT_MAX, at
+    first = chunks[at].text
+    if not (at + 1 < len(chunks) and _is_word(chunks[at + 1], WORD_TO)):
+        high = _whole(first)
+        if high is None or not 1 <= high <= ITEM_COUNT_MAX:
+            ctx.error("E438", "high", first, name, ITEM_COUNT_MAX)
+            return None
+        return high, at + 1
+    if _whole(first) != 0:
+        ctx.error("E438", "low", first, name)
+        return None
+    if at + 2 >= len(chunks) or chunks[at + 2].kind != NUMBER:
+        ctx.error("E438", "to", name)
+        return None
+    high = _whole(chunks[at + 2].text)
+    if high is None or not 1 <= high <= ITEM_COUNT_MAX:
+        ctx.error("E438", "high", chunks[at + 2].text, name, ITEM_COUNT_MAX)
+        return None
+    return high, at + 3
 
 
 def _lock(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
           chunks: list[_Chunk], colon: bool) -> CodexLock | None:
-    """The in-label form: one name, nothing else."""
+    """The in-label form: one name, then (F64) an optional amount."""
     if not chunks or chunks[0].kind != WORD:
         ctx.error("E244", "need", tuple(LOCK_TARGETS))
         return None
+    amount, written = 1, False
+    word = "unlock" if unlock else "lock"
     if len(chunks) > 1:
         if not unlock and chunks[1].kind == TEXT:
             ctx.error("E250", "declare", kind, canonical_name(chunks[0].text), chunks[1].text)
+            return None
+        shown = canonical_name(chunks[0].text)
+        if len(chunks) == 2 and chunks[1].kind == NUMBER:
+            if kind != WORD_ITEM:
+                ctx.error("E436", "tip", word, shown, chunks[1].text)
+                return None
+            found = _whole(chunks[1].text)
+            if found is None or not 1 <= found <= ITEM_COUNT_MAX:
+                ctx.error("E436", "number", word, shown, chunks[1].text, ITEM_COUNT_MAX)
+                return None
+            amount, written = found, True
+        elif len(chunks) == 2 and chunks[1].kind == WORD and kind == WORD_ITEM:
+            ctx.error("E436", "word", word, shown, chunks[1].text)
+            return None
         else:
             ctx.error("E244", "need", tuple(LOCK_TARGETS))
-        return None
+            return None
     name = _name(ctx, chunks[0], kind)
     if name is None:
         return None
@@ -216,7 +310,7 @@ def _lock(kind: Kind, raw: RawStatement, ctx: ParseContext, unlock: bool,
         ctx.error("E110", "colon", raw.word)
         return None
     return CodexLock(file=raw.file, line=raw.line, end_line=raw.end_line, column=raw.column,
-                     unlock=unlock, kind=kind, name=name)
+                     unlock=unlock, kind=kind, name=name, amount=amount, written=written)
 
 
 def parse_codex_decl(raw: RawStatement, ctx: ParseContext, unlock: bool,
@@ -362,7 +456,9 @@ def build_entries(decls: Iterable[CodexEntryDecl]
         entries.append(CodexEntry(
             name=decl.name, kind=decl.kind, title=decl.title, category=category,
             image=decl.image, paragraphs=decl.paragraphs, sid=decl.sid,
-            file=decl.file.ref, line=decl.line))
+            file=decl.file.ref, line=decl.line,
+            cap=decl.count if decl.count is not None else 1,
+            counted=decl.count is not None, money=decl.money))
     return tuple(entries), tuple(categories.values())
 
 
@@ -376,19 +472,24 @@ DOCS_HEADING: Final = "lock tip, lock item, unlock (codex)"   # docs/script-lang
 DOCS: Final = (
     StatementDoc(
         WORD_LOCK, "Codex entry", "Declarations",
-        'lock tip|item <name> "title" [in "category"] [image <name>]',
+        'lock tip|item <name> "title" [in "category"] [count [0 to <n>]] [money] '
+        '[image <name>]',
         "Declares a codex tip, kept across playthroughs, or an item, kept in this "
-        "playthrough, with its text under it.",
+        "playthrough, with its text under it. An item with count can be held many times; "
+        "money shows it at the top of the bag.",
         # An item, so the doc game's dev load gives no W142 (a tip no unlock tip line names).
         'lock item red_lantern "Red Lantern" in "Things":\n    "Bought at Daichi\'s stall."',
         DOCS_HEADING, "F21", fields=("red_lantern", "Red Lantern", "Things")),
     StatementDoc(
-        WORD_LOCK, "Forget a tip or take an item", "Story flow", "lock tip|item <name>",
-        "Makes the game forget a tip, or takes an item away from the player.",
+        WORD_LOCK, "Forget a tip or take an item", "Story flow",
+        "lock tip|item <name> [<amount>]",
+        "Makes the game forget a tip, or takes an item away from the player (with a number, "
+        "takes that many, never below none).",
         "lock item brass_key", DOCS_HEADING, "F21", fields=("brass_key",)),
     StatementDoc(
-        "unlock", "Give a tip or an item", "Story flow", "unlock tip|item <name>",
-        "Adds a tip to the codex for good, or gives the player an item.",
+        "unlock", "Give a tip or an item", "Story flow", "unlock tip|item <name> [<amount>]",
+        "Adds a tip to the codex for good, or gives the player an item (with a number, that "
+        "many).",
         "unlock tip lanterns", DOCS_HEADING, "F21", fields=("lanterns",)),
 )
 
@@ -411,7 +512,7 @@ def register_words() -> None:
 register_declaration(CodexEntryDecl, lambda node: "codex:" + node.name)  # type: ignore[attr-defined]
 register_words()
 
-__all__ = ["CATEGORIES_MAX", "CATEGORY_MAX", "CodexCategory", "CodexEntry", "CodexEntryDecl",
+__all__ = ["ITEM_COUNT_MAX", "WORD_COUNT", "WORD_MONEY", "CATEGORIES_MAX", "CATEGORY_MAX", "CodexCategory", "CodexEntry", "CodexEntryDecl",
            "CodexLock", "DEFAULT_WORDS", "DOCS", "DOCS_HEADING", "ITEMS_MAX", "ITEM_TARGET", "KINDS",
            "NAME_MAX", "PARAGRAPHS_MAX", "PARAGRAPH_MAX", "TIPS_MAX", "TIP_TARGET",
            "TITLE_MAX", "build_entries", "codex_body", "parse_codex_decl", "parse_codex_lock",

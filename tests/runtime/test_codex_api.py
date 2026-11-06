@@ -110,7 +110,7 @@ def test_ac11_reads_are_fresh_lists(tmp_path):
 
 def test_ac12_the_codex_value(tmp_path):
     reader = CodexReader()
-    assert dir(reader) == ["items", "tips"] and repr(reader) == "<codex>"
+    assert dir(reader) == ["count", "items", "tips"] and repr(reader) == "<codex>"
     for name in ("tips", "items", "zzz"):
         with pytest.raises(CodexNotStarted) as caught:
             getattr(reader, name)
@@ -124,7 +124,7 @@ def test_ac12_the_codex_value(tmp_path):
     with pytest.raises(CodexNoAttr) as caught:
         reader.itmes  # noqa: B018
     assert caught.value.message == ('there is no codex.itmes. Did you mean "items"? codex has '
-                                    "tips and items.")
+                                    "tips, items, and count.")
     with pytest.raises(CodexReadOnly) as caught:
         reader.items = []
     assert caught.value.message == "Python can't change codex.items. Use unlock item and lock item."

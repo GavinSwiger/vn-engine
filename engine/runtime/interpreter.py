@@ -1293,8 +1293,7 @@ class Interpreter:
             elif name not in self.reserved and not name.startswith("_"):
                 variables[name] = freeze(value)
         points = self.points.merge(state.points)
-        held = self.codex.merged(state.items)
-        items = state.items if held == state.items.held else ItemsState(held)
+        items = self.codex.merged(state.items)              # F64: counts clamped too
         # 4. The transaction: G and dice change here, and only here until the commit.
         self._restore_warnings = []
         self._restore_attached = None                       # F07: set by present_menu

@@ -217,10 +217,10 @@ def test_ac12_e256(tmp_path):
                                                        "unlock tip.")
     e = _failure(run_c(load_c(tmp_path / "e", S='$ x = getattr(codex, "itmes")')))
     assert (e.code, e.line, e.message) == ("E256", 10, 'there is no codex.itmes. Did you mean '
-                                                       '"items"? codex has tips and items.')
+                                                       '"items"? codex has tips, items, and count.')
     e = _failure(run_c(load_c(tmp_path / "f", S='$ n = "zzz"⏎[4]$ x = getattr(codex, n)')))
-    assert (e.code, e.line, e.message) == ("E256", 11, "there is no codex.zzz. codex has tips "
-                                                       "and items.")
+    assert (e.code, e.line, e.message) == ("E256", 11, "there is no codex.zzz. codex has tips, "
+                                                       "items, and count.")
 
 
 # --- AC-F21-13 — W141 -----------------------------------------------------------------------

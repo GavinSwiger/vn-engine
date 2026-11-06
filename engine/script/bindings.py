@@ -104,7 +104,7 @@ KIND_VALUE = "value"            # a define, default, or persistent default value
 # "codex").
 ROOTS: tuple[str, ...] = ("persistent", "points", "codex")
 CODEX = "codex"
-CODEX_ATTRS: tuple[str, ...] = ("tips", "items")      # F21: what codex has (E255)
+CODEX_ATTRS: tuple[str, ...] = ("tips", "items", "count")  # F21, F64: what codex has (E255)
 POINTS = "points"
 HIGHEST = "highest"               # points.highest(...) is a method, not a meter read
 RANK = "rank"                     # F62: so is points.rank(...) (meterranks.py checks its uses)

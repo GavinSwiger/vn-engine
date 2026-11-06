@@ -3424,7 +3424,7 @@ def _e255(form: str = "unknown", *args: object) -> str:
     text = f"there is no codex.{show_name(str(name))}."
     if suggestion is not None:
         text += " " + _did_you_mean(str(suggestion), str(name))
-    return text + " codex has tips and items."
+    return text + " codex has tips, items, and count."
 
 
 def _e256(form: str = "define", *args: object) -> str:
@@ -3460,6 +3460,105 @@ def _w142(name: str = "river_god") -> str:
     name = show_name(name)
     return (f"tip {name} is declared, but no unlock tip {name} line names it, so players get "
             "it only if code unlocks it.")
+
+
+# --- F64 Items 2.0, round 1: item counts and the purse (specs/F64-items/SPEC.md) ---------------
+# Load E436-E438 (engine/script/codex.py, parse); E439, E440, E441 (load form), W305-W307
+# (engine/script/itemcounts.py, the whole-game checks); run E440 and E441 (runtime/codex.py's
+# ``items`` and ``codex.count``).
+
+def _e436(form: str = "number", *args: object) -> str:
+    """``number`` (word, name, written, most); ``word`` (word, name, written); ``tip`` (word,
+    name, written)."""
+    word, name, written = (args + ("unlock", "coin", "0")[len(args):])[:3]
+    name = show_name(str(name))
+    if form == "tip":
+        return (f"a tip is given or forgotten all at once, so {word} tip {name} takes no "
+                f'number. Remove "{show(str(written))}".')
+    if form == "word":
+        return (f'{word} item {name} takes a number after the name, but found '
+                f'"{show(str(written))}". Write e.g. {word} item {name} 3.')
+    most = args[3] if len(args) > 3 else 999_999
+    text = (f'the amount in {word} item {name} is a whole number from 1 to {_n(most)}, but '
+            f'found "{show(str(written))}".')
+    if word == "unlock" and str(written).startswith("-"):
+        return text + f" To take some away, write lock item {name} {str(written)[1:]}."
+    return text + f" Write e.g. {word} item {name} 3."
+
+
+def _e437(word: str = "count", name: str = "lanterns") -> str:
+    name = show_name(name)
+    if word == "money":
+        return (f"tip {name} can't be the money: only an item can, e.g. lock item coin "
+                '"Coins" money.')
+    return (f"tip {name} can't have a count: a tip is known or not. Only items have counts, "
+            'e.g. lock item coin "Coins" count 0 to 999.')
+
+
+def _e438(form: str = "high", *args: object) -> str:
+    """``low`` (written, name); ``to`` (name); ``high`` (written, name, most)."""
+    if form == "low":
+        return ("a count always starts at 0, so write count 0 to 999 (or count 999) for the "
+                "most the player can hold.")
+    if form == "to":
+        return "count 0 to needs the most the player can hold after it, e.g. count 0 to 999."
+    written, name, most = (args + ("0", "coin", 999_999)[len(args):])[:3]
+    return (f"the most of {show_name(str(name))} a player can hold is a whole number from 1 "
+            f'to {_n(most)}, but found "{show(str(written))}". Write e.g. count 0 to 999.')
+
+
+def _e439(name: str = "gold", other: str = "coin",
+          place: Place = ("script/items.vns", 1)) -> str:
+    return (f"{show_name(name)} and {show_name(other)} ({_place(place)}) are both marked "
+            "money, but the bag shows one purse. Remove money from one of them.")
+
+
+def _e440(form: str = "unknown", *args: object) -> str:
+    """``unknown`` (name, suggestion); ``tip`` (name); ``text`` (what was given)."""
+    if form == "tip":
+        name = show_name(str(args[0]) if args else "lanterns")
+        return (f'"{name}" is a tip, not an item, so it has no count. To check a tip, write '
+                f'"{name}" in codex.tips.')
+    if form == "text":
+        return ('items.count needs an item\'s name in quotes, e.g. items.count("coin"), not '
+                f"{show(str(args[0])) if args else 'a number'}.")
+    name, suggestion = (args + ("coins", None)[len(args):])[:2]
+    text = f'there is no item named "{show_name(str(name))}".'
+    if suggestion is not None:
+        text += " " + _did_you_mean(str(suggestion), str(name))
+    return text + " Counts are read from items declared with lock item."
+
+
+def _e441(form: str = "unknown", *args: object) -> str:
+    """``unknown`` (attribute); ``change`` (attribute); ``define`` (attribute)."""
+    name = show_name(str(args[0])) if args else "total"
+    if form == "change":
+        return ("Python can't change items. Use unlock item coin 5 to give and lock item "
+                "coin 5 to take.")
+    if form == "define":
+        return ("it reads items, which holds counts only once a game has started. Use a "
+                "lambda or a default.")
+    return (f'there is no items.{name}. items has one thing, count: items.count("coin") is '
+            "how many coins the player holds.")
+
+
+def _w305(name: str = "brass_key", amount: int = 3) -> str:
+    name = show_name(name)
+    return (f"item {name} has no count, so the player holds at most one and the "
+            f"{_n(amount)} here acts as 1. To hold more, add count to the end of its lock "
+            "item line.")
+
+
+def _w306(name: str = "coin") -> str:
+    return ("this story has its own variable named items, so "
+            f'items.count("{show_name(name)}") reads that variable, not the bag. Write '
+            f'codex.count("{show_name(name)}") to count the item.')
+
+
+def _w307(name: str = "coin", amount: int = 2000, most: int = 999) -> str:
+    name = show_name(name)
+    return (f"{name} holds at most {_n(most)}, so unlock item {name} {_n(amount)} stops "
+            f"there. To hold more, raise its count, e.g. count 0 to {amount}.")
 
 
 # --- F34 CG gallery (F34 01 §5.3; 04 §3) ---------------------------------------------------------
@@ -5007,6 +5106,16 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W140": _w140,
     "W141": _w141,
     "W142": _w142,
+    # F64 Items 2.0, round 1: load E436-E441, W305-W307 (codex.py, itemcounts.py); run E440, E441
+    "E436": _e436,
+    "E437": _e437,
+    "E438": _e438,
+    "E439": _e439,
+    "E440": _e440,
+    "E441": _e441,
+    "W305": _w305,
+    "W306": _w306,
+    "W307": _w307,
     # F34 CG gallery (01 §5.3): load E342, E344 (gallery.py); E343, E345, W226 (checks.py).
     "E342": _e342,
     "E343": _e343,

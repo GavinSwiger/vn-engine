@@ -6570,9 +6570,9 @@ ac = "AC-F21-07"
 feature = "F21"
 code = "E255"
 needs = "load"
-each = [['$ x = codex.itmes', '''there is no codex.itmes. Did you mean "items"? codex has tips and items.'''],
-        ['if codex.tps:⏎[8]"A."', '''there is no codex.tps. Did you mean "tips"? codex has tips and items.'''],
-        ['$ x = codex.qqqq', '''there is no codex.qqqq. codex has tips and items.''']]
+each = [['$ x = codex.itmes', '''there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.'''],
+        ['if codex.tps:⏎[8]"A."', '''there is no codex.tps. Did you mean "tips"? codex has tips, items, and count.'''],
+        ['$ x = codex.qqqq', '''there is no codex.qqqq. codex has tips, items, and count.''']]
 edit = { S = '<x>' }
 where = "10"
 expect = { exact = '''<y>''' }

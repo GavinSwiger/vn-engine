@@ -1931,6 +1931,9 @@ class RollbackConfig:
         "show the rewind marker while the player has gone back"))
 
 
+BAG_WORD_MAX = 24                        # F64: code points of the bag's and money's words
+
+
 @dataclass(frozen=True)
 class CodexConfig:
     """``[codex]`` (F21 01 §5.4): ``notify`` shows a notice for each new tip or item;
@@ -1940,6 +1943,16 @@ class CodexConfig:
         "show a notice for each new tip or item"))
     show_locked: bool = field(default=False, metadata=spec(Bool(),
         "show locked tips as ??? rows instead of hiding them"))
+    # F64: the bag's name and the money word; empty: the kit's, else "Items" and the money
+    # item's own title (kits.bag_words)
+    bag_word: str = field(default="", metadata=spec(
+        OneLine(BAG_WORD_MAX, why="the name of the items tab"),
+        "what the items tab is called, such as Satchel or Evidence; when empty, the kit's "
+        "word, else Items"))
+    money_word: str = field(default="", metadata=spec(
+        OneLine(BAG_WORD_MAX, why="the money's name at the top of the bag"),
+        "what the money is called at the top of the bag, such as Gold or Credits; when "
+        "empty, the kit's word, else the money item's own title"))
 
 
 @dataclass(frozen=True)

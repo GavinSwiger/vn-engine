@@ -26,6 +26,7 @@ from typing import Final
 from engine.core.constants import WINDOW_TITLE_MAX
 from engine.runtime.audio import EMPTY_AUDIO, AudioState
 from engine.runtime.chapters import EMPTY_CHAPTER, ChapterState
+from engine.runtime.clock import EMPTY_CLOCK, ClockState, clock_json
 from engine.runtime.flowchart import EMPTY_FLOW, FlowState
 from engine.runtime.glitch import EMPTY_GLITCH, GlitchState
 from engine.runtime.history import EMPTY_HISTORY, HistoryState
@@ -54,10 +55,11 @@ _REQUIRED_KEYS: Final = frozenset(("format", "identity_scheme", "position", "cal
 _OPTIONAL_KEYS: Final = frozenset(("stage", "audio", "choices", "history", "chapter",
                                    "points", "rollback", "nvl", "items", "minigame", "flow",
                                    "glitch", "window_title", "ui_style", "save_block",
-                                   "load_block"))
+                                   "load_block", "clock"))
 # later features: one key each (F04, F08, F07, F13, F18, F22, F14, F17, F21, F23, F20, F28,
 # F30); F32's ``ui`` is three keys (its 04 §3, C6)
 ITEMS_HELD_MAX: Final = 1_000               # F21: names in a saved ``items`` (declared + hidden)
+ITEM_COUNT_SAVED_MAX: Final = 999_999       # F64: the most of one item a save may hold
 # F03's engine names, frozen here (F22 07 I-9, F14 07 I-1): a name the engine reserves after a
 # save was made never makes that save unreadable, so from_json never reads the live
 # ``ENGINE_NAMES``. Restore step 3 drops a saved name that is reserved now.
@@ -93,11 +95,21 @@ class StateInvalid(Exception):
 class ItemsState:
     """``GameState.items`` (F21 ``04`` §4, §10): the held item names in the order obtained,
     declared and hidden ones (a name the script no longer declares as an item). Built only by
-    ``runtime/codex.Codex`` and ``from_json``. JSON ``{"held": [name, …]}``."""
+    ``runtime/codex.Codex`` and ``from_json``. JSON ``{"held": [name, …]}``.
+
+    F64: ``counts`` holds how many of each held name (parallel to ``held``, each at least 1);
+    ``()`` means one of each. JSON adds ``"counts": [n, …]`` only when some count isn't 1, so
+    a save from before F64 (no ``counts``) loads as one of each held item."""
 
     held: tuple[str, ...] = ()
+    counts: tuple[int, ...] = ()
+
+    def count_of(self, index: int) -> int:
+        return self.counts[index] if self.counts else 1
 
     def to_json(self) -> dict[str, Value]:
+        if self.counts and any(n != 1 for n in self.counts):
+            return {"held": list(self.held), "counts": list(self.counts)}
         return {"held": list(self.held)}
 
     @staticmethod
@@ -106,14 +118,22 @@ class ItemsState:
         ``ITEMS_HELD_MAX`` different names, each ``points.saved_name_ok`` (F22's saved-name
         check, shared: no live word set, F21 07 I-8). Anything else is
         ``StateInvalid("items")``, never echoing the input."""
-        if type(obj) is not dict or obj.keys() != {"held"}:
+        if type(obj) is not dict or not {"held"} <= obj.keys() <= {"held", "counts"}:
             raise StateInvalid("items")
         held = obj["held"]
         if type(held) is not list or len(held) > ITEMS_HELD_MAX:
             raise StateInvalid("items")
         if not all(map(saved_name_ok, held)) or len(set(held)) != len(held):
             raise StateInvalid("items")
-        return ItemsState(tuple(held)) if held else EMPTY_ITEMS
+        counts: tuple[int, ...] = ()
+        if "counts" in obj:                 # F64; absent (an older save): one of each
+            found = obj["counts"]
+            if type(found) is not list or len(found) != len(held) or not all(
+                    type(n) is int and 1 <= n <= ITEM_COUNT_SAVED_MAX for n in found):
+                raise StateInvalid("items")
+            if any(n != 1 for n in found):
+                counts = tuple(found)
+        return ItemsState(tuple(held), counts) if held else EMPTY_ITEMS
 
 
 EMPTY_ITEMS: Final = ItemsState()
@@ -149,6 +169,7 @@ class GameState:
     glitch: GlitchState = EMPTY_GLITCH      # F28 (04 §3): no lasting glitch before F28
     window_title: str | None = None         # F30 (04 §3): None is ``[game] title``
     ui: UiState = EMPTY_UI                  # F32 (04 §3): no style, nothing blocked
+    clock: ClockState = EMPTY_CLOCK         # F63: the calendar's start (runtime/clock.py)
 
     def __post_init__(self) -> None:
         if type(self.variables) is dict:    # a builder's private dict
@@ -192,7 +213,8 @@ class GameState:
             "minigame": self.minigame.to_json(),                # F23: always written
             "flow": self.flow.to_json(),                        # F20: always written
             "glitch": self.glitch.to_json(),                    # F28: always written
-        } | _title_json(self.window_title) | self.ui.to_json()  # F30, F32: only when set
+        } | _title_json(self.window_title) | self.ui.to_json() \
+            | clock_json(self.clock)                            # F30, F32, F63: only when set
 
     def save_problem(self) -> str | None:
         """F11 C11: a reason word (``^[a-z_]{1,40}$``) if this state, written out and read
@@ -397,6 +419,10 @@ def _from_json(obj: object) -> GameState:
                                      or len(window_title) > WINDOW_TITLE_MAX):
         raise StateInvalid("window_title")      # the program-literal rule is restore's
 
+    clock = EMPTY_CLOCK                     # F63: a state from before F63 is at the start
+    if "clock" in obj:
+        clock = ClockState.from_json(obj["clock"])          # StateInvalid("clock") only
+
     ui = UiState.from_json(obj)             # F32: absent keys are EMPTY_UI; StateInvalid with
                                             # the key's name only
     return GameState(position=position, position_at=position_at, call_stack=call_stack,
@@ -404,7 +430,7 @@ def _from_json(obj: object) -> GameState:
                      identity_scheme=scheme, stage=stage, audio=audio, choices=choices,
                      history=history, chapter=chapter, points=points, rollback=rollback,
                      nvl=nvl, items=items, minigame=minigame, flow=flow, glitch=glitch,
-                     window_title=window_title, ui=ui)
+                     window_title=window_title, ui=ui, clock=clock)
 
 
 def _sid_entry(entry: object, reason: str) -> tuple[str, Hint]:

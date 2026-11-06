@@ -53,6 +53,7 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    6g. F59 (its SPEC §4): E233 at each choice ``check`` whose meter no ``points`` line
    declares (``Collected.choice_checks``), with F22's did-you-mean.
    6h. F62: ``points.rank("<meter>")`` uses (``meterranks.py``): E233, E416, W290.
+   6i. F64: item counts and the purse (``itemcounts.py``): E439, E440, E441, W305-W307.
    6i. F62 round 2: ``show meter`` / ``hide meter`` (``showmeter.py``): E233, W291–W293.
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
@@ -146,7 +147,7 @@ from engine.core.constants import META_NAMES_MAX, META_ORIGINAL_MAX_BYTES, META_
 from engine.core.errors import AssetRefError, EngineError
 from engine.core.minigame_types import REQUIRED, MinigameSig
 from engine.core.paths import DirListing, GamePaths
-from engine.script import bindings, choicecheck, choicepresent, limits, meterranks, showmeter
+from engine.script import bindings, choicecheck, choicepresent, itemcounts, limits, meterranks, showmeter
 from engine.script.achievements import (ACHIEVEMENTS_MAX, WHEN_MAX, WORD_ACHIEVEMENT,
                                         AchievementDecl)
 from engine.script.audio import AUDIO_FOLDER, PlayAudio, QueueMusic, audio_ref
@@ -1492,6 +1493,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
         bindings.Defines.from_nodes(collected.define_defs, inp.nodes), sink.add,
         uses=out.uses, meters=frozenset(collected.meter_defs))      # F22: E233, E234
     out.warnings += meterranks.check_story(inp.nodes, sink.add)     # F62: E233, E416, W290
+    out.warnings += itemcounts.check_story(inp.nodes, sink.add)     # F64: E439-E441, W305-W307
     out.warnings += showmeter.check_story(inp.nodes, sink.add,      # F62 round 2: E233,
                                           inp.meter_config)         # W291–W293
     out.warnings += choicecheck.check_story(inp.nodes)              # F59: W294 (retry)

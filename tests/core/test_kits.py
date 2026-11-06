@@ -44,7 +44,7 @@ def test_each_kit_is_well_formed(found):
         assert ats == sorted(set(ats)), s.name                   # rising, as F62 checks
         assert all(label.strip() and s.low <= at <= s.high for label, at in s.ranks)
     # Reserved for later phases, empty and read-only for now.
-    for section in (found.messages, found.items, found.checks):
+    for section in (found.messages, found.checks):
         assert section == {} and isinstance(section, MappingProxyType)
     # F63: the clock's parts of the day and day wording, within [calendar]'s own limits.
     clock = found.clock

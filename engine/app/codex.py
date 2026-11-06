@@ -14,7 +14,8 @@ imports ``engine.app`` and the runtime never reads config. So, once per windowed
 - ``AppCodexPort``: the page's ``CodexPort`` over ``interp.codex`` (read through the story
   driver each call, so F39's reload is followed) and the launch's ``ImageIndex``.
   ``mark_read`` is the one presentation write to the store (§7.7, I-13), made while a menu
-  holds the story.
+  holds the story. F64: ``count``, ``bag_word`` and ``purse`` for the bag page, the words
+  from ``kits.bag_words`` (``[codex]`` > the kit > the page's own).
 - Two menu entries (§7.8): ``game`` ``codex`` (shown when the story declares any entry) and
   ``title`` ``codex`` (shown when a tip is unlocked; ``ui/menus.OPT_IN`` keeps it off the
   title unless ``[title] entries`` lists it). Their callables run no author code.
@@ -28,6 +29,7 @@ This module imports ``engine.script`` only for type checking (TR-F21-06).
 
 from typing import TYPE_CHECKING
 
+from engine.core.kits import bag_words
 from engine.runtime.commands import CodexAdded
 from engine.runtime.images import ImageFile, SolidColor
 from engine.ui.builtin.codex_page import HEADING, CodexPage
@@ -45,10 +47,12 @@ class AppCodexPort:
     """The page's ``CodexPort`` (``ui/builtin/codex_page.py``). ``codex()`` gives the live
     ``interp.codex``; ``images`` is the launch's ``ImageIndex`` (None: no pictures)."""
 
-    def __init__(self, codex, images: "ImageIndex | None", *, show_locked: bool) -> None:
+    def __init__(self, codex, images: "ImageIndex | None", *, show_locked: bool,
+                 words: tuple[str, str] = ("", "")) -> None:
         self._codex = codex
         self.images = images
         self.show_locked = show_locked
+        self.words = words                  # F64: (bag, money), "" for none
 
     @property
     def codex(self) -> "Codex":
@@ -68,6 +72,24 @@ class AppCodexPort:
 
     def is_read(self, name: str) -> bool:
         return self.codex.is_read(name)
+
+    def count(self, name: str) -> int:
+        """F64: how many of item ``name`` are held (0 for a name that isn't an item)."""
+        try:
+            return self.codex.count(name)
+        except KeyError:
+            return 0
+
+    def bag_word(self) -> str:
+        return self.words[0]
+
+    def purse(self) -> tuple[str, int] | None:
+        """F64: the money's word (the money word, else the item's title) and count."""
+        found = self.codex.purse()
+        if found is None:
+            return None
+        entry, count = found
+        return (self.words[1] or entry.title, count)
 
     def mark_read(self, name: str) -> None:
         self.codex.mark_read(name)
@@ -106,7 +128,8 @@ def install_codex(app: "App", interp: "Interpreter",
         shell.notify(notice_text(shell.words, cmd))
 
     app.router.register(CodexAdded, on_added)
-    port = AppCodexPort(codex, images, show_locked=app.config.codex.show_locked)
+    port = AppCodexPort(codex, images, show_locked=app.config.codex.show_locked,
+                        words=bag_words(app.config))
     shell = getattr(app, "shell", None)
     if shell is not None:
         shell.menus.add("game", MenuEntry(

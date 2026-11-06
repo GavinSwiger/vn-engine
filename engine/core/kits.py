@@ -16,6 +16,10 @@ its own: it only fills in what the author left unset.
 - ``kit_of(config)``: the kit ``[theme] kit`` names, or None (no kit: today's behavior).
 - ``meter_look(config, meter)``: how meter ``meter`` is shown, as ``(look, place, label)``,
   with the precedence ``[meter.<name>]`` > kit > ``skins`` defaults.
+- F64: each kit's ``items`` holds ``ITEMS_BAG`` (the bag's name: Satchel, Evidence, Cargo)
+  and ``ITEMS_MONEY`` (the money word: Gold, Credits; "" for none), from ``ITEM_WORDS``.
+  ``bag_words(config)`` gives ``(bag, money)``: ``[codex] bag_word`` / ``money_word`` when
+  set, else the kit's, else "" (the page's own "Items", the money item's own title).
 
 Pure data, read-only; imports only ``core``.
 """
@@ -23,7 +27,7 @@ Pure data, read-only; imports only ``core``.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Final
 
@@ -153,6 +157,24 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                              months=True)),
 )})
 
+# F64: the kits' ``items`` sections (bag name, money word), filled in after the rows above so
+# each system's kit section stays in one place.
+ITEMS_BAG: Final = "bag"
+ITEMS_MONEY: Final = "money"
+ITEM_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
+    "romance": ("Keepsakes", "Coins"),
+    "horror": ("Supplies", ""),
+    "mystery": ("Evidence", ""),
+    "fantasy": ("Satchel", "Gold"),
+    "cozy": ("Basket", "Coins"),
+    "scifi": ("Cargo", "Credits"),
+    "letters": ("Keepsakes", "Stamps"),
+})
+KITS = MappingProxyType({  # type: ignore[misc]
+    id_: replace(k, items=MappingProxyType({ITEMS_BAG: ITEM_WORDS[id_][0],
+                                            ITEMS_MONEY: ITEM_WORDS[id_][1]}))
+    for id_, k in KITS.items()})
+
 
 def kit_ids() -> tuple[str, ...]:
     """The kit ids in registry order (``KitName``'s options)."""
@@ -209,5 +231,21 @@ def meter_look(config: Any, meter: str) -> tuple[str, str, str]:
     return look, place, label
 
 
-__all__ = ["ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
+def bag_words(config: Any) -> tuple[str, str]:
+    """F64: ``(bag, money)`` for the bag page (module docstring)."""
+    found = kit_of(config)
+    own = getattr(config, "codex", None)
+    out = []
+    for key, attr in ((ITEMS_BAG, "bag_word"), (ITEMS_MONEY, "money_word")):
+        mine = getattr(own, attr, "")
+        if isinstance(mine, str) and mine.strip():
+            out.append(mine.strip())
+        else:
+            word = found.items.get(key, "") if found is not None else ""
+            out.append(word if isinstance(word, str) else "")
+    return out[0], out[1]
+
+
+__all__ = ["ITEMS_BAG", "ITEMS_MONEY", "ITEM_WORDS", "bag_words",
+           "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
            "meter_label", "meter_look"]

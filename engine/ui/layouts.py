@@ -676,6 +676,7 @@ def page_row_layout(labels: Sequence[str], current: int, measure: Measure, *,
 CODEX_MIN_BOX = (640, 400)          # a CodexView host smaller than this is a programming error
 CODEX_LIST_SHARE = (300, 808)       # list width = round(w × 300 / 808)
 CODEX_GAP = 12                      # tab row → content; picture, title, body, pick apart
+CODEX_PURSE_SHARE = (3, 10)     # F64: the purse's share of the top row's width
 CODEX_PANEL_GAP = 20                # list → detail panel
 CODEX_PANEL_PAD = 20                # the detail panel's padding
 CODEX_ROW_PAD = 16                  # list rows: max(list.row_height, pitch + 16)
@@ -709,6 +710,7 @@ class CodexLayout:
     row_height: int                 # list rows: max(list.row_height, pitch + 16)
     title_width: float              # a row title's room: lw − 64
     tab_label_width: float          # a tab label's room: w − 2·H_b − 8 (07 I-12)
+    purse: Box | None = None        # F64: the money's strip, top right (None: no purse)
 
 
 def codex_picture_height(inner_h: float, *, scale: float = 1.0,
@@ -727,7 +729,8 @@ def codex_picture_height(inner_h: float, *, scale: float = 1.0,
 
 
 def codex_layout(box: Box, text_scale: float = 1.0, *, tabs: int, pick: bool,
-                 picture: bool = True, title_lines: int = CODEX_TITLE_LINES,
+                 picture: bool = True, purse: bool = False,
+                 title_lines: int = CODEX_TITLE_LINES,
                  image_height: int = CODEX_IMAGE_HEIGHT,
                  button_text_size: int = BUTTON_TEXT_SIZE,
                  button_min_height: int = BUTTON_HEIGHT,
@@ -739,11 +742,17 @@ def codex_layout(box: Box, text_scale: float = 1.0, *, tabs: int, pick: bool,
     top: the picture box (``codex_picture_height``; only for an entry declared with a
     picture, so a missing file keeps its empty box), the title (``title_lines`` heading
     lines), the body (the rest), and the pick button ((panel w − 40) × H_b at the panel's
-    bottom inside the padding), 12 apart. For the 808×552 slot this gives 01 §6."""
+    bottom inside the padding), 12 apart. For the 808×552 slot this gives 01 §6.
+
+    F64: with ``purse``, the money's strip is the right ``CODEX_PURSE_SHARE`` of the top
+    row (H_b high); the tab row, if any, takes the rest less 12, and the content starts 12
+    below that row even with one tab."""
     x, y, w, h = box.x, box.y, box.w, box.h
     h_b = button_height(button_text_size, scale=text_scale, minimum=button_min_height)
-    tab_row = Box(x, y, w, h_b) if tabs > 1 else None
-    top = y + h_b + CODEX_GAP if tab_row is not None else y
+    pw = round(w * CODEX_PURSE_SHARE[0] / CODEX_PURSE_SHARE[1]) if purse else 0
+    purse_box = Box(x + w - pw, y, pw, h_b) if purse else None
+    tab_row = Box(x, y, w - pw - CODEX_GAP if purse else w, h_b) if tabs > 1 else None
+    top = y + h_b + CODEX_GAP if tab_row is not None or purse else y
     content_h = y + h - top
     lw = round(w * CODEX_LIST_SHARE[0] / CODEX_LIST_SHARE[1])
     lst = Box(x, top, lw, content_h)
@@ -762,8 +771,9 @@ def codex_layout(box: Box, text_scale: float = 1.0, *, tabs: int, pick: bool,
     body_bottom = pick_box.y - CODEX_GAP if pick_box is not None else inner.bottom
     body = Box(inner.x, body_top, inner.w, max(0.0, body_bottom - body_top))
     row_h = max(list_row_min, pitch(scaled(button_text_size, text_scale)) + CODEX_ROW_PAD)
+    row_w = tab_row.w if tab_row is not None else w
     return CodexLayout(box, tab_row, lst, panel, inner, picture_box, title, body, pick_box,
-                       h_b, row_h, lw - CODEX_TITLE_RESERVE, w - 2 * h_b - 8)
+                       h_b, row_h, lw - CODEX_TITLE_RESERVE, row_w - 2 * h_b - 8, purse_box)
 
 
 # --- Minigame frame (F23 03-ui layout table, "Fit checks"; 04 §7.11) ---------------------

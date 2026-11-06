@@ -92,8 +92,8 @@ def test_what_it_cant_follow_counts_as_possible(tmp_path):
             $ has_key = compute()
             if has_key:
                 jump vault
-            $ items.append("x")
-            if "x" in items:
+            $ things.append("x")
+            if "x" in things:
                 jump shed
             return
 

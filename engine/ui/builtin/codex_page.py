@@ -45,6 +45,13 @@ through a ``CodexPort`` (``app/codex.py``'s ``AppCodexPort``, F23's ``LedgerCode
   cache; a placeholder draws nothing, F01 logged it once), an RGB (a filled 16:9 box fitted
   to the picture box), or None (nothing).
 
+F64 (specs/F64-items/SPEC.md): a counted item's row title ends with "×n" (the port's
+``count``); the items' default tab is named by the port's ``bag_word`` (the kit's, or
+``[codex] bag_word``) when it has one; and with ``purse`` (the game menu's page, not the
+title's or a picker's) the money item's word and count ("Coins ×30", the port's ``purse``)
+are drawn at the right of the top row, also when the bag is empty. Ports without these
+methods (F23's) show the page as before.
+
 Theme (01 §6): ``codex.new.fill_color`` (None: ``button.marker.fill_color``),
 ``codex.locked.text_color`` (None: ``button.disabled.text_color``), ``codex.image_height``.
 Words: ``codex`` (the heading), ``codex_tips``, ``codex_items``, ``codex_locked``,
@@ -131,6 +138,33 @@ class CodexPort(Protocol):
     def mark_read(self, name: str) -> None: ...
 
     def picture(self, image: str) -> "str | RGB | None": ...
+
+    # F64, optional (``getattr``): ``count(name)`` (held count), ``bag_word()`` ("" for
+    # none), ``purse()`` (the money's shown word and count, or None).
+
+
+def port_count(port: object, name: str) -> int:
+    """F64: the port's held count of ``name`` (1 for a port without counts)."""
+    count = getattr(port, "count", None)
+    return count(name) if count is not None else 1
+
+
+def port_purse(port: object) -> tuple[str, int] | None:
+    """F64: the port's purse, or None (no money item, or a port without one)."""
+    purse = getattr(port, "purse", None)
+    return purse() if purse is not None else None
+
+
+def purse_text(word: str, count: int) -> str:
+    """F64: the purse as shown, "Coins ×30"."""
+    return f"{word} ×{count:,}"
+
+
+def row_title(port: object, entry: CodexEntry) -> str:
+    """F64: a row's title: a counted item's ends with "×n"."""
+    if entry.kind == "item" and getattr(entry, "counted", False):
+        return f"{entry.title} ×{port_count(port, entry.name):,}"
+    return entry.title
 
 
 class CodexUi(Protocol):
@@ -362,8 +396,10 @@ class CodexView:
 
     def __init__(self, port: CodexPort, *, ui: CodexUi, filter: CodexFilter = CodexFilter(),
                  pick: PickAction | None = None, title: bool = False,
-                 scope: "Callable[[], FocusScope | None] | None" = None) -> None:
+                 scope: "Callable[[], FocusScope | None] | None" = None,
+                 purse: bool = False) -> None:
         self.port = port
+        self.show_purse = purse and not title
         self.ui = ui
         self.filter = filter
         self.pick = pick
@@ -434,8 +470,8 @@ class CodexView:
         """The model again, keeping ``selected`` while it is still listed (else the
         current tab's first unlocked row; the first tab's when that tab is gone)."""
         port = self.port
-        self._signature = (tuple(port.tips()), tuple(port.items()))
-        self.tabs = codex_tabs(port, self.filter, self.ui.words.get, title=self.title_mode)
+        self._signature = self._sign()
+        self.tabs = codex_tabs(port, self.filter, self._word, title=self.title_mode)
         previous, previous_tab = self.selected, self.tab
         self.selected = None
         tab, row = self._find(previous)
@@ -443,6 +479,25 @@ class CodexView:
             tab = previous_tab if previous is None and previous_tab < len(self.tabs) else 0
             row = None
         self._open_tab(tab, row)
+
+    def _sign(self) -> tuple:
+        """What the model is made from: the tips, the items, and (F64) their counts."""
+        port = self.port
+        items = tuple(port.items())
+        counts = tuple(port_count(port, n) for n in items) \
+            if getattr(port, "count", None) is not None else ()
+        return (tuple(port.tips()), items, counts, port_purse(port) if self.show_purse
+                else None)
+
+    def _word(self, key: str) -> str:
+        """``[words]``, but the items' default tab is the port's bag word when it has one
+        (F64)."""
+        if key == "codex_items":
+            bag = getattr(self.port, "bag_word", None)
+            word = bag() if bag is not None else ""
+            if word:
+                return word
+        return self.ui.words.get(key)
 
     def _find(self, name: str | None) -> tuple[int | None, int | None]:
         if name is None:
@@ -488,6 +543,7 @@ class CodexView:
         return codex_layout(self.box, self.scale, tabs=len(self.tabs),
                             pick=self.pick is not None,
                             picture=entry is not None and entry.image is not None,
+                            purse=self.show_purse and port_purse(self.port) is not None,
                             title_lines=title_lines, image_height=cfg.codex.image_height,
                             button_text_size=cfg.button.text_size,
                             button_min_height=cfg.button.height,
@@ -524,7 +580,7 @@ class CodexView:
     def _place(self, layout: CodexLayout) -> None:
         row = self.tab_row
         row.placement = RowPlacement("topleft", (layout.box.x, layout.box.y))
-        row.width = layout.box.w
+        row.width = layout.tab_row.w if layout.tab_row is not None else layout.box.w
         lst = self.list
         lst.box = layout.list
         lst.row_height = layout.row_height
@@ -680,8 +736,7 @@ class CodexView:
         changes which widgets are shown, ``groups_changed`` asks the host to build again.
         Before that, at most one more body paragraph is laid out (``_fill_step``)."""
         self._fill_step()
-        port = self.port
-        signature = (tuple(port.tips()), tuple(port.items()))
+        signature = self._sign()
         if signature == self._signature:
             return
         self._refresh()
@@ -709,8 +764,9 @@ class CodexView:
 
     def draw(self, canvas: "Canvas", p: "Painter") -> None:
         """What isn't a scope widget: ``codex_empty`` with no tab; else the detail panel,
-        the picture, and the title."""
+        the picture, and the title. F64: the purse first, when shown."""
         layout = self.layout
+        self._draw_purse(p, layout)
         if not self.tabs or layout is None:
             p.text(self.ui.words.get("codex_empty"), self.box.center, area="list.empty",
                    anchor="center")
@@ -732,6 +788,22 @@ class CodexView:
             canvas.draw_text(line, font, style.text_color,
                              (layout.title.x, layout.title.y + i * pt + pt / 2),
                              anchor="midleft")
+
+    def _draw_purse(self, p: "Painter", layout: CodexLayout | None) -> None:
+        """F64: "Coins ×30" right-aligned in the purse strip (the layout's, else one made
+        for the empty page)."""
+        if not self.show_purse:
+            return
+        found = port_purse(self.port)
+        if found is None:
+            return
+        box = layout.purse if layout is not None else None
+        if box is None:
+            box = self._layout_for(None).purse
+        if box is None:
+            return
+        p.text(purse_text(*found), (box.right, box.y + box.h / 2), area="button",
+               anchor="midright", max_width=box.w)
 
     def _draw_picture(self, canvas: "Canvas", image: str, box: Box) -> None:
         found = self.port.picture(image)
@@ -770,7 +842,8 @@ class CodexView:
         if name == self.selected:
             p.widget_frame(box, "list", Look(look.state, None, True), marker=False)
         assert self.layout is not None
-        title = self._fit(row.entry.title, self.layout.title_width, size, self._measure)
+        title = self._fit(row_title(self.port, row.entry), self.layout.title_width, size,
+                          self._measure)
         canvas.draw_text(title, font, cfg.button.text_color, (box.x + CODEX_TITLE_X, cy),
                          anchor="midleft")
         if not self.port.is_read(name):
@@ -830,7 +903,7 @@ class CodexPage(MenuPageBase):
         self.host = host
         if self.view is None:
             self.view = CodexView(self.port, ui=host.shell, title=self.from_title,
-                                  scope=lambda: host.scope)
+                                  scope=lambda: host.scope, purse=not self.from_title)
         return self.view.build(body, host.painter.text_scale())
 
     def update(self, dt: float) -> None:
@@ -857,4 +930,5 @@ class CodexPage(MenuPageBase):
 
 __all__ = ["CodexFilter", "CodexPage", "CodexPort", "CodexRow", "CodexTab", "CodexUi",
            "CodexView", "PickAction", "category_key", "codex_tabs", "fit_picture",
-           "locked_color", "new_dot_color"]
+           "locked_color", "new_dot_color", "port_count", "port_purse", "purse_text",
+           "row_title"]

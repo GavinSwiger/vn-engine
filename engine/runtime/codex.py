@@ -33,6 +33,17 @@ through ``CodexReader`` (the engine name ``codex``).
   index, the ``Codex``, the store's two kinds (registering again replaces ``known``), and
   ``G``'s reader bound to it.
 
+**F64 round 1 (item counts, the purse; specs/F64-items/SPEC.md).** Each held item has a
+count (``count(name)``; 0 when not held): ``give(name, n)`` adds up to the item's ``cap`` (1
+for a plain item, so a plain item still holds one), ``take(name, n)`` removes down to 0 and
+drops the name at 0. The counts are saved in ``ItemsState.counts`` (a save from before F64
+holds one of each); ``merged`` clamps a saved count to the item's ``cap`` now. ``purse()`` is
+the money item and its count. The engine name ``items`` (``ItemsReader``, read-only,
+``items.count("coin")``) is bound only when the story has no variable of its own named
+``items`` (``itemcounts.program_binds_items``): then it is reserved for this interpreter, never
+saved; otherwise the story's own ``items`` is left alone and ``codex.count`` reads counts.
+A bad name is E440, any other use of ``items`` E441.
+
 ``CodexEntry`` and ``CodexCategory`` are ``script/codex.py``'s, re-exported here (F22 I-1
 rule), so ``ui`` never imports ``engine.script``. Layering as ``points.py``: below the
 interpreter, importing it only under ``TYPE_CHECKING`` or inside a function. Pure: no file,
@@ -48,6 +59,7 @@ from engine.runtime.commands import CodexAdded, Command
 from engine.runtime.errors import AuthorRefusal
 from engine.runtime.persistent import PersistentStore
 from engine.runtime.state import EMPTY_ITEMS, ITEMS_HELD_MAX, ItemsState
+from engine.runtime.values import kind_words
 from engine.runtime.values import register_kind as register_value_kind
 from engine.script.codex import WORD_ITEM, WORD_TIP, CodexCategory, CodexEntry, CodexLock
 from engine.script.diagnostics import ScriptWarning
@@ -60,7 +72,8 @@ if TYPE_CHECKING:
 
 TIP_KIND: Final = "tip"                 # F12 unlock kinds: tips (revocable) and read marks
 READ_KIND: Final = "codex_read"
-ATTRS: Final[tuple[str, str]] = ("tips", "items")     # what ``codex`` has (E255, E256)
+ATTRS: Final[tuple[str, ...]] = ("tips", "items", "count")  # what ``codex`` has (E255, E256)
+ITEMS_NAME: Final = "items"             # F64: the engine view of the counts (soft name)
 
 _story_log = get_logger("story")        # W141 (dev, run)
 
@@ -71,7 +84,7 @@ class CodexIndex:
     """Every declared entry of a ``Program`` (immutable). Lookups take any value and give
     None/False for anything that isn't a declared name."""
 
-    __slots__ = ("_entries", "_by_name", "tips", "items", "categories")
+    __slots__ = ("_entries", "_by_name", "tips", "items", "categories", "money")
 
     def __init__(self, entries: tuple[CodexEntry, ...],
                  categories: tuple[CodexCategory, ...]) -> None:
@@ -80,6 +93,8 @@ class CodexIndex:
         self.tips: tuple[CodexEntry, ...] = tuple(e for e in entries if e.kind == WORD_TIP)
         self.items: tuple[CodexEntry, ...] = tuple(e for e in entries if e.kind == WORD_ITEM)
         self.categories = categories
+        # F64: the purse's item (the first marked money; a second is E439 at load)
+        self.money: CodexEntry | None = next((e for e in self.items if e.money), None)
 
     @classmethod
     def build(cls, program: "Program") -> "CodexIndex":
@@ -140,8 +155,8 @@ class Codex:
     """The launch's tips and items (module docstring). ``hold`` is the interpreter's
     ``_hold``, so a ``CodexAdded`` is released with the burst (F03 I-3)."""
 
-    __slots__ = ("index", "_store", "_hold", "dev", "log", "_held", "_state", "_items",
-                 "_tips", "_tips_gen", "w141_warned")
+    __slots__ = ("index", "_store", "_hold", "dev", "log", "_held", "_counts", "_state",
+                 "_items", "_tips", "_tips_gen", "w141_warned")
 
     def __init__(self, index: CodexIndex, store: PersistentStore,
                  hold: Callable[[Command], None], *, dev: bool = False,
@@ -152,6 +167,7 @@ class Codex:
         self.dev = dev
         self.log = log if log is not None else _story_log
         self._held: list[str] = []
+        self._counts: dict[str, int] = {}           # F64: held name -> count (absent: 1)
         self._state: ItemsState | None = EMPTY_ITEMS
         self._items: tuple[str, ...] | None = ()
         self._tips: tuple[str, ...] = ()
@@ -190,6 +206,19 @@ class Codex:
     def is_read(self, name: object) -> bool:
         return type(name) is str and self._store.is_unlocked(READ_KIND, name)
 
+    def count(self, name: object) -> int:
+        """F64: how many of item ``name`` the player holds (0: none). ``UnknownEntry`` or
+        ``WrongKind`` for a name that isn't a declared item."""
+        entry = self._entry(name, WORD_ITEM)
+        if entry.name not in self._held:
+            return 0
+        return self._counts.get(entry.name, 1)
+
+    def purse(self) -> "tuple[CodexEntry, int] | None":
+        """F64: the item marked ``money`` and how many the player holds, or None."""
+        entry = self.index.money
+        return None if entry is None else (entry, self.count(entry.name))
+
     # Changing --------------------------------------------------------------------------------
 
     def _entry(self, name: object, kind: str) -> CodexEntry:
@@ -200,29 +229,47 @@ class Codex:
             raise WrongKind(entry.name, entry.kind, kind)
         return entry
 
-    def give(self, name: str) -> bool:
-        """``unlock item``: add ``name`` at the end; True if it wasn't held (holds
-        ``CodexAdded``). Past ``ITEMS_HELD_MAX`` names the oldest hidden one is dropped."""
+    def give(self, name: str, amount: int = 1) -> bool:
+        """``unlock item``: add ``amount`` (F64; at most the item's ``cap`` held); a new name
+        goes at the end. True if it wasn't held (holds ``CodexAdded``). Past
+        ``ITEMS_HELD_MAX`` names the oldest hidden one is dropped."""
         entry = self._entry(name, WORD_ITEM)
         held = self._held
         if entry.name in held:
+            now = self._counts.get(entry.name, 1)
+            new = min(entry.cap, now + max(0, amount))
+            if new > now:
+                self._counts[entry.name] = new
+                self._changed()
             return False
+        new = min(entry.cap, max(1, amount))
+        if new != 1:
+            self._counts[entry.name] = new
         held.append(entry.name)
         if len(held) > ITEMS_HELD_MAX:
             is_item = self.index.is_item
             oldest = next((n for n in held if not is_item(n)), None)
             if oldest is not None:
                 held.remove(oldest)
+                self._counts.pop(oldest, None)
         self._changed()
         self._hold(CodexAdded(WORD_ITEM, entry.name, entry.title))
         return True
 
-    def take(self, name: str) -> bool:
-        """``lock item``: remove ``name``; True if it was held."""
+    def take(self, name: str, amount: int = 1) -> bool:
+        """``lock item``: take ``amount`` (F64; never below 0, and the name goes at 0); True
+        if any was held."""
         entry = self._entry(name, WORD_ITEM)
         if entry.name not in self._held:
             return False
-        self._held.remove(entry.name)
+        left = self._counts.get(entry.name, 1) - max(1, amount)
+        if left > 1:
+            self._counts[entry.name] = left
+        elif left == 1:
+            self._counts.pop(entry.name, None)
+        else:
+            self._held.remove(entry.name)
+            self._counts.pop(entry.name, None)
         self._changed()
         return True
 
@@ -259,33 +306,57 @@ class Codex:
         state = self._state
         if state is None:
             held = tuple(self._held)
-            state = self._state = ItemsState(held) if held else EMPTY_ITEMS
+            counts = self._counts
+            numbers = tuple(counts.get(n, 1) for n in held) if counts else ()
+            state = self._state = ItemsState(held, numbers) if held else EMPTY_ITEMS
         return state
 
     def new_game(self) -> None:
         """New Game: no items (before the first default, 04 §7.4)."""
         self._held = []
+        self._counts = {}
         self._state = EMPTY_ITEMS
         self._items = ()
 
-    def merged(self, saved: ItemsState) -> tuple[str, ...]:
+    def merged(self, saved: ItemsState) -> ItemsState:
         """Restore step 3 (pure): ``saved``'s names in order; a name that isn't a declared
         item (a tip now included) is hidden, and only the newest ``ITEMS_HELD_MAX -
-        len(index.items)`` hidden names are kept."""
-        is_item = self.index.is_item
-        room = max(0, ITEMS_HELD_MAX - len(self.index.items))
+        len(index.items)`` hidden names are kept. F64: each declared item's count is clamped
+        to its ``cap`` now (a hidden name keeps its count). ``saved`` itself when nothing
+        changes."""
+        index = self.index
+        is_item = index.is_item
+        room = max(0, ITEMS_HELD_MAX - len(index.items))
         hidden = [n for n in saved.held if not is_item(n)]
         keep = set(hidden[len(hidden) - room:]) if room else set()
-        return tuple(n for n in saved.held if is_item(n) or n in keep)
+        held: list[str] = []
+        counts: list[int] = []
+        for i, name in enumerate(saved.held):
+            entry = index.get(name)
+            if entry is not None and entry.kind == WORD_ITEM:
+                count = min(saved.count_of(i), entry.cap)
+            elif name in keep:
+                count = saved.count_of(i)
+            else:
+                continue
+            held.append(name)
+            counts.append(count)
+        numbers = tuple(counts) if any(n != 1 for n in counts) else ()
+        if tuple(held) == saved.held and numbers == saved.counts:
+            return saved
+        return ItemsState(tuple(held), numbers) if held else EMPTY_ITEMS
 
     def install(self, held: "tuple[str, ...] | ItemsState") -> None:
         """Make ``held`` (from ``merged``, or a ``state()`` to put back) the held list:
-        restore step 4 and its roll-back. An ``ItemsState`` is kept as the cached state."""
+        restore step 4 and its roll-back. An ``ItemsState`` is kept as the cached state; a
+        tuple of names holds one of each."""
         if type(held) is ItemsState:
             self._held = list(held.held)
+            self._counts = {n: c for n, c in zip(held.held, held.counts) if c != 1}
             self._state = held
         else:
             self._held = list(held)                         # type: ignore[arg-type]
+            self._counts = {}
             self._state = None
         self._items = None
 
@@ -340,6 +411,8 @@ class CodexReader:
             return list(codex.tips())
         if name == "items":
             return list(codex.items())
+        if name == "count":
+            return _counter(codex)
         raise CodexNoAttr(name)
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -349,10 +422,67 @@ class CodexReader:
         raise CodexReadOnly(name)
 
     def __dir__(self) -> list[str]:
-        return ["items", "tips"]
+        return ["count", "items", "tips"]
 
     def __repr__(self) -> str:
         return "<codex>"
+
+
+def _counter(codex: Codex) -> Callable[[object], int]:
+    """F64: ``codex.count`` / ``items.count``: an item's count, E440 for a bad name."""
+
+    def count(name: object) -> int:
+        if type(name) is not str:
+            raise AuthorRefusal("E440", format_message("E440", ("text", kind_words(name))))
+        try:
+            return codex.count(name)
+        except UnknownEntry as e:
+            raise AuthorRefusal("E440", format_message(
+                "E440", ("unknown", name, e.suggestion))) from None
+        except WrongKind:
+            raise AuthorRefusal("E440", format_message("E440", ("tip", name))) from None
+
+    return count
+
+
+# --- The engine name ``items`` (F64) ------------------------------------------------------------
+
+_ITEMS_BOUND: "weakref.WeakKeyDictionary[ItemsReader, Codex]" = weakref.WeakKeyDictionary()
+
+
+class ItemsReader:
+    """``items`` in author Python (F64): ``items.count("coin")`` only. Read-only; before a
+    game starts every read is E441's define form; any other attribute E441's unknown form."""
+
+    __slots__ = ("__weakref__",)
+
+    def __getattribute__(self, name: str) -> object:
+        if _is_dunder(name):
+            return object.__getattribute__(self, name)
+        codex = _ITEMS_BOUND.get(self)
+        if codex is None:
+            raise AuthorRefusal("E441", format_message("E441", ("define", name)))
+        if name == "count":
+            return _counter(codex)
+        raise _ItemsNoAttr(name)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        raise AuthorRefusal("E441", format_message("E441", ("change", name)))
+
+    def __delattr__(self, name: str) -> None:
+        raise AuthorRefusal("E441", format_message("E441", ("change", name)))
+
+    def __dir__(self) -> list[str]:
+        return ["count"]
+
+    def __repr__(self) -> str:
+        return "<items>"
+
+
+class _ItemsNoAttr(AuthorRefusal, AttributeError):
+    def __init__(self, name: str) -> None:
+        super().__init__("E441", format_message("E441", ("unknown", name)))
+        self.name = name
 
 
 def bind_reader(reader: CodexReader, codex: Codex) -> None:
@@ -363,6 +493,7 @@ def bind_reader(reader: CodexReader, codex: Codex) -> None:
 
 
 register_value_kind(CodexReader, "the codex")           # E85e's kind words
+register_value_kind(ItemsReader, "the item counts")
 
 
 # --- The executor (04 §7.1) -----------------------------------------------------------------------
@@ -379,8 +510,9 @@ def run_codex_lock(interp: "Interpreter", stmt: CodexLock) -> "Step":
         else:
             codex.relock_tip(stmt.name)
     elif stmt.unlock:
-        codex.give(stmt.name)
-    elif not codex.take(stmt.name) and interp.dev and stmt.sid not in codex.w141_warned:
+        codex.give(stmt.name, stmt.amount)
+    elif not codex.take(stmt.name, stmt.amount) and interp.dev \
+            and stmt.sid not in codex.w141_warned:
         codex.w141_warned.add(stmt.sid)
         text = format_message("W141", (stmt.name,))
         warning = ScriptWarning(text, code="W141", file=stmt.file.ref, line=stmt.line)
@@ -403,9 +535,28 @@ def install(interp: "Interpreter") -> Codex:
     if type(reader) is not CodexReader:
         reader = interp.G["codex"] = CodexReader()
     bind_reader(reader, codex)
+    _install_items(interp, codex)
     return codex
 
 
-__all__ = ["ATTRS", "Codex", "CodexCategory", "CodexEntry", "CodexIndex", "CodexNoAttr",
+def _install_items(interp: "Interpreter", codex: Codex) -> None:
+    """F64: bind ``G["items"]`` to an ``ItemsReader`` and reserve the name for this
+    interpreter, unless the story has a variable of its own named ``items`` (then any reader
+    a previous program left is removed, and the name is the story's)."""
+    from engine.script.itemcounts import program_binds_items
+    G = interp.G
+    if program_binds_items(interp.program):
+        interp.reserved = interp.reserved - {ITEMS_NAME}
+        if type(G.get(ITEMS_NAME)) is ItemsReader:
+            del G[ITEMS_NAME]
+        return
+    reader = G.get(ITEMS_NAME)
+    if type(reader) is not ItemsReader:
+        reader = G[ITEMS_NAME] = ItemsReader()
+    _ITEMS_BOUND[reader] = codex
+    interp.reserved = interp.reserved | {ITEMS_NAME}
+
+
+__all__ = ["ATTRS", "ITEMS_NAME", "ItemsReader", "Codex", "CodexCategory", "CodexEntry", "CodexIndex", "CodexNoAttr",
            "CodexNotStarted", "CodexReadOnly", "CodexReader", "READ_KIND", "TIP_KIND",
            "UnknownEntry", "WrongKind", "bind_reader", "install", "run_codex_lock"]
