@@ -49,6 +49,7 @@ from engine.core.constants import (
     WORD_MAX_CHARS,
 )
 from engine.core.errors import AssetRefError, ConfigError
+from engine.core import storyclock
 from engine.core.kits import KITS, kit_ids
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
@@ -2105,6 +2106,97 @@ class PlaythroughTableKeys:
         "when not set, the main title buttons"))
 
 
+# --- [calendar] (F63 story clock, specs/F63-story-clock) -----------------------------------------
+# What story time is called: the parts of the day, the weekdays, optional months and seasons,
+# where the clock starts, and how a date is worded. Every key is optional; an unset key comes
+# from the kit (``kits.ClockDress``), then ``storyclock``'s defaults (``storyclock.calendar_of``).
+# A start date the calendar can't read, or a day_text field it doesn't have, is W301 at load.
+
+
+class CalendarNames(Validator):
+    """A list of ``low`` to ``high`` different names, each one line of 1 to
+    ``storyclock.NAME_MAX`` characters (any capitals count as the same name), as a tuple."""
+
+    def __init__(self, low: int, high: int, example: str) -> None:
+        self.low, self.high = low, high
+        self.expected = (f"a list of {low} to {high} different names, each 1 to "
+                         f"{storyclock.NAME_MAX} characters on one line, e.g. {example}")
+
+    def check(self, value: object) -> object:
+        if (type(value) is list and self.low <= len(value) <= self.high
+                and all(type(n) is str and n.strip() and len(n) <= storyclock.NAME_MAX
+                        and not _has_control(n) and len(_LINE_BREAK_RE.split(n)) == 1
+                        for n in value)
+                and len({" ".join(n.split()).casefold() for n in value}) == len(value)):
+            return tuple(" ".join(n.split()) for n in value)
+        raise ValueProblem
+
+
+class CalendarStart(Validator):
+    """``[calendar] start``: a day number, or a date as text ("Monday 1 April")."""
+
+    expected = (f"a day number from 1 to {storyclock.DAY_MAX}, or a date such as "
+                f'"Monday 1 April" (at most {storyclock.TEXT_MAX} characters)')
+
+    def check(self, value: object) -> object:
+        if type(value) is int and 1 <= value <= storyclock.DAY_MAX:
+            return value
+        if (type(value) is str and value.strip() and len(value) <= storyclock.TEXT_MAX
+                and not _has_control(value) and len(_LINE_BREAK_RE.split(value)) == 1):
+            return value.strip()
+        raise ValueProblem
+
+
+class MonthDays(Validator):
+    """``[calendar] month_days``: one number of days for every month, or a list, one per
+    month (a list of the wrong length is W301 at load)."""
+
+    expected = (f"a whole number of days from 1 to {storyclock.DAYS_IN_MAX}, or a list of "
+                "them, one for each month")
+
+    def check(self, value: object) -> object:
+        def ok(n: object) -> bool:
+            return type(n) is int and 1 <= n <= storyclock.DAYS_IN_MAX
+        if ok(value):
+            return value
+        if type(value) is list and 1 <= len(value) <= storyclock.MONTHS_MAX                 and all(map(ok, value)):
+            return tuple(value)
+        raise ValueProblem
+
+
+@dataclass(frozen=True)
+class CalendarConfig:
+    """``[calendar]`` (F63): see the block comment above. ``months`` and ``seasons`` may be
+    empty lists, which turn the kit's off."""
+    start: int | str | None = field(default=None, metadata=spec(CalendarStart(),
+        "the day the story starts on: a day number, or a date such as Monday 1 April"))
+    parts: tuple[str, ...] | None = field(default=None, metadata=spec(
+        CalendarNames(1, storyclock.PARTS_MAX, '["Morning", "Evening", "Night"]'),
+        "the parts of a day in order, e.g. Morning, After school, Evening, Night"))
+    weekdays: tuple[str, ...] | None = field(default=None, metadata=spec(
+        CalendarNames(1, storyclock.WEEKDAYS_MAX, '["Moonday", "Fireday"]'),
+        "the names of the days of the week in order; when not set, Monday to Sunday"))
+    months: tuple[str, ...] | None = field(default=None, metadata=spec(
+        CalendarNames(0, storyclock.MONTHS_MAX, '["Frostfall", "Thaw"]'),
+        "the names of the months in order, for dates such as 1 April; when not set, no "
+        "months unless the start date names one"))
+    month_days: int | tuple[int, ...] | None = field(default=None, metadata=spec(
+        MonthDays(), "how many days each month has; when not set, the usual lengths for "
+        "January to December and 30 for other names"))
+    seasons: tuple[str, ...] | None = field(default=None, metadata=spec(
+        CalendarNames(0, storyclock.SEASONS_MAX, '["Spring", "Summer", "Autumn", "Winter"]'),
+        "the names of the seasons in order, for dates such as Spring, day 4"))
+    season_days: int | None = field(default=None, metadata=spec(
+        IntRange(1, storyclock.DAYS_IN_MAX), "how many days each season has; when not set, 28"))
+    last_day: int | None = field(default=None, metadata=spec(
+        IntRange(1, storyclock.DAY_MAX), "the day the story's time runs out; the days-left "
+        "countdown counts down to it"))
+    day_text: str | None = field(default=None, metadata=spec(
+        OneLine(storyclock.TEXT_MAX, why="how a date is written"),
+        "how a date is written, with fields in curly brackets such as day, weekday, month "
+        "and season; when not set, the kit's wording, or Day and the number"))
+
+
 # --- [meter.<name>] (F62 round 2, specs/F62-visible-meters) ---------------------------------
 # How one meter is drawn when the story shows it (``show meter <name>``). Every key is optional;
 # an unset key comes from the kit, then the skins defaults (``kits.meter_look``). The name is
@@ -2181,6 +2273,7 @@ class Config:
         default_factory=ContentWarningConfig)
     meta: MetaConfig = field(default_factory=MetaConfig)                # F30
     animation: AnimationConfig = field(default_factory=AnimationConfig) # F38
+    calendar: CalendarConfig = field(default_factory=CalendarConfig)    # F63
     # F32: the valid [style.<name>] tables by name and [playthrough.N] tables by N.
     style: Mapping[str, LookTable] = field(default_factory=_no_looks)
     playthrough: Mapping[int, LookTable] = field(default_factory=_no_looks)
@@ -2222,6 +2315,7 @@ SECTIONS: dict[str, type] = {
     "content_warning": ContentWarningConfig,
     "meta": MetaConfig,
     "animation": AnimationConfig,
+    "calendar": CalendarConfig,                                         # F63
 }
 
 
@@ -2256,6 +2350,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "content_warning": "a content warning shown before the title",
     "meta": "showing the player's computer user name in the story",
     "animation": "characters blinking and moving their mouths while they talk",
+    "calendar": "story time: the parts of the day, weekdays, months and seasons, and the start",
     "style": "a named look the story can switch to while it plays",
     "meter": "how a meter looks when the story shows it on screen",
     "playthrough": "a different title screen for players from a given playthrough on",

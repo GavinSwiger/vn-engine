@@ -13,6 +13,7 @@ from engine.core.constants import STATEMENT_WORDS
 from engine.core.kits import KITS, kit, kit_of, meter_label, meter_look
 from engine.core.schemes import SCHEMES
 from engine.core.skins import CORNER_PLACES, DEFAULT_CORNER_PLACE, DEFAULT_METER_LOOK, METER_LOOKS
+from engine.core.storyclock import NAME_MAX, PARTS_MAX, calendar_of
 
 KIT_LIST = ", ".join(f'"{key}"' for key in KITS)
 
@@ -43,8 +44,16 @@ def test_each_kit_is_well_formed(found):
         assert ats == sorted(set(ats)), s.name                   # rising, as F62 checks
         assert all(label.strip() and s.low <= at <= s.high for label, at in s.ranks)
     # Reserved for later phases, empty and read-only for now.
-    for section in (found.messages, found.clock, found.items, found.checks):
+    for section in (found.messages, found.items, found.checks):
         assert section == {} and isinstance(section, MappingProxyType)
+    # F63: the clock's parts of the day and day wording, within [calendar]'s own limits.
+    clock = found.clock
+    assert clock is not None and 1 <= len(clock.parts) <= PARTS_MAX
+    assert len(set(clock.parts)) == len(clock.parts)
+    assert all(0 < len(part) <= NAME_MAX for part in clock.parts)
+    calendar, problems = calendar_of(SimpleNamespace(theme=SimpleNamespace(kit=found.id)))
+    assert problems == [] and calendar.parts == clock.parts
+    assert calendar.wording() == clock.day_text          # every field it uses is there
 
 
 def test_the_genre_meters_from_the_proposal():

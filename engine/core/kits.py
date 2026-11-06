@@ -9,8 +9,9 @@ its own: it only fills in what the author left unset.
 - ``Kit``: ``id`` (the ``kit`` value), ``name``, a one-line ``blurb``, ``scheme`` (the F49
   scheme it suggests; Studio offers to apply it with the kit, config never does),
   ``meters`` (``MeterDress``: the default ``look`` and ``place`` of a shown meter and the
-  "+ Meter" ``suggestions``), and ``messages``, ``clock``, ``items``, ``checks``: reserved,
-  empty until those systems land.
+  "+ Meter" ``suggestions``), ``clock`` (``ClockDress``, F63: the parts of the day and how a
+  day is worded), and ``messages``, ``items``, ``checks``: reserved, empty until those
+  systems land.
 - ``KITS`` / ``kit(id)`` / ``kit_ids()``: the registry, in Studio's order.
 - ``kit_of(config)``: the kit ``[theme] kit`` names, or None (no kit: today's behavior).
 - ``meter_look(config, meter)``: how meter ``meter`` is shown, as ``(look, place, label)``,
@@ -53,16 +54,28 @@ class MeterDress:
 
 
 @dataclass(frozen=True)
+class ClockDress:
+    """A kit's story clock (F63): the ``parts`` of the day, ``day_text`` (how a date is
+    worded, with fields such as ``{day}``; see ``storyclock.TEXT_FIELDS``), and, when the
+    genre counts time that way, ``seasons`` or ``months`` (True: the twelve months). Each
+    gives way to ``[calendar]`` (``storyclock.calendar_of``)."""
+    parts: tuple[str, ...]
+    day_text: str
+    seasons: tuple[str, ...] = ()
+    months: bool = False
+
+
+@dataclass(frozen=True)
 class Kit:
     """One built-in kit (see the module docstring). The reserved sections are empty
-    mappings until their system lands."""
+    mappings until their system lands; every built-in kit has a ``clock``."""
     id: str
     name: str
     blurb: str
     scheme: str
     meters: MeterDress
+    clock: ClockDress | None = None
     messages: Mapping[str, Any] = field(default=_EMPTY)
-    clock: Mapping[str, Any] = field(default=_EMPTY)
     items: Mapping[str, Any] = field(default=_EMPTY)
     checks: Mapping[str, Any] = field(default=_EMPTY)
 
@@ -82,7 +95,8 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                ("Stranger", 0), ("Friend", 4), ("Close", 8)),
             _m("courage", "Courage", 0, 10, 3,
                ("Shy", 0), ("Brave", 5), ("Fearless", 9)),
-        ))),
+        )), clock=ClockDress(("Morning", "Lunch", "After school", "Evening"),
+                             "{weekday}, day {day}")),
     Kit("horror", "Horror",
         "Blood-dark colors, and a sanity bar that drains as the night goes on.",
         "blood_moon", MeterDress("bar", "top_left", (
@@ -90,7 +104,7 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                ("Breaking", 0), ("Shaken", 25), ("Uneasy", 50), ("Steady", 75)),
             _m("composure", "Composure", 0, 10, 5,
                ("Panicked", 0), ("Rattled", 4), ("Calm", 7)),
-        ))),
+        )), clock=ClockDress(("Dusk", "Midnight", "Witching hour", "Dawn"), "Night {day}")),
     Kit("mystery", "Mystery",
         "Black and white, with suspicion and credibility to keep an eye on.",
         "noir", MeterDress("number", "top_right", (
@@ -99,7 +113,8 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
             _m("credibility", "Credibility", 0, 10, 5,
                ("Doubted", 0), ("Heard", 4), ("Trusted", 8)),
             _m("clues", "Clues", 0, 20, 0),
-        ))),
+        )), clock=ClockDress(("Morning", "Afternoon", "Evening", "Small hours"),
+                             "Day {day} of the case")),
     Kit("fantasy", "Fantasy",
         "Parchment and gold, with renown to earn and stamina to spend.",
         "high_fantasy", MeterDress("pips", "top_left", (
@@ -108,14 +123,17 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
             _m("stamina", "Stamina", 0, 10, 10,
                ("Spent", 0), ("Tired", 3), ("Fresh", 7)),
             _m("gold", "Gold", 0, 999, 20),
-        ))),
+        )), clock=ClockDress(("Dawn", "Midday", "Dusk", "Night"),
+                             "Day {day} of the journey")),
     Kit("cozy", "Cozy",
         "Warm café colors, a good mood and a pocket of coins.",
         "cozy_cafe", MeterDress("number", "top_left", (
             _m("mood", "Mood", 0, 10, 6,
                ("Gloomy", 0), ("Content", 4), ("Cheerful", 8)),
             _m("coins", "Coins", 0, 999, 50),
-        ))),
+        )), clock=ClockDress(("Morning", "Afternoon", "Evening", "Night"),
+                             "{season}, day {season_day}",
+                             seasons=("Spring", "Summer", "Autumn", "Winter"))),
     Kit("scifi", "Sci-fi",
         "A starship console, with hull and oxygen gauges to watch.",
         "starship", MeterDress("dial", "top_left", (
@@ -123,7 +141,7 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                ("Breached", 0), ("Damaged", 30), ("Holding", 70)),
             _m("oxygen", "Oxygen", 0, 100, 100,
                ("Gasping", 0), ("Thin", 30), ("Clear", 60)),
-        ))),
+        )), clock=ClockDress(("Alpha watch", "Beta watch", "Gamma watch"), "Shift {day}")),
     Kit("letters", "Letters",
         "Old paper and ink, and the slow trust of letters between two people.",
         "sepia", MeterDress("pips", "top_right", (
@@ -131,7 +149,8 @@ KITS: Final[Mapping[str, Kit]] = MappingProxyType({k.id: k for k in (
                ("Strangers", 0), ("Pen pals", 3), ("Confidants", 7)),
             _m("hope", "Hope", 0, 10, 5,
                ("Despairing", 0), ("Waiting", 4), ("Hopeful", 8)),
-        ))),
+        )), clock=ClockDress(("Morning post", "Evening post"), "{month_day} {month}",
+                             months=True)),
 )})
 
 
@@ -190,5 +209,5 @@ def meter_look(config: Any, meter: str) -> tuple[str, str, str]:
     return look, place, label
 
 
-__all__ = ["KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
+__all__ = ["ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
            "meter_label", "meter_look"]
