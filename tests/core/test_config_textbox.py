@@ -120,6 +120,7 @@ def test_theme_areas():
         "text_entry",                                            # F52 W1
         "minigame", "plugin",                                    # F23 s5b
         "preset",                                                # F49 S1
+        "kit",                                                   # F60
         "scheme"}                                                # imported palettes
 
 

@@ -49,6 +49,7 @@ from engine.core.constants import (
     WORD_MAX_CHARS,
 )
 from engine.core.errors import AssetRefError, ConfigError
+from engine.core.kits import KITS, kit_ids
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
 from engine.core.schemes import SCHEMES, scheme_ids
@@ -127,6 +128,16 @@ class SchemeName(Choice):
     def __init__(self) -> None:
         super().__init__(*scheme_ids())
         self.labels = MappingProxyType({key: SCHEMES[key].name for key in self.options})
+
+
+class KitName(Choice):
+    """F60: ``[theme] kit``, a built-in genre kit id (``engine.core.kits``); its ``labels``
+    are the kits' names. As with ``SchemeName``, an unknown id is a warning: config drops it
+    first (``config._with_kit``)."""
+
+    def __init__(self) -> None:
+        super().__init__(*kit_ids())
+        self.labels = MappingProxyType({key: KITS[key].name for key in self.options})
 
 
 class HexColor(Validator):
@@ -1359,6 +1370,8 @@ def _no_plugin_tables() -> Mapping[str, RawPluginTable]:
     return MappingProxyType({})
 
 
+KIT_DOC = ("a genre kit (romance, horror, mystery, …): how meters are shown and named; "
+           "what you set yourself still wins")
 SCHEME_DOC = ("a built-in color scheme for every box, menu and button; colors you set "
               "yourself still win")
 
@@ -1416,6 +1429,7 @@ class ThemeConfig:
     """``[theme.<area>]``: one ``Table`` field per area, after F49's ``preset`` (the one
     key that isn't an area: walkers look areas up by name, never by position)."""
     preset: str | None = field(default=None, metadata=spec(SchemeName(), SCHEME_DOC))  # F49
+    kit: str | None = field(default=None, metadata=spec(KitName(), KIT_DOC))          # F60
     scheme: SchemeRolesTheme = field(default_factory=SchemeRolesTheme, metadata=spec(
         Table(SchemeRolesTheme), "your own color scheme: one color per role, over preset's"))
     stage: StageTheme = field(default_factory=StageTheme, metadata=spec(Table(StageTheme)))

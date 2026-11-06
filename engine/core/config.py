@@ -42,6 +42,7 @@ from engine.core.config_schema import (
     toml_key,
     word_fields,
 )
+from engine.core.kits import KITS
 from engine.core.minigame_types import PLUGIN_NAME_RE
 from engine.core.constants import (
     CONFIG_FILENAME,
@@ -228,6 +229,7 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
     walk = _Walk(locator)
     sections: dict[str, object] = {}
     doc = _with_scheme(doc, walk)                                         # F49
+    doc = _with_kit(doc, walk)                                            # F60
 
     for section, content in doc.items():
         if section in SECTIONS and isinstance(content, dict):
@@ -314,6 +316,25 @@ def _scheme_id(value: object, walk: "_Walk", path: tuple[str, ...]) -> object:
         message += ". Use one of " + ", ".join(f'"{key}"' for key in SCHEMES) + "."
     walk.warnings.append((line, message))
     return None
+
+
+def _with_kit(doc: dict, walk: "_Walk") -> dict:
+    """F60: ``doc`` without ``[theme] kit`` when it names no kit, after one warning with a
+    did-you-mean (as F49's preset), so the game runs as with no kit. A value that isn't text
+    stays for the walk's usual error; ``doc`` itself is never changed."""
+    theme = doc.get("theme")
+    value = theme.get("kit") if isinstance(theme, dict) else None
+    if type(value) is not str or value in KITS:
+        return doc
+    line = walk.locator.line_of("theme", "kit")
+    message = f'{_where(line)}: unknown genre kit "{echo(value)}" in [theme] kit'
+    close = did_you_mean(value.casefold(), KITS)
+    if close is not None:
+        message += f' — did you mean "{close}"?'
+    else:
+        message += ". Use one of " + ", ".join(f'"{key}"' for key in KITS) + "."
+    walk.warnings.append((line, message))
+    return {**doc, "theme": {k: v for k, v in theme.items() if k != "kit"}}
 
 
 def _merged_under(table: dict, colors: Iterable[tuple[str, str]]) -> dict:
