@@ -405,9 +405,10 @@ class _Body:
     pages: "list[Page | None]" = field(default_factory=list)
     heights: list[float] = field(default_factory=list)
     pitch: int = 1
+    extra: dict[int, int] = field(default_factory=dict)   # F65: room under a paragraph
 
     def gap(self, index: int) -> int:
-        return CODEX_GAP if index < len(self.pages) - 1 else 0
+        return (CODEX_GAP if index < len(self.pages) - 1 else 0) + self.extra.get(index, 0)
 
     def unlaid(self) -> int | None:
         """The first paragraph not laid out yet, or None."""

@@ -3,7 +3,8 @@ on a letter that asks for a reply; its replies are buttons under the message, th
 the reply marker, picking one answers it (the player's line shows, the buttons go), and the
 story reads the answer with ``inbox.reply`` once the menu closes. Also the reply view on its
 own (``ui/builtin/inbox_reply``): no buttons without an ask, disabled while a reply can't
-count."""
+count, each waiting message with its own buttons under it, and a long reply wrapped to two
+lines, then cut, with the whole text in a tip while focused."""
 
 import os
 from types import SimpleNamespace
@@ -14,7 +15,8 @@ import pytest
 from engine.app.inbox import AppInboxPort
 from engine.runtime.inbox import build_delivery, group_threads
 from engine.ui.builtin.codex_page import CodexFilter, CodexView
-from engine.ui.builtin.inbox_reply import ReplyRow, reply_view
+from engine.ui.builtin import inbox_reply
+from engine.ui.builtin.inbox_reply import ReplyButton, ReplyRow, reply_view
 from engine.ui.focus import Box, FocusScope
 from engine.ui.theme import Words, plain_theme
 from tests.app.test_skip_auto_app import story
@@ -71,10 +73,11 @@ def _view(deliveries, *, can=True):
     return view, posted, codex
 
 
-def _letter(ask=(("yes", "I'll be there."), ("no", "Not this year.")), reply=""):
+def _letter(ask=(("yes", "I'll be there."), ("no", "Not this year.")), reply="",
+            sid="start/0123456789ab", text="Meet me at the bridge."):
     from dataclasses import replace
-    found = build_delivery("start/0123456789ab", (), "Hana", "", "pigeon",
-                           [("them", "Hana", "Meet me at the bridge.")], sender="hana",
+    found = build_delivery(sid, (), "Hana", "", "pigeon",
+                           [("them", "Hana", text)], sender="hana",
                            message="invite", ask=ask)
     return replace(found, reply=reply)
 
@@ -86,7 +89,11 @@ def test_the_replies_are_buttons_under_the_message():
     yes, no = view.reply_buttons[:2]
     assert (yes.label(), no.label()) == ("I'll be there.", "Not this year.")
     assert yes.box.y == no.box.y and yes.box.right < no.box.x
-    assert view.layout.pick is not None and yes.box.x == view.layout.pick.x
+    # Under the message, in the body (no row of its own under the panel).
+    body = view.body.box
+    assert view.layout.pick is None and body.contains((yes.box.x + 1, yes.box.y + 1))
+    row = view.body.row_box(view.reply_asks()[0].at)        # the letter's last paragraph
+    assert row.y < yes.box.y and yes.box.bottom <= row.bottom
     assert view._waiting("hana")
     no.activate()
     assert [(e.key, e.reply) for e in posted] == [(_letter().key, "no")]
@@ -109,6 +116,77 @@ def test_answering_lays_the_thread_out_again():
     view.update(0.016)
     assert view.groups_changed and view.reply_options() == ()
     assert view.layout.pick is None
+
+
+def test_two_questions_in_one_thread_each_get_their_own_buttons():
+    older = _letter(sid="start/0123456789ab", text="Meet me at the bridge.")
+    newer = _letter(ask=(("tea", "Tea, please."), ("no", "No thanks.")),
+                    sid="start/ba9876543210", text="Tea at four?")
+    view, posted, _codex = _view([older, newer])
+    asks = view.reply_asks()
+    assert [ask.key for ask in asks] == [newer.key, older.key]      # newest first, as shown
+    assert [len(b) for _a, b in view.reply_rows] == [2, 2]
+    (_a1, top), (_a2, bottom) = view.reply_rows
+    # Each under its own message: the newer's buttons end the newer's paragraphs.
+    assert asks[0].at < asks[1].at
+    first, second = view.body.row_box(asks[0].at), view.body.row_box(asks[1].at)
+    assert first.y < top[0].box.y < first.bottom <= second.y < bottom[0].box.y
+    assert [b.label() for b in top + bottom] == ["Tea, please.", "No thanks.",
+                                                 "I'll be there.", "Not this year."]
+    bottom[0].activate()
+    top[1].activate()
+    assert [(e.key, e.reply) for e in posted] == [(older.key, "yes"), (newer.key, "no")]
+
+
+class _Painter:
+    """Just enough of a ``Painter`` for a button's label: fixed-width text (10 per
+    character), and what was drawn."""
+
+    def __init__(self):
+        from engine.ui.paint import PaintStyle  # noqa: F401  (the real style's fields)
+        self.drawn, self.panels = [], []
+        font = SimpleNamespace(size=20)
+        self._style = SimpleNamespace(font=font, text_color=(0, 0, 0), side_padding=10)
+        handle = SimpleNamespace(font=None)
+        self.canvas = SimpleNamespace(font_handle=lambda f, at: handle,
+                                      draw_text=lambda text, *a, **k: self.drawn.append(text))
+
+    def style(self, area, state="normal"):
+        return self._style
+
+    def scaled_size(self, size):
+        return size
+
+    def widget_frame(self, *a, **k):
+        pass
+
+    def panel(self, box, *a, **k):
+        self.panels.append(box)
+
+
+def test_a_long_reply_wraps_then_cuts_and_shows_whole_when_focused(monkeypatch):
+    from engine.ui.widgets import Look
+    monkeypatch.setattr(inbox_reply, "text_width", lambda font, text: 10 * len(text))
+    monkeypatch.setattr(inbox_reply.dataclasses, "replace", lambda font, size: font)
+    block, body = Box(0, 300, 400, 80), Box(0, 0, 400, 600)
+    short = "Yes."
+    two = "I will be there at the bridge"                       # 29 characters
+    long = "I will be there at the bridge when the lanterns are lit, with the red one."
+    for text, lines, cut in ((short, 1, False), (two, 2, False), (long, 2, True)):
+        button = ReplyButton(text, lambda: None, enabled=lambda: True,
+                             where=lambda: (block, body))
+        button.box = Box(0, 300, 200, 80)                       # 180 wide inside: 18 chars
+        p = _Painter()
+        button.draw(p, Look("normal"))
+        assert len(p.drawn) == lines and p.drawn[-1].endswith("…") == cut, p.drawn
+        assert " ".join(p.drawn).rstrip("…").replace("… ", "") in text
+        p = _Painter()
+        button.draw(p, Look("focused"))
+        if cut:                                                 # the whole text, in a tip
+            assert len(p.panels) == 1 and p.panels[0].bottom <= block.y
+            assert " ".join(p.drawn[lines:]) == text
+        else:
+            assert p.panels == [] and len(p.drawn) == lines
 
 
 @pytest.mark.display

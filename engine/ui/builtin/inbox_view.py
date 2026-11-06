@@ -110,7 +110,8 @@ class _InboxBody(_Body):
     contexts: dict[float, Any] = field(default_factory=dict)
 
     def gap(self, index: int) -> int:
-        return round(self.specs[index].gap) if index < len(self.pages) - 1 else 0
+        base = round(self.specs[index].gap) if index < len(self.pages) - 1 else 0
+        return base + self.extra.get(index, 0)
 
 
 def spec_for(look: ParaLook, width: float) -> _Spec:

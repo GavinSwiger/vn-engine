@@ -39,7 +39,8 @@ opens with ``open inbox`` / ``open pigeon``.
   a fake crash does (PR-F30-16); with no shell or stage, or nothing to show (no ``send``
   line and nothing arrived yet), it ends at once.
 - Round 3, replies: the page's view is ``inbox_reply.reply_view(InboxView)``. The port
-  offers the newest waiting message's replies of a thread (``reply_options``), marks
+  gives each message of a thread that waits for a reply, with the paragraph it ends on and
+  its replies (``reply_asks``; ``reply_options`` the newest one's replies), marks
   threads that wait (``reply_waiting``), says whether a reply counts now (``can_reply``:
   the story waits at a line or this ``open``) and posts ``ReplyMessage`` straight to the
   interpreter (the menu holds the story's queue). An answered message shows the player's
@@ -56,7 +57,7 @@ from engine.runtime.commands import MessageArrived, OpenInbox, Span, Style, Tagg
 from engine.runtime.images import ImageFile, SolidColor
 from engine.runtime.send import ReplyMessage, can_reply, uses_send
 from engine.runtime.send import pending as pending_messages
-from engine.ui.builtin.inbox_reply import reply_view
+from engine.ui.builtin.inbox_reply import ReplyAsk, reply_view
 from engine.ui.builtin.inbox_view import InboxView, ParaLook
 from engine.ui.builtin.kind_page import KindPage
 from engine.ui.devicelook import notice_skin
@@ -148,6 +149,20 @@ def thread_parts(thread: "ContactThread", me: str, *, default: str = "phone",
     return entry, tuple(looks)
 
 
+def thread_asks(thread: "ContactThread", me: str, *, default: str = "phone",
+                config: object = None) -> tuple[ReplyAsk, ...]:
+    """Round 3: each delivery of ``thread`` that waits for a reply, as the paragraph of
+    ``thread_parts``'s entry it ends on (newest first, like the body), its key and its
+    replies."""
+    asks: list[ReplyAsk] = []
+    at = -1
+    for delivery in reversed(thread.parts):
+        at += len(_part(delivery, me, look_of(delivery, default), delivery.contact, config))
+        if delivery.waiting and delivery.ask and at >= 0:
+            asks.append(ReplyAsk(at, delivery.key, tuple(delivery.ask)))
+    return tuple(asks)
+
+
 def thread_entry(thread: "ContactThread", me: str, *, default: str = "phone",
                  image: str | None = None, config: object = None) -> CodexEntry:
     """``thread`` as the page's entry (``thread_parts`` without the looks)."""
@@ -169,7 +184,7 @@ class AppInboxPort:
         self._contacts = contacts
         self.images = images
         self.config = config
-        self._made: tuple = ((), "", (), {})           # (threads, me, entries, looks)
+        self._made: tuple = ((), "", (), {}, {})   # (threads, me, entries, looks, asks)
 
     @property
     def codex(self) -> "Codex":
@@ -182,8 +197,10 @@ class AppInboxPort:
             pictures = self._contacts()
             parts = [thread_parts(t, me, default=self.default, image=pictures.get(t.sender),
                                   config=self.config) for t in threads]
+            asks = {t.key: thread_asks(t, me, default=self.default, config=self.config)
+                    for t in threads}
             made = self._made = (threads, me, tuple(entry for entry, _ in parts),
-                                 {entry.name: looks for entry, looks in parts})
+                                 {entry.name: looks for entry, looks in parts}, asks)
         return made[2]
 
     def paragraph_looks(self, name: str) -> "tuple[ParaLook, ...] | None":
@@ -240,12 +257,22 @@ class AppInboxPort:
         found = self._waiting(name)
         return found.ask if found is not None else ()
 
+    def reply_asks(self, name: str) -> tuple[ReplyAsk, ...]:
+        """Every message of thread ``name`` that waits for a reply (``thread_asks``)."""
+        self.entries()
+        return self._made[4].get(name, ())
+
     def can_reply(self) -> bool:
         interp = self.live()
         return interp is not None and self.post is not None and can_reply(interp)
 
-    def reply(self, name: str, reply: str) -> None:
+    def reply(self, name: str, reply: str, key: str | None = None) -> None:
+        """Answer thread ``name``'s message ``key`` (None: its newest that waits)."""
         found = self._waiting(name)
+        if key is not None:
+            thread = next((t for t in self.codex.inbox() if t.key == name), None)
+            found = next((d for d in thread.parts if d.key == key and d.waiting),
+                         None) if thread is not None else None
         if found is not None and self.post is not None:
             self.post(ReplyMessage(found.key, reply))
 

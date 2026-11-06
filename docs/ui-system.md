@@ -1260,15 +1260,20 @@ Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can rere
   line runs, or, with round 3's `after 1 day` / `after 2 scenes`, when the clock or the
   scene count gets there (also while skipping); never on a quiet forward re-run or during
   a scene replay.
-- **Replies** (round 3, `ui/builtin/inbox_reply.py`). When the selected thread's newest
-  unanswered message asks, its replies are buttons in the row under the detail panel (the
-  Codex's pick row): 1 to 4, equal widths, `CODEX_GAP` apart, in the message's order, each
-  labelled with its text (cut with "…"; standard `button.*` tokens). They are one focus
-  group after the body, disabled while a reply can't count (at a choice menu). Picking one
-  answers at once: the player's line ("You: I'll be there.") shows under the message, in
-  the look's "me" style, and the buttons and their row go. A thread that waits for a reply
-  has a ring (the unread dot's size and `codex.new.fill_color`, a 2-unit stroke) left of
-  where the dot goes, so a read but unanswered thread still stands out.
+- **Replies** (round 3, `ui/builtin/inbox_reply.py`). Every unanswered message in the
+  selected thread that asks has its own reply buttons right under it, inside the scrolling
+  body (10 units below the message, room kept under its last paragraph), so two questions
+  in one thread are answered separately. 1 to 4 per message, equal widths, 10 apart, in
+  the message's order, side by side, or two to a row when each would be under 180 wide.
+  Each is labelled with its text, wrapped to two lines (standard `button.*` tokens, a
+  two-line height: max(`button.height`, 2 × pitch + 16)); past two lines the second ends
+  with "…", and while that button is focused the whole text shows in a panel tip above
+  its message's buttons (below them when there is no room above). Each row of buttons is
+  a focus group after the body's, clipped to the body; a focused button scrolls into view. They are disabled while a reply can't count (at a
+  choice menu). Picking one answers that message at once: the player's line ("You: I'll be
+  there.") shows under it, in the look's "me" style, and its buttons go. A thread that
+  waits for a reply has a ring (the unread dot's size and `codex.new.fill_color`, a 2-unit
+  stroke) left of where the dot goes, so a read but unanswered thread still stands out.
 - **`open`.** `open inbox` / `open <look>` opens the game menu on this page, its newest
   thread (the newest that came by that look) selected and shown, the page's default
   widget focused; the story holds (a story wait, no checkpoint) until the menu closes,

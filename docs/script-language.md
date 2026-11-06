@@ -1775,9 +1775,12 @@ any message can stay unanswered. A reply is one text: to answer back, send anoth
 line can also give the replies itself: `send late from ren ask "On my way." "Start without
 me."` (each text its own id), for a message without an ask of its own.
 
-On the Inbox page the replies are buttons under the message, and the thread has a ring
-beside its dot until it is answered. The player's pick shows under the message as their
-line ("You: I'll be there.") and in History as a choice. It counts like a choice: a reply
+On the Inbox page the replies are buttons under the message (each message that asks has
+its own, so a thread can wait on two questions at once), and the thread has a ring beside
+its dot until every one is answered. A long reply wraps to two lines in its button; past
+that it is cut with "…", and the whole text shows while the button is focused. The
+player's pick shows under the message as their line ("You: I'll be there.") and in
+History as a choice. It counts like a choice: a reply
 made while a line waits is a step of its own, so Back once takes the reply back on the
 same line, and going forward gives it again; a reply made while `open` waits joins the next
 step. A save keeps it. At a menu the buttons wait until the choice is made.
