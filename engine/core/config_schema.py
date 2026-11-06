@@ -50,7 +50,7 @@ from engine.core.constants import (
 )
 from engine.core.errors import AssetRefError, ConfigError
 from engine.core import storyclock
-from engine.core.kits import KITS, kit_ids
+from engine.core.kits import DEVICE_LOOKS, KITS, kit_ids
 from engine.core.paths import check_ref, is_valid_app_id
 from engine.core.redact import echo
 from engine.core.schemes import SCHEMES, scheme_ids
@@ -2321,6 +2321,47 @@ def _no_meters() -> Mapping[str, MeterTable]:
     return MappingProxyType({})
 
 
+# --- [device.<name>] (F65 round 3, "Phone and letter skins") ---------------------------------
+# How one device look words and sounds a message (``send ... on pigeon``, a contact's ``on``,
+# the kit's default). One table per look of ``kits.DEVICE_LOOKS``; every key is optional and
+# an unset key keeps the engine's word (``kits.device_words``). Another name warns at load
+# with a did-you-mean (``config._Walk.devices``).
+
+DEVICE_SECTION = "device"
+DEVICE_NAME_MAX = 30
+DEVICE_TEXT_MAX = 120
+DEVICE_READINGS: tuple[str, ...] = ("letter", "chat")
+DEVICE_READING_LABELS: Mapping[str, str] = MappingProxyType({
+    "letter": "As a letter, signed", "chat": "As chat lines, name first"})
+
+
+@dataclass(frozen=True)
+class DeviceTable:
+    """One valid ``[device.<look>]``: each key None when not set. ``line`` is the table's
+    line in config.toml. ``Config.device`` maps looks to these; ``kits.device_words`` reads
+    them over the engine's words."""
+    name: str | None = field(default=None, metadata=spec(
+        OneLine(DEVICE_NAME_MAX, why="the device's name"),
+        "the device's name; on the Inbox button and page when it is the game's own device"))
+    arrive_text: str | None = field(default=None, metadata=spec(
+        OneLine(DEVICE_TEXT_MAX, why="the arrival notice"),
+        "the notice when a message arrives by this device, such as A grey bird lands on the "
+        "sill"))
+    arrive_sound: str | None = field(default=None, metadata=spec(
+        AudioRef(), "a sound played once when a message arrives by this device"))
+    header_text: str | None = field(default=None, metadata=spec(
+        OneLine(DEVICE_TEXT_MAX, why="the line above each message"),
+        "the line above each message in the Inbox, such as Arrived by pigeon"))
+    reading: str | None = field(default=None, metadata=spec(
+        Choice(*DEVICE_READINGS, labels=DEVICE_READING_LABELS),
+        "how the sender's lines read: as one signed letter, or as chat lines"))
+    line: int | None = None
+
+
+def _no_devices() -> Mapping[str, DeviceTable]:
+    return MappingProxyType({})
+
+
 # config.toml section → the keys of each of its named tables (``_validate`` routes these to
 # ``_Walk.looks``; they are not in ``SECTIONS``, whose values are one dataclass each).
 LOOK_SECTIONS: Mapping[str, type] = MappingProxyType({
@@ -2365,6 +2406,8 @@ class Config:
     playthrough: Mapping[int, LookTable] = field(default_factory=_no_looks)
     # F62 round 2: the valid [meter.<name>] tables by meter name.
     meter: Mapping[str, MeterTable] = field(default_factory=_no_meters)
+    # F65 round 3: the valid [device.<look>] tables by device look.
+    device: Mapping[str, DeviceTable] = field(default_factory=_no_devices)
 
 
 @dataclass(frozen=True)
@@ -2441,6 +2484,7 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "calendar": "story time: the parts of the day, weekdays, months and seasons, and the start",
     "style": "a named look the story can switch to while it plays",
     "meter": "how a meter looks when the story shows it on screen",
+    "device": "how a device (phone, letters, pigeon, radio, terminal, mind) words a message",
     "playthrough": "a different title screen for players from a given playthrough on",
 })
 
@@ -2706,6 +2750,8 @@ def section_class(section: str) -> type | None:
     head, _, rest = section.partition(".")
     if head == METER_SECTION:                                            # F62 round 2
         return MeterTable if rest and "." not in rest else None
+    if head == DEVICE_SECTION:                                           # F65 round 3
+        return DeviceTable if rest and "." not in rest else None
     cls: type | None = SECTIONS.get(section.split(".")[0])
     for part in section.split(".")[1:]:
         found = config_fields(cls).get(part) if cls is not None else None

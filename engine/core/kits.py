@@ -41,7 +41,7 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Final
 
-from engine.core.codexkinds import codex_kinds
+from engine.core.codexkinds import CHAT, codex_kinds
 from engine.core.skins import CORNER_PLACES, DEFAULT_CORNER_PLACE, DEFAULT_METER_LOOK, METER_LOOKS
 
 _EMPTY: Final[Mapping[str, Any]] = MappingProxyType({})
@@ -209,27 +209,46 @@ class DeviceWords:
     """F65 round 2: how a device look words a message. ``arrive``: the arrival notice
     (``{name}``: the sender's display name); ``via``: the line above each message in the
     Inbox ("Arrived by pigeon"); ``letter``: the sender's lines read as one letter (plain
-    paragraphs, signed "— Hana") rather than as chat lines ("Hana: …")."""
+    paragraphs, signed "— Hana") rather than as chat lines ("Hana: …"). Round 3: ``name``,
+    the device's shown name, and ``sound``, the arrival sound (None: silence)."""
 
     arrive: str
     via: str
     letter: bool
+    name: str = ""
+    sound: str | None = None
 
 
 DEVICE_WORDS: Final[Mapping[str, DeviceWords]] = MappingProxyType({
-    "phone": DeviceWords("New message from {name}.", "Message", False),
-    "letters": DeviceWords("A letter from {name} has arrived.", "Letter", True),
+    "phone": DeviceWords("New message from {name}.", "Message", False, "Phone"),
+    "letters": DeviceWords("A letter from {name} has arrived.", "Letter", True, "Letters"),
     "pigeon": DeviceWords("A pigeon lands on the sill with a note from {name}.",
-                          "Arrived by pigeon", True),
-    "radio": DeviceWords("The radio crackles. It's {name}.", "Over the radio", False),
-    "terminal": DeviceWords("Incoming transmission from {name}.", "Transmission", False),
-    "mind": DeviceWords("{name}'s voice, inside your head.", "A thought", True),
+                          "Arrived by pigeon", True, "Pigeon post"),
+    "radio": DeviceWords("The radio crackles. It's {name}.", "Over the radio", False,
+                         "Radio"),
+    "terminal": DeviceWords("Incoming transmission from {name}.", "Transmission", False,
+                            "Terminal"),
+    "mind": DeviceWords("{name}'s voice, inside your head.", "A thought", True, "Mind"),
 })
 
 
-def device_words(look: str) -> DeviceWords:
-    """F65 round 2: ``look``'s wording (a phone's for a look this engine doesn't know)."""
-    return DEVICE_WORDS.get(look) or DEVICE_WORDS[DEVICE_LOOKS[0]]
+def device_words(look: str, config: Any = None) -> DeviceWords:
+    """F65 round 2: ``look``'s wording (a phone's for a look this engine doesn't know).
+    Round 3: each key ``config``'s ``[device.<look>]`` sets wins over the engine's word."""
+    words = DEVICE_WORDS.get(look) or DEVICE_WORDS[DEVICE_LOOKS[0]]
+    table = getattr(config, "device", _EMPTY).get(look)
+    if table is None:
+        return words
+    reading = getattr(table, "reading", None)
+    return DeviceWords(table.arrive_text or words.arrive, table.header_text or words.via,
+                       words.letter if reading is None else reading == "letter",
+                       table.name or words.name, table.arrive_sound or words.sound)
+
+
+def arrive_text(words: DeviceWords, name: str) -> str:
+    """F65 round 3: the arrival notice with ``{name}`` filled in (only that field, so an
+    author's other braces show as written)."""
+    return words.arrive.replace("{name}", name)
 
 
 KITS = MappingProxyType({  # type: ignore[misc]
@@ -324,10 +343,11 @@ def hotbar_word(config: Any) -> str:
 def kit_words(config: Any) -> dict[str, str]:
     """F65: the ``[words]`` the kit fills in, by key: each codex kind's page with a
     ``kit_title`` (``("messages", "title")`` names the ``inbox`` page). ``{}`` with no kit.
-    ``ui/theme.Words`` uses one only where the author left that word at its default."""
+    ``ui/theme.Words`` uses one only where the author left that word at its default.
+    Round 3: the game's device's ``[device.<look>] name`` wins over the kit's title."""
     found = kit_of(config)
     if found is None:
-        return {}
+        return device_name_words(config)
     out: dict[str, str] = {}
     for kind in codex_kinds():
         if kind.kit_title is None:
@@ -336,7 +356,15 @@ def kit_words(config: Any) -> dict[str, str]:
         word = getattr(found, section, _EMPTY).get(key, "")
         if isinstance(word, str) and word.strip():
             out.setdefault(kind.page, word.strip())
-    return out
+    return {**out, **device_name_words(config)}
+
+
+def device_name_words(config: Any) -> dict[str, str]:
+    """F65 round 3: ``{"inbox": name}`` when ``[device.<the game's device>] name`` is set
+    (it then wins over the kit's title), else ``{}``."""
+    table = getattr(config, "device", _EMPTY).get(device_look(config))
+    name = getattr(table, "name", None)
+    return {CHAT.page: name.strip()} if isinstance(name, str) and name.strip() else {}
 
 
 def device_look(config: Any) -> str:
@@ -346,7 +374,8 @@ def device_look(config: Any) -> str:
     return look if look in DEVICE_LOOKS else DEVICE_LOOKS[0]
 
 
-__all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "device_words", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
+__all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "arrive_text", "device_name_words",
+           "device_words", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
            "ITEM_WORDS", "MESSAGES_DEVICE", "MESSAGES_TITLE", "MESSAGE_WORDS",
            "bag_words", "device_look", "hotbar_word", "kit_words",
            "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",

@@ -20,6 +20,8 @@ from collections.abc import Iterable
 from types import MappingProxyType
 
 from engine.core.config_schema import (
+    DEVICE_SECTION,
+    DeviceTable,
     LOOK_SECTIONS,
     METER_SECTION,
     METER_TABLE_NAME_MAX,
@@ -48,7 +50,7 @@ from engine.core.config_schema import (
     toml_key,
     word_fields,
 )
-from engine.core.kits import KITS
+from engine.core.kits import DEVICE_LOOKS, KITS
 from engine.core.minigame_types import PLUGIN_NAME_RE
 from engine.core.constants import (
     CONFIG_FILENAME,
@@ -244,10 +246,13 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
             sections[section] = walk.looks(section, content)
         elif section == METER_SECTION and isinstance(content, dict):          # F62 round 2
             sections[section] = walk.meters(content)
+        elif section == DEVICE_SECTION and isinstance(content, dict):         # F65 round 3
+            sections[section] = walk.devices(content)
         elif isinstance(content, dict):
             line = locator.line_of(section)
             message = f"{_where(line)}: unknown section [{echo(section)}]"
-            close = did_you_mean(section, [*SECTIONS, *LOOK_SECTIONS, METER_SECTION])
+            close = did_you_mean(section, [*SECTIONS, *LOOK_SECTIONS, METER_SECTION,
+                                          DEVICE_SECTION])
             if close is not None:
                 message += f" — did you mean [{close}]?"
             walk.warnings.append((line, message))
@@ -257,7 +262,8 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
                                         "section such as [game]"))
 
     config = Config(**{name: sections.get(name, cls()) for name, cls in SECTIONS.items()},
-                    **{name: sections[name] for name in (*LOOK_SECTIONS, METER_SECTION)
+                    **{name: sections[name] for name in (*LOOK_SECTIONS, METER_SECTION,
+                                                         DEVICE_SECTION)
                        if name in sections})
     walk.errors.extend(_content_warning_errors(config, doc, locator))
     walk.warnings.sort(key=lambda item: _line_order(item[0]))
@@ -595,6 +601,34 @@ class _Walk:
                 continue
             found = self.table(MeterTable, table, path)
             tables[key] = dataclasses.replace(found, line=line)  # type: ignore[type-var]
+        return MappingProxyType(tables)
+
+    def devices(self, content: dict) -> object:
+        """F65 round 3: the valid ``[device.<look>]`` tables by look, read-only. A name that
+        isn't one of ``kits.DEVICE_LOOKS`` warns with a did-you-mean and its table is
+        skipped; a bad value is the usual error and its key stays unset."""
+        tables: dict[str, DeviceTable] = {}
+        for name, table in content.items():
+            path = (DEVICE_SECTION, name)
+            line = self.locator.line_of(*path)
+            if name not in DEVICE_LOOKS:
+                message = (f"{_where(line)}: unknown device [{DEVICE_SECTION}."
+                           f"{echo(toml_key(name))}]")
+                close = did_you_mean(name.casefold(), DEVICE_LOOKS)
+                if close is not None:
+                    message += f" — did you mean [{DEVICE_SECTION}.{close}]?"
+                else:
+                    message += ". Use one of " + ", ".join(DEVICE_LOOKS) + "."
+                self.warnings.append((line, message))
+                continue
+            if not isinstance(table, dict):
+                self.errors.append(ConfigError(
+                    f"[{DEVICE_SECTION}] {name} must be a section, such as "
+                    f"[{DEVICE_SECTION}.{name}], but found {describe(table)}",
+                    file=CONFIG_FILENAME, line=line))
+                continue
+            found = self.table(DeviceTable, table, path)
+            tables[name] = dataclasses.replace(found, line=line)  # type: ignore[type-var]
         return MappingProxyType(tables)
 
     def _look_table(self, section: str, content: dict, path: tuple[str, ...],

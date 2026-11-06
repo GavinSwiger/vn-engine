@@ -26,8 +26,9 @@ def test_ac63_every_config_key_and_section_has_a_description():
     assert len(keys) > 400
     looks = list(_keys({f"{name}.x": cls for name, cls in cs.LOOK_SECTIONS.items()}))
     looks += list(_keys({f"{cs.METER_SECTION}.x": cs.MeterTable}))       # F62 round 2
+    looks += list(_keys({f"{cs.DEVICE_SECTION}.x": cs.DeviceTable}))     # F65 round 3
     assert [f"[{s}] {k}" for s, k in keys + looks if not cs.key_doc(s, k).strip()] == []
-    named = [*cs.LOOK_SECTIONS, cs.METER_SECTION]
+    named = [*cs.LOOK_SECTIONS, cs.METER_SECTION, cs.DEVICE_SECTION]
     assert [s for s in [*cs.SECTIONS, *named] if not cs.key_doc(s, "")] == []
     assert set(cs.SECTION_DOCS) == set(cs.SECTIONS) | set(named)
     theme_names = {k for s, k in keys if s.startswith("theme")} \
@@ -51,9 +52,11 @@ def test_descriptions_use_plain_words():
     keys = list(_keys(cs.SECTIONS))
     looks = list(_keys({f"{name}.x": cls for name, cls in cs.LOOK_SECTIONS.items()}))
     looks += list(_keys({f"{cs.METER_SECTION}.x": cs.MeterTable}))       # F62 round 2
+    looks += list(_keys({f"{cs.DEVICE_SECTION}.x": cs.DeviceTable}))     # F65 round 3
     texts = {f"[{s}] {k}": cs.key_doc(s, k) for s, k in keys + looks}
     texts |= {f"[{s}]": cs.key_doc(s, "")
-              for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS, cs.METER_SECTION]}
+              for s in [*cs.SECTIONS, *cs.LOOK_SECTIONS, cs.METER_SECTION,
+                        cs.DEVICE_SECTION]}
     texts |= {f"THEME_DOCS {k}": v for k, v in cs.THEME_DOCS.items()}
     texts |= {f"WORD_DOCS {k}": v for k, v in cs.WORD_DOCS.items()}
     assert len(texts) > 400
