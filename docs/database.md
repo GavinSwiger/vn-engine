@@ -21,8 +21,16 @@ positions go into `config.toml`.
 - **Variables**: a name, a kind (Number, Text, Yes-No) and a starting value (`default`).
   Tick **Remembered across playthroughs** to keep it after the game ends
   (`default persistent.name`).
-- **Meters**: a name, an optional lowest and highest, and the start (`points`). A new meter
-  goes from 0 to 100.
+- **Meters**: a name, an optional lowest and highest, the start and its ranks (`points`).
+  **+ New** offers ready-made meters first: your kit's (Horror's Sanity, 0 to 100, starting
+  full, with four ranks), or Affection, Trust, Courage and Coins without a kit (Game
+  settings ▸ Kit tailors the list). **Blank meter…** goes from 0 to 100. Under **On
+  screen**, pick the meter's **Look** (bar, number, hearts, pips, dial), its **Corner**
+  (click one of the four) and the **Label** beside it; the small picture next to them shows
+  the meter in your colors at a sample value, with its rank. A field you leave alone uses
+  the kit's default, and the line under them says which ("Kit default: hearts, top
+  right"); **Use default** clears one. These go in `[meter.<name>]` in config.toml, one undo
+  step each. The story shows the meter with `show meter <name>` (Insert ▸ Show meter).
 - **Codex**: tips (kept in every playthrough) and items (this playthrough only), each with a
   title, a category, a picture and its text, one paragraph per line (`lock tip`/`lock item`).
   The Kind field switches an entry between tip and item.

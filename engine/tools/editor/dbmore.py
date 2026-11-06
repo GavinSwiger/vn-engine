@@ -8,7 +8,8 @@ read-only with **Go to**. ``MoreCategories`` is a mixin of ``database.DatabasePa
 builds these categories' rows and forms and writes through the pane's plan path (declaration
 plans) or, for positions, ``tomlpatch`` plans on ``config.toml``'s open document.
 
-- **Meters**: script name, an optional lowest/highest range, the start (``points``).
+- **Meters**: script name, an optional lowest/highest range, the start (``points``), ranks;
+  + New offers ready-made meters, and On screen sets the look (``dbmeters``, F62).
 - **Codex**: Tip or Item (a switch), title, category, picture, text paragraphs.
 - **Endings & routes**: routes (title, the endings that open it, multi-pick); the
   endings, read-only, with Go to.
@@ -34,6 +35,7 @@ from engine.script.assetgroups import CONFIG_REF
 from engine.script.messages import show
 from engine.script.points import POINTS_LIMIT
 from engine.tools.editor import dbmodel as db
+from engine.tools.editor.dbmeters import MeterSetup
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declrename
 from engine.tools.editor import (declplan, fieldhints, fieldwidgets, files, stageat, tomlpatch,
@@ -201,7 +203,7 @@ def _ranks_hint(name: str, values: Mapping[str, object]) -> str:
         return RANKS_NONE
     return RANKS_HINT.format(name=name, label=ranks[-1][0])
 
-class MoreCategories:
+class MoreCategories(MeterSetup):
     """The P2 categories of ``database.DatabasePane`` (a mixin: it uses the pane's rows,
     forms and writers)."""
 
@@ -587,6 +589,7 @@ class MoreCategories:
                          style="Hint.TLabel")
         grid.widget(hint, pady=(6, 2))
         grid.widget(self._uses_line(grid.frame, entry), pady=(2, 0))
+        show_look = self._look_rows(grid, form, entry, values)          # F62 round 2
         self._bottom(body, 2, entry, lambda: self._delete_decl(entry))
 
         def update(new: Row) -> None:
@@ -607,6 +610,7 @@ class MoreCategories:
                     f[f"at{index}"].set(int(at))
             ranks_hint.configure(text=_ranks_hint(entry.name, now))
             hint.configure(text=METER_HINT.format(name=entry.name))
+            show_look(entry, now)
 
         form.update = update
 
@@ -1223,7 +1227,7 @@ class MoreCategories:
         """+ New for a P2 category; False when the category has none."""
         category = self.category
         if category == db.CATEGORY_METER:
-            self.new_meter()
+            self.show_meter_menu()                      # F62 round 2: presets first
         elif category == db.CATEGORY_ENDING:
             self.new_route()
         elif category == db.CATEGORY_TRANSITION:

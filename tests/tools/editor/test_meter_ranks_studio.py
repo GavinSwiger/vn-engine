@@ -77,7 +77,7 @@ def test_database_meter_ranks_table(studio, tmp_path):
     ed = studio(game, mapped=True)
     db = open_database(ed, "meter")
     ed.answers.append("hana")
-    db.new_entry()
+    db.new_meter()                                  # + New ▸ Blank meter…
     assert _meter_line(ed) == "points hana 0 to 100"
     db.form.fields["add_rank"].invoke()
     ed.root.update()

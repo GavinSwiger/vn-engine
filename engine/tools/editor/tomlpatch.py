@@ -14,7 +14,8 @@ plan (``verify``) against the live editor text before applying it as one undo st
   **live** section header becomes the key (F42's ``# id``); one under a commented header
   (``# [content_warning]``) is left alone. Else the key goes after the section's last key
   line, or right under its header; with no header, ``[section]`` and the key are appended.
-- Remove ("Use default"): the key's lines go; the header stays.
+- Remove ("Use default"): the key's lines go; the header stays (unless ``drop_empty`` and
+  nothing but blank lines would stay under it).
 - Refused (``scriptedit.Refuse``): a broken or too large document, a key that isn't a
   ``config_schema`` setting, a value its validator refuses, and shapes this writer can't
   change safely: a key inside an inline table or an array of tables (``[[…]]``), or a key
@@ -494,9 +495,12 @@ def plan_set(text: str, section: str, key: str, value: object, *, title: str | N
 
 
 def plan_remove(text: str, section: str, key: str, *, title: str | None = None,
-                ref: str = CONFIG_FILENAME) -> TomlPlan | Refuse | None:
+                ref: str = CONFIG_FILENAME, drop_empty: bool = False
+                ) -> TomlPlan | Refuse | None:
     """The plan that removes ``[section] key`` ("Use default"; the header stays), a
-    ``Refuse``, or None when the key isn't set."""
+    ``Refuse``, or None when the key isn't set. ``drop_empty`` (F62's ``[meter.<name>]``):
+    when only blank lines would be left under the header, the header goes too, with one
+    blank line before it."""
     prepared = _prepare(text, section, key, ref)
     if isinstance(prepared, Refuse):
         return prepared
@@ -505,25 +509,51 @@ def plan_remove(text: str, section: str, key: str, *, title: str | None = None,
     if live is None:
         return None
     title = title if title is not None else REMOVE_TITLE.format(section=section, key=key)
-    guards = tuple((n, lines[n - 1]) for n in range(live.first, live.last + 1))
-    plan = TomlPlan(title, ref, section, key, None, (LineEdit(live.first, live.last, ()),),
-                    guards)
+    first, last = live.first, live.last
+    if drop_empty:
+        first, last = _with_empty_header(index, lines, path[:-1], first, last)
+    guards = tuple((n, lines[n - 1]) for n in range(first, last + 1))
+    plan = TomlPlan(title, ref, section, key, None, (LineEdit(first, last, ()),), guards)
     return plan if verify(plan, text) else Refuse(UNSAFE)
 
 
+def _with_empty_header(index: _Index, lines: Sequence[str], section: Path_, first: int,
+                       last: int) -> tuple[int, int]:
+    """The lines to remove so that removing lines ``first``..``last`` also takes the live
+    header ``section`` when nothing but blank lines would stay under it (and no table
+    inside it follows); else ``(first, last)``."""
+    header = next((h for h in index.headers if h.path == section and not h.array), None)
+    if header is None or header.line > first:
+        return first, last
+    nxt = next((h for h in index.headers if h.line > header.line), None)
+    end = nxt.line - 1 if nxt is not None else index.count
+    if nxt is not None and nxt.path[:len(section)] == section:
+        return first, last
+    if any(lines[n - 1].strip() for n in range(header.line + 1, end + 1)
+           if not first <= n <= last):
+        return first, last
+    start = header.line
+    if start > 1 and not lines[start - 2].strip():
+        start -= 1
+    elif start == 1:                                  # the file's top: no gap left above
+        while last < index.count - 1 and not lines[last].strip():
+            last += 1
+    return start, last
+
+
 def plan_changes(text: str, changes: Sequence[tuple[str, str, Any]], *,
-                 title: str | None = None, ref: str = CONFIG_FILENAME
-                 ) -> TomlPlan | Refuse | None:
+                 title: str | None = None, ref: str = CONFIG_FILENAME,
+                 drop_empty: bool = False) -> TomlPlan | Refuse | None:
     """One plan for several ``(section, key, value)`` changes (value None: "Use default"),
     as one undo step (F42 04 §7.6: Build's title, version, id, icon). Each change is planned
     on the text the earlier ones made; the result is one edit over the lines that differ,
     guarded by the original lines around it, and checked by ``verify`` against every
     change. The first refusal wins; None when nothing changes. A single change gives its
-    own plan (with its selection)."""
+    own plan (with its selection). ``drop_empty``: as ``plan_remove``'s."""
     current, done = text, []
     for section, key, value in changes:
         if value is None:
-            step = plan_remove(current, section, key, ref=ref)
+            step = plan_remove(current, section, key, ref=ref, drop_empty=drop_empty)
         else:
             step = plan_set(current, section, key, value, ref=ref)
         if isinstance(step, Refuse):
