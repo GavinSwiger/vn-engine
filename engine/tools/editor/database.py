@@ -1096,7 +1096,7 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         remembered = entry.kind == dec.PERSISTENT
         f["remembered"] = ToggleField(
             grid.frame, db.REMEMBERED, remembered,
-            on_change=lambda v: self._swap(entry, dec.PERSISTENT if v else dec.VARIABLE))
+            on_change=lambda v: self._remember(entry, bool(v)))
         grid.widget(f["remembered"].widget, pady=(6, 2))
         if remembered:
             grid.widget(ttk.Label(grid.frame, text=REMEMBERED_HINT.format(name=entry.name),

@@ -58,6 +58,8 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    6j. F63: ``clock`` lines and ``clock.<value>`` uses (``clock.py``): E431–E434,
    W300–W303.
    6k. F64 round 2: ``[hotbar] items`` against the usable items (``hotbar.py``): W308.
+   6l. First-game fix (2026-11-06): W320 for a remembered variable's name used without
+   ``persistent.`` (``remembered.py``).
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
    summary line.
@@ -1530,6 +1532,9 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += inbox_checks.check_story(inp.nodes, sink.add,   # E452, W311
                                              inp.meter_config)
     out.warnings += _w317(inp)                                      # F65 round 3
+    from engine.script import remembered                            # W320: plain names
+    out.warnings += remembered.check_story(inp.nodes, collected.define_defs,
+                                           collected.default_defs)
     yield
     if not inp.checks_skipped:
         out.warnings += yield from _iter_w42(collected)

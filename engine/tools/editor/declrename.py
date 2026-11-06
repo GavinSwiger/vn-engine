@@ -519,7 +519,164 @@ def verify_rename(rename: RenamePlan, texts: Mapping[str, str],
         return False
 
 
-__all__ = ["ASK", "BUILTIN_REFUSED", "CANT_RENAME", "CODEX_NOTE", "CONFIG_REF", "DATA",
-           "CONTACT_NOTE", "NOTES", "PICTURES_NOTE", "PLACES", "REMEMBERED_NOTE", "RENAMABLE",
-           "ROUTE_REFUSED", "SAVES_NOTE", "RenamePlan", "Span", "file_spans", "plan_rename",
-           "verify_rename"]
+# --- Remembered across playthroughs (first-game fix, 2026-11-06) -----------------------------
+#
+# Ticking "Remembered across playthroughs" changed only the ``default`` line, so every use of
+# the plain name was left reading a variable that no longer existed. A swap is a rename of
+# the uses' spelling: ``x`` ↔ ``persistent.x`` in Python code and the declaration, as one
+# plan, with the rename's Ask, guards and verification. Places that only a story variable
+# fits (``{var=x}``, ``{username=x}``, ``minigame … into x``, ``name_from="x"``) refuse.
+
+REMEMBER_ASK: Final = "Make `{name}` remembered across playthroughs?"
+FORGET_ASK: Final = "Make `{name}` an ordinary story variable again?"
+SWAP_PLACES: Final = "{places} in {files} will change to `{spelling}`."
+REMEMBER_NOTE: Final = "It starts from its starting value in every game until the story sets it."
+FORGET_NOTE: Final = ("What earlier playthroughs remembered isn't used any more; saves start "
+                      "it from its starting value.")
+REMEMBER_REFUSED: Final = ("`{file}`, line {line} uses `{name}` where only a story variable "
+                           "fits ({{var=…}}, minigame … into, or name_from). Change that line "
+                           "first.")
+CHANGE: Final = "Change"
+_PERSISTENT: Final = "persistent"
+
+
+def _swap_py_spans(py: PyCode, name: str, remember: bool, lines: list[str]
+                   ) -> list[Span] | None:
+    """The spans of ``py`` that spell ``name`` the old way (``x``, or ``persistent.x`` when
+    not ``remember``), each rewritten whole; None when one can't be placed safely."""
+    try:
+        tree = ast.parse(py.source, mode=py.mode)
+    except (SyntaxError, ValueError, MemoryError, RecursionError):
+        return []
+    rows = py.source.split("\n")
+    old = name if remember else f"{_PERSISTENT}.{name}"
+    new = f"{_PERSISTENT}.{name}" if remember else name
+    out: list[Span] = []
+    for node in ast.walk(tree):
+        if remember:
+            hit = isinstance(node, ast.Name) and node.id == name
+        else:
+            hit = isinstance(node, ast.Attribute) and node.attr == name \
+                and _is(node.value, _PERSISTENT)
+        if not hit:
+            continue
+        row, end_row = node.lineno, node.end_lineno                # type: ignore[attr-defined]
+        if row != end_row:
+            return None
+        c0 = _col(rows, row, node.col_offset)                      # type: ignore[attr-defined]
+        c1 = _col(rows, row, node.end_col_offset)                  # type: ignore[attr-defined]
+        line = py.line + row - 1
+        shift = py.column - 1 if row == 1 else 0
+        if line > len(lines) or lines[line - 1][shift + c0:shift + c1] != old:
+            return None
+        out.append(Span(line, shift + c0, shift + c1, new))
+    return out
+
+
+def _story_only(py: PyCode, name: str) -> bool:
+    """True when ``py`` passes ``name`` as a ``Character``'s ``name_from``."""
+    try:
+        tree = ast.parse(py.source, mode=py.mode)
+    except (SyntaxError, ValueError, MemoryError, RecursionError):
+        return False
+    return any(isinstance(node, ast.Call) and _is(node.func, "Character")
+               and any(k.arg == "name_from" and _const(k.value, name) for k in node.keywords)
+               for node in ast.walk(tree))
+
+
+def swap_spans(ref: str, text: str, name: str, remember: bool,
+               positions: Collection[str] = ()) -> list[Span] | Refuse:
+    """Every place ``ref``'s ``text`` spells ``name`` the old way, as spans that write the
+    new spelling; a Refuse when the file can't be read whole or a place can't change."""
+    if not _names(text, name):
+        return []
+    lines = text.split("\n")
+    nodes, problem = _parse(ref, text, positions)
+    if problem is not None:
+        return Refuse(FIX_FIRST.format(file=show(ref.removeprefix("script/")), line=problem),
+                      (ref, problem))
+    found: dict[tuple[int, int], Span] = {}
+    w = _word(name)
+    for obj, line, end in _walk(nodes, 1, 1):
+        spans: list[Span] | None
+        if isinstance(obj, PyCode):
+            if remember and _story_only(obj, name):
+                return Refuse(REMEMBER_REFUSED.format(file=show(ref.removeprefix("script/")),
+                                                      line=obj.line, name=show(name)),
+                              (ref, obj.line))
+            spans = _swap_py_spans(obj, name, remember, lines)
+            if spans is None:
+                return Refuse(UNSAFE, (ref, obj.line))
+        elif remember and isinstance(obj, Default) and obj.name == name \
+                and not isinstance(obj, PersistentDefault):
+            spans = _regex_spans(lines, line, line, rf"^[ \t]*default[ \t]+{w}",
+                                 f"{_PERSISTENT}.{name}")
+        elif not remember and isinstance(obj, PersistentDefault) and obj.name == name:
+            spans = _regex_spans(
+                lines, line, line,
+                rf"^[ \t]*default[ \t]+({_PERSISTENT}[ \t]*\.[ \t]*{re.escape(name)})(?!\w)",
+                name)
+        elif remember and _slot_spans(obj, line, end, dec.VARIABLE, name, name, lines):
+            return Refuse(REMEMBER_REFUSED.format(file=show(ref.removeprefix("script/")),
+                                                 line=line, name=show(name)), (ref, line))
+        else:
+            spans = []
+        for span in spans:
+            found[(span.line, span.col0)] = span
+    return sorted(found.values(), key=lambda s: (s.line, s.col0))
+
+
+def plan_remember(name: str, remember: bool, texts: Mapping[str, str], *,
+                  locked: Mapping[str, str] = MappingProxyType({}),
+                  positions: Collection[str] = (), confirm: bool = False
+                  ) -> RenamePlan | Ask | Refuse:
+    """Make variable ``name`` remembered across playthroughs (``remember``) or an ordinary
+    story variable again: its declaration and every use change spelling in every script of
+    ``texts``. Without ``confirm``, an Ask with the count; with it, the plan (one undo step
+    per file), checked afterwards with ``verify_rename``."""
+    kind = dec.VARIABLE if remember else dec.PERSISTENT
+    # A plain name the code already uses without a default (W320's broken state) is no
+    # clash: making the variable ordinary again gives those lines their value.
+    space = dec.taken_names(dec.scan(texts), dec.PERSISTENT if remember else dec.VARIABLE)
+    if name in space:
+        return Refuse(NAME_CLASH.format(name=name))
+    files: list[FilePlan] = []
+    guards: list[tuple[str, int, str]] = []
+    places = 0
+    for ref, text in texts.items():
+        spans = swap_spans(ref, text, name, remember, positions)
+        if ref in locked and (isinstance(spans, Refuse) or spans):
+            return Refuse(locked[ref], (ref, 1))
+        if isinstance(spans, Refuse):
+            return spans
+        if not spans:
+            continue
+        lines = text.split("\n")
+        by_line: dict[int, list[Span]] = {}
+        for span in spans:
+            by_line.setdefault(span.line, []).append(span)
+        edits: list[LineEdit] = []
+        for number, group in sorted(by_line.items()):
+            guards.append((ref, number, lines[number - 1]))
+            edits.append(LineEdit(number, number, (_apply_spans(lines[number - 1], group),)))
+            places += 1
+        files.append(FilePlan(ref, (), tuple(edits)))
+    if not files:
+        return Refuse(CANT_RENAME)
+    spelling = f"{_PERSISTENT}.{name}" if remember else name
+    if not confirm:
+        parts = [(REMEMBER_ASK if remember else FORGET_ASK).format(name=show(name)),
+                 SWAP_PLACES.format(places=_count(places, "place"),
+                                    files=_count(len(files), "file"), spelling=show(spelling)),
+                 REMEMBER_NOTE if remember else FORGET_NOTE]
+        return Ask(" ".join(parts), (CHANGE, CANCEL), escape=1, default=1)
+    title = f"{'Remember' if remember else 'Stop remembering'} variable {name}"
+    return RenamePlan(Plan(title, tuple(files)), tuple(guards), None, kind, name, spelling,
+                      places, len(files))
+
+
+__all__ = ["ASK", "BUILTIN_REFUSED", "CANT_RENAME", "CHANGE", "CODEX_NOTE", "CONFIG_REF",
+           "DATA", "CONTACT_NOTE", "FORGET_ASK", "FORGET_NOTE", "NOTES", "PICTURES_NOTE",
+           "PLACES", "REMEMBERED_NOTE", "REMEMBER_ASK", "REMEMBER_NOTE", "REMEMBER_REFUSED",
+           "RENAMABLE", "ROUTE_REFUSED", "SAVES_NOTE", "SWAP_PLACES", "RenamePlan", "Span",
+           "file_spans", "plan_remember", "plan_rename", "swap_spans", "verify_rename"]

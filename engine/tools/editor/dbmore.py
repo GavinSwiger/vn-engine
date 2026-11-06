@@ -567,6 +567,48 @@ class MoreCategories(MeterSetup):
         return self._write(declplan.plan_edit(decl, values, self.texts, kind=kind),
                            select=PREFIXES[kind] + decl.name)
 
+    def _remember(self, entry: db.Entry, remember: bool) -> bool:
+        """Remembered across playthroughs: the ``default`` line and every use change from
+        ``x`` to ``persistent.x`` (or back) as one change (``declrename.plan_remember``),
+        after the Ask when uses change too, so the story never reads a name that's gone."""
+        decl = self._fresh(entry)
+        if decl is None:
+            show_error(self.root, STALE)
+            self.refresh()
+            return False
+        if decl.kind == (dec.PERSISTENT if remember else dec.VARIABLE):
+            return True
+        texts, locked, positions, _config = self._rename_inputs()
+
+        def plan(confirm: bool) -> object:
+            try:
+                return declrename.plan_remember(decl.name, remember, texts, locked=locked,
+                                                positions=positions, confirm=confirm)
+            except Exception:           # a planner bug must never reach the text
+                return Refuse(UNSAFE)
+        result = plan(True)
+        if isinstance(result, Refuse):
+            show_error(self.root, result.text)
+            self.refresh()
+            return False
+        assert isinstance(result, declrename.RenamePlan)
+        if result.places > 1:
+            question = plan(False)
+            if not isinstance(question, Ask) or ask(
+                    self.root, question.text, question.buttons, escape=question.escape,
+                    default=question.default) != 0:
+                self.refresh()
+                return False
+        if not apply_saved(self.win, result.plan, lambda now: declrename.verify_rename(
+                result, now, positions)):
+            show_error(self.root, STALE)
+            self.refresh()
+            return False
+        self.win._update_marks()
+        self.refresh(select=PREFIXES[dec.PERSISTENT if remember else dec.VARIABLE]
+                     + decl.name)
+        return True
+
     def _refuse_field(self, field: Any, text: str) -> None:
         show_error(self.root, text)
         row = self.selected_row()

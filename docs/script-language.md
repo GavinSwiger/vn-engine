@@ -1994,6 +1994,7 @@ about the player rather than the story ("finished once", "saw the sad ending").
 | Message | Fix |
 |---|---|
 | `persistent.met_hana has no value yet. …` / `… Did you mean "hana_remembers"?` | Fix the spelling, or add `default persistent.met_hana = False`. |
+| `hana_remembers is remembered across playthroughs (default persistent.hana_remembers, script/database.vns, line 2), so write persistent.hana_remembers here. …` (warning W320) | Write `persistent.hana_remembers` on that line. Plain `hana_remembers` is another variable that has no value. |
 | `persistent.visited can't hold a set, …` / `persistent data is now 1.3 MB, over the 1 MB limit. …` | Store plain values; keep flags and counts, not long text. |
 | `persistent.bag[…][0] can't hold a set, …` | `[…]` stands for a dictionary key that isn't written in your script (it may come from the player's file), so it is never shown. |
 | `persistent names starting with _ belong to the engine, …` / `default persistent.a.b sets one name …` | Use a plain name such as `seen_intro`. |

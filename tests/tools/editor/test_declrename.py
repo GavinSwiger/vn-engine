@@ -161,3 +161,65 @@ def test_ac_f47_52_positions_refusals_and_locks():
     # The plan goes stale when a planned line changes.
     plan = dr.plan_rename(dec.VARIABLE, "score", "courage", TEXTS, confirm=True, positions=P)
     assert not dr.verify_rename(plan, {**TEXTS, MAIN: STORY.replace("score += 1", "x = 1")})
+
+
+# --- Remembered across playthroughs (first-game fix, 2026-11-06) ---------------------------
+
+REMEMBER_DB = "default knows_recipe = False  # learned at the bakery\ndefault coins = 0\n"
+REMEMBER_STORY = '''label start:
+    menu:
+        "Ask about the recipe" if knows_recipe and coins:
+            pass
+    $ knows_recipe = True; e.knows_recipe = 1
+    "knows_recipe stays in dialogue."
+'''
+
+
+def _swapped(name, remember, texts):
+    question = dr.plan_remember(name, remember, texts)
+    plan = dr.plan_remember(name, remember, texts, confirm=True)
+    assert isinstance(question, Ask) and isinstance(plan, dr.RenamePlan), (question, plan)
+    out = dict(texts)
+    for fp in plan.plan.files:
+        out[fp.ref] = "\n".join(apply_lines(texts[fp.ref].split("\n"), fp.edits))
+    assert dr.verify_rename(plan, texts)
+    return question, out
+
+
+def test_remembering_a_variable_changes_its_default_and_every_use():
+    texts = {DB: REMEMBER_DB, MAIN: REMEMBER_STORY}
+    question, after = _swapped("knows_recipe", True, texts)
+    assert question.text == ("Make `knows_recipe` remembered across playthroughs? 3 places in "
+                             "2 files will change to `persistent.knows_recipe`. It starts from "
+                             "its starting value in every game until the story sets it.")
+    assert question.buttons == ("Change", "Cancel") and question.escape == 1
+    assert after[DB].split("\n")[0] == ("default persistent.knows_recipe = False  "
+                                        "# learned at the bakery")
+    assert after[MAIN].split("\n")[2] == ('        "Ask about the recipe" if '
+                                          "persistent.knows_recipe and coins:")
+    assert after[MAIN].split("\n")[4] == ("    $ persistent.knows_recipe = True; "
+                                          "e.knows_recipe = 1")
+    assert after[MAIN].split("\n")[5] == '    "knows_recipe stays in dialogue."'
+
+    question, back = _swapped("knows_recipe", False, after)        # and back again
+    assert question.text.startswith("Make `knows_recipe` an ordinary story variable again? "
+                                    "3 places in 2 files will change to `knows_recipe`.")
+    assert back == texts
+
+
+def test_forgetting_fixes_plain_uses_left_by_a_hand_edit():
+    """W320's broken state: unticking makes the plain uses right again."""
+    texts = {DB: "default persistent.knows_recipe = False\n", MAIN: REMEMBER_STORY}
+    _question, after = _swapped("knows_recipe", False, texts)
+    assert after[DB] == "default knows_recipe = False\n" and after[MAIN] == REMEMBER_STORY
+
+
+def test_remembering_refuses_places_only_a_story_variable_fits():
+    texts = {DB: REMEMBER_DB, MAIN: 'label start:\n    "You have {var=knows_recipe}."\n'}
+    refused = dr.plan_remember("knows_recipe", True, texts, confirm=True)
+    assert isinstance(refused, Refuse) and refused.place == (MAIN, 2)
+    assert refused.text == ("`main.vns`, line 2 uses `knows_recipe` where only a story "
+                            "variable fits ({var=…}, minigame … into, or name_from). Change "
+                            "that line first.")
+    clash = {DB: REMEMBER_DB + "default persistent.knows_recipe = True\n", MAIN: ""}
+    assert isinstance(dr.plan_remember("knows_recipe", True, clash, confirm=True), Refuse)

@@ -3706,6 +3706,20 @@ def _w317(look: str = "pigeon", file: str = "sfx/wngs.ogg",
     return text + f" Add audio/{show(str(file))} or check the spelling."
 
 
+def _w320(name: str = "knows_recipe",
+          first: Place = ("database.vns", 12), sets: bool = False) -> str:
+    """First-game fix (2026-11-06): plain ``name`` used where ``default persistent.<name>``
+    (at ``first``) is the only variable of that name (``remembered.py``); ``sets``: the
+    line only sets it."""
+    shown = show_name(str(name))
+    head = (f"{shown} is remembered across playthroughs (default persistent.{shown}, "
+            f"{_place(first)}), so write persistent.{shown} here. Plain {shown} is a "
+            "different variable")
+    if sets:
+        return f"{head}, so this line leaves the remembered value as it was."
+    return f"{head} that nothing gives a value, so the story stops when this line reads it."
+
+
 def _e338(name: str = "ture", suggestion: str | None = "true") -> str:
     text = f'until names endings, but there is no ending "{show_name(str(name))}".'
     if suggestion is not None:
@@ -5154,6 +5168,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E338": _e338,
     "W220": _w220,
     "W317": _w317,                      # F65 round 3: [device.<look>] arrive_sound
+    "W320": _w320,                      # first-game fix: remembered names (remembered.py)
     "W221": _w221,
     # F36 ending list & scene replay (01 §5.3): load E348, E350, E351, E352 (replay.py,
     # checks.py), E349 (checks.py); run W229 (runtime/replay.py).

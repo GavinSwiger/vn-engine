@@ -22,7 +22,10 @@ positions go into `config.toml`.
 - **Sounds**: by folder (music, sound effects, voices, blips); ▶ plays one, ■ stops it.
 - **Variables**: a name, a kind (Number, Text, Yes-No) and a starting value (`default`).
   Tick **Remembered across playthroughs** to keep it after the game ends
-  (`default persistent.name`).
+  (`default persistent.name`): every line that uses it changes to `persistent.name` too
+  (Studio says how many and asks first), and unticking changes them back. A line that only
+  a story variable fits (`{var=name}`, `minigame … into name`) stops the change until you
+  edit it.
 - **Meters**: a name, an optional lowest and highest, the start and its ranks (`points`).
   **+ New** offers ready-made meters first: your kit's (Horror's Sanity, 0 to 100, starting
   full, with four ranks), or Affection, Trust, Courage and Coins without a kit (Game

@@ -117,15 +117,28 @@ def test_ac_f47_38_routes_edit_lock_route_until_and_endings_chapters_go_to(
     ed.root.update()
     assert widget.index("insert").split(".")[0] == str(line_of(ed, MAIN_REF, "chapter two"))
 
-    # W7's Variables field: "Remembered across playthroughs" swaps default ↔ persistent.
+    # W7's Variables field: "Remembered across playthroughs" swaps default ↔ persistent,
+    # and (first-game fix) every use with it, after an Ask; the files are saved at once.
     db = open_database(ed, "variable")
     db.select("v:sent_lantern")
+    main_before = text_of(ed, MAIN_REF)
+    ed.answers[:] = [0]
     db.form.fields["remembered"].check.invoke()
+    assert ed.dialogs[-1][0] == "ask" and ed.dialogs[-1][1].startswith(
+        "Make `sent_lantern` remembered across playthroughs? 3 places in 2 files will change "
+        "to `persistent.sent_lantern`.")
     assert "default persistent.sent_lantern = False" in text_of(ed, DB_REF)
+    assert "$ persistent.sent_lantern = True" in text_of(ed, MAIN_REF)
+    assert "if persistent.sent_lantern:" in text_of(ed, MAIN_REF)
+    assert "sent_lantern" not in text_of(ed, MAIN_REF).replace("persistent.sent_lantern", "")
+    assert (game / MAIN_REF).read_text("utf-8").rstrip("\n") == text_of(ed, MAIN_REF)
+    assert not ed.win.files[DB_REF].dirty and not ed.win.files[MAIN_REF].dirty
     assert db.selected_row().iid == "pv:sent_lantern"
     assert db.selected_row().detail == "Remembered"
+    ed.answers[:] = [0]
     db.form.fields["remembered"].check.invoke()
     assert "default sent_lantern = False" in text_of(ed, DB_REF)
+    assert text_of(ed, MAIN_REF) == main_before
 
 
 def test_ac_f47_40_positions_canvas_drags_markers_and_writes_stage_positions(
