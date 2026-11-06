@@ -18,7 +18,8 @@ change.", then apply one ``scriptedit.Plan`` (one undo step per file).
   ``lock|unlock tip|item n``, ``with n``, ``at n``, ``minigame … into n``, ``{var=n}`` and
   ``{username=n}`` tags, and the declaration itself. Positions also move their
   ``[stage.positions]`` key in config.toml (``tomlpatch``). F65 round 3: a contact is
-  ``lock contact n`` and ``send … from n``; a message (a data set) is ``send n from …``.
+  ``lock contact n`` and ``send … from n``; a message (a data set) is ``send n from …``
+  and the string in ``inbox.reply("n")``.
 - **A character's pictures stay where they are**: renaming one without ``image_tag`` writes
   ``image_tag="<old>"``, so ``show old smile`` and its ``images/old/`` folder keep working.
 - **All or nothing**: a file that names the old name and can't be read whole (a parse
@@ -206,6 +207,12 @@ def _py_targets(tree: ast.AST, kind: str, old: str) -> Iterator[tuple[ast.AST, s
                 and node.func.attr in ("highest", "rank") \
                 and _is(node.func.value, "points"):
             for arg in node.args:
+                if _const(arg, old):
+                    yield arg, "string"
+        elif kind == DATA and isinstance(node, ast.Call) \
+                and isinstance(node.func, ast.Attribute) and node.func.attr == "reply" \
+                and _is(node.func.value, "inbox"):
+            for arg in node.args[:1]:                   # inbox.reply("<message>")
                 if _const(arg, old):
                     yield arg, "string"
         elif kind in (dec.TIP, dec.ITEM) and isinstance(node, ast.Compare) \

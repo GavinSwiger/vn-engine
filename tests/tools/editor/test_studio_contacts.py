@@ -10,6 +10,7 @@ import pytest
 from engine.tools.editor import contactmodel as cm
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declplan, declrename, files
+from engine.tools.editor import devicemodel as dm
 from engine.tools.editor import minigamedata as mg
 from engine.tools.editor.scriptedit import apply_lines
 
@@ -19,7 +20,9 @@ MAIN = "script/main.vns"
 STORY = {
     MAIN: 'include "database.vns"\n\nlabel start:\n    "Morning."\n'
           '    send hello from hana\n    send hello from hana on phone  # again\n'
-          'label later:\n    send letter2 from hana\n    send hello from ren\n',
+          'label later:\n    send letter2 from hana\n    send hello from ren\n'
+          '    if inbox.reply("hello") == "yes":\n        $ said = inbox.reply(\'hello\')\n'
+          '    "hello"\n    $ later_reply = inbox.reply("hello_2")\n',
     DB_REF: 'lock contact hana "Hana" on pigeon image hana portrait\n'
             'lock contact ren "Ren"\n'
             'define hello = ["Hi there", {"me": "Hello!"}, {"time": "Day 2"}, {"Kai": "Hey"}]\n'
@@ -95,8 +98,8 @@ def test_send_lines_entries_and_messages():
 
 def test_device_looks_and_preview():
     fantasy = {"theme.kit": "fantasy"}
-    assert cm.look_choices(fantasy)[0] == (None, "Game default (pigeon, from the Fantasy kit)")
-    assert cm.look_choices({})[0] == (None, "Game default (phone)")
+    assert cm.look_choices(fantasy)[0] == (None, "Game default (Pigeon post, from the Fantasy kit)")
+    assert cm.look_choices({})[0] == (None, "Game default (Phone, with no kit)")
     assert [v for v, _ in cm.look_choices({})[1:]] == list(dec.CONTACT_LOOKS)
     assert cm.arrives_text("pigeon", "Hana") == (
         "Arrives as: “A pigeon lands on the sill with a note from Hana.”")
@@ -114,6 +117,36 @@ def test_device_looks_and_preview():
                           ("time", "", "Day 2"), ("them", "Kai", "Hey"))
     empty = cm.preview(fantasy, "Ren", {"device": None}, [], sends)
     assert (empty.look, empty.lines, empty.caption) == ("pigeon", (), cm.NO_MESSAGES)
+
+
+def test_default_look_is_the_games_device_and_says_where_it_comes_from():
+    # As the game picks it (kits.device_look): the kit's device, else a phone; the name is
+    # the one the game shows ([device.<look>] name wins).
+    horror = {"theme.kit": "horror"}
+    look = dm.default_look(horror)
+    assert look == "mind" and cm.default_look(horror) == ("mind", "Horror")
+    assert cm.look_of(horror, {"device": None}) == look
+    named = {"theme.kit": "fantasy", "device.pigeon.name": "Rookery"}
+    assert cm.default_text(named) == "Game default (Rookery, from the Fantasy kit)"
+    assert cm.default_look({"theme.kit": "nope"}) == ("phone", None)
+
+
+def test_preview_uses_the_devices_page_preview_of_the_look():
+    sends = cm.send_lines(STORY)
+    messages = cm.messages_of("hana", STORY, sends)
+    seen = cm.preview({}, "Hana", {"device": "pigeon"}, messages, sends)
+    want = dm.preview({}, "pigeon", "Hana", (("", "One text."),), day="")
+    assert seen.device == want
+    assert seen.device.signature == "— Hana" and seen.device.header == "Arrived by pigeon"
+    assert seen.device.notice == "A pigeon lands on the sill with a note from Hana."
+    hello = [m for m in messages if m.name == "hello"]
+    seen = cm.preview({}, "Hana", {"device": "terminal"}, hello, sends)
+    assert seen.device.look == "phone"                     # the newest send says on phone
+    assert seen.device.lines == (("Hana", "Hi there"), (dm.SAMPLE_ME, "Hello!"),
+                                 ("", "Day 2"), ("Kai", "Hey"))
+    terminal = cm.preview({}, "Ren", {"device": "terminal"}, [], sends)
+    assert terminal.device.look == "terminal" and terminal.device.lines == ()
+    assert terminal.device.colors == dm.palette({}, "terminal")
 
 
 def test_rename_contact_and_message_follow_send_lines():
@@ -134,6 +167,11 @@ def test_rename_contact_and_message_follow_send_lines():
              for fp in plan.plan.files}
     assert after[MAIN].count("send greeting from") == 3
     assert after[DB_REF].count("define greeting = [") == 1
+    # ... and the replies it waits for: inbox.reply("hello") in a condition or a $ line,
+    # with either quote; not a line of dialogue or another message's name.
+    assert '    if inbox.reply("greeting") == "yes":' in after[MAIN]
+    assert "        $ said = inbox.reply('greeting')" in after[MAIN]
+    assert '    "hello"' in after[MAIN] and 'inbox.reply("hello_2")' in after[MAIN]
 
 
 tk = pytest.importorskip("tkinter")
@@ -145,6 +183,10 @@ from tests.tools.editor.test_studio_window import studio  # noqa: E402,F401
 
 def _tags(canvas) -> set[str]:
     return {t for item in canvas.find_all() for t in canvas.gettags(item)}
+
+
+def _texts(canvas, tag: str) -> list[str]:
+    return [canvas.itemcget(i, "text") for i in canvas.find_withtag(tag)]
 
 
 def _game(tmp_path: Path) -> Path:
@@ -181,13 +223,16 @@ def test_contacts_page_new_contact_fields_messages_and_delete(studio, tmp_path, 
     assert text_of(ed, DB_REF).endswith('lock contact hana "Hana"')
     assert db.selected_row().iid == "ct:hana"
     f = db.form.fields
-    assert f["look"].box.get() == "Game default (pigeon, from the Fantasy kit)"
-    assert {"look:pigeon", "letter", "empty"} <= _tags(f["preview"])
+    assert f["look"].box.get() == "Game default (Pigeon post, from the Fantasy kit)"
+    # The preview is the Devices page's drawing of the look: a pigeon's note.
+    assert {"look:pigeon", "notice", "panel", "message", "header"} <= _tags(f["preview"])
+    assert _texts(f["preview"], "notice_text") == [
+        "A pigeon lands on the sill with a note from Hana."]
     f["look"].pick("phone")
     ed.root.update()
     assert text_of(ed, DB_REF).endswith('lock contact hana "Hana" on phone')
     f = db.form.fields
-    assert {"look:phone", "chat"} <= _tags(f["preview"])
+    assert "look:phone" in _tags(f["preview"]) and "signature" not in _tags(f["preview"])
     f["image"].pick("hana portrait")
     ed.root.update()
     assert text_of(ed, DB_REF).endswith('lock contact hana "Hana" on phone image hana portrait')
@@ -205,7 +250,7 @@ def test_contacts_page_new_contact_fields_messages_and_delete(studio, tmp_path, 
     ed.root.update()
     assert "Meet me at the bridge." in text_of(ed, DB_REF)
     f = db.form.fields
-    assert {"line:them", "line:me", "look:phone"} <= _tags(f["preview"])
+    assert _texts(f["preview"], "line") == ["Hana: Meet me at the bridge.", "You: On my way."]
     assert f["preview_caption"].cget("text") == "Not sent yet: hana_message_1"
     # Sent from a scene: the Delete refuses and says where.
     main = ed.win.record_for(MAIN).widget

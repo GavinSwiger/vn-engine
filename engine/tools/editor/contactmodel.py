@@ -17,8 +17,10 @@ those from the script texts; the widgets are ``dbcontacts``.
 - ``message_set(texts, name)``: a message as the phone-chat step editor's data set (a
   message of one text reads as one line from the contact).
 - ``default_look(found)`` / ``look_choices(found)``: the device look a contact without
-  ``on`` gets (the kit's, else a phone) and the Device look drop-down.
-- ``preview(...)``: what the live preview draws (``ContactPreview``).
+  ``on`` gets, as the game picks it (``kits.device_look``: the kit's, else a phone), where
+  it comes from, and the Device look drop-down.
+- ``preview(...)``: what the live preview draws (``ContactPreview``): the message in
+  ``devicemodel``'s per-look preview, as Game settings ▸ Devices draws it.
 
 Pure Python: ``core``, ``engine.script`` and this package's pure modules; no Tk, no pygame
 (ADR-0008).
@@ -33,7 +35,7 @@ from engine.core.kits import DEVICE_LOOKS, device_words
 from engine.script.inbox import message_problem, plain_value
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
-from engine.tools.editor import kitmodel as km
+from engine.tools.editor import devicemodel as dm
 from engine.tools.editor import metermodel as mm
 from engine.tools.editor import minigamedata as mg
 
@@ -42,8 +44,8 @@ from engine.tools.editor import minigamedata as mg
 LOOK_NAMES: Final[Mapping[str, str]] = {
     "phone": "Phone", "letters": "Letters", "pigeon": "Pigeon post", "radio": "Radio",
     "terminal": "Terminal", "mind": "Mind (a voice in the head)"}
-DEFAULT_KIT: Final = "Game default ({look}, from the {kit} kit)"
-DEFAULT_PLAIN: Final = "Game default ({look})"
+DEFAULT_KIT: Final = "Game default ({name}, from the {kit} kit)"
+DEFAULT_PLAIN: Final = "Game default ({name}, with no kit)"
 NO_MESSAGES: Final = "No messages yet"
 NEWEST: Final = "Newest: {message}, sent in {scene}"
 NOT_SENT_CAPTION: Final = "Not sent yet: {message}"
@@ -64,20 +66,21 @@ PREVIEW_LINES: Final = 8                 # the preview draws at most this many l
 # --- Device looks -----------------------------------------------------------------------------
 
 def default_look(found: Mapping[str, object]) -> tuple[str, str | None]:
-    """The look a contact without ``on`` comes by: ``(look, kit name)``: the kit's
-    ``messages`` device, else a phone (kit name None)."""
+    """The look a contact without ``on`` comes by, as the game picks it at run time
+    (``kits.device_look``, through ``devicemodel``: the kit's device, else a phone), and
+    where it comes from: ``(look, kit name)`` (None: no kit, so the engine's phone)."""
+    look = dm.default_look(found)
     kit = mm.kit_in_use(found)
-    if kit is not None:
-        look = kit.messages.get("device")
-        if look in DEVICE_LOOKS:
-            return str(look), kit.name
-    return DEVICE_LOOKS[0], None
+    came = kit is not None and kit.messages.get("device") == look
+    return look, kit.name if came and kit is not None else None
 
 
 def default_text(found: Mapping[str, object]) -> str:
-    """"Game default (pigeon, from the Fantasy kit)", or "Game default (phone)"."""
+    """"Game default (Pigeon post, from the Fantasy kit)", or "Game default (Phone, with
+    no kit)": the device's name as the game shows it (``[device.<look>] name`` wins)."""
     look, kit = default_look(found)
-    return DEFAULT_KIT.format(look=look, kit=kit) if kit else DEFAULT_PLAIN.format(look=look)
+    name = dm.words(found, look).name
+    return DEFAULT_KIT.format(name=name, kit=kit) if kit else DEFAULT_PLAIN.format(name=name)
 
 
 def look_choices(found: Mapping[str, object]) -> list[tuple[object, str]]:
@@ -289,18 +292,19 @@ def send_text(message: str, contact: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ContactPreview:
-    """What the preview draws: ``colors`` (``kitmodel.KitCard``'s six: fill, text, border,
-    accent, soft, track), the ``look``, ``letter`` (a signed letter, else chat bubbles),
+    """What the preview draws: the ``look``, ``letter`` (a signed letter, else chat lines),
     ``via`` ("Arrived by pigeon"), ``title`` (the contact's shown name), ``lines``
-    (``(side, name, text)``: ``them``, ``me``, ``time``, ``ask``), and ``caption`` under it."""
+    (``(side, name, text)``: ``them``, ``me``, ``time``, ``ask``), ``caption`` under it, and
+    ``device``: the same lines as ``devicemodel``'s per-look preview, which the canvas
+    draws (``devicepage.DevicePainter``)."""
 
-    colors: tuple[str, str, str, str, str, str]
     look: str
     letter: bool
     via: str
     title: str
     lines: tuple[tuple[str, str, str], ...]
     caption: str
+    device: dm.DevicePreview
 
 
 def preview_lines(value: object, title: str) -> tuple[tuple[str, str, str], ...]:
@@ -324,27 +328,48 @@ def preview_lines(value: object, title: str) -> tuple[tuple[str, str, str], ...]
     return tuple(out[:PREVIEW_LINES])
 
 
+def device_lines(lines: Sequence[tuple[str, str, str]], title: str, letter: bool
+                 ) -> tuple[tuple[str, str], ...]:
+    """``preview_lines`` as ``devicemodel.DevicePreview`` lines ``(name, text)``: the
+    player's as ``SAMPLE_ME``; the contact's own unnamed in a letter; a time or reply point
+    as a plain line."""
+    out: list[tuple[str, str]] = []
+    for side, name, text in lines:
+        if side == "me":
+            out.append((dm.SAMPLE_ME, text))
+        elif side == "time":
+            out.append(("", text))
+        elif side == "ask":
+            out.append(("", f"[ {text} ]"))
+        else:
+            who = name or title
+            out.append(("" if letter and who == title else who, text))
+    return tuple(out)
+
+
 def preview(found: Mapping[str, object], title: str, values: Mapping[str, object] | None,
             messages: Sequence[Message], sends: Sequence[SendLine]) -> ContactPreview:
-    """The contact's newest message in its device look, in the game's color scheme."""
-    colors = km.cards(found)[0].colors
+    """The contact's newest message in its device look, in the game's colors, drawn as
+    Game settings ▸ Devices draws that look."""
     pick = newest(messages, sends)
-    if pick is None:
-        look = look_of(found, values)
-        words = device_words(look)
-        return ContactPreview(colors, look, words.letter, words.via, title, (),
-                              NO_MESSAGES)
-    message, send = pick
+    send = pick[1] if pick is not None else None
     look = look_of(found, values, send.device if send is not None else None)
-    words = device_words(look)
-    caption = NEWEST.format(message=message.name, scene=send.scene) if send is not None \
-        else NOT_SENT_CAPTION.format(message=message.name)
-    return ContactPreview(colors, look, words.letter, words.via, title,
-                          preview_lines(message.value, title), caption)
+    words = dm.words(found, look)
+    if pick is None:
+        lines: tuple[tuple[str, str, str], ...] = ()
+        caption = NO_MESSAGES
+    else:
+        message = pick[0]
+        lines = preview_lines(message.value, title)
+        caption = NEWEST.format(message=message.name, scene=send.scene) if send is not None \
+            else NOT_SENT_CAPTION.format(message=message.name)
+    device = dm.preview(found, look, title, device_lines(lines, title, words.letter), day="")
+    return ContactPreview(look, words.letter, words.via, title, lines, caption, device)
 
 
 __all__ = ["ARRIVES", "ContactPreview", "LOOK_NAMES", "Message", "NO_MESSAGES", "SIGNED",
            "SendLine", "arrives_text", "contact_entries", "default_look", "default_text",
+           "device_lines",
            "first_text", "is_message", "look_choices", "look_of", "message_name",
            "message_set", "messages_of", "new_steps", "newest", "preview", "preview_lines",
            "refusal", "send_lines", "send_text", "where_text"]

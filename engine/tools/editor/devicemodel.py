@@ -16,7 +16,8 @@ changes; ``devicepage`` holds the widgets.
 - ``palette(found, look)``: the look's colors (``core/devicelooks``) from the scheme in use,
   an imported palette's roles and the author's own ``[theme]`` colors, as the game reads
   them.
-- ``preview(found, look)``: what a card's preview draws (``DevicePreview``).
+- ``preview(found, look)``: what a card's preview draws (``DevicePreview``); Database ▸
+  Contacts passes a contact's own message.
 - ``changes(look, key, value)``: the ``tomlpatch`` change for one key (None or blank:
   remove it).
 
@@ -199,20 +200,23 @@ class DevicePreview:
     sound: str | None
 
 
-def preview(found: Mapping[str, object], look: str) -> DevicePreview:
+def preview(found: Mapping[str, object], look: str, sender: str = SAMPLE_FROM,
+            lines: tuple[tuple[str, str], ...] | None = None, day: str = SAMPLE_DAY
+            ) -> DevicePreview:
+    """What ``look`` draws: a sample message from Hana, or (Database ▸ Contacts) the
+    ``lines`` of a message from ``sender``, each ``(name, text)``: name ``SAMPLE_ME`` for
+    the player's own, "" for a letter's plain lines."""
     said = words(found, look)
-    header = f"{said.via} · {SAMPLE_DAY}"
-    if said.letter:
-        lines = tuple(("", text) for text in SAMPLE_LETTER)
-        signature = f"— {SAMPLE_FROM}"
-    else:
-        lines = ((SAMPLE_FROM, SAMPLE_LETTER[0]), (SAMPLE_ME, SAMPLE_REPLY))
-        signature = ""
-    return DevicePreview(look, arrive_text(said, SAMPLE_FROM), header, lines, signature,
+    header = f"{said.via} · {day}" if day else said.via
+    if lines is None:
+        lines = tuple(("", text) for text in SAMPLE_LETTER) if said.letter else (
+            (SAMPLE_FROM, SAMPLE_LETTER[0]), (SAMPLE_ME, SAMPLE_REPLY))
+    signature = f"— {sender}" if said.letter and lines else ""
+    return DevicePreview(look, arrive_text(said, sender), header, lines, signature,
                          palette(found, look), said.sound)
 
 
 __all__ = ["DevicePreview", "ENGINE", "GAME_DEVICE", "GAME_DEVICE_NOTE", "HINTS", "INTRO",
-           "KEYS", "LABELS", "LOOK_NAMES", "changes", "default_look", "default_note",
+           "KEYS", "LABELS", "LOOK_NAMES", "SAMPLE_ME", "changes", "default_look", "default_note",
            "engine_text", "own", "palette", "preview", "reading_choices", "reading_label",
            "section", "token_of", "words"]

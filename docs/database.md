@@ -254,7 +254,9 @@ A pen pal in a minute:
 1. **+ New** asks the **Name** players see; the script name is made from it (`Hana` →
    `hana`).
 2. Pick the **Device look**: how the messages come. The first choice is the game's own
-   ("Game default (pigeon, from the Fantasy kit)"; without a kit, a phone); the others are
+   device, the one the game uses for a contact with no look of its own, named as the game
+   shows it and with where it comes from ("Game default (Pigeon post, from the Fantasy
+   kit)"; without a kit, "Game default (Phone, with no kit)"); the others are
    Phone, Letters, Pigeon post, Radio, Terminal and Mind. The line under it shows the
    arrival notice ("A pigeon lands on the sill with a note from Hana.").
 3. Pick a **Picture** (shown with the notice and in the Inbox).
@@ -268,12 +270,14 @@ Each message lists where it is sent from (scene and line; click one to go there)
 **Write lines…** to change it. The messages listed are the ones the contact's Send lines
 name, then any lists of lines not sent yet whose name starts with the contact's
 (`hana_…`). The picture
-beside the fields shows the newest message in its device look and your colours: a letter
-signed with the name, or chat bubbles. A Send line's own look (`send … on phone`) wins
-for that message.
+beside the fields shows the newest message in its device look and your colours, drawn as
+Game settings ▸ Devices draws that device: the arrival notice over a pigeon's note, a
+signed letter, a green terminal, chat bubbles. A Send line's own look (`send … on phone`)
+wins for that message.
 
 Renaming a contact (its script name) changes its Send lines too, after asking; messages in
-older saves stay in the thread with the same name shown. **Delete** is refused while a Send
+older saves stay in the thread with the same name shown. Renaming a message changes its
+Send lines and the replies that wait for it (`inbox.reply("hana_letter_1")`) too. **Delete** is refused while a Send
 line uses the contact, and says which scenes and lines; its messages stay when it goes.
 
 ## Clean up

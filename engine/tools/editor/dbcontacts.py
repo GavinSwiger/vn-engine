@@ -4,14 +4,16 @@ devices"; plan: specs/skins-contract.md, "Phases 2-4"; docs/database.md "Contact
 Why this module exists: a pen pal should take a minute to set up without code. In
 Database ▸ **Contacts**, **+ New** asks the name players see and writes one ``lock contact``
 line into ``database.vns``. The form changes the **Name shown**, the **Device look** (the
-game's default first: "Game default (pigeon, from the Fantasy kit)"), the **Picture** (a
+game's default first, as the game picks it: "Game default (Pigeon post, from the Fantasy
+kit)"), the **Picture** (a
 thumbnail picker) and the script name (a used contact is renamed everywhere: its
 ``send … from`` lines follow, ``declrename``). Under it, **Messages**: what the contact
 sends (the ``define``\\ s its ``send … from <contact>`` lines name), each with **Write
 lines…**, which opens the phone-chat step editor (``minigameview``'s ``ChatEditor``), and
 the scenes and lines that send it (each a link). **+ New message** makes a define and
 opens the editor. Beside the fields, a live preview draws the contact's newest message in
-its device look in the game's colours (a letter signed with the name, or chat bubbles).
+its device look in the game's colours, with Game settings ▸ Devices' own drawing
+(``devicepage.DevicePainter``): a pigeon's note, a terminal, a letter signed with the name.
 Delete is refused while a send line uses the contact, and says where.
 
 ``ContactsCategory`` is a mixin of ``database.DatabasePane`` (as ``dbachievements``'s): the
@@ -34,6 +36,7 @@ from engine.tools.editor import contactmodel as cm
 from engine.tools.editor import dbmodel as db
 from engine.tools.editor import declarations as dec
 from engine.tools.editor import declplan, settingsmodel
+from engine.tools.editor.devicepage import DevicePainter
 from engine.tools.editor import minigamedata as mg
 from engine.tools.editor import minigameview as mv
 from engine.tools.editor.dbmore import IN_SCRIPT, Row
@@ -84,9 +87,8 @@ REFUSED_BUTTONS = (SHOW_USES, "OK")
 SEND_HINT = "In the script: send <message> from {name}"
 
 # Sizes (px at 100 %).
-PREVIEW_W = 240
-PREVIEW_H = 168
-PAD = 10
+PREVIEW_W = 340                 # room for a pigeon's note
+PREVIEW_H = 172
 
 
 def _lines(n: int) -> str:
@@ -142,122 +144,6 @@ class MessageDialog:
     def run(self) -> None:
         from engine.tools.editor import dialogs
         dialogs._run(self.parent, self.dialog, self.buttons[0])
-
-
-class ContactPainter:
-    """Draws a contact's newest message on ``canvas`` (``contactmodel.ContactPreview``):
-    a sheet of paper signed with the name for a letter look, else a device with bubbles.
-    Tags: every item ``"contact_preview"`` and ``"look:<look>"``; ``"letter"`` or
-    ``"chat"``; each line ``"line:<side>"``; the signature ``"signature"``."""
-
-    def __init__(self, canvas: tk.Canvas, px: Callable[[float], int], font: tkfont.Font,
-                 bold: tkfont.Font) -> None:
-        self.canvas, self.px, self.font, self.bold = canvas, px, font, bold
-
-    def draw(self, seen: cm.ContactPreview, width: int, height: int) -> None:
-        canvas, px = self.canvas, self.px
-        canvas.delete("all")
-        fill, text, border, accent, soft, track = seen.colors
-        base = ("contact_preview", f"look:{seen.look}", "letter" if seen.letter else "chat")
-        canvas.create_rectangle(0, 0, width - 1, height - 1, fill=soft,
-                                outline=THEME["border"], tags=base)
-        inner = (px(PAD), px(PAD), width - px(PAD), height - px(PAD))
-        if seen.letter:
-            self._letter(seen, base, inner, (fill, text, border, accent, track))
-        else:
-            self._chat(seen, base, inner, (fill, text, border, accent, track))
-
-    def _text(self, x: int, y: int, words: str, *, width: int, color: str, tags: tuple,
-              font: tkfont.Font | None = None, anchor: str = "nw", justify: str = "left"
-              ) -> int:
-        """Wrapped text at ``(x, y)``; returns its bottom."""
-        item = self.canvas.create_text(x, y, anchor=anchor, text=words, width=max(10, width),
-                                       fill=color, font=font or self.font, justify=justify,
-                                       tags=tags)
-        box = self.canvas.bbox(item)
-        return box[3] if box else y
-
-    def _letter(self, seen: cm.ContactPreview, base: tuple, inner: tuple[int, int, int, int],
-                colors: tuple[str, str, str, str, str]) -> None:
-        fill, text, border, accent, track = colors
-        px = self.px
-        x0, y0, x1, y1 = inner
-        self.canvas.create_rectangle(x0, y0, x1, y1, fill=fill, outline=border, tags=base)
-        via = fit_text(seen.via, x1 - x0 - px(16), self.font.measure)
-        self.canvas.create_text(x0 + px(8), y0 + px(6), anchor="nw", text=via, fill=accent,
-                                font=self.font, tags=(*base, "via"))
-        y = y0 + px(8) + self.font.metrics("linespace") + px(4)
-        bottom = y1 - px(6) - self.font.metrics("linespace")
-        if not seen.lines:
-            self._text(x0 + px(8), y, cm.NO_MESSAGES, width=x1 - x0 - px(16), color=track,
-                       tags=(*base, "empty"))
-            return
-        for side, name, words in seen.lines:
-            if y >= bottom:
-                break
-            shown = f"[ {words} ]" if side == "ask" else f"Me: {words}" if side == "me" \
-                else f"{name}: {words}" if side == "them" and name and name != seen.title \
-                else words
-            color = track if side == "time" else accent if side == "ask" else text
-            y = self._text(x0 + px(8), y, shown, width=x1 - x0 - px(16), color=color,
-                           tags=(*base, f"line:{side}")) + px(4)
-        self.canvas.create_text(x1 - px(8), y1 - px(6), anchor="se",
-                                text=cm.SIGNED.format(name=seen.title), fill=text,
-                                font=self.bold, tags=(*base, "signature"))
-        self._clip(bottom)
-
-    def _clip(self, bottom: int) -> None:
-        """Hide the lines that run past ``bottom`` (the signature stays readable)."""
-        for item in self.canvas.find_withtag("contact_preview"):
-            box = self.canvas.bbox(item)
-            if box and box[3] > bottom and any(t.startswith("line:")
-                                               for t in self.canvas.gettags(item)):
-                self.canvas.itemconfigure(item, state="hidden")
-
-    def _chat(self, seen: cm.ContactPreview, base: tuple, inner: tuple[int, int, int, int],
-              colors: tuple[str, str, str, str, str]) -> None:
-        fill, text, border, accent, track = colors
-        px = self.px
-        x0, y0, x1, y1 = inner
-        self.canvas.create_rectangle(x0, y0, x1, y1, fill=fill, outline=border, width=1,
-                                     tags=base)
-        bar = y0 + self.bold.metrics("linespace") + px(8)
-        self.canvas.create_rectangle(x0, y0, x1, bar, fill=accent, outline="", tags=base)
-        head = fit_text(f"{seen.title}  ·  {seen.via}", x1 - x0 - px(16), self.bold.measure)
-        self.canvas.create_text(x0 + px(8), y0 + px(4), anchor="nw", text=head, fill=fill,
-                                font=self.bold, tags=(*base, "via"))
-        y = bar + px(6)
-        room = x1 - x0 - px(16)
-        if not seen.lines:
-            self._text(x0 + px(8), y, cm.NO_MESSAGES, width=room, color=track,
-                       tags=(*base, "empty"))
-            return
-        for side, name, words in seen.lines:
-            if y >= y1 - px(10):
-                break
-            tags = (*base, f"line:{side}")
-            if side == "time":
-                y = self._text((x0 + x1) // 2, y, words, width=room, color=track, tags=tags,
-                               anchor="n", justify="center") + px(4)
-                continue
-            mine = side in ("me", "ask")
-            words = f"[ {words} ]" if side == "ask" else words
-            if side == "them" and name and name != seen.title:
-                words = f"{name}: {words}"
-            limit = round(room * 0.78)
-            x = x1 - px(8) if mine else x0 + px(8)
-            item = self.canvas.create_text(x - px(6) if mine else x + px(6), y + px(3),
-                                           anchor="ne" if mine else "nw", text=words,
-                                           width=limit, fill=fill if mine else text,
-                                           font=self.font, tags=tags)
-            box = self.canvas.bbox(item) or (x, y, x, y)
-            bubble = self.canvas.create_rectangle(box[0] - px(6), y, box[2] + px(6),
-                                                  box[3] + px(3),
-                                                  fill=accent if mine else fill,
-                                                  outline="" if mine else border, tags=tags)
-            self.canvas.tag_lower(bubble, item)
-            y = box[3] + px(8)
-        self._clip(y1)
 
 
 class ContactsCategory:
@@ -370,11 +256,7 @@ class ContactsCategory:
                             justify="left")
         caption.pack(anchor="w", pady=(self._px(4), 0))
         family = self.fonts["small"].actual("family") if "small" in self.fonts else "TkDefaultFont"
-        size = -max(9, round(11 * self.scale))
-        painter = ContactPainter(canvas, self._px,
-                                 tkfont.Font(root=canvas, family=family, size=size),
-                                 tkfont.Font(root=canvas, family=family, size=size,
-                                             weight="bold"))
+        painter = DevicePainter(canvas, self._px, family, -max(9, round(11 * self.scale)))
         f["preview"], f["preview_caption"] = canvas, caption
 
         def reflow(_event: object = None) -> None:
@@ -400,7 +282,7 @@ class ContactsCategory:
             shown = str(vals.get("title") or now.shown)
             seen = cm.preview(self._found(), shown, vals, self._contact_messages(now),
                               self.sends)
-            painter.draw(seen, self._px(PREVIEW_W), self._px(PREVIEW_H))
+            painter.draw(seen.device, self._px(PREVIEW_W), self._px(PREVIEW_H))
             caption.configure(text=seen.caption)
 
         def update(new: Row) -> None:
@@ -591,5 +473,5 @@ class ContactsCategory:
         return self._write(declplan.plan_delete(decl, self.texts))
 
 
-__all__ = ["ABOUT_CONTACTS", "CATEGORY", "ContactPainter", "ContactsCategory",
+__all__ = ["ABOUT_CONTACTS", "CATEGORY", "ContactsCategory",
            "MessageDialog", "MessageStore"]
