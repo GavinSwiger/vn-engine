@@ -5,13 +5,17 @@ Why this module exists: playing the game is the one thing every author does all 
 it gets a 36 px toolbar on ``chrome`` under the menu bar, across the window, instead of F44's
 small button at the bottom of the left column::
 
-    [▶ Play|▾]                                                   [AI Assistant] [? Guide]
+    [▶ Play|▾] from bridge                                       [AI Assistant] [? Guide]
+    [■ Stop|▾] playing bridge [⟳ Update] Ctrl+R                    (while the game runs)
 
 **▶ Play** is the window's one primary button, a split button (proposal 2.1, 2026-11-06):
-a click plays from the start (Shift+F5); its **▾** opens a small menu with Play, Play this
-scene (F5, with the scene's name) and Play options…, plus what ``add_check`` adds (the
-"Game beside Studio" switch). While the game runs the button reads **■ Stop** (Ctrl+F2) in
-gray. The Run menu keeps every row and key. **? Guide** toggles the Guide pane and F48's
+a click plays the scene named beside it ("from bridge": Play this scene's rule, F5; "from
+the start" above every scene); its **▾** opens a small menu with Play from the start
+(Shift+F5) and Play options…, plus what ``add_check`` adds (the "Dock the game beside
+Studio" switch). While the game runs the button reads **■ Stop** (Ctrl+F2) in gray, the
+name reads "playing" and the scene the game is in (``set_playing``), and **⟳ Update**
+(Ctrl+R: F39's update of the running game) shows beside it. The Run menu keeps every row
+and key. **? Guide** toggles the Guide pane and F48's
 **AI Assistant**, left of it, the Assistant pane (they share the column). Each button has a
 tooltip; Left and Right move between the bar's buttons, Down opens the ▾ menu.
 
@@ -63,12 +67,21 @@ STOP = "■ Stop"
 PLAY_OPTIONS = "Play options…"
 GUIDE = "? Guide"
 ASSISTANT = "AI Assistant"              # F48 01 §6.1
-PLAY_MENU_ROW = "Play"                  # the ▾ menu's rows, as the Run menu's
+PLAY_MENU_ROW = "Play from the start"   # the ▾ menu's rows
 PLAY_SCENE_MENU_ROW = "Play this scene"
 PLAY_SCENE_NAMED = "Play this scene: {name}"
 BEGINNING = "the beginning"             # what Play this scene plays with no scene chosen
+FROM_SCENE = "from {name}"              # beside ▶ Play: what a click plays
+FROM_START = "from the start"
+PLAYING = "playing {name}"              # beside ■ Stop: the scene the game is in
+PLAYING_GAME = "playing"
+NAME_MAX = 28                           # a longer scene name is cut with …
+UPDATE = "⟳ Update"
+UPDATE_KEY = "Ctrl+R"
 
-TIP_PLAY = "Play from the start (Shift+F5)"
+TIP_PLAY = "Play from the scene named beside it (F5)"
+TIP_START = "Play from the start (Shift+F5)"
+TIP_UPDATE = "Update the running game with your saved changes (Ctrl+R)"
 TIP_SCENE = "Play from the selected scene (F5)"
 TIP_STOP = "Stop the game (Ctrl+F2)"
 TIP_OPTIONS = "Start values, and playing as a new player"
@@ -144,7 +157,9 @@ class PlayBar:
                  on_play: Callable[[], object], on_scene: Callable[[], object],
                  on_stop: Callable[[], object], on_options: Callable[[], object],
                  on_guide: Callable[[], object],
-                 on_assistant: Callable[[], object] | None = None) -> None:
+                 on_assistant: Callable[[], object] | None = None,
+                 on_update: Callable[[], object] | None = None,
+                 update_key: str = UPDATE_KEY) -> None:
         px = lambda value: round(value * scale)       # noqa: E731
         chrome = THEME["sideBar.background"]
         linespace = font.metrics("linespace") if hasattr(font, "metrics") else px(16)
@@ -191,18 +206,28 @@ class PlayBar:
         for widget in self.run_widgets:
             widget.pack_forget()
         self.running = False
-        self._on_play, self._on_stop = on_play, on_stop
+        self.scene: str | None = None           # what a click plays (None: the start)
+        self._on_play, self._on_stop, self._on_scene = on_play, on_stop, on_scene
         self.play_button.configure(command=self._play_or_stop, style="Split.TButton",
                                    width=-max(len(PLAY), len(STOP)))
         self.play_button.pack_configure(padx=(inset, 1))   # a 1 px seam, then the ▾
         self.more_button = button(MORE, "More.Split.TButton", self.open_menu, TIP_MORE)
         self.more_button.configure(width=1)         # the theme's -9 would make it wide
         self.more_button.pack_configure(after=self.play_button)
+        # What a click plays ("from bridge"), or the scene the game is in ("playing …").
+        self.from_label = ttk.Label(self.frame, text=FROM_START, style="Side.Hint.TLabel")
+        self.from_label.pack(side="left", padx=(px(6), gap), after=self.more_button)
+        # ⟳ Update and its key, shown while the game can be updated (``set_updatable``).
+        self.update_button = button(UPDATE, "Secondary.TButton",
+                                    on_update if on_update is not None else (lambda: None),
+                                    TIP_UPDATE.replace(UPDATE_KEY, update_key), pad=(0, px(4)))
+        self.update_key = ttk.Label(self.frame, text=update_key, style="Side.Hint.TLabel")
+        self.update_button.pack_forget()
+        self.updatable = False
         self.menu = tk.Menu(self.frame, tearoff=0)
         self.menu.add_command(label=PLAY_MENU_ROW, accelerator="Shift+F5", command=on_play)
-        self.menu.add_command(label=PLAY_SCENE_MENU_ROW, accelerator="F5", command=on_scene)
         self.menu.add_command(label=PLAY_OPTIONS, command=on_options)
-        self.buttons = (self.play_button, self.more_button,
+        self.buttons = (self.play_button, self.more_button, self.update_button,
                         *((self.assistant_button,) if self.assistant_button else ()),
                         self.guide_button)          # left to right on screen
         for widget in self.buttons:                       # a toolbar: arrows move along it
@@ -224,7 +249,8 @@ class PlayBar:
         # Pack order is who keeps room in a narrow window: ▶ Play and its ▾, ? Guide, then
         # AI Assistant.
         keep = [self.play_button, self.more_button, self.guide_button,
-                *((self.assistant_button,) if self.assistant_button else ())]
+                *((self.assistant_button,) if self.assistant_button else ()),
+                self.from_label]
         packed = {str(w): w.pack_info() for w in keep}
         for widget in keep:
             widget.pack_forget()
@@ -234,7 +260,8 @@ class PlayBar:
         self.merged = True
 
     def _step(self, widget: ttk.Button, step: int) -> str:
-        enabled = [b for b in self.buttons if b is widget or not b.instate(["disabled"])]
+        enabled = [b for b in self.buttons if b is widget or (
+            not b.instate(["disabled"]) and (b is not self.update_button or self.updatable))]
         enabled[(enabled.index(widget) + step) % len(enabled)].focus_set()
         return "break"
 
@@ -250,9 +277,40 @@ class PlayBar:
                                    style=f"Split.{gray}TButton")
         self.more_button.configure(style=f"More.Split.{gray}TButton")
         self.play_button.tooltip.text = TIP_STOP if running else TIP_PLAY  # type: ignore
+        if running:
+            self.set_playing(None)
+        else:
+            self._show_from()
+
+    def set_playing(self, name: str | None) -> None:
+        """While the game runs: "playing bridge", the scene the game is in now (the game's
+        line reports), or just "playing" before it has said."""
+        if self.running:
+            text = PLAYING_GAME if not name else PLAYING.format(name=_cut(name))
+            if self.from_label.cget("text") != text:
+                self.from_label.configure(text=text)
+
+    def _show_from(self) -> None:
+        text = FROM_START if self.scene is None else FROM_SCENE.format(name=_cut(self.scene))
+        if self.from_label.cget("text") != text:
+            self.from_label.configure(text=text)
+
+    def set_updatable(self, shown: bool, enabled: bool = True) -> None:
+        """⟳ Update and its key beside the name while the game can be updated."""
+        self.update_button.state(["!disabled"] if enabled else ["disabled"])
+        if shown == self.updatable:
+            return
+        self.updatable = shown
+        if shown:
+            self.update_button.pack(side="left", padx=(0, round(4 * scale_of(self.frame))),
+                                    after=self.from_label)
+            self.update_key.pack(side="left", after=self.update_button)
+        else:
+            self.update_button.pack_forget()
+            self.update_key.pack_forget()
 
     def _play_or_stop(self) -> None:
-        (self._on_stop if self.running else self._on_play)()
+        (self._on_stop if self.running else self._on_scene)()
 
     def open_menu(self) -> None:
         """The ▾ menu, under the split button's left edge."""
@@ -272,12 +330,14 @@ class PlayBar:
         self.menu.add_checkbutton(label=label, variable=variable, command=command)
 
     def set_scene(self, name: str | None) -> None:
-        """What Play this scene plays now: the hidden name, and the ▾ menu's row."""
+        """What Play this scene plays now: the hidden name, and "from …" beside ▶ Play
+        (while the game runs the name says what plays instead)."""
         text = name if name is not None else BEGINNING
+        self.scene = name
         if self.scene_label.cget("text") != text:
             self.scene_label.configure(text=text)
-            self.menu.entryconfigure(1, label=PLAY_SCENE_MENU_ROW if name is None
-                                     else PLAY_SCENE_NAMED.format(name=name))
+        if not self.running:
+            self._show_from()
 
     def set_guide(self, shown: bool) -> None:
         """The Guide button looks pressed (secondary fill) while the Guide is shown."""
@@ -289,6 +349,10 @@ class PlayBar:
         if self.assistant_button is not None:
             self.assistant_button.configure(style="Secondary.TButton" if shown
                                             else "Chrome.Ghost.TButton")
+
+
+def _cut(name: str) -> str:
+    return name if len(name) <= NAME_MAX else name[:NAME_MAX - 1] + "…"
 
 
 def _press(widget: ttk.Button) -> str:
@@ -338,6 +402,8 @@ def ask_play_options(parent: tk.Misc, values: str, fresh: bool, *,
     return result[0]
 
 
-__all__ = ["ASSISTANT", "BEGINNING", "FRESH", "GUIDE", "MORE", "OPTIONS_TITLE", "PLAY",
-           "PLAY_OPTIONS", "PLAY_SCENE", "PLAY_SCENE_NAMED", "TIP_MORE", "START_VALUES_HEADING", "START_VALUES_HINT", "STOP", "TIP_PLAY",
-           "TIP_SCENE", "TIP_STOP", "PlayBar", "Tooltip", "ask_play_options"]
+__all__ = ["ASSISTANT", "BEGINNING", "FRESH", "FROM_SCENE", "FROM_START", "GUIDE", "MORE",
+           "OPTIONS_TITLE", "PLAY", "PLAYING", "PLAY_OPTIONS", "PLAY_SCENE",
+           "PLAY_SCENE_NAMED", "START_VALUES_HEADING", "START_VALUES_HINT", "STOP",
+           "TIP_MORE", "TIP_PLAY", "TIP_SCENE", "TIP_START", "TIP_STOP", "TIP_UPDATE",
+           "UPDATE", "PlayBar", "Tooltip", "ask_play_options"]

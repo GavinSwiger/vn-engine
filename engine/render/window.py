@@ -99,7 +99,7 @@ class GameWindow:
     def __init__(self, *, title: str, size: tuple[int, int], resizable: bool,
                  start_fullscreen: bool, letterbox_color: RGB,
                  initial_size_for_restore: tuple[int, int],
-                 position: tuple[int, int] | None = None) -> None:
+                 position: tuple[int, int] | None = None, borderless: bool = False) -> None:
         """pygame.Window(hidden=True, allow_high_dpi=True, resizable=…,
         position=``position`` or WINDOWPOS_CENTERED); minimum_size = MIN_WINDOW_SIZE; optional
         set_fullscreen(desktop=True); fill framebuffer with letterbox_color; flip(); show()
@@ -107,7 +107,8 @@ class GameWindow:
 
         ``position`` (F39 PR-F39-09): the window's top-left corner in desktop coordinates,
         where an updated preview reopens the old window; None centers it. Only the windowed
-        position: a fullscreen start still covers the display."""
+        position: a fullscreen start still covers the display. ``borderless`` (Studio's
+        docked game, dev runs only): no title bar or frame."""
         self._initial_size_for_restore = tuple(initial_size_for_restore)
         self._fullscreen = False
         self._restore: _Restore | None = None
@@ -123,7 +124,7 @@ class GameWindow:
                 position=(pygame.WINDOWPOS_CENTERED if position is None
                           else (int(position[0]), int(position[1]))),
                 hidden=True, allow_high_dpi=True,
-                resizable=resizable)
+                resizable=resizable, borderless=bool(borderless))
         except pygame.error as exc:
             raise WindowCreationError(f"The game window could not be created: {exc}") from exc
         try:
@@ -235,6 +236,22 @@ class GameWindow:
             restore = self._restore
             return None if restore is not None and restore.maximized else self._last_windowed
         return None if self.maximized else self._last_windowed
+
+    def move_to(self, position: tuple[int, int], size: tuple[int, int]) -> bool:
+        """Studio's docked game (dev runs): the windowed window to ``position`` at
+        ``size`` (at least ``MIN_WINDOW_SIZE``). Nothing while fullscreen or maximized;
+        False then, or when SDL refuses."""
+        if self._fullscreen or self.maximized or self._destroyed:
+            return False
+        try:
+            size = (max(int(size[0]), MIN_WINDOW_SIZE[0]), max(int(size[1]), MIN_WINDOW_SIZE[1]))
+            if tuple(self._window.size) != size:
+                self._window.size = size
+            if tuple(self._window.position) != (int(position[0]), int(position[1])):
+                self._window.position = (int(position[0]), int(position[1]))
+        except pygame.error:
+            return False
+        return True
 
     # -- fullscreen (§7.14) --
 

@@ -235,9 +235,12 @@ def test_ac_f47_26_new_texts_are_the_design_s_in_plain_words(studio, tmp_path):
     assert files.START_FROM == "Start from"
     assert [label for _key, label in files.TEMPLATES] == [
         "A short sample story (recommended)", "An empty game"]
-    assert [playbar.TIP_PLAY, playbar.TIP_SCENE, playbar.TIP_STOP] == [
-        "Play from the start (Shift+F5)", "Play from the selected scene (F5)",
+    assert [playbar.TIP_PLAY, playbar.TIP_START, playbar.TIP_SCENE, playbar.TIP_STOP] == [
+        "Play from the scene named beside it (F5)", "Play from the start (Shift+F5)",
+        "Play from the selected scene (F5)",
         "Stop the game (Ctrl+F2)"]
+    assert guidepane.STEP_HINTS["play"] == ("Press ▶ Play at the top (F5) to see your game "
+                                            "run. It starts from the scene named beside it.")
     assert (playbar.OPTIONS_TITLE, playbar.START_VALUES_HEADING, playbar.FRESH) == (
         "Play options", "Start values",
         "Play as a new player (forget what earlier playthroughs remember)")

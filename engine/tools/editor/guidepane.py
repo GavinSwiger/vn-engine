@@ -59,7 +59,8 @@ STEP_HINTS: dict[str, str] = {
     "scene": "Open the first scene and give it a few lines.",
     "choice": "Let the player pick what happens next.",
     "ending": "Finish your story with an ending card.",
-    "play": "Press ▶ Play at the top (Shift+F5) to see your game run.",
+    "play": ("Press ▶ Play at the top (F5) to see your game run. It starts from the scene "
+             "named beside it."),
 }
 
 SHOW_TIP_MS = 4000                      # Show me for Play: how long the tooltip stays

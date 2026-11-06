@@ -411,7 +411,7 @@ def test_ac50_the_status_bar(studio, studio_game):
         return [item.shown() for item in bar.items if item.shown()]
 
     assert shown() == ["my_game", "Checking…", "▶ Not running.", "Ln 1, Col 1",
-                       "Spaces: 4", "UTF-8", "LF"]
+                       "Spaces: 4", "UTF-8", "LF", "Floating"]     # 2.3: the game's pin
     ed.text.mark_set("insert", "6.4")                       # a cursor move
     root.update()
     assert ed.cursor_item.cget("text") == "Ln 6, Col 5"
@@ -426,7 +426,7 @@ def test_ac50_the_status_bar(studio, studio_game):
     ed.open_file("script/crlf.vns")                         # the file's own facts
     ed.text.mark_set("insert", "2.1")
     root.update()
-    assert shown()[-4:] == ["Ln 2, Col 2", "Tab Size: 4", "UTF-8 with BOM", "CRLF"]
+    assert shown()[-5:-1] == ["Ln 2, Col 2", "Tab Size: 4", "UTF-8 with BOM", "CRLF"]
     ed.check_counts.label.event_generate("<Button-1>")      # a click: Problems gets the keys
     assert ed.focus() is ed.problems
 

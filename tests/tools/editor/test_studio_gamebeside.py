@@ -1,4 +1,5 @@
-"""Proposal 2.3 (snap): the game opens beside Studio (``gamebeside``, ``runwiring``).
+"""Proposal 2.3: the game opens beside Studio, docked or floating (``gamebeside``,
+``runwiring``).
 ``place_game`` is checked with numbers; the window part with a fake game runner and the
 screen measures patched, so nothing moves on the real desktop."""
 
@@ -62,8 +63,10 @@ def test_play_places_the_game_and_studio_makes_room_and_gives_it_back(studio, tm
     assert argv[at + 1:at + 3] == ["--window-at=1208,30", "--window-size=1280,720"]
     assert moves == []
 
+    assert gamebeside.BORDERLESS not in argv        # floating: its own title bar
     menu = win.play_bar.menu                        # ▾ and Run: the switch, off at first
-    assert menu.entrycget("end", "label") == gamebeside.MENU == "Game beside Studio"
+    assert menu.entrycget("end", "label") == gamebeside.MENU == "Dock the game beside Studio"
+    assert win.dock_pin.cget("text") == gamebeside.PIN_FLOATING        # and the pin
     assert not win.game_beside.get()
     checks = [str(win.run_menu.entrycget(i, "label"))
               for i in range(win.run_menu.index("end") + 1)
@@ -76,6 +79,7 @@ def test_play_places_the_game_and_studio_makes_room_and_gives_it_back(studio, tm
     assert not any(a.startswith("--window") for a in game.argvs[-1]) and moves == []
     menu.invoke("end")                              # tick it: remembered for this person
     assert win.game_beside.get() and uiprefs.load()["game_beside"] is True
+    assert win.dock_pin.cget("text") == gamebeside.PIN_DOCKED           # one setting
     state = tmp_path / "my_game" / ".studio" / "studio.json"      # not in the game's file
     assert not state.exists() or "game_beside" not in json.loads(state.read_text("utf-8"))
 
@@ -84,6 +88,7 @@ def test_play_places_the_game_and_studio_makes_room_and_gives_it_back(studio, tm
     win.play_from_start()                           # Studio makes room; the game on the right
     assert moves == [("room", Rect(0, 30, 2560 - 1152 - 8, 1370))]
     assert "--window-at=1408,30" in game.argvs[-1]
+    assert gamebeside.BORDERLESS in game.argvs[-1]  # docked: no title bar
     assert win._room_before == ("zoomed", "as made")
     win.apply_events([PreviewEvent(PreviewState.RUNNING)])      # still running: kept
     assert len(moves) == 1
@@ -111,3 +116,56 @@ def test_make_room_and_give_back_on_a_real_window():
         assert root.geometry().startswith("400x300")
     finally:
         root.destroy()
+
+
+def test_a_docked_game_follows_studio_and_the_pin_switches(studio, tmp_path, monkeypatch):
+    monkeypatch.setattr(gamebeside, "PLACES", True)
+    ed = studio(make_game(tmp_path), mapped=True)
+    win = ed.win
+    game = fake_game(win)
+    sent: list[bytes] = []
+    game.send = lambda data: sent.append(data) or True          # the game's stdin
+    where = [Rect(0, 0, 1200, 900)]
+    monkeypatch.setattr(gamebeside, "work_area", lambda root: WORK)
+    monkeypatch.setattr(gamebeside, "studio_rect", lambda root, caption: where[0])
+    monkeypatch.setattr(gamebeside, "caption_of", lambda root, scale: 30)
+    monkeypatch.setattr(win, "_game_size", lambda: GAME)
+    after: list = []                                            # the debounce, by hand
+    monkeypatch.setattr(win.root, "after", lambda ms, run: after.append((ms, run)) or "id")
+    monkeypatch.setattr(win.root, "after_cancel", lambda _id: after.clear())
+
+    def moved() -> None:
+        win._studio_moved(type("E", (), {"widget": win.root})())
+
+    win.dock_pin.label.event_generate("<Button-1>")             # the pin: Docked
+    assert win.game_beside.get() and win.dock_pin.cget("text") == gamebeside.PIN_DOCKED
+    win.play_from_start()
+    win.apply_events([PreviewEvent(PreviewState.RUNNING)])
+    # Running: the spot it opened at, sent once more (after an update the new window opens
+    # at the old one's size, so each Running says where the game belongs now).
+    assert sent == [b'{"v":1,"msg":"window","at":[1208,30],"size":[1280,720]}\n']
+    sent.clear()
+    where[0] = Rect(100, 50, 1200, 900)                         # Studio moves...
+    moved()
+    moved()                                                     # ...and moves again
+    assert [ms for ms, _run in after] == [gamebeside.FOLLOW_MS]  # one move, after the last
+    after.pop()[1]()
+    assert sent == [b'{"v":1,"msg":"window","at":[1308,80],"size":[1252,704]}\n']
+    moved()
+    after.pop()[1]()
+    assert len(sent) == 1                                       # nothing changed: nothing sent
+    where[0] = WORK                                             # no room beside: it stays
+    moved()
+    after.pop()[1]()
+    assert len(sent) == 1
+
+    win.dock_pin.label.event_generate("<Button-1>")             # Floating: free, not followed
+    assert not win.game_beside.get() and win.dock_pin.cget("text") == gamebeside.PIN_FLOATING
+    assert uiprefs.load()["game_beside"] is False               # the one setting
+    where[0] = Rect(0, 0, 1000, 900)
+    moved()
+    assert after == []
+    win.apply_events([PreviewEvent(PreviewState.CLOSED)])       # no game: nothing to follow
+    win.game_beside.set(True)
+    moved()
+    assert after == []

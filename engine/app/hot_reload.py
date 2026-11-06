@@ -11,7 +11,9 @@ Everything here is pure or thread-light, so W1 only wires it in:
   Longer, non-ASCII, malformed, duplicate-key, ``v`` ≠ 1 or unknown lines are dropped. Input is
   never logged or echoed. F40 adds the ``console`` message (``ConsoleRequest``: typed data,
   exact keys per ``do``; ``04`` §7.5), which ``handle_messages`` hands to its ``console``
-  callback (never in error mode); what it means is the console's business.
+  callback (never in error mode); what it means is the console's business. Studio's docked
+  game adds ``window`` (``WindowMove``: ``at`` [x, y] and ``size`` [w, h], whole numbers):
+  the last one of a frame goes to ``handle_messages``' ``move`` (error mode too).
 - ``StdinReader``: a daemon thread that touches only its stream, a ``SimpleQueue`` and the
   frame slot (ADR-0007 thread note); the frame loop calls ``poll`` once per frame (W1:
   ``app/editor_link.py``'s ``EditorLink.listen`` and ``update``).
@@ -127,6 +129,17 @@ class ConsoleRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class WindowMove:
+    """``{"v":1,"msg":"window","at":[x,y],"size":[w,h]}``: Studio's docked game follows
+    Studio (``x``, ``y`` within ±``WINDOW_COORD_MAX``; ``w``, ``h`` 1 to it)."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+
+
+@dataclass(frozen=True, slots=True)
 class ResumeFrame:
     """The resume frame. ``body`` is None when the frame was bad: a malformed header, a body
     over the caps, or a short body (EOF first). ``lost``: Studio got no state (N4)."""
@@ -172,13 +185,15 @@ def _load_line(line: bytes) -> dict | None:
     return obj
 
 
-def parse_message(line: bytes) -> Reload | Held | ConsoleRequest | None:
-    """A ``reload``, ``held`` or ``console`` line (newline stripped), else None (dropped).
-    Exact keys."""
+def parse_message(line: bytes) -> Reload | Held | ConsoleRequest | WindowMove | None:
+    """A ``reload``, ``held``, ``console`` or ``window`` line (newline stripped), else None
+    (dropped). Exact keys."""
     obj = _load_line(line)
     if obj is None:
         return None
     msg = obj["msg"]
+    if msg == "window" and obj.keys() == {"v", "msg", "at", "size"}:
+        return _window_move(obj["at"], obj["size"])
     if msg == CONSOLE_MESSAGE:
         return _console_request(obj)
     if msg == "reload" and obj.keys() == {"v", "msg"}:
@@ -188,6 +203,16 @@ def parse_message(line: bytes) -> Reload | Held | ConsoleRequest | None:
         if _is_int(errors) and 1 <= errors <= HELD_ERRORS_MAX:
             return Held(errors)
     return None
+
+
+def _window_move(at: object, size: object) -> WindowMove | None:
+    def pair(value: object, low: int) -> bool:
+        return (type(value) is list and len(value) == 2
+                and all(_is_int(v) and low <= v <= WINDOW_COORD_MAX for v in value))
+
+    if not pair(at, -WINDOW_COORD_MAX) or not pair(size, 1):
+        return None
+    return WindowMove(at[0], at[1], size[0], size[1])            # type: ignore[index]
 
 
 def _text_field(value: object, most: int) -> bool:
@@ -238,14 +263,19 @@ def parse_resume_header(line: bytes) -> tuple[int, int, bool] | None:
 
 def handle_messages(messages: Sequence[object], *, error_mode: bool,
                     notify: Callable[[str, str], None], reload: Callable[[], None],
-                    console: Callable[[ConsoleRequest], None] | None = None) -> bool:
+                    console: Callable[[ConsoleRequest], None] | None = None,
+                    move: Callable[[WindowMove], None] | None = None) -> bool:
     """One frame's messages: ``held`` shows N5 (a problem notice), except in error mode,
     whose screen has no notices; ``reload`` calls ``reload`` once, whatever the count.
     F40: each ``ConsoleRequest`` goes to ``console`` in order, except in error mode or with
-    no ``console`` (then it is dropped, unanswered). Returns True when a reload was asked for."""
+    no ``console`` (then it is dropped, unanswered). The frame's last ``WindowMove`` goes to
+    ``move`` (before a reload). Returns True when a reload was asked for."""
     asked = False
+    last_move: WindowMove | None = None
     for message in messages:
-        if type(message) is ConsoleRequest:
+        if type(message) is WindowMove:
+            last_move = message
+        elif type(message) is ConsoleRequest:
             if console is not None and not error_mode:
                 console(message)
         elif type(message) is Held:
@@ -253,6 +283,8 @@ def handle_messages(messages: Sequence[object], *, error_mode: bool,
                 notify(held_note(message.errors), "problem")
         elif type(message) is Reload:
             asked = True
+    if last_move is not None and move is not None:
+        move(last_move)
     if asked:
         reload()
     return asked

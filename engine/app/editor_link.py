@@ -176,7 +176,8 @@ class EditorLink:
         studio = (console.studio if app.dev and console is not None and not app.error_mode
                   else None)
         handle_messages(messages, error_mode=app.error_mode, notify=notify,
-                        reload=lambda: self._reload(app), console=studio)
+                        reload=lambda: self._reload(app), console=studio,
+                        move=lambda m: _move_window(app, m))
 
     def report_story(self, app: object) -> None:
         """The line reports for this frame: ``ending`` for an ending run since the last
@@ -252,6 +253,17 @@ class EditorLink:
                 os.close(null)
         except Exception:                        # no file descriptor (a test's BytesIO)
             pass
+
+
+def _move_window(app: "App", move: object) -> None:
+    """Studio's docked game follows Studio (a ``window`` message, dev runs only)."""
+    window = getattr(app, "window", None)
+    move_to = getattr(window, "move_to", None)
+    if getattr(app, "dev", False) and callable(move_to):
+        try:
+            move_to((move.x, move.y), (move.w, move.h))        # type: ignore[attr-defined]
+        except Exception:
+            _log.debug("The window could not follow Studio", exc_info=True)
 
 
 def build_report(error: BaseException, *, phase: str) -> dict:

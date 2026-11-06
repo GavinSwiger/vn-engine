@@ -45,7 +45,7 @@ dev-runs-only rule (refused with ``--release``, not defined in a frozen build, n
 stdin, which is read only then); ``--window-at`` takes two whole numbers, each at most
 100,000 from 0. Studio's "game beside Studio" adds the hidden ``--window-size=W,H`` too (the
 window's size in screen pixels, each 1 to 100,000, never below the engine's minimum), under
-the same rule.
+the same rule, and, for the docked game, the hidden ``--window-borderless`` (no title bar).
 
 F42 (``04`` §3.3, §7.5; architect decisions 1, 8): ``main(argv, builder=…)`` adds the dev-only
 ``build [GAME_DIR] [--out FOLDER] [--zip] [--replace]`` (and the hidden
@@ -451,6 +451,7 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
     run.add_argument("--resume-from-editor", action="store_true", help=argparse.SUPPRESS)
     run.add_argument("--window-at", metavar="X,Y", default=None, help=argparse.SUPPRESS)
     run.add_argument("--window-size", metavar="W,H", default=None, help=argparse.SUPPRESS)
+    run.add_argument("--window-borderless", action="store_true", help=argparse.SUPPRESS)
     # F47 P2-F: Studio's Try it.
     run.add_argument("--try-stdin", action="store_true",
                      help="play the script lines read from stdin in a small window, then "
@@ -496,6 +497,7 @@ def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) 
                           ("--resume-from-editor", args.resume_from_editor),
                           ("--window-at", args.window_at is not None),
                           ("--window-size", args.window_size is not None),
+                          ("--window-borderless", args.window_borderless),
                           ("--try-stdin", args.try_stdin),
                           ("--extras", args.extras is not None),
                           ("--replay", args.replay is not None)):
@@ -586,6 +588,7 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        resume=getattr(args, "resume_from_editor", False),
                        window_at=getattr(args, "window_position", None),
                        window_size=getattr(args, "window_pixels", None),
+                       borderless=bool(getattr(args, "window_borderless", False)),
                        try_lines=getattr(args, "try_lines", None),
                        extras=getattr(args, "extras", None),
                        replay=getattr(args, "replay", None),
@@ -599,7 +602,7 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             start: StartOptions | None = None, editor_report: bool = False,
             seed: int | None = None, no_persistent: bool = False, resume: bool = False,
             window_at: tuple[int, int] | None = None,
-            window_size: tuple[int, int] | None = None,
+            window_size: tuple[int, int] | None = None, borderless: bool = False,
             try_lines: tuple[str, ...] | None = None,
             playthrough: int | None = None, extras: str | None = None,
             replay: str | None = None, console: ConsoleFactory | None = None) -> int:
@@ -612,6 +615,6 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
                             window_at=window_at, window_size=window_size,
-                            try_lines=try_lines,
+                            borderless=borderless, try_lines=try_lines,
                             playthrough=playthrough, extras=extras, replay=replay,
                             console=console)

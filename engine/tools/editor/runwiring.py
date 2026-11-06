@@ -2,14 +2,20 @@
 §7.6 "Preview (F5)"), as the ``RunWiring`` mixin of ``window.EditorWindow``.
 
 ``playbar.PlayBar`` sits under the menu bar (on Windows and Linux, in its row). Its split
-button (▶ Play, ■ Stop while the game runs, and a ▾ menu) and the Run menu start and stop
-the game. Play (Shift+F5) plays from the game's ``start``; Play this scene (F5) plays from
-the selected story-map box while the Story map shows, else from the label above the
-editor's cursor; Play from this scene (a box's or an Events row's context menu) plays from
-that scene; Stop (Ctrl+F2) ends the game child. Every game Play starts opens beside
-Studio when there is room, and Studio makes room when **Game beside Studio** is ticked
-(``gamebeside``: ``--window-at`` and ``--window-size``; Studio goes back as it was when the
-game ends). Every Play saves every unsaved file, checks the start values (kept for the session in
+button (▶ Play "from <scene>", ■ Stop "playing <scene>" and ⟳ Update while the game runs,
+and a ▾ menu) and the Run menu start, update and stop the game. A click on ▶ Play and Play
+this scene (F5) play from the selected story-map box while the Story map shows, else from
+the label above the editor's cursor; Play from the start (Shift+F5, in the ▾) plays from
+the game's ``start``; Play from this scene (a box's or an Events row's context menu) plays
+from that scene; Stop (Ctrl+F2) ends the game child; ⟳ Update is Ctrl+R (below). While the
+game runs, the name beside ■ Stop follows the scene it is in (its ``at`` line reports).
+Every game Play starts opens beside Studio when there is room. **Docked** (the status bar's
+pin, or **Dock the game beside Studio** in the Run menu and the ▾; one setting, remembered
+per person) makes room when Studio fills the screen, opens the game without a title bar,
+and moves it along when Studio moves or is resized (``gamebeside``: ``--window-at``,
+``--window-size``, ``--window-borderless`` and the ``window`` message; Studio goes back as
+it was when the game ends). **Floating** is the free window. Every Play saves every unsaved
+file, checks the start values (kept for the session in
 Play options, with "Play as a new player"), and hands argv to ``preview.PreviewRunner``. The
 first Play that reaches the game window marks ``played`` in ``studiostate`` (the Guide's
 step 7). One poll loop (every ``POLL_INTERVAL_MS``) polls the game runner, the check runner,
@@ -62,6 +68,7 @@ from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests rea
     BEGINNING,
     START_VALUES_HEADING,
     PlayBar,
+    Tooltip,
     ask_play_options,
 )
 from engine.tools.editor.preview import (
@@ -98,6 +105,8 @@ PLAYTHROUGH_CONFIG_HEAD = "config.toml has a problem, so the preview didn't star
 LIVE = (PreviewState.STARTING, PreviewState.RUNNING, PreviewState.UPDATING)
 # F39: the game can be updated in these states (the error screen too, while it is open).
 UPDATABLE = (*LIVE, PreviewState.STOPPED_ERROR)
+# The game's window is open (and reads Studio's messages): ⟳ Update works, a docked game follows.
+FOLLOWS = (PreviewState.RUNNING, PreviewState.STOPPED_ERROR)
 UPDATE_MENU = "Update the running game"         # Run menu, Ctrl+R (F39 §4.2)
 UPDATE_ON_SAVE_MENU = "Update the game on save"     # Run menu check, on by default (D2)
 PREVIEW_GLYPH = "▶ "                    # the status item's prefix; F39's texts start with it
@@ -154,11 +163,13 @@ class RunWiring:
     def _build_play_bar(self) -> None:
         """The Play bar under the menu bar, across the window (PR-F47-07). Packed before
         the panes; ``studiomenus`` packs the in-window menu bar above it."""
+        key = "Cmd" if getattr(self, "mod", "Control") == "Command" else "Ctrl"
         self.play_bar = PlayBar(self.root, scale=self.scale, font=self.ui_font,
                                 tip_font=self.fonts["small"], on_play=self.play_from_start,
                                 on_scene=self.play_scene, on_stop=self.stop_game,
                                 on_options=self.play_options, on_guide=self.toggle_guide,
-                                on_assistant=getattr(self, "toggle_assistant", None))
+                                on_assistant=getattr(self, "toggle_assistant", None),
+                                on_update=self.update_game, update_key=f"{key}+R")
         self.play_bar.frame.pack(side="top", fill="x")
         self.play_bar.divider.pack(side="top", fill="x")
         self.play_button = self.play_bar.play_button       # ▶ Play, ■ Stop while running
@@ -174,15 +185,80 @@ class RunWiring:
         elif state.link:                    # a link: never write there (studiostate)
             self._state_writable = False
         self.play_bar.set_guide(self.guide_shown)
-        # Proposal 2.3: Studio makes room for the game (remembered for this person).
+        # Proposal 2.3: docked or floating (one setting, remembered for this person).
         self.game_beside = tk.BooleanVar(master=self.root,
                                          value=uiprefs.value("game_beside") is True)
         self.play_bar.add_check(gamebeside.MENU, self.game_beside, self.toggle_game_beside)
         self._room_before: tuple[str, str] | None = None
+        self._follow_after: str | None = None
+        self._followed: gamebeside.Rect | None = None
+        bar = getattr(self, "status_bar", None)
+        self.dock_pin = None
+        if bar is not None:                 # the pin: Docked / Floating, at the far right
+            self.dock_pin = bar.add(side="right", on_click=self.toggle_dock)
+            self.dock_pin.tooltip = Tooltip(self.dock_pin.label, "", self.fonts["small"])
+        self._show_dock_pin()
+        self.root.bind("<Configure>", self._studio_moved, add="+")
+        self.on_game_event(self._game_at)   # "playing <scene>" beside ■ Stop
+
+    def _game_at(self, kind: str, data: dict) -> None:
+        if kind == "at" and data.get("scene"):
+            self.play_bar.set_playing(str(data["scene"]))
+
+    def toggle_dock(self) -> None:
+        """The status bar's pin: Docked ↔ Floating."""
+        self.game_beside.set(not self.game_beside.get())
+        self.toggle_game_beside()
 
     def toggle_game_beside(self) -> None:
-        """Run ▸ Game beside Studio (and the ▶ Play ▾ menu's): kept for every game."""
+        """Run ▸ Dock the game beside Studio (the ▾ menu's and the pin): kept for every
+        game. Docking while the game runs moves it beside Studio now."""
         self.save_studio_state(game_beside=bool(self.game_beside.get()))
+        self._show_dock_pin()
+        if self.game_beside.get():
+            self._followed = None
+            self._follow_now()
+
+    def _show_dock_pin(self) -> None:
+        pin = self.__dict__.get("dock_pin")
+        if pin is None:
+            return
+        docked = bool(self.game_beside.get())
+        pin.configure(text=gamebeside.PIN_DOCKED if docked else gamebeside.PIN_FLOATING)
+        pin.tooltip.text = gamebeside.TIP_DOCKED if docked else gamebeside.TIP_FLOATING
+
+    def _studio_moved(self, event: tk.Event) -> None:
+        """Studio moved or was resized: while docked with a game running, the game follows
+        ``FOLLOW_MS`` after the last move."""
+        if event.widget is not self.root or not self.game_beside.get() or \
+                self.preview_state not in FOLLOWS:
+            return
+        if self._follow_after is not None:
+            self.root.after_cancel(self._follow_after)
+        self._follow_after = self.root.after(gamebeside.FOLLOW_MS, self._follow_now)
+
+    def _follow_now(self) -> None:
+        """Send the docked game its spot beside Studio, when it changed."""
+        self._follow_after = None
+        root = self.root
+        if self.closed or not gamebeside.PLACES or not self.game_beside.get() or \
+                self.preview_state not in FOLLOWS:
+            return
+        try:
+            if not root.winfo_viewable() or str(root.state()) == "iconic":
+                return
+            caption = gamebeside.caption_of(root, self.scale)
+            spot = gamebeside.place_game(
+                gamebeside.studio_rect(root, caption), gamebeside.work_area(root),
+                self._game_size(), caption=caption, gap=round(gamebeside.GAP * self.scale),
+                share=False)
+        except tk.TclError:
+            return
+        if spot is None or spot.game == self._followed:
+            return                          # no room beside Studio: the game stays
+        send = getattr(self.runner, "send", None)
+        if callable(send) and send(gamebeside.window_line(spot.game)):
+            self._followed = spot.game
 
     def _game_spot(self) -> list[str]:
         """``--window-at`` and ``--window-size`` beside Studio, or nothing (``gamebeside``).
@@ -208,7 +284,9 @@ class RunWiring:
                     self._room_before = (before, str(root.geometry()))
         except tk.TclError:
             return []
-        return spot.argv()
+        self._followed = spot.game
+        docked = bool(self.game_beside.get())
+        return [*spot.argv(), *((gamebeside.BORDERLESS,) if docked else ())]
 
     def _game_size(self) -> tuple[int, int]:
         """The game's own window size in screen pixels (``config.toml``'s ``[window]``)."""
@@ -534,8 +612,12 @@ class RunWiring:
         self.status_label.configure(text=status_text(event) if text is None
                                     else text.removeprefix(PREVIEW_GLYPH))
         self.play_bar.set_running(event.state in LIVE)
+        self.play_bar.set_updatable(event.state in UPDATABLE, enabled=event.state in FOLLOWS)
         if event.state not in UPDATABLE:        # the game is gone: Studio as it was
             self._give_back_room()
+        elif event.state is PreviewState.RUNNING:   # docked: where Studio is now (an update
+            self._followed = None                   # reopens the game at its old spot)
+            self._follow_now()
         set_entry_enabled(self.run_menu, UPDATE_MENU, event.state in UPDATABLE)
         self._sync_hot_suffix()
         self._console_state_changed()

@@ -1,4 +1,4 @@
-"""Where Studio opens the game: beside its own window (proposal 2.3, "snap", 2026-11-06).
+"""Where Studio opens the game: beside its own window, docked or floating (proposal 2.3).
 
 Why this module exists: a game that opens in the middle of the screen covers the script the
 author is editing. When Play starts the game, Studio works out a spot beside its window and
@@ -7,12 +7,21 @@ pixels; both processes are DPI aware on Windows, so Tk's and SDL's pixels agree)
 
 - **Room beside Studio** (right first, then left; at least the engine's smallest window):
   the game opens there, level with Studio's top, at its own size or smaller (its shape kept).
-- **No room** (Studio fills the screen) with **Game beside Studio** ticked (Run menu and the
-  ▶ Play ▾ menu, remembered for this person in ``uiprefs``): Studio makes room. It leaves
+- **No room** (Studio fills the screen) while **docked**: Studio makes room. It leaves
   maximized and takes the left part of its screen; the game gets the right ``SHARE``.
   When the game ends, Studio goes back the way it was, unless it was moved or resized
   meanwhile.
 - Otherwise nothing is added and the game opens where it always did (centered).
+
+**Docked or Floating** is one setting, remembered for this person in ``uiprefs``
+(``game_beside``): the status bar's pin (``PIN_DOCKED`` / ``PIN_FLOATING``), the Run menu's
+and the ▶ Play ▾ menu's **Dock the game beside Studio**. Floating is the free window above.
+Docked adds, besides making room: the game opens without a title bar (``--window-borderless``,
+dev runs only), and while it runs, moving or resizing Studio moves it along. Studio
+works out the new spot from its own geometry ``FOLLOW_MS`` after the last move and sends it
+on the game's stdin (``window_line``: ``{"v":1,"msg":"window","at":[x,y],"size":[w,h]}``,
+read by ``app/hot_reload.py``); no room beside Studio leaves the game where it is. Clicking
+the game gives it the keys, as any window.
 
 Hot reload keeps the spot: ``hotreload.resume_argv`` passes the old window's place, or keeps
 Play's ``--window-at``; ``--window-size`` always stays.
@@ -20,8 +29,9 @@ Play's ``--window-at``; ``--window-size`` always stays.
 Limits: Windows asks the system for the work area of the monitor Studio is on (taskbar left
 out). macOS and Linux use Tk's screen size from the top-left corner, so a second monitor or
 a dock isn't seen. The game's title bar is taken to be as tall as Studio's. A game the
-player put in fullscreen (F11, kept in its settings) still opens fullscreen. Moving Studio
-later doesn't move the game.
+player put in fullscreen (F11, kept in its settings) still opens fullscreen, and a
+fullscreen or maximized game doesn't follow. On macOS and Linux the game follows only where
+the system lets a program place its windows (not on Wayland).
 
 ``place_game`` is pure (tests call it with numbers); ``studio_rect``, ``work_area`` and
 ``make_room`` read and move the Tk window. Imports only the standard library and
@@ -37,12 +47,18 @@ from dataclasses import dataclass
 from engine.core.constants import MIN_WINDOW_SIZE
 
 PLACES = True                           # tests set False: Play places nothing, moves nothing
-MENU = "Game beside Studio"             # Run menu and ▶ Play ▾ check (remembered per person)
+MENU = "Dock the game beside Studio"    # Run menu and ▶ Play ▾ check (remembered per person)
+PIN_DOCKED = "📌 Docked"                 # the status bar's pin: click to switch
+PIN_FLOATING = "Floating"
+TIP_DOCKED = "The game sits beside Studio and moves with it. Click to let it float."
+TIP_FLOATING = "The game opens in its own free window. Click to dock it beside Studio."
+FOLLOW_MS = 150                         # the game moves this long after Studio's last move
 GAP = 8                                 # px at 100 %: between Studio and the game
 SHARE = 0.45                            # the game's part of a shared screen
 CAPTION = 32                            # px at 100 %: a title bar, when Tk can't measure one
 WINDOW_AT = "--window-at"
 WINDOW_SIZE = "--window-size"
+BORDERLESS = "--window-borderless"      # the docked game: no title bar (dev runs only)
 
 
 @dataclass(frozen=True)
@@ -75,6 +91,12 @@ class Placement:
         """The two options, each one argv item (a negative X isn't read as an option)."""
         g = self.game
         return [f"{WINDOW_AT}={g.x},{g.y}", f"{WINDOW_SIZE}={g.w},{g.h}"]
+
+
+def window_line(rect: Rect) -> bytes:
+    """The ``window`` message that moves the running game to ``rect`` (its drawing area)."""
+    return (f'{{"v":1,"msg":"window","at":[{rect.x},{rect.y}],'
+            f'"size":[{max(rect.w, 1)},{max(rect.h, 1)}]}}\n').encode("ascii")
 
 
 def _fit(width: int, height: int, natural: tuple[int, int]) -> tuple[int, int]:
@@ -183,5 +205,6 @@ def give_back(root: tk.Wm, before: str) -> None:
         root.geometry(before)
 
 
-__all__ = ["GAP", "MENU", "PLACES", "SHARE", "Placement", "Rect", "caption_of", "give_back",
-           "make_room", "place_game", "studio_rect", "work_area"]
+__all__ = ["BORDERLESS", "FOLLOW_MS", "GAP", "MENU", "PIN_DOCKED", "PIN_FLOATING", "PLACES",
+           "SHARE", "Placement", "Rect", "caption_of", "give_back", "make_room", "place_game",
+           "studio_rect", "window_line", "work_area"]
