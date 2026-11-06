@@ -26,6 +26,7 @@ from engine.script import flowchart  # noqa: F401,E402  F20: flowchart
 from engine.script import glitch  # noqa: F401,E402  F28: effect (registered from F28 s3)
 from engine.script import ui  # noqa: F401,E402  F32: ui (registered from F32 s3)
 from engine.script import metafiles  # noqa: F401,E402  F31: file (registered from F31 s3)
+from engine.script import clock  # noqa: F401,E402  F63: clock (positional, ADR-0010)
 from engine.script import docs_table  # noqa: F401,E402  F45: docs for the words above
 from engine.script.diagnostics import ScriptErrorGroup  # noqa: E402
 from engine.script.loader import LoadOptions, LoadResult, StoryLoader, load_story  # noqa: E402

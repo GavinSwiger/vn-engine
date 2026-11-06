@@ -446,6 +446,58 @@ label accuse:
 - Not yet: bonuses on a check ("+1 from the key"), and words for the card and the badge in
   other languages.
 
+**Showing an item.** A menu can let the player show any item they hold (see
+[lock item](#lock-tip-lock-item-unlock-codex)) instead of picking a written choice, the way
+Ace Attorney lets you present evidence to anyone:
+
+```
+lock item red_lantern "Red Lantern"
+lock item brass_key "Brass Key"
+
+label bridge:
+    menu:
+        hana "What's that in your hand?"
+        "Nothing.":
+            $ pass
+        present:
+            red_lantern:
+                hana happy "You kept it!"
+                jump lantern_memory
+            else:
+                hana "...Why are you showing me that?"
+```
+
+- **`present:`** goes in the menu with the choices. The player sees one more button,
+  **Show an item…**, after the choices. It opens the bag (the Codex's item list, with each
+  item's picture and text); the player picks an item and presses **Show**, or Back to
+  return to the choices.
+- **Under `present:`** goes one line per item that gets its own reaction, the item's name
+  and a colon, each with its lines indented under it, and then **`else:`** last, for any
+  other item. `else:` is required: the player can show anything they hold. To have a
+  reaction do nothing, write `$ pass` under it.
+- **`present if condition:`** shows the button only when the condition is true, like a
+  choice's `if`. The button is also left out while the player holds no items (locked, with
+  `show_locked = true`). It counts as one of the menu's six choices, so a menu has at most
+  five written choices with it. Keep one choice without `if` so the player can always go on.
+- **Timed menus**: the countdown waits while the bag is open, as under the game menu.
+  `present` can't be the `timeout` choice.
+- **Saving**: showing an item is a pick like any other. It's saved with the item, so loading,
+  going back and going forward again show the same reaction. History shows the item's
+  title as the pick, and the item stays in the bag (to take it, write `lock item <name>`
+  in the reaction).
+- **The check warns** when the scene gives the player an item (`unlock item`) before the
+  menu and `present:` has no reaction for it, since the player has just got it. `else:`
+  still answers it; add a reaction if it should matter there.
+- `present` is a word only on this line in a menu; it stays free as a variable or
+  character name. `present "Hi"` is still a line by a character called `present`.
+- In Studio, the Choice form's **Accept an item** section adds the option: a row per item
+  with where it goes, and a row for any other item. The Events list shows it under the
+  choices, each reaction as **Shows red_lantern**. Headless runs show an item with
+  `present red_lantern` at the menu.
+- The button's words are `[words] present_choice` ("Show an item…", also the bag's
+  heading) and `present_pick` ("Show").
+- Not yet: showing tips (people, places), a hotbar, and using up the item shown.
+
 **Settings in `config.toml`.** How menus behave is under `[choice]`; how they look is under
 `[theme.choice]` (colors, text size, width, frame images, the focus marker, the locked
 look, the fade-in, and focus and pick sounds). Every `choice.*` token, with its default and
@@ -509,6 +561,15 @@ file and line:
 | `this choice has a check but no failure: under it. Add failure: with what happens then; to just go on, write $ pass under it.` | Add the missing part. |
 | `a choice with a check holds only success: and failure:, each with its own lines. Indent this line under one of them.` | Move the line under `success:` or `failure:`. |
 | `write success: first, then failure:, under a choice with a check.` | Swap the two parts. |
+| `present: needs else: as its last line, for any other item the player shows (they can show anything they hold). Add else: with what happens then; to just go on, write $ pass under it.` | Add `else:` last under `present:`. |
+| `this present: already has a reaction for red_lantern (line 7). Put all its lines under the first one.` | Join the two reactions into one. |
+| `there is no item "red_lantren". Did you mean "red_lantern"? Declare items at the top level, e.g. lock item red_lantren "Title".` | Fix the item's name, or declare the item. |
+| `lanterns is a tip; only items can be shown at present:. Use an item's name, or else: for everything else.` | Use an item, or let `else:` answer it. |
+| `under present: each line is an item's name and a colon, e.g. red_lantern:, or else: for any other item. Indent what happens under each one.` | Put each item's name with a colon, and its lines under it. |
+| `brass_key: comes after else:, but else: must be last under present:. Move it above else:.` | Move the reaction above `else:`. |
+| `present: has no lines under it. Indent a line for each item, e.g. red_lantern:, then else: for any other item.` | Add the reactions under `present:`. |
+| `present takes nothing before the : except an if, but found timeout. Write present: or present if <condition>:` | Remove the extra words; `present` can't be the timeout choice. |
+| `this scene gives the player brass_key before this menu, but present: has no reaction for it, so else: answers. Add brass_key: under present: if it should matter here.` (warning) | Add `brass_key:` under `present:`, or leave it to `else:`. |
 
 One mistake shows only while the story runs (see [Run-time errors](#22-run-time-errors)):
 `every choice in this menu is hidden, because all their conditions are false, so the player can't pick anything. Add a choice without if, such as "That's all":.`
@@ -1735,6 +1796,82 @@ look = "dial"
 | `[meter.hanna] is set up, but no points line declares a meter named hanna, so it is never used. Did you mean "hana"? …` (warning) | Rename the table to the meter's name, or delete it if the meter is gone (renaming or deleting a meter leaves its table behind). |
 | `hana is shown as hearts, which needs a range, but its points line has none, so it is shown as a number. …` (warning) | Give the meter a range, e.g. `points hana 0 to 10`, or set `look = "number"`. |
 | `this shows the picture "meter hana", not the meter. A meter takes no at, as or with: write show meter hana` (warning) | Remove `at`, `as` or `with`. |
+
+### clock (story time)
+
+Story time counts days and the parts of a day. It is saved with the game like a variable,
+so loading, going back and New Game all put it exactly where it was. Three lines move it:
+
+```
+label after_class:
+    clock next                     # Morning becomes After school
+    if clock.day == 7:
+        jump festival_eve
+    if clock.part == "Night":
+        jump sleep
+    "It's {var=clock.date}, {var=clock.part}."
+    clock next day                 # the first part of the next day
+    clock go to day 12             # or 12; the first part of day 12
+    clock go to "31 October" Night # a date, then (optional) a part of that day
+    clock go to Evening            # later today, or tomorrow's if Evening has passed
+```
+
+- `clock next` moves to the next part of the day; after the last part it is the next day's
+  first. `clock next day` skips to the next day's first part.
+- `clock go to` takes a day (`day 12`), a date in quotes (`"31 October"`, `"Spring 4"`) or a
+  part of the day, and a part after a day or date. A date that comes every year (or every
+  season) means the next time it comes, today included. A day number may go back in time.
+  Put a part with spaces in quotes: `clock go to "After school"`.
+- Read it in conditions, `$` lines and text: `clock.day` (a number from 1), `clock.part`,
+  `clock.weekday`, `clock.date` (the date in words, e.g. "Monday 1 April" or "Night 3"),
+  `clock.month` and `clock.season` ("" without months or seasons), and
+  `clock.days_left(...)`: days until a day number, a date in quotes, or, with nothing in
+  the brackets, `last_day`; 0 once it has come. In text, write `{var=clock.date}` (any of
+  the first six works).
+- Comparisons must match the names exactly: `clock.part == "Night"`. A name the calendar
+  doesn't have gets a warning, since the comparison could never match.
+- `clock` is a word only at the start of a line with `next` or `go` after it. `clock "Tick."`
+  is still dialogue by a character called clock, and `clock` stays free as a name. A game
+  that has its own `clock` (a `define` or `default`) can't read story time in Python, and
+  gets a warning.
+
+#### The calendar: [calendar]
+
+Without settings the day has Morning, Afternoon, Evening and Night, the week runs Monday to
+Sunday, and dates read "Day 4". A kit (`[theme] kit`) brings its own parts and wording:
+romance "Thursday, day 4", horror "Night 3", mystery "Day 4 of the case", fantasy "Day 4 of
+the journey", cozy "Spring, day 4", sci-fi "Shift 2", letters "4 April". Your own keys
+always win:
+
+```toml
+[calendar]
+start = "Monday 1 April"       # or a day number: start = 3
+parts = ["Morning", "After school", "Evening", "Night"]
+last_day = 30                  # clock.days_left() counts down to it
+# weekdays = ["Moonday", "Fireday", "Restday"]
+# months = ["Thaw", "Bloom"]   # a start date naming a usual month turns on January-December
+# month_days = 30              # or one number per month
+# seasons = ["Spring", "Summer", "Autumn", "Winter"]
+# season_days = 28
+# day_text = "{weekday}, day {day}"   # also {month}, {month_day}, {season}, {season_day}
+```
+
+The clock changing is also a hook other features build on (messages that arrive after a few
+days, for example): each `clock` line that moves time tells them once.
+
+| Message | Fix |
+|---|---|
+| `clock moves story time and needs next or go after it, but found "nxt". Did you mean "next"? …` | Write `clock next`, `clock next day` or `clock go to …`. If the game has a character called clock, the message says so: put what they say in quotes. |
+| `clock next takes nothing more, but found "days". …` | `clock next` or `clock next day`, nothing after. |
+| `clock go to needs a day, a date or a part of the day, but found nothing. …` | Add where to go: `clock go to day 7`. |
+| `clock go to takes a day or date and a part of the day at most, but found "late" after them. …` | Put a name with spaces in quotes. |
+| `"31 Octobre" isn't a date this game's calendar can read. …` | Fix the date, or add the months or seasons it uses in `[calendar]`. |
+| `no part of the day is called "Nite". Did you mean "Night"? …` | Fix the name, or add the part in `[calendar] parts`. |
+| `clock.days_left() counts down to [calendar] last_day, which config.toml doesn't set. …` | Set `last_day`, or give the day: `clock.days_left(30)`. |
+| `clock has no value called dya. Did you mean "day"? …` / `Python can't change clock.day. …` | Use one of the values above; move time with a `clock` line. |
+| `clock.part is never "night": no part of the day is called that, …` (warning) | Match the name exactly: `"Night"`. |
+| `[calendar] start "Fooday 9" isn't a date this calendar can read, …` (warning) | Use a day number or a date the calendar has. |
+| `this goes to day 40, after [calendar] last_day (30), …` (warning) | Raise `last_day`, or go to an earlier day. |
 
 ---
 
@@ -3405,7 +3542,9 @@ an ordinary name. So a game written today never breaks when a later version adds
 - **A new statement word** is that statement only at the start of its own line. A line
   that starts with the word and then a quote, like `event "Wait for me!"`, stays dialogue
   by a character of that name. `$` lines, conditions, and values are Python, where the word
-  is always a name: `$ event = 3`.
+  is always a name: `$ event = 3`. The first is `clock` (story time): `clock next` moves
+  time, `clock "Tick."` is a character speaking, and when a `clock` line is neither, the
+  error says how to write each.
 - Names an engine name gives you (like `points.highest` and `points.rank`) are taken on
   that name only: a meter can't be called `rank`, but a variable can.
 

@@ -39,7 +39,7 @@ import time
 from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from engine.script.achievements import AchievementDecl
 from engine.script.codex import CodexCategory, CodexEntry, CodexEntryDecl, build_entries
@@ -168,6 +168,9 @@ class Program:
     tracks: tuple[Track, ...] = ()                             # F35, see above
     replays: tuple[ReplayEntry, ...] = ()                      # F36, see above
     achievements: tuple[AchievementDecl, ...] = ()             # F37, see above
+    # F63: the story clock's ``storyclock.Calendar`` from config.toml (the loader sets it
+    # from ``LoadOptions.meter_config``); None: the default calendar.
+    calendar: Any = None
     define_names: frozenset[str] = field(default=frozenset(), init=False)
     default_names: frozenset[str] = field(default=frozenset(), init=False)
     persistent_default_names: frozenset[str] = field(default=frozenset(), init=False)

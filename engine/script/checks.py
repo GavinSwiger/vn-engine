@@ -55,6 +55,8 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    6h. F62: ``points.rank("<meter>")`` uses (``meterranks.py``): E233, E416, W290.
    6i. F64: item counts and the purse (``itemcounts.py``): E439, E440, E441, W305-W307.
    6i. F62 round 2: ``show meter`` / ``hide meter`` (``showmeter.py``): E233, W291–W293.
+   6j. F63: ``clock`` lines and ``clock.<value>`` uses (``clock.py``): E431–E434,
+   W300–W303.
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
    summary line.
@@ -1496,6 +1498,9 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += itemcounts.check_story(inp.nodes, sink.add)     # F64: E439-E441, W305-W307
     out.warnings += showmeter.check_story(inp.nodes, sink.add,      # F62 round 2: E233,
                                           inp.meter_config)         # W291–W293
+    from engine.script import clock as clock_checks                 # F63 (imports us)
+    out.warnings += clock_checks.check_story(inp.nodes, sink.add,   # E431–E434,
+                                             inp.meter_config)      # W300–W303
     out.warnings += choicecheck.check_story(inp.nodes)              # F59: W294 (retry)
     out.warnings += choicepresent.check_story(inp.nodes, sink.add)  # F64: E447, W310
     yield

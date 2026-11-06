@@ -291,6 +291,11 @@ class _Job:
                     flow_marks=check.flow_marks,                              # F20
                     username_fallback=self.options.username_fallback,         # F30
                     style_names=self.options.style_names)                     # F32
+                if self.options.meter_config is not None:          # F63: the calendar
+                    from engine.core.storyclock import calendar_of
+                    self.program = replace(
+                        self.program,
+                        calendar=calendar_of(self.options.meter_config)[0])
                 yield from self.flowgraph()
         return self.finish()
 

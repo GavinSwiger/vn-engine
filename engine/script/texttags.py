@@ -41,6 +41,10 @@ from engine.script.messages import TAG_NAMES, format_message
 from engine.script.suggest import suggest
 from engine.script.words import canonical_name
 
+# F63: ``{var=clock.<value>}`` shows the story clock (``runtime/clock.ClockView``).
+CLOCK_ROOT: Final = "clock"
+CLOCK_VALUES: Final = ("day", "part", "weekday", "date", "month", "season")
+
 INSTANT: Final = 0.0                     # Style.speed: the span shows at once
 MAX_OPEN_STYLES: Final = 50              # SR-F05-06, E161
 EFFECT_KINDS: Final = ("shake", "wave", "glitch")      # F29 04 §4
@@ -505,6 +509,9 @@ class _Parser:
             self.fail("E163", ("needs", name), at)
             return None
         var = canonical_name(value)
+        root, dot, attr = var.partition(".")
+        if dot and root == CLOCK_ROOT and attr in CLOCK_VALUES:     # F63: {var=clock.date}
+            return var                      # the story clock: no variable for W42 to look for
         if not var.isidentifier() or keyword.iskeyword(var):
             self.fail("E164", ("var", name, value), at)
             return None

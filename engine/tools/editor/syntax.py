@@ -52,6 +52,7 @@ _TIMEOUT = re.compile(r"[ \t]+(timeout)(?=[ \t]*:)")      # F51, between a choic
 _CHECK = re.compile(r"[ \t]+(check)(?=[ \t]+\w)")          # F59, after a choice's text
 _RANKS = re.compile(r"[ \t](ranks)(?=[ \t]+\")")           # F62, on a points line (ADR-0010)
 _BRANCH = re.compile(r"(success|failure)[ \t]*:[ \t]*(?:#|$)")   # F59, under a check
+_CLOCK = re.compile(r"clock[ \t]+(next|go)\b")          # F63: a statement only here (ADR-0010)
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
 Span = tuple[int, int, str]
@@ -108,6 +109,9 @@ def color_spans(line: str) -> list[Span]:
             if name is not None:
                 spans.append((name.start(1), name.end(1), TAG_LABEL))
                 pos = name.end(1)
+    elif word is not None and _is_clock(line, start):         # F63: clock next / go to
+        spans.append((word.start(), word.end(), TAG_KEYWORD))
+        pos = word.end()
     elif word is not None:
         speaker = _SPEAKER.match(line, start)
         if speaker is not None:
@@ -115,6 +119,13 @@ def color_spans(line: str) -> list[Span]:
             pos = speaker.end(1)
     _scan_text(line, pos, spans)
     return spans
+
+
+def _is_clock(line: str, start: int) -> bool:
+    """F63: the line is the clock statement (``script/clock.claims``): ``clock go``, or
+    ``clock next`` with no quoted text after it (``clock next "Tick."`` is dialogue)."""
+    found = _CLOCK.match(line, start)
+    return found is not None and (found.group(1) == "go" or '"' not in line[found.end():])
 
 
 def _scan_text(line: str, pos: int, spans: list[Span]) -> None:

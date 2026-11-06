@@ -25,8 +25,9 @@ from typing import Final
 
 from engine.script.words import STATEMENT_WORDS
 
-GROUPS: Final = ("Text", "Story flow", "Choices", "Logic", "Stage", "Audio", "Effects",
-                 "Minigames", "Declarations", "Files")      # Minigames: 2026-11-02, AC-F45-53
+GROUPS: Final = ("Text", "Story flow", "Choices", "Logic", "Time", "Stage", "Audio",
+                 "Effects", "Minigames", "Declarations", "Files")
+# Minigames: 2026-11-02, AC-F45-53. Time: F63's clock (Insert ▸ Time).
 DOC_FORMS: Final = ("dialogue", "narration", "$")
 DOC_MODIFIERS: Final = ("with", "at")
 # A name kind (``names``): the same pattern as the check child's ``CHECK_KIND_RE`` (04 §4.3).
@@ -58,8 +59,9 @@ _DOCS: list[StatementDoc] = []
 
 
 def _problem(doc: StatementDoc) -> str | None:
+    from engine.script.statements import _POSITIONAL    # ADR-0010: positional words too
     if doc.key not in STATEMENT_WORDS and doc.key not in DOC_FORMS \
-            and doc.key not in DOC_MODIFIERS:
+            and doc.key not in DOC_MODIFIERS and doc.key not in _POSITIONAL:
         return f"{doc.key!r} is not a statement word, form, or modifier"
     if doc.group not in GROUPS:
         return f"{doc.key!r}: group {doc.group!r} is not one of GROUPS"

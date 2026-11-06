@@ -151,8 +151,15 @@ def resolve_tagged(interp: "Interpreter", parsed: TaggedText, *, restoring: bool
 
 def _shown(interp: "Interpreter", owner: nodes.Node, line: int | None, name: str,
            restoring: bool) -> str:
-    """§7.3 step 1: the shown text of ``{var=name}``."""
+    """§7.3 step 1: the shown text of ``{var=name}`` (F63: ``clock.date`` and the other
+    ``{var=clock.<value>}`` names read the story clock)."""
     v = interp.G.get(name, _MISSING)
+    if v is _MISSING and "." in name:
+        from engine.runtime.clock import shown_value     # clock.py imports runtime modules
+        try:
+            v = interp._author(shown_value, interp, name)
+        except Exception:                   # noqa: BLE001  (a game's own clock: E170)
+            v = _MISSING
     if v is _MISSING:
         if restoring:
             _note_w46(interp, owner, line, name, missing=True)

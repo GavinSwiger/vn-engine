@@ -699,10 +699,12 @@ CHOICE: Final = CommandForm(
 def _line_forms() -> tuple[CommandForm, ...]:
     """F46's one-line forms, then F47's (``forms_more``, ``minigamedata``'s Minigame row and
     W9's Meta file and Game UI, ``forms_files_ui``; imported here, as they import us)."""
-    from engine.tools.editor import forms_files_ui, forms_meters, forms_more, minigamedata
+    from engine.tools.editor import (forms_clock, forms_files_ui, forms_meters, forms_more,
+                                     minigamedata)
     return (*FORMS, *forms_more.FORMS, minigamedata.FORM, *forms_files_ui.FORMS,
             minigamedata.ASK_NAME,                              # F52: Ask for a name…
-            *forms_meters.FORMS)                                # F62: Show/Hide meter
+            *forms_meters.FORMS,                                # F62: Show/Hide meter
+            *forms_clock.FORMS)                                 # F63: Time
 
 
 def all_forms() -> tuple[CommandForm, ...]:

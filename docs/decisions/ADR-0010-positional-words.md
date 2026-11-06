@@ -2,7 +2,8 @@
 
 Status: **accepted** — 2026-11-06 (owner-approved with the skins plan, `specs/skins-contract.md`)
 Proposed by: the skins plan (docs/proposals/engine-features.html, "Positional words"
-foundation). First applied by: F62 round 1 (`ranks`, `points.rank`).
+foundation). First applied by: F62 round 1 (`ranks`, `points.rank`). Rules 3 and 4 first
+applied by F63 (`clock`, E428; `statements.register_positional`).
 
 ## Context
 
@@ -42,7 +43,8 @@ This decides the rule once.
 4. **One checker rule per new statement word**: when a line starting with it fails to parse
    as the statement and the game defines a character (or variable) of that name, the error
    says how to write the other reading. The first feature that adds a statement word adds
-   this rule beside its parser.
+   this rule beside its parser. F63 did: `statements.PositionalWord.no_text` words such a
+   line (E428's `speaker` form when a character `clock` exists).
 5. **Engine names' attributes are separate.** A read-only engine view (`points`, `codex`)
    may give methods names its own entries can't take: a meter can't be `highest` (F22) or
    `rank` (F62, E414). This binds only that view's names; variables and characters are free.

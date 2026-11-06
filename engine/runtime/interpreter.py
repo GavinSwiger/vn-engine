@@ -202,6 +202,7 @@ from engine.runtime.character import Character
 from engine.runtime import achievements as achievements_mod
 from engine.runtime import audio as audio_mod
 from engine.runtime import chapters as chapters_mod
+from engine.runtime import clock as clock_mod
 from engine.runtime import codex as codex_mod
 from engine.runtime import endings as endings_mod
 from engine.runtime import flowchart as flowchart_mod
@@ -251,6 +252,7 @@ from engine.script import nodes
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
 from engine.script.choicecheck import CheckRoll
+from engine.script.clock import ClockStep
 from engine.script.choicepresent import PresentOption
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
@@ -473,6 +475,10 @@ class Interpreter:
         self.points = Points(program.meters)
         points_mod.bind_view(G, self.points)
         self.points_warned: set[str] = set()
+        # F63: story time (story state, runtime-held like ``chapter``; EMPTY_CLOCK is the
+        # calendar's start) and the built-in ``clock`` view bound to this interpreter.
+        self.clock: clock_mod.ClockState = clock_mod.EMPTY_CLOCK
+        clock_mod.bind_view(G, self)
         # F14 (04 §4): the on/off flag (story state, runtime-held like ``choices``) and the
         # timeline (runtime-only, never saved; ``rollback_steps`` is ``[rollback] steps``).
         self.rollback_state: RollbackState = ROLLBACK_ON
@@ -620,6 +626,7 @@ class Interpreter:
         self.history = EMPTY_HISTORY                        # F13 (07 I-3)
         self.chapter = None                                 # F18 (07 I-4)
         self.points.reset()                                 # F22 (07 I-6): before defaults
+        self.clock = clock_mod.EMPTY_CLOCK                  # F63: the start, before defaults
         self.codex.new_game()                               # F21 (04 §7.4): before defaults
         self.rollback_state = ROLLBACK_ON                   # F14 (04 §6.3)
         self.nvl = EMPTY_NVL                                # F17 (SR-F17-05): ADV, no NvlPage
@@ -1180,7 +1187,8 @@ class Interpreter:
                   flow: FlowState | None = None,
                   glitch: GlitchState | None = None,
                   window_title: object = _MISSING,
-                  ui: UiState | None = None) -> GameState:
+                  ui: UiState | None = None,
+                  clock: "clock_mod.ClockState | None" = None) -> GameState:
         """Steps 3 and 4 of the checkpoint routine: the frozen state at ``stmt`` (may raise
         E85e). Changes nothing, so restore can build it inside its transaction (``stage``,
         ``audio``, F07's ``choices``, F13's ``history``, F18's ``chapter``, F22's ``points``,
@@ -1217,6 +1225,7 @@ class Interpreter:
             window_title=(self.window_title if window_title is _MISSING           # F30
                           else window_title),                 # type: ignore[arg-type]
             ui=self.ui if ui is None else ui,                                     # F32
+            clock=self.clock if clock is None else clock,                         # F63
         )
 
     def _settle(self, stmt: Statement, state: GameState, *, release: bool = True) -> None:
@@ -1293,6 +1302,7 @@ class Interpreter:
             elif name not in self.reserved and not name.startswith("_"):
                 variables[name] = freeze(value)
         points = self.points.merge(state.points)
+        clock = clock_mod.merged(self, state.clock)         # F63
         items = self.codex.merged(state.items)              # F64: counts clamped too
         # 4. The transaction: G and dice change here, and only here until the commit.
         self._restore_warnings = []
@@ -1303,6 +1313,7 @@ class Interpreter:
         saved_vars = {k: v for k, v in G.items() if k not in self.reserved}
         saved_dice, saved_ready = core.state, core.ready
         saved_points = self.points.state()
+        saved_clock = self.clock                            # F63
         saved_items = self.codex.state()
         try:
             for key in saved_vars:
@@ -1311,6 +1322,7 @@ class Interpreter:
             core.state = state.dice
             core.ready = True
             self.points.install(points)                     # F22 (07 I-6): defaults see it
+            self.clock = clock                              # F63: defaults see it too
             self.codex.install(items)                       # F21 (04 §7.4): defaults see it
             # 5. Missing defaults, in order; each sees the restored values (SR-F03-04).
             error = self._fill_defaults()
@@ -1335,7 +1347,8 @@ class Interpreter:
                                               glitch=state.glitch,       # F28 (04 §6.3)
                                               window_title=fourthwall_mod.restored_title(
                                                   program, state),       # F30 (04 §6.1)
-                                              ui=ui)                     # F32
+                                              ui=ui,                     # F32
+                                              clock=clock)               # F63
                     if w205 is not None:                # logged only if the restore commits
                         self.note_restore_warning(ScriptWarning(w205, code="W205"))
                 except StoryError as e:
@@ -1344,9 +1357,11 @@ class Interpreter:
                     error = self._map(e, pos)
         except BaseException:
             self._roll_back(saved_vars, saved_dice, saved_ready, saved_points, saved_items)
+            self.clock = saved_clock                        # F63
             raise                               # a real Ctrl+C: F01's interrupt path
         if error is not None:
             self._roll_back(saved_vars, saved_dice, saved_ready, saved_points, saved_items)
+            self.clock = saved_clock                        # F63
             self._restore_warnings = []
             self._restore_attached = self._restore_menu_open = None
             if not error.logged:
@@ -1901,6 +1916,8 @@ register_executor(nodes.Chapter, chapters_mod.run_chapter)
 register_executor(PointsChange, points_mod.run_points)
 # F62 round 2: show meter / hide meter (runtime/points.py). Not a checkpoint type.
 register_executor(MeterShow, points_mod.run_meter_show)
+# F63: clock next / next day / go to (runtime/clock.py). Not a checkpoint type.
+register_executor(ClockStep, clock_mod.run_clock)
 # F14 (04 §6.3): rollback block|off|on|fixed.
 register_executor(Rollback, rollback_mod.run_rollback)
 # F17 (04 §7.1): nvl on|off|clear (runtime/nvl.py). Not a checkpoint type.
