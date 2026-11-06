@@ -28,8 +28,6 @@ Why this module exists: a meter needs its own namespace (``points.sayori`` besid
 """
 
 import ast
-import io
-import tokenize
 from dataclasses import dataclass
 from typing import Final
 
@@ -348,30 +346,29 @@ def split_notice(source: str) -> tuple[str, str] | None:
     stripped = source.rstrip()
     if not stripped.endswith('"') or stripped.endswith('"""'):
         return None
-    try:
-        tokens = [t for t in tokenize.generate_tokens(io.StringIO(stripped).readline)
-                  if t.type not in _NOT_CODE]
-    except (tokenize.TokenError, SyntaxError):
-        return None
-    if len(tokens) < 2 or tokens[-1].type != tokenize.STRING:
-        return None
-    last = tokens[-1]
-    if not last.string.startswith('"') or last.start[0] != last.end[0]:
-        return None                           # a prefix (f, r, b…) or a multi-line string
-    lines = stripped.split("\n")
-    row, col = last.start
-    before = "\n".join(lines[:row - 1] + [lines[row - 1][:col]]).rstrip()
-    if not before.strip() or _compiles(stripped) or not _compiles(before):
-        return None
-    tree = parse_tree(last.string, "eval")              # the string alone: nothing runs
+    if _compiles(stripped):
+        return None                           # the whole is the amount
+    # The notice starts at the leftmost '"' whose tail is one single-line string literal
+    # and whose head compiles. Parsed only (no tokenize: ac66 keeps file modules out of
+    # the script layer).
+    start = stripped.find('"')
+    while start > 0:
+        tail, before = stripped[start:], stripped[:start].rstrip()
+        if "\n" not in tail and before.strip() and _compiles(before):
+            text = _string_literal(tail)
+            if text is not None:
+                return before, text
+        start = stripped.find('"', start + 1)
+    return None
+
+
+def _string_literal(source: str) -> str | None:
+    """The text of ``source`` when it is exactly one plain ``"..."`` string, else None."""
+    tree = parse_tree(source, "eval")                   # the string alone: nothing runs
     body = tree.body if isinstance(tree, ast.Expression) else None
     if not isinstance(body, ast.Constant) or type(body.value) is not str:
         return None
-    return before, body.value
-
-
-_NOT_CODE: Final = frozenset((tokenize.NEWLINE, tokenize.NL, tokenize.ENDMARKER,
-                              tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT))
+    return body.value
 
 
 def _compiles(source: str) -> bool:
