@@ -18,6 +18,11 @@ F59 (checks on choices, its SPEC): ``"..." check <meter> <difficulty> [if ...]:`
 (``Choice.check``, outside the key) with ``success:`` and ``failure:`` under it, read by
 ``script/choicecheck.py`` (E408, E409) into one ``CheckRoll``; each check is kept in
 ``Collected.choice_checks`` for the whole-game meter check (E233).
+
+F64 (present at a menu, SPEC-present): ``present [if condition]:`` with ``<item>:`` and
+``else:`` reactions under it, read by ``script/choicepresent.py`` (E442–E446) into
+``Menu.present``. It counts as a choice for E172/E173, is always shown last, and its key is
+``PRESENT_KEY``; ``Menu.blocks()`` ends with ``(present,)``.
 """
 
 import re
@@ -28,6 +33,7 @@ from typing import Final
 
 from engine.script.audio import Voice
 from engine.script.choicecheck import WORD_CHECK, ChoiceCheck, parse_check, parse_check_block
+from engine.script.choicepresent import PresentOption, is_present_line, parse_present
 from engine.script.diagnostics import Diagnostic
 from engine.script.identity import statement_hash
 from engine.script.lexer import (
@@ -99,6 +105,7 @@ class Menu(Statement):
     # written (Studio and W257 echo it); neither is part of the identity key (SR-F51-05).
     time: float | None = None
     time_text: str = ""
+    present: PresentOption | None = None   # F64: ``present:``, shown after the choices
 
     def identity_key(self) -> tuple[str, ...]:
         question = self.question
@@ -107,7 +114,8 @@ class Menu(Statement):
         return ("menu", question.speaker or "", norm(question.text))
 
     def blocks(self) -> tuple[tuple[Statement, ...], ...]:
-        return tuple(choice.block for choice in self.choices)
+        blocks = tuple(choice.block for choice in self.choices)
+        return blocks + ((self.present,),) if self.present is not None else blocks
 
     def inner(self) -> tuple[Statement, ...]:
         return (self.question,) if self.question is not None else ()
@@ -283,6 +291,7 @@ def parse_menu_body(api, raw: RawStatement, menu: Menu, depth: int, own_error: b
     choices: list[Choice] = []
     shaped = 0                                    # lines shaped like a choice (E172, E173)
     sources: dict[int, str | None] = {}           # F51 E369: each choice line's text
+    present_seen = False                          # F64: a present: line was read (E442)
     while True:
         line = yield from api.peek()
         if line is None or line.width <= w:
@@ -293,7 +302,16 @@ def parse_menu_body(api, raw: RawStatement, menu: Menu, depth: int, own_error: b
         kind = _kind(line)
         after = yield from api.peek()
         deeper = after is not None and after.width > line.width
-        if kind == _CHOICE and (line.py is None or line.py.colon is not None):
+        if kind == _LINE and is_present_line(line):                 # F64: present:
+            shaped += 1
+            phase = _CHOICES
+            option = yield from parse_present(
+                api, line, after, depth + 2,
+                body_widths + ((after.width,) if deeper else ()), present_seen)
+            present_seen = True
+            if option is not None:
+                menu.present = option
+        elif kind == _CHOICE and (line.py is None or line.py.colon is not None):
             shaped += 1
             phase = _CHOICES
             choice, error = api.parse_line(line, inner, parse_choice)
@@ -351,7 +369,7 @@ def parse_menu_body(api, raw: RawStatement, menu: Menu, depth: int, own_error: b
     elif shaped > MENU_MAX_CHOICES:
         _menu_error(api, raw, "E173", (shaped,))
     elif not own_error:
-        _check_timeout(api, raw, menu, choices, shaped, sources)
+        _check_timeout(api, raw, menu, choices, shaped - present_seen, sources)
     assign_keys(choices)
     menu.choices = tuple(choices)
 

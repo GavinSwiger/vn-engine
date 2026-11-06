@@ -1631,6 +1631,10 @@ class WordsConfig:
     codex_new_item: str = _word("New item")
     codex_locked: str = _word("???")
     codex_empty: str = _word("Nothing here yet.")
+    # F64 (SPEC-present): a menu's present: option, also the item picker's heading (without
+    # the "…"), and the picker's pick button.
+    present_choice: str = _word("Show an item…")
+    present_pick: str = _word("Show")
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
     # heading), the box and panel words, the reasons, and the jump questions. Drafted by the
     # F20 designers, for vn-narrative-designer.
@@ -2544,6 +2548,8 @@ WORD_DOCS: Mapping[str, str] = MappingProxyType({
     "codex_new_tip": "the start of the notice for a new tip",
     "codex_new_item": "the start of the notice for a new item",
     "codex_locked": "a locked tip's row", "codex_empty": "an empty Codex page",
+    "present_choice": "a menu's button for showing an item, and the item picker's heading",
+    "present_pick": "the item picker's button that shows the chosen item",
     "fake_crash_message": "the fake crash's message when its Fake crash line doesn't give "
                           "one",
     "fake_crash_hint": "how to continue, always shown on the fake crash screen (one line)",

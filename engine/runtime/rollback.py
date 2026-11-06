@@ -275,6 +275,15 @@ class Timeline:
             return None
         return picks[-1].choice
 
+    def remembered_item(self) -> str | None:
+        """F64: the item the remembered next step's pick showed at a ``present:`` option
+        (None for any other pick, or no remembered step)."""
+        nxt = self.cursor + 1
+        if self.cursor < 0 or nxt >= len(self.states):
+            return None
+        picks = self.states[nxt].choices.picks
+        return picks[-1].item if picks else None
+
     def drop_through(self, target: int) -> None:
         """PR-F14-23: ``states[target]`` can't be restored, so it and every older step go."""
         n = target + 1

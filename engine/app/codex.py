@@ -19,6 +19,10 @@ imports ``engine.app`` and the runtime never reads config. So, once per windowed
   ``title`` ``codex`` (shown when a tip is unlocked; ``ui/menus.OPT_IN`` keeps it off the
   title unless ``[title] entries`` lists it). Their callables run no author code.
 
+- F64 (SPEC-present): the menu's item picker. With a shell and ``app.choices``, the
+  controller's presenter pushes a ``PresentScreen`` over the menu on this port, and its
+  word is ``[words] present_choice``.
+
 This module imports ``engine.script`` only for type checking (TR-F21-06).
 """
 
@@ -27,6 +31,7 @@ from typing import TYPE_CHECKING
 from engine.runtime.commands import CodexAdded
 from engine.runtime.images import ImageFile, SolidColor
 from engine.ui.builtin.codex_page import HEADING, CodexPage
+from engine.ui.builtin.present_picker import PresentScreen
 from engine.ui.menus import MenuEntry
 
 if TYPE_CHECKING:
@@ -110,6 +115,11 @@ def install_codex(app: "App", interp: "Interpreter",
         shell.menus.add("title", MenuEntry(
             HEADING, page=lambda host: CodexPage(port, from_title=True),
             visible=lambda: bool(codex().tips())))
+        choices = getattr(app, "choices", None)
+        if choices is not None:                                     # F64: present:
+            choices.set_presenter(
+                lambda on_pick, by: shell.stack.push(PresentScreen(shell, port, on_pick, by=by)),
+                lambda: shell.words.get("present_choice"))
     return port
 
 

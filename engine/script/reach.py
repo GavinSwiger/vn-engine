@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from engine.script.choicecheck import CheckRoll
+from engine.script.choicepresent import reaction_text
 from engine.script.menu import Menu
 from engine.script.minigame import Minigame
 from engine.script.nodes import Call, Default, Define, If, Jump, PythonLine, Return, Statement
@@ -364,6 +365,13 @@ class _Walk:
                 here = guards + ((_guard(item.condition.source, True),)
                                  if item.condition is not None else ())
                 out = _join(out, self.block(scene, item.block, dict(state), here, item.text))
+            option = stmt.present                       # F64: one branch per reaction
+            if option is not None:
+                here = guards + ((_guard(option.condition.source, True),)
+                                 if option.condition is not None else ())
+                for reaction in option.reactions:
+                    out = _join(out, self.block(scene, reaction.block, dict(state), here,
+                                                reaction_text(reaction.item)))
             return out
         if isinstance(stmt, PythonLine):
             return self.python(scene, stmt, state)

@@ -251,6 +251,7 @@ from engine.script import nodes
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
 from engine.script.choicecheck import CheckRoll
+from engine.script.choicepresent import PresentOption
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.codex import CodexLock
@@ -1099,8 +1100,8 @@ class Interpreter:
             _on_advance(self, Advance(current.sid))
         elif type(current) is Menu:
             key = t.remembered_pick(current.sid)
-            if key is not None:
-                menu_mod.on_choose(self, Choose(current.sid, key))
+            if key is not None:                             # F64: with the item shown
+                menu_mod.on_choose(self, Choose(current.sid, key, t.remembered_item()))
         if self.status is not Status.RUNNING:
             self._end_chain()
 
@@ -1892,6 +1893,8 @@ register_executor(Menu, menu_mod.run_menu, present=menu_mod.present_menu,
                   check=menu_mod.check_position)
 # F59: a checked choice's roll (runtime/menu.py). Not a checkpoint type.
 register_executor(CheckRoll, menu_mod.run_check)
+# F64: a present option's reaction (runtime/menu.py). Not a checkpoint type.
+register_executor(PresentOption, menu_mod.run_present)
 # F18: chapter (runtime/chapters.py), registered once here, at import (F19 07 I-1). Not a
 # checkpoint type: its card is three F09 waits chained with ``then``.
 register_executor(nodes.Chapter, chapters_mod.run_chapter)

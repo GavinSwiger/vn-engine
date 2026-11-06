@@ -27,6 +27,7 @@ from operator import attrgetter
 from types import MappingProxyType
 from typing import Final, Literal
 
+from engine.script.choicepresent import reaction_text
 from engine.script.menu import Choice, Menu
 from engine.script.nodes import Call, Jump, Statement
 from engine.script.program import Program
@@ -57,6 +58,14 @@ NOT_LINKS: Final = frozenset({"label", "flowchart"})
 _RULES: Final = {node_type: (word, target) for word, (node_type, target) in LINK_RULES.items()}
 
 
+@dataclass(frozen=True, slots=True)
+class _Shown:
+    """F64: a ``present:`` reaction standing in for a choice (its text and condition)."""
+
+    text: str
+    condition: object
+
+
 def block_links(name: str, block: Sequence[Statement]) -> Iterator[LabelLink]:
     """The links of label ``name``'s ``block``, in statement order (pre-order)."""
     # (statements left in this block, whether it is inside a menu choice, innermost choice)
@@ -77,6 +86,11 @@ def block_links(name: str, block: Sequence[Statement]) -> Iterator[LabelLink]:
                             None if choice is None else choice.text,
                             choice is not None and choice.condition is not None)
         if isinstance(stmt, Menu):
+            option = stmt.present                      # F64: each reaction as a choice
+            if option is not None:
+                for reaction in reversed(option.reactions):
+                    stack.append((list(reversed(reaction.block)), True, _Shown(
+                        reaction_text(reaction.item), option.condition)))  # type: ignore
             for inner in reversed(stmt.choices):
                 stack.append((list(reversed(inner.block)), True, inner))
             continue

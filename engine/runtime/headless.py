@@ -9,6 +9,9 @@ F07 (its ``04-technical.md`` §5.4, PR-F07-22): at a menu the next input must be
 ends normally (its last command is the ``ShowMenu``). An input that can't be used raises
 ``HeadlessInputError``, never another exception.
 
+F64 (present at a menu): ``present <item>`` picks the menu's ``present:`` option showing a
+held item (``choose N`` on that option is an error that says so).
+
 F12 (PR-F12-24): the run uses an in-memory ``PersistentStore``, never a file: the one given
 (tests fill it, and see what the run left in it), else an empty one.
 
@@ -90,6 +93,7 @@ from engine.runtime.rollback import DEFAULT_DEPTH, DEPTH_MAX
 from engine.runtime.ui import DELETE_PREVIEW_TEXT
 from engine.runtime.values import freeze
 from engine.script.diagnostics import ScriptErrorGroup
+from engine.script.choicepresent import PRESENT_KEY
 from engine.script.menu import Menu
 from engine.script.minigame import Minigame
 from engine.script.messages import format_message
@@ -99,6 +103,7 @@ RUN_STEPS = 10_000
 WAIT_LIMIT = 10_000                 # waits in a row with no line or choice (F09 07 I-3)
 _ALL = 1 << 62
 _CHOOSE_RE = re.compile(r"choose ([1-9][0-9]{0,2})")
+_PRESENT_RE = re.compile(r"present ([A-Za-z_][A-Za-z0-9_]{0,63})")   # F64: present <item>
 _STEP_RE = re.compile(r"(back|forward)(?: ([1-9][0-9]{0,3}))?")   # F14: N checked ≤ 1,000
 # F23 (04 §7.7): the finish input and its changes (ASCII only: no other digits or names;
 # spaces and tabs only between the words, so a newline is never part of a change).
@@ -474,6 +479,9 @@ def _event(interp: Interpreter, current, at_menu: bool, answer: object, number: 
         n = 1 if step.group(2) is None else int(step.group(2))
         if n <= DEPTH_MAX:
             return StepBack(n) if step.group(1) == "back" else StepForward(n)
+    shown = _PRESENT_RE.fullmatch(answer) if type(answer) is str else None
+    if shown is not None:                                   # F64
+        return _present(interp, current, at_menu, shown.group(1), number, commands)
     match = _CHOOSE_RE.fullmatch(answer) if type(answer) is str else None
     if match is None:
         text = answer if type(answer) is str else repr(answer)
@@ -487,7 +495,26 @@ def _event(interp: Interpreter, current, at_menu: bool, answer: object, number: 
         raise HeadlessInputError(format_message("H-choose-range", (n, ref, line,
                                                                    len(pickable))),
                                  list(commands))
+    if pickable[n - 1] == PRESENT_KEY:                     # F64: it needs an item
+        raise HeadlessInputError(format_message("H-present", ("choose", n, ref, line)),
+                                 list(commands))
     return Choose(current.sid, pickable[n - 1])
+
+
+def _present(interp: Interpreter, current, at_menu: bool, item: str, number: int,
+             commands: list[Command]) -> Event:
+    """F64: ``present <item>`` picks the waiting menu's ``present:`` option showing a held
+    item, or ``HeadlessInputError`` (``H-present``)."""
+    ref, line = current.file.ref, current.line
+    pickable = interp.choices.waiting.pickable if at_menu else ()  # type: ignore[union-attr]
+    if PRESENT_KEY not in pickable:
+        raise HeadlessInputError(format_message(
+            "H-present", ("menu" if at_menu else "line", item, ref, line)), list(commands))
+    held = interp.codex.items()
+    if item not in held:
+        raise HeadlessInputError(format_message(
+            "H-present", ("held", item, ref, line, ", ".join(held[:5]))), list(commands))
+    return Choose(current.sid, PRESENT_KEY, item)
 
 
 __all__ = ["FINISH_CHANGES_MAX", "FINISH_MAX_CHARS", "FlowStates", "HeadlessInputError",

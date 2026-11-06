@@ -57,6 +57,7 @@ from engine.script import limits
 from engine.script.diagnostics import Diagnostic, DiagnosticSink, ScriptWarning
 from engine.script.flowchart import Flowchart, FlowMark
 from engine.script.choicecheck import CheckRoll
+from engine.script.choicepresent import PRESENT_KEY, PresentOption
 from engine.script.menu import Menu
 from engine.script.messages import format_message
 from engine.script.nodes import Call, Chapter, If, Jump, Label, Return, Say, Statement
@@ -157,6 +158,18 @@ def node_key(node_id: str) -> str:
     process and version (SR-F20-06)."""
     data = node_id.encode("utf-8", "surrogatepass")
     return hashlib.blake2b(data, digest_size=8).hexdigest()
+
+
+PRESENT_TITLE: Final[Text] = ("Show an item",)   # F64: a present option's edge text
+
+
+def _option(menu: Menu, c: int) -> tuple[str, Text]:
+    """The key and plain text of the menu's ``c``-th option (F64: past the choices, the
+    present option)."""
+    if c < len(menu.choices):
+        choice = menu.choices[c]
+        return choice.key, plain_title(choice.body)
+    return PRESENT_KEY, PRESENT_TITLE
 
 
 def plain_title(body: TaggedText) -> Text:
@@ -261,7 +274,15 @@ def _rule_if(stmt: If, walk: Walk) -> Iterable[Succ]:            # type: ignore[
 
 
 def _rule_menu(stmt: Menu, walk: Walk) -> Iterable[Succ]:        # type: ignore[misc]
-    return [walk.first(choice.block, stmt) for choice in stmt.choices]
+    out: list[Succ] = [walk.first(choice.block, stmt) for choice in stmt.choices]
+    if stmt.present is not None:                                  # F64: the option itself
+        out.append(stmt.present)
+    return out
+
+
+def _rule_present(stmt: PresentOption, walk: Walk) -> Iterable[Succ]:  # type: ignore[misc]
+    """F64: a present option goes to one of its reactions."""
+    return [walk.first(reaction.block, stmt) for reaction in stmt.reactions]
 
 
 def _rule_check(stmt: CheckRoll, walk: Walk) -> Iterable[Succ]:  # type: ignore[misc]
@@ -292,6 +313,7 @@ FLOW_RULES: dict[type, "Rule | Literal['OPAQUE']"] = {
     If: _rule_if,                                               # type: ignore[dict-item]
     Menu: _rule_menu,                                           # type: ignore[dict-item]
     CheckRoll: _rule_check,                                     # type: ignore[dict-item]
+    PresentOption: _rule_present,                               # type: ignore[dict-item]
     Jump: _rule_jump,                                           # type: ignore[dict-item]
     Call: _rule_call,                                           # type: ignore[dict-item]
     Return: _rule_return,
@@ -837,6 +859,8 @@ class FlowGraphJob:
         for choice in menu.choices:
             start = self._index[choice.block[0].sid] if choice.block else self._nexts[at]
             out.append(self._resolve(self._val(start), menu.label))
+        if menu.present is not None:                              # F64: after the choices
+            out.append(self._resolve(self._val(self._index[menu.present.sid]), menu.label))
         return out
 
     def _branching(self) -> Generator[None, None, list[_Proto]]:
@@ -955,9 +979,9 @@ class FlowGraphJob:
                 else None
             for dst, chosen in targets:
                 if chosen is not None and isinstance(menu, Menu):
-                    picked = [menu.choices[c] for c in chosen]
-                    edges.append(FlowEdge(src, dst, tuple(c.key for c in picked),
-                                          tuple(plain_title(c.body) for c in picked), None))
+                    picked = [_option(menu, c) for c in chosen]
+                    edges.append(FlowEdge(src, dst, tuple(k for k, _ in picked),
+                                          tuple(t for _, t in picked), None))
                 else:
                     record = keys[src] + keys[dst]
                     records.add(record)

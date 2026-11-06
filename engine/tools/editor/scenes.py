@@ -37,6 +37,7 @@ from typing import Final
 
 from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.choicecheck import CheckRoll
+from engine.script.choicepresent import PresentOption
 from engine.script.diagnostics import DiagnosticSink
 from engine.script.identity import assign
 from engine.script.labelgraph import LabelLink, block_links
@@ -228,8 +229,9 @@ def _spans(label: Label, lines: Sequence[str]
         inner = stmt.blocks()
         if not inner:
             continue
-        headers = (stmt.choices if isinstance(stmt, Menu)
+        headers = ((*stmt.choices, None) if isinstance(stmt, Menu)    # F64: present last
                    else stmt.branches if isinstance(stmt, (If, CheckRoll))
+                   else stmt.reactions if isinstance(stmt, PresentOption)
                    else (None,) * len(inner))
         frames = []
         for b, (header, block) in enumerate(zip(headers, inner)):

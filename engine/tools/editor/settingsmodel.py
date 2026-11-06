@@ -421,7 +421,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
             "reset_settings", "delete_progress")),
         Row("words", "Switches and empty pages", ("on", "off", "loading", "list_empty")),
         Row("words", "Codex", ("codex_tips", "codex_items", "codex_new_tip",
-                               "codex_new_item", "codex_locked", "codex_empty")),
+                               "codex_new_item", "codex_locked", "codex_empty",
+                               "present_choice", "present_pick")),
         Row("words", "Flowchart", (
             "flowchart_jump", "flowchart_start", "flowchart_chapter", "flowchart_choice",
             "flowchart_scene", "flowchart_ending", "flowchart_route", "flowchart_unknown",

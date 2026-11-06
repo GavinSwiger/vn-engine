@@ -1846,6 +1846,76 @@ def _e409(form: str = "missing", word: str = "failure") -> str:
             "then; to just go on, write $ pass under it.")
 
 
+def _e442(form: str = "words", found: str = "timeout") -> str:
+    """F64 present at a menu: ``words`` (what stands between present and the colon);
+    ``twice``."""
+    if form == "twice":
+        return ("this menu already has present:. A menu takes one; put every item's reaction "
+                "under the first.")
+    return (f"present takes nothing before the : except an if, but found {show(found)}. "
+            "Write present: or present if <condition>:")
+
+
+def _e443(form: str = "other", word: str = "") -> str:
+    """F64: ``other`` (a line under present: that isn't ``<item>:`` or ``else:``);
+    ``after_else`` (the word after else:)."""
+    if form == "after_else":
+        return (f"{show_name(word)}: comes after else:, but else: must be last under "
+                "present:. Move it above else:.")
+    return ("under present: each line is an item's name and a colon, e.g. red_lantern:, or "
+            "else: for any other item. Indent what happens under each one.")
+
+
+def _e444(form: str = "present", word: str = "red_lantern") -> str:
+    """F64: ``present`` (no lines under present:); ``reaction`` (word: no lines under it)."""
+    if form == "reaction":
+        what = "any other item" if word == "else" else show_name(word)
+        return (f"{show_name(word)}: has no lines under it. Indent what happens when the "
+                f"player shows {what}; to just go on, write $ pass.")
+    return ("present: has no lines under it. Indent a line for each item, e.g. "
+            "red_lantern:, then else: for any other item.")
+
+
+def _e445() -> str:
+    """F64: no ``else:`` under present:."""
+    return ("present: needs else: as its last line, for any other item the player shows "
+            "(they can show anything they hold). Add else: with what happens then; to just go "
+            "on, write $ pass under it.")
+
+
+def _e446(word: str = "red_lantern", first: int = 7) -> str:
+    """F64: a second reaction for the same item (or a second else:); ``first`` its line."""
+    what = "else:" if word == "else" else f"a reaction for {show_name(word)}"
+    return (f"this present: already has {what} (line {first:,}). Put all its lines under "
+            "the first one.")
+
+
+def _e447(form: str = "unknown", name: str = "red_lantren",
+          suggestion: str | None = "red_lantern") -> str:
+    """F64: ``unknown`` (name, suggestion); ``tip`` (name: a tip, which can't be shown)."""
+    shown = show_name(name)
+    if form == "tip":
+        return (f"{shown} is a tip; only items can be shown at present:. Use an item's name, "
+                "or else: for everything else.")
+    text = f'there is no item "{shown}".'
+    if suggestion is not None:
+        text += " " + _did_you_mean(suggestion, name)
+    return text + f' Declare items at the top level, e.g. lock item {shown} "Title".'
+
+
+def _w310(names: tuple = ("red_lantern",), more: int = 0) -> str:
+    """F64: key items (unlocked earlier in the scene) the option has no reaction for."""
+    shown = [show_name(str(n)) for n in names]
+    if more:
+        shown.append(f"{more:,} more")
+    listed = shown[0] if len(shown) == 1 else (
+        " and ".join(shown) if len(shown) == 2 else ", ".join(shown[:-1]) + f", and {shown[-1]}")
+    one = len(names) == 1 and not more
+    return (f"this scene gives the player {listed} before this menu, but present: has no "
+            f"reaction for {'it' if one else 'them'}, so else: answers. Add "
+            f"{show_name(str(names[0]))}: under present: if it should matter here.")
+
+
 def _w257(seconds: str = "3", chars: int = 112, read: int = 8) -> str:
     """``seconds``: the time as written; ``chars``: the choices' shown characters;
     ``read``: ``ceil(chars / 15)``."""
@@ -4364,6 +4434,26 @@ def _h_finish(form: str = "needs", number: int = 4, text: str = "finish", *args:
     return f'{shown} needs a result, e.g. finish 3 or finish "red".'
 
 
+def _h_present(form: str = "held", *args: object) -> str:
+    """F64 headless ``present <item>``: ``choose`` (n, ref, line); ``menu``/``line`` (item,
+    ref, line); ``held`` (item, ref, line, the held items)."""
+    if form == "choose":
+        n, ref, line = (args + (3, "script/main.vns", 6)[len(args):])[:3]
+        return (f"choose {n} at the menu at {show(str(ref))}, line {line}, is its present: "
+                "option. Write present <item> to show an item, e.g. present red_lantern.")
+    item, ref, line = (args + ("red_lantern", "script/main.vns", 6)[len(args):])[:3]
+    if form == "menu":
+        return (f"present {show(str(item))} at the menu at {show(str(ref))}, line {line}, but "
+                "that menu has no present: option the player can pick now.")
+    if form == "line":
+        return (f"present {show(str(item))} at the line at {show(str(ref))}, line {line}, but "
+                "there is no menu there.")
+    held = str(args[3]) if len(args) > 3 else ""
+    return (f"present {show(str(item))} at the menu at {show(str(ref))}, line {line}, but the "
+            f"player doesn't hold {show(str(item))}. "
+            + (f"They hold: {show(held)}." if held else "They hold no items."))
+
+
 def _h_input(number: int = 2, text: str = "chose 2", form: str = "unknown") -> str:
     """The headless runner's input that isn't one (``HeadlessInputError``, uncoded). F31
     (``04`` §6.6, ``07`` I-5): ``player deletes|restores <name>``; ``form`` ``meta_name`` is
@@ -4752,6 +4842,15 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     # F59 checks on choices (SPEC §4): load E408, E409 (choicecheck.py)
     "E408": _e408,
     "E409": _e409,
+    # F64 present at a menu (SPEC-present): load E442–E446 (choicepresent.py), E447 and
+    # W310 (choicepresent.check_story)
+    "E442": _e442,
+    "E443": _e443,
+    "E444": _e444,
+    "E445": _e445,
+    "E446": _e446,
+    "E447": _e447,
+    "W310": _w310,
     # F07 run (engine/runtime/menu.py)
     "E178": lambda locked=False: (
         f"every choice in this menu is {'locked' if locked else 'hidden'}, because all their "
@@ -5005,6 +5104,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
         f"{show(ref)}, line {line}, so the headless run stopped. A loop of pauses and "
         "transitions only ends when a player leaves it."),
     "H-input": _h_input,                                    # F23, F20, F31
+    "H-present": _h_present,                                # F64 present at a menu
 }
 
 

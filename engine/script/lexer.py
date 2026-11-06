@@ -65,6 +65,7 @@ _ZERO_WIDTH = "﻿​"
 _ZERO_WIDTH_RE = re.compile(f"[{_ZERO_WIDTH}]")
 _HIDDEN_RE = re.compile(f"[{BIDI_CHARS}{INVISIBLE_CHARS}{_ZERO_WIDTH}]")
 _WORD_RE = re.compile(r"\w+")
+_PRESENT_IF = re.compile(r"[ \t]+(if)(?=[ \t(])")      # F64: ``present if <c>:``
 _STRING_STOP_RE = re.compile(r'["\\]')
 _TODO_RE = re.compile(r"todo(?![^\W_])", re.IGNORECASE)
 # Plain blank and comment lines (``StatementReader._quiet_run``): spaces and tabs, then nothing
@@ -674,7 +675,12 @@ class StatementReader:
             raw.head = HEAD_WORD
             raw.word = word
             raw.tail = tail = self.tail_for(word)
-            if tail == TAIL_CONDITION:
+            present_if = _PRESENT_IF.match(text, index + len(word))                 if word == "present" else None
+            if present_if is not None:      # F64: a menu's ``present if <condition>:``
+                raw.tokens.append(Token(NAME, word, line.number, index + 1))
+                raw.tokens.append(Token(NAME, "if", line.number, present_if.start(1) + 1))
+                self._read_python(raw, segment, _indent_end_any(text, present_if.end(1)))
+            elif tail == TAIL_CONDITION:
                 raw.tokens.append(Token(NAME, word, line.number, index + 1))
                 start = _indent_end_any(text, index + len(word))
                 self._read_python(raw, segment, start)

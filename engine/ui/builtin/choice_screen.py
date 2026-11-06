@@ -76,6 +76,12 @@ layout gets the countdown panel as its header (``render/choicetimer.panel_height
 player's text scale), drawn after the buttons at the same alpha; hidden mode draws nothing.
 ``tick_sound`` (Could) plays when the number becomes 3, 2 or 1. Reading the past or "No
 time limits": no panel and no timeout; every choice stays pickable.
+
+**Present** (F64 SPEC-present): a ``ShownChoice`` with ``present`` draws the
+``present_choice`` word (``set_presenter``'s ``word``; "Show an item…" without one). Picking
+it doesn't close the menu: the presenter opens the item picker over it, and a pick there
+posts ``Choose(sid, key, item)`` through the same path as any pick (listeners, pick sound).
+Back from the picker leaves the menu waiting. Without a presenter (no shell) nothing opens.
 """
 
 from collections.abc import Callable
@@ -103,7 +109,7 @@ from engine.runtime.commands import (Choose, Say, ShowMenu, ShownChoice, Span, S
                                      TaggedText)
 from engine.ui.builtin.choice_clock import ChoiceClock
 from engine.ui.input import UiEvent
-from engine.ui.nav import Nav, NavReader
+from engine.ui.nav import InputKind, Nav, NavReader
 from engine.ui.screen import Screen, ScreenStack
 
 if TYPE_CHECKING:
@@ -122,6 +128,7 @@ NUMBER_KEYS: Final = {**{getattr(pygame, f"K_{n}"): n for n in range(1, 7)},
 MIN_SIZE: Final = 20
 MAX_SIZE: Final = 48
 TICK_NUMBERS: Final = (3, 2, 1)          # F51 PR-F51-20: tick_sound at these seconds left
+PRESENT_WORD: Final = "Show an item…"     # F64: [words] present_choice's default
 
 _log = get_logger("choice")
 
@@ -222,6 +229,9 @@ class ChoiceController:
         self._layout_cmd: ShowMenu | None = None
         self._looks: "LookSource | None" = None       # F32 (04 §6.5)
         self._look_rev = 0
+        # F64: opens the item picker (on_pick, by); the present option's word.
+        self._presenter: Callable[[Callable[[str], None], InputKind], None] | None = None
+        self.present_word: Callable[[], str] = lambda: PRESENT_WORD
 
     # -- seams --
 
@@ -232,6 +242,14 @@ class ChoiceController:
     def set_floor(self, fn: Callable[[], float]) -> None:
         """F10 C6, I-3: the last-resort fit (and a ``none`` menu's area) ends at ``fn()``."""
         self.floor = fn
+
+    def set_presenter(self, open_picker: Callable[[Callable[[str], None], InputKind], None],
+                      word: Callable[[], str]) -> None:
+        """F64: ``open_picker(on_pick, by)`` shows the item picker over the menu; ``word()``
+        is the present option's text (``[words] present_choice``)."""
+        self._presenter = open_picker
+        self.present_word = word
+        self._layout = self._layout_key = self._layout_cmd = None
 
     def set_looks(self, looks: "LookSource") -> None:
         """F32 (04 §6.2 step 4, §6.5): the session's looks. When a menu is shown and the
@@ -296,16 +314,29 @@ class ChoiceController:
         self.screen = screen
         self.stack.push(screen)
 
-    def pick(self, screen: "ChoiceScreen", key: str) -> None:
+    def pick(self, screen: "ChoiceScreen", key: str, item: str | None = None, *,
+             by: InputKind = InputKind.KEYS) -> None:
         """Close ``screen``'s menu, tell the listeners, play ``pick_sound``, and post the
-        pick (an instant cut, UI-F07-03). F30's veto or text hook goes here."""
+        pick (an instant cut, UI-F07-03). F30's veto or text hook goes here. F64: the
+        present option (no ``item`` yet) opens the item picker instead."""
         if screen is not self.screen:
+            return
+        if item is None and any(c.key == key and c.present for c in screen.cmd.choices):
+            self._open_picker(screen, key, by)
             return
         self.close()
         for listener in tuple(self._listeners):
             listener.picked(key)
         self._sound(self.pick_sound)
-        self.post(Choose(screen.cmd.sid, key))
+        self.post(Choose(screen.cmd.sid, key, item))
+
+    def _open_picker(self, screen: "ChoiceScreen", key: str, by: InputKind) -> None:
+        """F64: the item picker over ``screen``; its pick comes back to ``pick``."""
+        presenter = self._presenter
+        if presenter is None:
+            _log.debug("A present option was picked, but there is no item picker here")
+            return
+        presenter(lambda item: self.pick(screen, key, item), by)
 
     # -- the screen's notes --
 
@@ -413,7 +444,8 @@ class ChoiceController:
             theme = self.theme
             colors = [rgb_hex(theme.locked.text_color if c.locked else theme.text_color)
                       for c in cmd.choices]
-            layout = ChoiceLayout([with_badge(c, theme) for c in cmd.choices],
+            word = self.present_word()
+            layout = ChoiceLayout([with_badge(c, theme, word) for c in cmd.choices],
                                   assets=self.assets,
                                   faces=self.faces, theme=theme, text_size=size,
                                   area=ChoiceArea() if nvl else self.area(cmd.line),
@@ -427,10 +459,14 @@ class ChoiceController:
         return layout
 
 
-def with_badge(choice: ShownChoice, theme: "ChoiceTheme") -> TaggedText:
+def with_badge(choice: ShownChoice, theme: "ChoiceTheme",
+               present: str = "") -> TaggedText:
     """F59: a checked choice's body with its badge first (``[Logic · Hard · 42%] ``), in
     ``[theme.choice.marker] fill_color`` (every color scheme sets it), or in the base color
-    when locked; a plain choice's body as it is."""
+    when locked; a plain choice's body as it is. F64: the present option's body is
+    ``present`` (its word)."""
+    if choice.present:
+        return TaggedText((Span(present or PRESENT_WORD, Style()),), False)
     if choice.check is None:
         return choice.body
     color = None if choice.locked else rgb_hex(theme.marker.fill_color)
@@ -457,6 +493,7 @@ class ChoiceScreen(Screen):
         self._number: int | None = None          # F51: the last number shown (tick sound)
         self.layout = controller.layout(cmd, self._header())
         self._stick = NavReader()                # the left stick only
+        self.by = InputKind.KEYS                 # F64: what the last pick came by
 
     # -- state --
 
@@ -502,7 +539,9 @@ class ChoiceScreen(Screen):
                 return False                  # C7: off the buttons goes on (F05 ignores it)
             self._focus(index)
             if self.past_guard:
+                self.by = InputKind.MOUSE
                 self._pick(index)
+                self.by = InputKind.KEYS
             return True
         if kind == pygame.KEYDOWN:
             if getattr(raw, "repeat", False):
@@ -647,7 +686,7 @@ class ChoiceScreen(Screen):
         return True
 
     def _pick(self, index: int) -> None:
-        self.controller.pick(self, self.cmd.choices[index].key)
+        self.controller.pick(self, self.cmd.choices[index].key, by=self.by)
 
 
 __all__ = ["FADE_LEAD_S", "GUARD_S", "PICK_KEYS", "ChoiceController", "ChoiceLook", "ChoiceScreen",

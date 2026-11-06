@@ -228,12 +228,15 @@ class ShownChoice:
     """One choice of a ``ShowMenu``: its key in the menu, its body resolved when the menu
     was reached (no ``VarMark``, no timing marks), and whether it is locked (shown but never
     pickable, ``[choice] show_locked``). F59: ``check`` is a checked choice's badge
-    (``[Logic · Medium · 58%]``), drawn before the text; None for a plain choice."""
+    (``[Logic · Medium · 58%]``), drawn before the text; None for a plain choice. F64:
+    ``present`` marks a menu's ``present:`` option (its body is empty: the presentation
+    shows its ``present_choice`` word, and a pick opens the item picker)."""
 
     key: str
     body: TaggedText
     locked: bool
     check: str | None = None
+    present: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -562,10 +565,13 @@ class WaitDone(Event):
 @dataclass(frozen=True, slots=True)
 class Choose(Event):
     """F07: the player picked choice ``choice`` (its key) of menu ``sid``. Ignored unless
-    ``sid`` is the waiting menu and ``choice`` one of its pickable keys (TR-F07-02)."""
+    ``sid`` is the waiting menu and ``choice`` one of its pickable keys (TR-F07-02). F64:
+    ``item`` is the held item shown at a ``present:`` option (needed there, ignored
+    elsewhere)."""
 
     sid: str
     choice: str
+    item: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

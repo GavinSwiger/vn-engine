@@ -23,6 +23,13 @@ skipped like any wait, never held by F14's quiet re-run) before it enters the br
 A retry check (``ChoiceCheck.retry``) is out only while its last try failed and its meter
 still has the value of that try (its badge then says so); a success retires it.
 
+F64 (present at a menu, SPEC-present): a menu's ``present:`` option (``Menu.present``) is
+shown last, as ``ShownChoice(present=True)`` with key ``PRESENT_KEY``. It is pickable when
+its condition holds and the player holds at least one item; otherwise it is left out or
+locked like a false condition. A ``Choose`` for it must carry a held ``item``: the pick keeps
+it (``Pick.item``, the text is the item's title), and ``run_present`` enters the reaction
+for that item, else ``else``. Saved with the pick, so loads and going back show the same.
+
 F20 (its ``04`` §7.6, 07 §3.3, I-2): a jump restores at a menu with ``fresh_waiting``, which
 checks the conditions again through the same loop as ``run_menu`` (``_evaluate``); F11 loads
 and F14's landings keep presenting the saved ``waiting``.
@@ -53,6 +60,7 @@ from engine.runtime.errors import StoryError, where
 from engine.runtime.limits import POSITION_MAX_CHARS
 from engine.runtime.text import resolve_tagged
 from engine.script.choicecheck import CheckRoll, badge, meter_title, passes, roll_text
+from engine.script.choicepresent import PRESENT_KEY, PresentOption
 from engine.script.menu import Choice, Menu
 from engine.script.messages import format_message
 from engine.script.minigame import Minigame
@@ -67,6 +75,7 @@ PICK_TEXT_MAX: Final = 1_000           # Pick.text, "…"-cut
 PICK_QUESTION_MAX: Final = 2_000       # Pick.question, "…"-cut
 ROLL_S: Final = 1.3                    # F59: the dice on screen (tumble, land, the result)
 ELLIPSIS: Final = "…"
+NO_TEXT: Final = TaggedText((), False)  # F64: the present option's body (its word is the UI's)
 
 _log = get_logger("choice")
 
@@ -86,13 +95,15 @@ class Roll:
 class Pick:
     """One pick, in story order: the menu's sid, the choice's key, and the texts as shown
     (plain: styles dropped, ``{var}`` values baked in, cut with "…"). ``roll`` (F59): a
-    checked choice's roll, set right after the pick; None for any other choice."""
+    checked choice's roll, set right after the pick; None for any other choice. ``item``
+    (F64): the item shown at a ``present:`` option; None for any other choice."""
 
     menu: str
     choice: str
     text: str
     question: str | None
     roll: Roll | None = None
+    item: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +181,8 @@ def _pick_json(p: Pick) -> dict[str, object]:
                               "question": p.question}
     if p.roll is not None:
         out["roll"] = {"value": p.roll.value, "ok": p.roll.ok}
+    if p.item is not None:
+        out["item"] = p.item
     return out
 
 
@@ -178,6 +191,8 @@ def _pick_json(p: Pick) -> dict[str, object]:
 _CHOICES_KEYS: Final = frozenset(("picks", "waiting"))
 _PICK_KEYS: Final = frozenset(("menu", "choice", "text", "question"))
 _PICK_ROLL_KEYS: Final = _PICK_KEYS | {"roll"}            # F59
+_PICK_ITEM_KEYS: Final = _PICK_KEYS | {"item"}            # F64
+ITEM_NAME_MAX: Final = 64                                  # F21's NAME_MAX
 _ROLL_KEYS: Final = frozenset(("value", "ok"))
 ROLL_VALUE_MAX: Final = 1_000_000_000                       # F22's POINTS_LIMIT
 _WAIT_KEYS: Final = frozenset(("pickable", "locked", "kept"))
@@ -227,7 +242,8 @@ def _choices_from_json(obj: object) -> ChoiceState:
         raise _Invalid
     for entry in raw_picks:                 # shapes first, before any value is read
         if type(entry) is not dict or (entry.keys() != _PICK_KEYS
-                                       and entry.keys() != _PICK_ROLL_KEYS):
+                                       and entry.keys() != _PICK_ROLL_KEYS
+                                       and entry.keys() != _PICK_ITEM_KEYS):
             raise _Invalid
     picks: list[Pick] = []
     for entry in raw_picks:
@@ -240,7 +256,8 @@ def _choices_from_json(obj: object) -> ChoiceState:
                                      or len(question) > PICK_QUESTION_MAX):
             raise _Invalid
         picks.append(Pick(_sid(entry["menu"]), choice, text, question,
-                          _roll(entry["roll"]) if "roll" in entry else None))
+                          _roll(entry["roll"]) if "roll" in entry else None,
+                          _item(entry["item"]) if "item" in entry else None))
     waiting = None
     if raw_wait is not None:
         if type(raw_wait) is not dict or raw_wait.keys() != _WAIT_KEYS:
@@ -262,6 +279,13 @@ def _roll(value: object) -> Roll:
     if type(number) is not int or abs(number) > ROLL_VALUE_MAX or type(ok) is not bool:
         raise _Invalid
     return Roll(number, ok)
+
+
+def _item(value: object) -> str:
+    """F64: a saved item name (a name of at most 64 characters; matched at run time)."""
+    if type(value) is not str or not 0 < len(value) <= ITEM_NAME_MAX             or not value.isidentifier():
+        raise _Invalid
+    return value
 
 
 def plain_text(body: TaggedText) -> str:
@@ -340,6 +364,17 @@ def _evaluate(interp: "Interpreter", stmt: Menu,
                     locked.append(choice)
                 continue
         pickable.append(choice)
+    option = stmt.present
+    if option is not None:                                          # F64: present:
+        condition = option.condition
+        shown = bool(interp.codex.items())
+        if shown and condition is not None:
+            interp.running.set(stmt.file.ref, condition)
+            shown = bool(interp._test(condition.code))
+        if shown:
+            pickable.append(option)  # type: ignore[arg-type]
+        elif interp.show_locked:
+            locked.append(option)  # type: ignore[arg-type]
     if not pickable:
         raise StoryError(format_message("E178", (bool(locked),)), code="E178", **where(stmt))
     return pickable, locked
@@ -457,6 +492,9 @@ def _shown(interp: "Interpreter", stmt: Menu, pickable: list[Choice], locked: li
                        and last is not None and last.roll is not None and not last.roll.ok)
             out.append(ShownChoice(choice.key, body, id(choice) in shut,
                                    _badge(interp, choice, waiting)))
+    option = stmt.present
+    if option is not None and (id(option) in unlocked or id(option) in shut):    # F64
+        out.append(ShownChoice(option.key, NO_TEXT, id(option) in shut, present=True))
     return tuple(out)
 
 
@@ -479,13 +517,24 @@ def on_choose(interp: "Interpreter", event: Choose) -> None:
         _log.debug("Choose ignored: the menu waiting has no pickable choice %s.",
                    _shown_sid(key))
         return
-    choice = next(c for c in current.choices if c.key == key)
+    option = current.present if key == PRESENT_KEY else None
+    item: str | None = None
+    if option is not None:                              # F64: the item shown
+        item = _held_item(interp, event.item)
+        if item is None:
+            _log.debug("Choose ignored: present needs an item the player holds, not %s.",
+                       _shown_sid(event.item))
+            return
+    choice = option if option is not None else next(c for c in current.choices if c.key == key)
     cmd, question = interp.menu_open if interp.menu_open is not None else (None, None)
     text = ""
-    if cmd is not None:
+    if item is not None:
+        entry = interp.codex.index.get(item)
+        text = entry.title if entry is not None else item
+    elif cmd is not None:
         text = next((plain_text(s.body) for s in cmd.choices if s.key == key), "")
     pick = Pick(current.sid, key, cut(text, PICK_TEXT_MAX),
-                None if question is None else cut(question, PICK_QUESTION_MAX))
+                None if question is None else cut(question, PICK_QUESTION_MAX), item=item)
     picks = interp.choices.picks + (pick,)
     if len(picks) > PICKS_MAX:
         picks = picks[-PICKS_MAX:]
@@ -504,10 +553,37 @@ def on_choose(interp: "Interpreter", event: Choose) -> None:
     if current.question is not None and current.question.voice is not None:
         interp._hold(EndVoice(current.sid))             # F08: as an accepted Advance
     interp.status = Status.RUNNING
-    if choice.block:
-        interp.current = choice.block[0]
+    if option is not None:
+        interp.current = option
+    elif choice.block:                                  # type: ignore[union-attr]
+        interp.current = choice.block[0]                # type: ignore[union-attr]
     else:                                               # never from a load (E12)
         interp._next_after(current)
+
+
+def _held_item(interp: "Interpreter", value: object) -> str | None:
+    """F64: ``value`` when it names an item the player holds now, else None."""
+    if type(value) is not str or len(value) > ITEM_NAME_MAX:
+        return None
+    return value if value in interp.codex.items() else None
+
+
+def run_present(interp: "Interpreter", stmt: PresentOption) -> "Step":
+    """F64: enter the reaction for the item the last pick showed, else ``else`` (the pick
+    that entered ``stmt`` is always the last one). A dev run logs which."""
+    from engine.runtime.interpreter import Step  # below the interpreter
+
+    picks = interp.choices.picks
+    item = picks[-1].item if picks and picks[-1].choice == PRESENT_KEY else None
+    reaction = stmt.reaction_for(item)
+    if interp.dev:
+        _log.info("Present at %s, line %s: %s, so %s.", stmt.file.ref, stmt.line,
+                  item or "no item", "its reaction" if reaction is not None
+                  and reaction.item is not None else "else")
+    if reaction is None or not reaction.block:
+        return Step.CONTINUE
+    interp.current = reaction.block[0]
+    return Step.JUMPED
 
 
 def _shown_sid(value: object) -> str:
@@ -525,7 +601,7 @@ def _clean(stmt: Menu, waiting: MenuWait) -> MenuWait:
     (07 I-6: ``picks`` is never cleaned)."""
     pickable = set(waiting.pickable)
     locked = set(waiting.locked)
-    keys = [c.key for c in stmt.choices]
+    keys = [c.key for c in stmt.choices] + ([PRESENT_KEY] if stmt.present is not None else [])
     return MenuWait(tuple(k for k in keys if k in pickable),
                     tuple(k for k in keys if k in locked), waiting.kept)
 
@@ -588,7 +664,9 @@ def present_menu(interp: "Interpreter", stmt: Menu, state: "GameState") -> ShowM
     from engine.runtime.interpreter import say_command  # below the interpreter
 
     waiting = _clean(stmt, state.choices.waiting)  # type: ignore[arg-type]
-    by_key = {c.key: c for c in stmt.choices}
+    by_key: dict[str, object] = {c.key: c for c in stmt.choices}
+    if stmt.present is not None:
+        by_key[PRESENT_KEY] = stmt.present
     pickable = [by_key[k] for k in waiting.pickable]
     locked = [by_key[k] for k in waiting.locked]
     shown = _shown(interp, stmt, pickable, locked, restoring=True,
@@ -619,6 +697,6 @@ def present_menu(interp: "Interpreter", stmt: Menu, state: "GameState") -> ShowM
 
 __all__ = ["ChoiceState", "ELLIPSIS", "EMPTY_CHOICES", "MENU_CHOICES_MAX", "MenuWait",
            "PICKS_MAX", "ROLL_S", "Roll",
-           "PICK_QUESTION_MAX", "PICK_TEXT_MAX", "Pick", "check_position", "cut",
+           "PICK_QUESTION_MAX", "PICK_TEXT_MAX", "Pick", "check_position", "cut", "run_present",
            "fresh_waiting", "on_choose", "plain_text", "present_menu", "restored_choices",
            "restored_kept_line", "run_check", "run_menu", "sid_ok"]
