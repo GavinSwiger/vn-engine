@@ -144,9 +144,9 @@ inside the double quotes.
 - The editor shows right-to-left text in typing order. Check how it looks in the preview.
 - On macOS, F5 and F6 may need Fn, and Ctrl is Cmd.
 - Tk (Studio's toolkit) has limited screen-reader support.
-- Studio marks five firsts once per game (first Play, choice, ending and build, and the
-  Guide finished) with a silent note in the corner; click it to close it. **View ▸ Reduce
-  motion** keeps Studio still.
+- Studio marks five firsts once per game (first Play, choice, ending reached and build, and
+  the Guide finished) with paper lanterns and a silent note; click it to close it. **View ▸
+  Reduce motion** keeps Studio still.
 
 ## For engine builders
 

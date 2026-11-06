@@ -69,7 +69,7 @@ from engine.tools.editor.outline import NO_OUTLINE
 from engine.tools.editor.outline import Row as OutlineRow
 from engine.tools.editor.syntax import PLAIN_COLOR
 from engine.tools.editor.theme import THEME
-from engine.tools.editor.motion import FADE_MS, Motion, fade
+from engine.tools.editor.motion import Motion, draw_on, pop_in
 
 DIRTY_MARK = "* "
 MESSAGE_ID = "!message"                 # the one row shown when the game folder is gone
@@ -696,7 +696,7 @@ LEGEND_HEIGHT = 20
 LEGEND_EXTRA = ("ending", "chapter", "minigame")      # after the link kinds (2026-11-02)
 MAP_FILE_WIDTH = 200                    # the file filter's width (08 §8)
 MAP_BANNER_PX = 28
-FADE_IN_MAX = 6                         # Studio UX 4.1: more new boxes just appear
+FADE_IN_MAX = 6                         # Studio UX 4.1: more new boxes or arrows just appear
 MAP_BANNER_INSET = 12
 EDGE_STYLES: dict[str, tuple[tuple[int, ...], str]] = {   # told apart by line style
     "jump": ((), LINK_COLOR),           # solid
@@ -920,9 +920,10 @@ class StoryMapView:
         self.glow_cancel: Callable[[object], None] = self.canvas.after_cancel
         self.glows = GlowSet(lambda: self.glow_now())
         self._glow_id: object | None = None
-        # Studio UX 4.1: a new box fades in from the surface (``motion``; the window gives
-        # the view its one clock). Off under Reduce motion and while the map is hidden.
+        # Studio UX 4.1: a new box pops in and a new arrow draws itself (``motion``; the
+        # window gives the view its one clock). Off under Reduce motion and while hidden.
         self.motion: Motion | None = Motion(self.canvas, reduce=lambda: self.reduce_motion)
+        self._moving: set[object] = set()       # the motions' keys, for ``_settle``
         self.last_diff: LayoutDiff | None = None
         # F58 PR-08: while a gesture holds the map (``holding``), set_data keeps the data
         # and ``on_hold(True)`` says so (S3); the update lands when it ends (on_hold(False)).
@@ -1137,24 +1138,26 @@ class StoryMapView:
         self._show_note()
         if full:
             self.stop_glow()
+        self._settle()                          # motions end before the painter moves things
         if full or not found.boxes or self.painter.layout is None or self._shifted \
                 or not self.painter.apply(found, diff):
             self.draw(reset=full)
         else:
             self._after_paint(diff)
-            if before is not None and diff.added:
-                self._fade_in(diff.added)
+            if before is not None and (diff.added or diff.edges_added):
+                self._arrive(diff.added, diff.edges_added)
         self.delta = delta
         self.changed = ()
         if delta and before is not None and found.boxes:
             self._glow(model, delta, before, found, diff)
 
-    def _fade_in(self, names: Sequence[str]) -> None:
-        """Studio UX 4.1: each new box's fill and texts fade in from the map's surface
-        (``FADE_MS``), so a box that arrives while you type is seen arriving. Only a few
-        boxes at a time (a paste or a new file just appears), only while the map shows."""
-        motion, canvas = self.motion, self.canvas
-        if motion is None or len(names) > FADE_IN_MAX or self.reduce_motion:
+    def _arrive(self, names: Sequence[str], edges: Sequence[EdgeKey]) -> None:
+        """Studio UX 4.1: each new box pops in (90 % to full size, fading in from the
+        surface) and each new arrow draws itself from tail to head (``motion``), so what
+        arrives while you type is seen arriving. A few at a time (a paste or a new file just
+        appears), only while the map shows, never under Reduce motion."""
+        motion, canvas, painter = self.motion, self.canvas, self.painter
+        if motion is None or self.reduce_motion:
             return
         try:
             if not canvas.winfo_viewable():
@@ -1162,22 +1165,27 @@ class StoryMapView:
         except tk.TclError:
             return
         surface = str(canvas.cget("background"))
-        for name in names:
-            found = self.painter.boxes.get(name)
-            if found is None:
-                continue
-            colors = [(item, "fill", str(canvas.itemcget(item, "fill"))) for item in found.items
-                      if canvas.type(item) in ("rectangle", "text")]
-            colors = [entry for entry in colors if len(entry[2]) == 7 and entry[2][0] == "#"]
+        for name in names if len(names) <= FADE_IN_MAX else ():
+            found = painter.boxes.get(name)
+            if found is not None:
+                key = ("map-box", name)
+                self._moving.add(key)
+                pop_in(motion, canvas, key, found.items, surface=surface,
+                       alive=lambda n=name, f=found: painter.boxes.get(n) is f)
+        for edge in edges if len(edges) <= FADE_IN_MAX else ():
+            item = painter.edges.get(edge)
+            if item is not None:
+                key = ("map-edge", edge)
+                self._moving.add(key)
+                draw_on(motion, canvas, key, item,
+                        alive=lambda e=edge, i=item: painter.edges.get(e) == i)
 
-            def step(p: float, name: str = name, found: object = found,
-                     colors: list = colors) -> None:
-                if self.painter.boxes.get(name) is not found:
-                    return                          # redrawn or gone: its own colours
-                for item, option, color in colors:
-                    self.canvas.itemconfigure(item, **{option: fade(surface, color, p)})
-
-            motion.tween(("map-box", name), FADE_MS, step, visible=canvas.winfo_viewable)
+    def _settle(self) -> None:
+        """Every map motion ends now (an update, a redraw or a zoom is coming)."""
+        moving, self._moving = self._moving, set()
+        if self.motion is not None:
+            for key in moving:
+                self.motion.finish(key)
 
     # --- Glow (F58 PR-11, 12; 04 §7.9) -------------------------------------------------------
 
@@ -1402,6 +1410,7 @@ class StoryMapView:
         PR-06), through ``MapPainter.draw``. ``reset``: the scroll region may shrink (zoom,
         file filter); a live update's full draw keeps it growing only (PR-08)."""
         canvas = self.canvas
+        self._settle()
         self._drop_field()
         self._drop_handle()
         if self.link is not None and self.link.line is not None:
@@ -2647,6 +2656,7 @@ class StatusItem:
         self.prefix = prefix
         self.shrink = shrink            # who gives up width first when space runs out
         self.text = ""
+        self.passing: str | None = None     # a motion's text for now (``show_for_now``)
         self.label = tk.Label(bar.frame, text="", font=bar.font, background=bar.background,
                               foreground=bar.foreground, padx=bar.pad, pady=0,
                               borderwidth=0, highlightthickness=0, anchor="w", takefocus=0)
@@ -2664,6 +2674,13 @@ class StatusItem:
             self.bar.layout()
 
     config = configure
+
+    def show_for_now(self, text: str | None) -> None:
+        """Studio UX 4.1: show ``text`` instead of the item's own while a motion runs (the
+        problem count ticking); None shows its own text again. ``text`` is unchanged."""
+        if text != self.passing:
+            self.passing = text
+            self.bar.layout()
 
     def cget(self, option: str) -> object:
         return self.text if option == "text" else self.label.cget(option)
@@ -2717,7 +2734,10 @@ class StatusBar:
         """Fit the items' texts to the bar's width and pack the shown ones."""
         measure = self.font.measure
         shown = [item for item in self.items if item.text]
-        natural = {id(item): measure(item.prefix + item.text) + 2 * self.pad for item in shown}
+        texts = {id(item): item.text if item.passing is None else item.passing
+                 for item in shown}
+        natural = {id(item): measure(item.prefix + texts[id(item)]) + 2 * self.pad
+                   for item in shown}
         width = self.frame.winfo_width()
         over = sum(natural.values()) - width if width > 1 else 0
         room = dict(natural)
@@ -2732,7 +2752,7 @@ class StatusBar:
             text = ""
             if item.text:
                 space = room[id(item)] - 2 * self.pad - measure(item.prefix)
-                text = item.prefix + elide(item.text, space, measure)
+                text = item.prefix + elide(texts[id(item)], space, measure)
             if str(item.label.cget("text")) != text:
                 item.label.configure(text=text)
         if shown != self._packed:

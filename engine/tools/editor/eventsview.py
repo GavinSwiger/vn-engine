@@ -19,6 +19,7 @@ from tkinter import ttk
 
 from engine.tools.editor import icons
 from engine.tools.editor.forms import Row
+from engine.tools.editor.motion import Motion, fade_rows, text_ghost
 from engine.tools.editor.theme import THEME
 
 NO_SCENE = "Select a scene to see what happens in it."      # design PR-F46-27
@@ -34,6 +35,8 @@ LIST_KEYS = ("<Up>", "<Down>", "<Home>", "<End>", "<Prior>", "<Next>")
 BUTTONS = (("Insert…", "insert"), ("Edit", "edit"), ("↑", "up"), ("↓", "down"),
            ("Delete", "delete"))
 DRAG_PX = 6                 # a press must move this far before it drags a row
+ROW_FADE_MAX = 8            # Studio UX 4.1: a bigger removal just goes
+ROW_FADE_KEY = ("events-row",)
 
 
 class EventsView:
@@ -52,6 +55,8 @@ class EventsView:
         self.on_open = on_open
         self.rows: tuple[Row, ...] = ()
         self.index: int | None = None
+        # Studio UX 4.1: removed rows fade (the window gives the list its one clock).
+        self.motion: Motion | None = None
         self.frame = ttk.Frame(parent)
         self.frame.columnconfigure(0, weight=1)
         self.frame.rowconfigure(3, weight=1)
@@ -184,6 +189,7 @@ class EventsView:
         """Show ``rows`` under ``title`` (the scene) and ``where`` (its file and line); with
         no title, the "select a scene" note. ``select`` picks a row without notifying."""
         rows = tuple(rows)
+        same_scene = bool(title) and str(self.title.cget("text")) == title
         self.title.configure(text=title, style="Title.TLabel")
         if title:
             self.empty.hide()
@@ -193,6 +199,10 @@ class EventsView:
         self.stale.configure(text=OUT_OF_DATE if stale else "")
         tree = self.tree
         if rows != self.rows:
+            gone = self._removed(rows) if same_scene and self.motion is not None else None
+            ghost = None if gone is None else text_ghost(tree, gone[0] + 1, gone[1])
+            if self.motion is not None:
+                self.motion.finish(ROW_FADE_KEY)
             self.rows = rows
             self._hovered = None
             tree.configure(state="normal")
@@ -208,11 +218,32 @@ class EventsView:
                 self._insert_row(row)
             tree.delete("end-1c", "end")         # no empty line after the last row
             tree.configure(state="disabled")
+            if ghost is not None and gone is not None and self.motion is not None:
+                below = gone[0] + 1 if gone[0] < len(rows) else None
+                fade_rows(self.motion, ROW_FADE_KEY, tree, ghost, below)
         self.index = None
         if select is not None and rows:
             self.select(select, notify=False)
         else:
             self._paint_chosen()
+
+    def _removed(self, rows: tuple[Row, ...]) -> tuple[int, int] | None:
+        """Studio UX 4.1: when ``rows`` are the shown rows less one run of at most
+        ``ROW_FADE_MAX`` (a Delete, a cut), that run's first and end index; else None."""
+        old = self.rows
+        k = len(old) - len(rows)
+        if not rows or not 1 <= k <= ROW_FADE_MAX:
+            return None
+
+        def same(a: Row, b: Row) -> bool:          # line numbers move; the words don't
+            return (a.depth, a.kind, a.word, a.summary) == (b.depth, b.kind, b.word, b.summary)
+
+        i = 0
+        while i < len(rows) and same(old[i], rows[i]):
+            i += 1
+        if all(same(a, b) for a, b in zip(old[i + k:], rows[i:])):
+            return i, i + k
+        return None
 
     def _depth_tag(self, depth: int, word_px: int) -> None:
         margin = self._px(INSET_PX) + depth * self._px(INDENT_PX)

@@ -582,9 +582,6 @@ class AssistWiring:
         count = len(plan.files)
         card.show_status(APPLIED if count == 1 else APPLIED_MANY.format(n=count))
         card.show_buttons("show", "undo")
-        applied = getattr(self, "card_applied", None)
-        if applied is not None:                 # Studio UX 4.1: its border flashes once
-            applied(card.frame)
         self._update_marks()
 
     def _assist_stale(self, card: Card) -> None:

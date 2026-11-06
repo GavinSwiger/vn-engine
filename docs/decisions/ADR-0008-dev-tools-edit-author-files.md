@@ -389,3 +389,7 @@ OS read.
   a written motion budget (`specs/F45-studio/08` §10; `tools/editor/motion.py`): each motion
   answers an action, lasts at most 250 ms, and is an instant change under Reduce motion.
   `studio.json` gains an optional `celebrated` word list (milestones shown once per game).
+- 2026-11-06: The budget now lists the 4.1 card's five motions (box pop-in, arrow draw-on,
+  Events row fade, ticking count, clean chip); a milestone's lanterns (2 s, at most five per
+  game) are its one longer motion. "First ending" is now one a Play reaches, read from the
+  game's line reports (`runwiring.on_game_event`), not one written in the script.
