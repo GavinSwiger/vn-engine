@@ -195,3 +195,26 @@ def test_saved_rolls_read_back_and_old_saves_still_load():
         broken = {"picks": [dict(data["picks"][0], roll=bad)], "waiting": None}
         with pytest.raises(StateInvalid):
             ChoiceState.from_json(broken)
+
+
+def test_going_back_and_forward_never_shows_the_roll_again(tmp_path):
+    from tests.runtime.rollback_story import back, forward
+    program = _program(tmp_path)
+    interp = launched(program, rollback_steps=50)
+    interp.new_game(3)
+    _to_menu(interp)
+    menu = interp.current
+    interp.post(Choose(menu.sid, menu.choices[0].key))
+    interp.run(10_000)
+    interp.post(WaitDone(interp.waiting_for))
+    interp.run(10_000)
+    interp.take_commands(ALL)
+    reply = interp.current.sid                           # the success or failure line
+    notes = [e.text for e in interp.history.entries if "check:" in e.text]
+    released = back(interp)
+    assert type(interp.current) is Menu
+    assert not [c for c in released if isinstance(c, CheckRolled)]
+    released = forward(interp)                           # the quiet re-run: no dice
+    assert interp.current.sid == reply
+    assert not [c for c in released if isinstance(c, CheckRolled)]
+    assert [e.text for e in interp.history.entries if "check:" in e.text] == notes

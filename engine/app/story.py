@@ -107,6 +107,7 @@ from typing import TYPE_CHECKING
 from engine import __version__
 from engine.app.achievements import install_achievements
 from engine.app.chapters import install_chapters
+from engine.app.checkroll import install_check_roll
 from engine.app.choices import install_choices
 from engine.app.codex import install_codex
 from engine.app.extras import install_extras, preview_all
@@ -499,6 +500,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_nvl(app)                                         # F17 (I-7): reset after F15's
     install_meters(app, interp)                              # F62: shown meters, corner
     install_fourthwall(app)                                  # F30: title bar, fake crash
+    install_check_roll(app)                                  # F59: the dice of a check
     install_codex(app, interp, images)                       # F21 (I-11): notices, Codex
     install_minigames(app, interp, images)                   # F23 s4: after F21, before F16
     install_flowchart(app, interp)                           # F20 (07 I-12): App.flow

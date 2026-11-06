@@ -36,7 +36,8 @@ from engine.runtime.commands import (Advance, AudioRestore, Command, Flash, Glit
                                      Shake, ShowMenu, ShowStage, StoryEnded, StoryFailed,
                                      StoryWait, ChapterStarted, NvlPage, CodexAdded, MeterNotice,
                                      StartMinigame, WindowTitle, FakeCrash,
-                                     UiStyle, UiBlocks, DeleteSaves, MetaWrite, MetaDelete)
+                                     UiStyle, UiBlocks, DeleteSaves, MetaWrite, MetaDelete,
+                                     CheckRolled)
 from engine.runtime.headless import run_headless
 from engine.runtime.interpreter import Interpreter, RestoreResult, Status, story_variables
 from engine.runtime.launch import LaunchJob, run_launch
@@ -395,6 +396,7 @@ def test_install_story_registers_one_handler_per_command(tmp_path):
                                              StartMinigame,           # F23 s4
                                              Glitch,                  # F28 s3
                                              WindowTitle, FakeCrash,  # F30 s3, s4
+                                             CheckRolled,             # F59 retry/roll
                                              UiStyle, UiBlocks, DeleteSaves,  # F32 s4
                                              *story.AUDIO_COMMANDS}   # F08 step 3
         textbox = app.textbox                                    # F05: install_textbox
