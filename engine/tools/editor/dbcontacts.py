@@ -463,7 +463,7 @@ class ContactsCategory:
                 if message.ref is None else NOT_PLAIN if message.value is None else ""
             if note:
                 ttk.Label(card, text=fit_text(note, px(420), tkfont.nametofont(
-                    "TkDefaultFont").measure), style="Hint.TLabel").grid(
+                    "TkDefaultFont").measure), style="Hint.TLabel", wraplength=px(440)).grid(
                     row=1, column=0, columnspan=2, sticky="w", pady=(px(2), 0))
             where = ttk.Frame(card)
             where.grid(row=2, column=0, columnspan=2, sticky="w", pady=(px(4), 0))

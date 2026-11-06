@@ -36,6 +36,8 @@ positions go into `config.toml`.
   The Kind field switches an entry between tip and item. An item also has Count, Most held
   and Money, and **Price**: what a shop asks for one when its stock names no price (empty:
   none; written as `price 5`).
+- **Contacts**: the people who write to the player, each with the messages they send and
+  a preview of the newest one. See [Contacts](#contacts).
 - **Minigame data**: the data the bundled minigames take, such as word lists, gift tables
   and **shops** (each row: an item, its price, how many are for sale; an empty price uses
   the item's own). See [minigames.md](minigames.md), "Setting up a minigame in Studio".
@@ -232,6 +234,47 @@ Game settings ▸ **Extras** ▸ Achievement words (and Button words ▸ Achieve
 page's heading, the notice's start, the "Unlocked" count and a hidden achievement's words.
 Sending achievements to a store such as Steam needs a platform hook written in Python: see
 [minigames.md](minigames.md), "Achievement hook". Achievements always work without one.
+
+## Contacts
+
+Contacts are the people who write to the player: a pen pal's letters, a friend's texts, a
+voice on the radio. Their messages arrive in the Inbox while the story goes on. Studio
+writes one line per contact into `database.vns`, and one `define` per message:
+
+```
+lock contact hana "Hana" on pigeon image hana portrait
+define hana_letter_1 = [
+    "Meet me at the bridge when the lanterns are lit.",
+    {"me": "I'll be there."},
+    ]
+```
+
+A pen pal in a minute:
+
+1. **+ New** asks the **Name** players see; the script name is made from it (`Hana` →
+   `hana`).
+2. Pick the **Device look**: how the messages come. The first choice is the game's own
+   ("Game default (pigeon, from the Fantasy kit)"; without a kit, a phone); the others are
+   Phone, Letters, Pigeon post, Radio, Terminal and Mind. The line under it shows the
+   arrival notice ("A pigeon lands on the sill with a note from Hana.").
+3. Pick a **Picture** (shown with the notice and in the Inbox).
+4. Under **Messages**, click **+ New message**, name it, and write its lines in the
+   phone-chat step editor: lines from the contact, the player's own (Me) and time
+   dividers. Close it, and the message is saved.
+5. In a scene, add Events ▸ Insert… ▸ Messages ▸ **Send** (or paste the line the message
+   offers with **Copy**: `send hana_letter_1 from hana`).
+
+Each message lists where it is sent from (scene and line; click one to go there) and has
+**Write lines…** to change it. The messages listed are the ones the contact's Send lines
+name, then any lists of lines not sent yet whose name starts with the contact's
+(`hana_…`). The picture
+beside the fields shows the newest message in its device look and your colours: a letter
+signed with the name, or chat bubbles. A Send line's own look (`send … on phone`) wins
+for that message.
+
+Renaming a contact (its script name) changes its Send lines too, after asking; messages in
+older saves stay in the thread with the same name shown. **Delete** is refused while a Send
+line uses the contact, and says which scenes and lines; its messages stay when it goes.
 
 ## Clean up
 

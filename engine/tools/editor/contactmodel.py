@@ -208,8 +208,8 @@ def is_message(value: object) -> bool:
 
 def messages_of(contact: str, texts: Mapping[str, str],
                 sends: Sequence[SendLine] | None = None) -> list[Message]:
-    """The contact's messages: sent from it (first-sent order), then the unsent message
-    defines named ``<contact>_…``."""
+    """The contact's messages: sent from it (first-sent order), then the unsent lists of
+    lines named ``<contact>_…`` (what **+ New message** makes)."""
     sends = send_lines(texts) if sends is None else sends
     defines = _defines(texts)
     order: dict[str, list[SendLine]] = {}
@@ -223,7 +223,8 @@ def messages_of(contact: str, texts: Mapping[str, str],
         out.append(Message(name, ref, first, value if ok else None, tuple(places)))
     prefix = contact + "_"
     for name, (ref, first, ok, value) in defines.items():
-        if name.startswith(prefix) and name not in sent_anywhere and ok and is_message(value):
+        if name.startswith(prefix) and name not in sent_anywhere and ok \
+                and type(value) is list and is_message(value):
             out.append(Message(name, ref, first, value, ()))
     return out
 

@@ -25,6 +25,7 @@ STORY = {
             'define hello = ["Hi there", {"me": "Hello!"}, {"time": "Day 2"}, {"Kai": "Hey"}]\n'
             'define letter2 = "One text."\n'
             'define hana_draft = ["Not sent yet."]\n'
+            'define hana_name = "???"\n'
             'define other = ["Not hers."]\n'}
 
 
