@@ -40,7 +40,8 @@ from typing import Final, Literal
 
 from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.audio import PlayAudio, StopAudio
-from engine.script.choicecheck import WORD_CHECK, CheckRoll, parse_difficulty
+from engine.script.choicecheck import (WORD_CHECK, WORD_RETRY, CheckRoll, check_code,
+                                       parse_difficulty)
 from engine.script.diagnostics import DiagnosticSink
 from engine.script.effects import Pause
 from engine.script.menu import MENU_MAX_CHOICES, Menu
@@ -911,7 +912,8 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
             if choice.timeout:                                  # F51 (01 §7.2)
                 summary = TIMEOUT_SUMMARY
             if choice.check is not None:                        # F59
-                check = f"{WORD_CHECK} {choice.check.meter} {choice.check.written}"
+                c = choice.check
+                check = check_code(c.meter, c.written, c.retry)    # with retry, if any
                 summary = f"{check} · {summary}" if summary else check
             out.append(Row(index, block, depth, f'"{_one_line(choice.text)}"', summary,
                            CHOICE_FORM, None, "header"))
@@ -1016,7 +1018,9 @@ def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
     for n, (choice, block) in enumerate(zip(node.choices, _choice_blocks(scene, stmt))):
         goes, in_text = _goes(scene, scene.blocks[block].members)
         condition = "" if choice.condition is None else choice.condition.source
-        check = "" if choice.check is None else f"{choice.check.meter} {choice.check.written}"
+        c = choice.check
+        check = "" if c is None else f"{c.meter} {c.written}" + (f" {WORD_RETRY}" if c.retry
+                                                                  else "")
         if check:                                               # F59: kept as written
             goes, in_text = None, True
         items.append(ChoiceItem(choice.text, condition, goes, in_text, n,
@@ -1037,10 +1041,11 @@ def choice_summary(item: ChoiceItem) -> str:
 
 
 def check_ok(check: str) -> bool:
-    """F59: whether ``check`` is ``<meter> <difficulty>`` the script takes."""
+    """F59: whether ``check`` is ``<meter> <difficulty> [retry]`` the script takes."""
     parts = check.split()
-    return (len(parts) == 2 and parts[0].isidentifier() and not parts[0].startswith("_")
-            and parse_difficulty(parts[1]) is not None)
+    return (len(parts) in (2, 3) and parts[0].isidentifier() and not parts[0].startswith("_")
+            and parse_difficulty(parts[1]) is not None
+            and (len(parts) == 2 or parts[2] == WORD_RETRY))
 
 
 # --- F51: the time limit (01 §7.1) ---------------------------------------------------------------

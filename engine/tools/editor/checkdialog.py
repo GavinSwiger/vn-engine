@@ -1,10 +1,13 @@
-"""The Choice form's Check dialog (F59 SPEC §5): which meter an option tests, and how hard.
+"""The Choice form's Check dialog (F59 SPEC §5): which meter an option tests, how hard, and
+whether a failed try can be retried.
 
-Why this module exists: a check is two words in the script (``check logic hard``), but an
-author picks it best from the meters they declared and a list of difficulty words, seeing
-the odds change as they go. ``ask_check`` returns the check as written (``"logic hard"``),
-"" for "No check", or None for Cancel. ``check_label`` is the option row's button text and
-``odds_line`` the dialog's live odds (pure, tested without Tk).
+Why this module exists: a check is a few words in the script (``check logic hard retry``),
+but an author picks it best from the meters they declared and a list of difficulty words,
+seeing the odds change as they go. ``ask_check`` returns the check as written (``"logic
+hard"``, ``"logic hard retry"``), "" for "No check", or None for Cancel. ``check_label`` is
+the option row's button text and ``odds_line`` the dialog's live odds (pure, tested without
+Tk). "Can retry after the stat changes" writes ``retry``: a failed try comes back once the
+meter has changed; a success (or any try, without it) is final.
 """
 
 import tkinter as tk
@@ -12,7 +15,7 @@ from collections.abc import Sequence
 from tkinter import ttk
 from typing import Final
 
-from engine.script.choicecheck import TIERS, meter_title, odds, parse_difficulty
+from engine.script.choicecheck import TIERS, WORD_RETRY, meter_title, odds, parse_difficulty
 from engine.tools.editor import dialogs
 from engine.tools.editor.formtools import _error_label
 
@@ -20,23 +23,33 @@ TITLE: Final = "Check"
 NO_CHECK: Final = "No check"
 METER: Final = "Meter"
 DIFFICULTY: Final = "Difficulty"
+RETRY: Final = "Can retry after the stat changes"
+RETRY_HINT: Final = ("A failed try comes back once the meter has changed (for example after "
+                     "the player raises it). Without this, players get one try.")
 REMOVE: Final = "No check"
 CANCEL: Final = "Cancel"
 OK: Final = "OK"
 EXPLAIN: Final = ("Two dice plus the meter must reach the difficulty. Players see the odds on "
-                  "the button and get one try; write what happens under success: and "
-                  "failure:.")
+                  "the button, then the dice roll; write what happens under success: and "
+                  "failure: (a failure should still move the story on).")
 PICK_METER: Final = "Pick a meter (declare meters in the Database, under Meters)."
 PICK_DIFFICULTY: Final = "Pick a difficulty word, or a number from 1 to 99."
 SAMPLE_VALUES: Final = (0, 2, 4, 6, 8, 10)
 
 
 def check_label(check: str) -> str:
-    """The option row's button: ``No check`` or ``Logic · Hard``."""
+    """The option row's button: ``No check``, ``Logic · Hard`` or ``Logic · Hard · retry``."""
     parts = check.split()
-    if len(parts) != 2:
+    if len(parts) not in (2, 3) or (len(parts) == 3 and parts[2] != WORD_RETRY):
         return NO_CHECK
-    return f"{meter_title(parts[0])} · {parts[1].capitalize()}"
+    label = f"{meter_title(parts[0])} · {parts[1].capitalize()}"
+    return label + f" · {WORD_RETRY}" if len(parts) == 3 else label
+
+
+def check_value(meter: str, difficulty: str, retry: bool) -> str:
+    """What the dialog writes: ``logic medium`` or ``logic medium retry``."""
+    value = f"{meter.strip()} {difficulty_written(difficulty)}".strip()
+    return f"{value} {WORD_RETRY}" if retry and value else value
 
 
 def difficulty_choices() -> list[str]:
@@ -78,6 +91,7 @@ class CheckDialog:
         shown = next((c for c in difficulty_choices() if c.split(" ")[0] == level), level)
         self.meter = tk.StringVar(dialog, value=meter)
         self.level = tk.StringVar(dialog, value=shown)
+        self.retry = tk.BooleanVar(dialog, value=len(parts) > 2 and parts[2] == WORD_RETRY)
         grid = ttk.Frame(body, style="Dialog.TFrame")
         grid.pack(anchor="w", fill="x", pady=(gap, 0))
         for row, (label, var, values, width) in enumerate((
@@ -89,6 +103,10 @@ class CheckDialog:
             box.grid(row=row, column=1, sticky="w", padx=(gap, 0), pady=(gap if row else 0, 0))
             if row == 0:
                 self.meter_box = box
+        self.retry_box = ttk.Checkbutton(body, text=RETRY, variable=self.retry)
+        self.retry_box.pack(anchor="w", pady=(gap, 0))
+        ttk.Label(body, text=RETRY_HINT, style="Dialog.Hint.TLabel", justify="left",
+                  wraplength=round(380 * scale)).pack(anchor="w")
         self.odds = ttk.Label(body, text="", style="Dialog.TLabel")
         self.odds.pack(anchor="w", pady=(gap, 0))
         self.problem = _error_label(body, scale)
@@ -101,7 +119,7 @@ class CheckDialog:
         self._changed()
 
     def value(self) -> str:
-        return f"{self.meter.get().strip()} {difficulty_written(self.level.get())}".strip()
+        return check_value(self.meter.get(), self.level.get(), bool(self.retry.get()))
 
     def why_not(self) -> str | None:
         meter = self.meter.get().strip()
@@ -136,5 +154,5 @@ def ask_check(parent: tk.Misc, check: str, meters: Sequence[str]) -> str | None:
     return CheckDialog(parent, check, meters).run(parent)
 
 
-__all__ = ["CheckDialog", "NO_CHECK", "ask_check", "check_label", "difficulty_choices",
-           "difficulty_written", "odds_line"]
+__all__ = ["CheckDialog", "NO_CHECK", "RETRY", "ask_check", "check_label", "check_value",
+           "difficulty_choices", "difficulty_written", "odds_line"]

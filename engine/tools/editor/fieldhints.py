@@ -64,6 +64,13 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
     "set": {"name": "The story variable to change (made on the Database's Variables page).",
             "op": "= sets it, += adds to it, -= takes away from it.",
             "value": "The new value or amount: a number, \"text in quotes\", True or False."},
+    # F62 round 2: Show meter / Hide meter (the look and place are on the Meters page).
+    "show_meter": {"meter": "The meter to show in a corner (its look is set on the Meters page).",
+                   "meter2": "Another meter to show at the same time (optional).",
+                   "meter3": "A third meter to show (optional)."},
+    "hide_meter": {"meter": "The meter to take off the screen. It keeps its value.",
+                   "meter2": "Another meter to hide at the same time (optional).",
+                   "meter3": "A third meter to hide (optional)."},
     "points": {"meter": "The meter to change (made on the Database's Meters page).",
                "op": "+= adds, -= takes away, = sets it to the amount.",
                "amount": "A whole number.",
@@ -158,7 +165,8 @@ CHOICE_HINTS: Final[Mapping[str, str]] = MappingProxyType({
                 "players without a time limit can still pick it."),
     # F59 (SPEC §5)
     "check": ("Test a meter with two dice: the dice plus the meter must reach the "
-              "difficulty. Players see the odds on the button and get one try."),
+              "difficulty. Players see the odds on the button and get one try, or another "
+              "once the meter changes if you tick Can retry."),
 })
 
 # Database form → its label → hint (labels as ``database``/``dbmore`` show them). A form is
