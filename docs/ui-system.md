@@ -64,6 +64,7 @@ overlapping.
 | Rewind tag | `topleft` (24, 24), or 8 right of the F15 pill while it shows; 28 tall | F14 |
 | Limit mark | 56×28, centered on the say window's top edge at x 640 + `textbox.width` / 2 − 52 (1088, 504) | F14 |
 | Notice area | Top-right corner: `topright` (1256, 24), up to `notice.max_width` (560) wide, ending by y 400 | F11 (shared, §9) |
+| Status corner | Four stacks `corner.margin` (24) in from each canvas corner, growing inward; never over the say window and its tab (ADV), the NVL text column, the quick-menu pill, or the indicator row at (24, 24). Top stacks end by y 360 (§9 "Status corner") | F61 |
 
 Faces of sprites belong above y = 400; nothing F05 draws reaches above that at any text
 size (box top ≥ 472, tab top ≥ 410 at name size 48). F07's choice area must end above the
@@ -530,6 +531,13 @@ Out-of-range values are config errors and the default is kept.
 | `notice.max_width` | length | 560 |
 | `notice.duration_ms`, `.fade_ms` | duration | 1500, 200 |
 | `notice.sound` | sound | none |
+| `corner.fill_color`, `.border_color`, `.text_color` | color | `textbox.fill_color`, `textbox.border_color`, `textbox.text_color` |
+| `corner.accent_color` | color | `textbox.indicator.fill_color` (bars and marks, like a meter's fill) |
+| `corner.fill_opacity` | opacity | 0.90 |
+| `corner.border_width`, `.corner_radius` | length | 2, 12 |
+| `corner.text_size` | size | 24 (20–36), scaled by the player's text size |
+| `corner.side_padding`, `.top_padding`, `.gap`, `.margin` | length | 12, 8, 8, 24 |
+| `corner.fade_ms` | duration | 150 |
 
 **Rollback (F14).** Set in `[theme.rollback]` (the mark in `[theme.rollback.mark]`);
 layout and states are in [F14 03-ui](../specs/F14-rollback/03-ui.md). The mark's colors
@@ -1106,6 +1114,35 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   (1008 − 9 × 8) / 10 = 93.6 wide. W67 checks the `text_entry.*` pairs once the author sets
   one of its colors (until then the `button.*` pairs check the same colors).
 
+### Status corner (F61)
+
+Full spec: specs/F61-status-corner/SPEC.md. Module: `engine/ui/statuscorner.py`.
+
+- **What.** Small always-on readouts (meters first, F62; later a clock, a goal, a hotbar) in
+  the four places of `engine.core.skins.CORNER_PLACES`. One shell-owned layer
+  (`GameShell.corner`): `set_item(key, place, item)`, `remove_item(key)`, `clear()`. It owns
+  no game state; whoever adds items saves what is shown.
+- **Layout.** Each item is its own panel (`corner.*` fill, border, corners) around content it
+  measures and draws itself, `side_padding` / `top_padding` inside. Items stack inward from
+  their corner in insertion order, `gap` apart, `margin` from the canvas edge. A panel jumps
+  past the say window with its name tab (ADV) or the NVL text column, the quick-menu pill, and
+  the F15/F14 indicator row (reserved even when nothing shows there, so items never jump).
+  A narrow item fits beside the box (in the 116 units left of a 1000-wide box); a wider one
+  sits above it. Top stacks end by y 360; bottom stacks end below their side's top stack. An
+  item that doesn't fit is not drawn, nor are the later ones in that corner. Notices may lie
+  over the top-right stack for their few seconds.
+- **Layer.** Drawn by `draw_layer` after the scene captures (never in a save thumbnail, scene
+  picture, or menu backdrop), under layer 6 cues and notices.
+- **Visible** only in game with an in-game screen on top, while the say window is drawn (so
+  hidden in hidden mode and with the box, exactly as the quick menu), in ADV and NVL; hidden
+  under the game menu and its pages, confirms, fades, the title, and an opaque in-game screen
+  (a running minigame). Showing and hiding the whole layer is a cut.
+- **Motion.** An item fades in and out over `corner.fade_ms` (linear); restacking is a cut.
+  Under reduced motion (the player's setting or `[effects] reduce`) fades are cuts.
+- **Contrast.** W67 checks `corner.text_color` (4.5:1) and `corner.accent_color` (3:1) on the
+  fill at `corner.fill_opacity`, over black and white, once the author sets a corner color
+  or the opacity; every built-in scheme meets both at the default 0.90.
+
 ## Changelog
 
 - 2026-11-01: Created with F04 (vn-ui-designer): canvas and anchors, standard stage
@@ -1243,3 +1280,5 @@ Full spec: [F52 01-design](../specs/F52-text-entry/01-design.md) §6.
   proposed), with the as-built text inset, key width and W67 note.
 - 2026-11-06: F60 (builder): "Genre kits" under the color schemes: `[theme] kit`, what a
   kit sets, and the meter look order (`[meter.<name>]` > kit > defaults).
+- 2026-11-06: F61 (builder): the status corner: its region, `corner.*` tokens, and §9
+  "Status corner" (layout, layer, visibility, motion, W67).
