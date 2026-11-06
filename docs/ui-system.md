@@ -1208,7 +1208,7 @@ for every use), `engine/ui/builtin/codex_page.py` (`UseAction`).
   takes the right half. Use closes the game menu and the item's scene starts at once. The
   button is a focus group of its own (keys and gamepad reach it from the list or the body).
 
-### Inbox page (F65 rounds 1 and 2)
+### Inbox page (F65 rounds 1 to 3)
 
 Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can reread",
 "Contacts and send", "Open on cue". Modules: `engine/core/codexkinds.py` (codex kinds),
@@ -1253,8 +1253,19 @@ Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can rere
   | mind | Hana's voice, inside your head. | A thought | letter |
 
 - **Arrival notice.** An info notice (§9 "Notice"), with the contact's
-  picture as its icon when it is a file. Shown when the `send` line runs (also while
-  skipping), never on a quiet forward re-run or during a scene replay.
+  picture as its icon when it is a file. Shown when the message arrives: when the `send`
+  line runs, or, with round 3's `after 1 day` / `after 2 scenes`, when the clock or the
+  scene count gets there (also while skipping); never on a quiet forward re-run or during
+  a scene replay.
+- **Replies** (round 3, `ui/builtin/inbox_reply.py`). When the selected thread's newest
+  unanswered message asks, its replies are buttons in the row under the detail panel (the
+  Codex's pick row): 1 to 4, equal widths, `CODEX_GAP` apart, in the message's order, each
+  labelled with its text (cut with "…"; standard `button.*` tokens). They are one focus
+  group after the body, disabled while a reply can't count (at a choice menu). Picking one
+  answers at once: the player's line ("You: I'll be there.") shows under the message, in
+  the look's "me" style, and the buttons and their row go. A thread that waits for a reply
+  has a ring (the unread dot's size and `codex.new.fill_color`, a 2-unit stroke) left of
+  where the dot goes, so a read but unanswered thread still stands out.
 - **`open`.** `open inbox` / `open <look>` opens the game menu on this page, its newest
   thread (the newest that came by that look) selected and shown, the page's default
   widget focused; the story holds (a story wait, no checkpoint) until the menu closes,
@@ -1438,3 +1449,5 @@ handler).
   newest first and worded by device look (letter or chat), the device-look table, the
   arrival notice, the quick menu's Inbox button and the unread count on both labels, and
   `open`.
+- 2026-11-06: F65 round 3 (builder): §9 "Inbox page": reply buttons under a message that
+  asks, the reply ring on a thread that waits, and a delayed message's notice on arrival.

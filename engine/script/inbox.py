@@ -860,9 +860,11 @@ DOCS_HEADING: Final = "Messages"          # docs/script-language.md
 
 for _doc in (
         StatementDoc(
-            WORD_SEND, "Send a message", "Messages", "send <message> from <contact> [on <look>]",
+            WORD_SEND, "Send a message", "Messages",
+            'send <message> from <contact> [on <look>] [after <n> days|scenes] [ask "…" …]',
             "Delivers a message to the Inbox, in the contact's thread, with a notice that it "
-            "arrived. The message is a define: one text, or a list of lines.",
+            "arrived: now, or after some days or scenes. The message is a define: one text, "
+            "or a list of lines, which may end with replies the player picks.",
             "send invite from hana", DOCS_HEADING, "F65", fields=("invite", "hana")),
         StatementDoc(
             WORD_OPEN, "Open the Inbox", "Messages", "open inbox|<look>",

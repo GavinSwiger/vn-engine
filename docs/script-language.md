@@ -1669,13 +1669,14 @@ in the phone chat's format:
 - `{"time": "Day 3"}`: a divider.
 - `{"Ren": "Hana told me too!"}`: a line from someone else.
 
-A message has 1 to 200 lines of up to 2,000 characters. Replies the player picks
-(`{"ask": …}`) come in a later version; for now, a chat the player answers is
-`minigame phone_chat`. The value is read when the `send` line runs, so a `default` the
+A message has 1 to 200 lines of up to 2,000 characters. Its last line may ask for a reply
+(see **Replies** below). The value is read when the message arrives, so a `default` the
 story changed sends its new text.
 
 **send.** `send <message> from <contact>` puts the message in the contact's thread. `send
-invite from hana on letters` sends this one by another look. The player sees:
+invite from hana on letters` sends this one by another look, `after 1 day` holds it for a
+while (see **Delays**), and `ask "Yes" "No"` lets the player answer (see **Replies**); they
+can come in any order after the contact. The player sees:
 
 - A notice, worded by the look: "A pigeon lands on the sill with a note from Hana.", "A
   letter from Hana has arrived.", "New message from Ren.", "The radio crackles. It's
@@ -1695,6 +1696,67 @@ A `send` is a story step: a save keeps what arrived, going back before the line 
 message out again, going forward brings it back (without a second notice), and New Game
 empties the Inbox. Whether a thread was opened is remembered across saves and
 playthroughs, like the codex's dots.
+
+**Delays.** `send invite from hana after 1 day` holds the message until the story clock
+reaches the next day (see [clock](#clock-story-time): `clock next day`, or `clock next`
+past the last part of the day); `after 3 days` waits three. `after 2 scenes` holds it
+until the story has entered two more scenes (a `jump`, a `call`, or a scene's start;
+coming back from a `call` doesn't count). Then it arrives as if sent there: the arrival
+notice shows, the date is the day it arrived, and the message's text is read then. While
+it waits, a save keeps it on its way, going back before the `send` line takes it back,
+and going forward brings it again without a second notice. Running the same `send` line
+again before the message arrives starts its wait again. Parts of the day aren't a delay:
+send it from the scene that comes later instead. In a dev run, F3 lists the messages
+still on their way ("message invite from hana: day 3").
+
+```
+label morning:
+    send invite from hana after 1 day
+    "I went down to breakfast."
+    clock next day
+    "Morning came, and with it a grey bird."
+```
+
+**Replies.** A message can end with a question the player answers in the Inbox, when they
+like. Write the replies as its last line, in the phone chat's shapes:
+
+```
+define invite = [
+    "Meet me at the bridge when the lanterns are lit.",
+    {"ask": "come", "yes": "I'll be there.", "no": "Not this year."},
+    ]
+define tea = ["Tea at four?", {"ask": ["Yes please", "No thanks"]}]
+```
+
+With a name (`"come"`) each reply has an id (`yes`, `no`) and its text; with a list each
+text is its own id. A message offers 1 to 4 replies of up to 80 characters on one line, all
+different, and asks once, at its end. A phone chat's `"ignore"` is allowed and does nothing:
+any message can stay unanswered. A reply is one text: to answer back, send another message
+(`if inbox.reply("invite") == "yes":` / `send see_you from hana after 1 scene`). The `send`
+line can also give the replies itself: `send late from ren ask "On my way." "Start without
+me."` (each text its own id), for a message without an ask of its own.
+
+On the Inbox page the replies are buttons under the message, and the thread has a ring
+beside its dot until it is answered. The player's pick shows under the message as their
+line ("You: I'll be there.") and in History as a choice. It counts like a choice: a reply
+made while a line waits is a step of its own, so Back once takes the reply back on the
+same line, and going forward gives it again; a reply made while `open` waits joins the next
+step. A save keeps it. At a menu the buttons wait until the choice is made.
+
+The story reads the answer with `inbox.reply("invite")`: the id of the reply picked (`"yes"`;
+for a list, its text), or `""` before one. When the same message was sent more than once,
+it is the newest answer.
+
+```
+label festival_eve:
+    if inbox.reply("invite") == "yes":
+        jump bridge
+    elif inbox.reply("invite") == "":
+        "Her letter still waits on my desk."
+```
+
+`inbox` can only be read. A game's own variable called `inbox` hides it. The story map
+treats `inbox.reply("invite")` like a variable that each `send invite` may change.
 
 **open.** `open inbox` opens the Inbox on the newest thread, and the story waits until the
 player closes it; then the next line runs. `open pigeon` (or any look) opens it on the
@@ -1717,12 +1779,21 @@ open, and both stay free as variable names. `contact` is a word only after `lock
 | `there is already a contact called hana (line 3). …` | Give each contact its own name. |
 | `there is no contact called hnaa. Did you mean "hana"? …` | Fix the name, or declare the contact. |
 | `there is no define called invte to send. Did you mean "invite"? …` | Fix the name, or write the message as a define. |
-| `line 2 of message invite asks for a reply. …` | Remove the ask, or use `minigame phone_chat`. |
+| `line 2 of message invite asks for a reply, but more lines follow it. …` | Put the ask on the message's last line. |
+| `line 2 of message invite asks for a reply, but it has 5 replies; a message offers 1 to 4. …` | Give 1 to 4 short replies. |
+| `send … after needs a number and days or scenes, …` / `send … after counts days or scenes, not parts of the day. …` | Write `after 1 day` or `after 2 scenes`. |
+| `send … ask needs 1 to 4 replies in quotes, …` | Write `ask "Yes" "No"`. |
+| `this send line has replies (ask …), but message invite (line 3) asks for a reply too. …` (E455) | Keep the replies in one place. |
+| `send invite … after 1 day waits for the story clock, but no clock line in this game moves it, …` (warning W312) | Add a `clock next day` line, or use `after 2 scenes`. |
+| `message … can never happen: after 9 days is past [calendar] last_day (5), …` (warning W316) | Use a shorter delay, or a later `last_day`. |
+| `inbox.reply("invte") reads the reply to message invte, but no send line sends it with replies, …` (warning W313) | Fix the name, or give the message replies. |
+| `inbox.reply("invite") is compared with "maybe", which isn't one of its replies ("no" or "yes"), …` (warning W314) | Compare with one of its reply ids. |
 | `message invite must be text, or a list of lines like a phone chat's, …` | Make it text or a list. |
 | `open pigeon opens the Inbox at the newest message that came by pigeon, but nothing in this game comes by pigeon. …` (warning) | Send something by that look, or write `open inbox`. |
 
 A message whose value goes wrong while the game runs (a `default` changed into something
-that isn't a message) stops the story at the `send` line (E453, section 22).
+that isn't a message) stops the story at the `send` line (E453, section 22), and so does
+`inbox.reply` given something other than a message's name, or a change to `inbox` (E454).
 
 ---
 
@@ -4157,7 +4228,8 @@ you can look one up or mention it when you ask for help.
 | E276 | `stargazing finished with a set, which can't be saved, so it can't go into found. …` | Make the plugin finish with text, a number, a list, or a dictionary. |
 | E277 | `minigame stargazing ran for 5 seconds … without finishing, so it is probably stuck in a loop. …` | Check any `while` loop at that line. |
 | E279 | `minigame stargazing has no outcome for this headless run. Give one in the inputs, e.g. finish 3, or give the plugin a test outcome.` (headless runs) | Add `finish …` to the inputs, or a `test_outcome` to the plugin. |
-| E453 | `there is no variable called invite to send. …` / `line 2 of message invite asks for a reply. …` | Keep the message a `define` of text or a list of lines (see [Messages](#messages)). |
+| E453 | `there is no variable called invite to send. …` / `line 2 of message invite asks for a reply, but more lines follow it. …` | Keep the message a `define` of text or a list of lines (see [Messages](#messages)). |
+| E454 | `inbox.reply needs a message's name in quotes, but it got a number. …` / `inbox can be read, not changed: …` | Write `inbox.reply("invite")`, and only read it. |
 | E85 | `this Python stopped with an error: … the log has the details.` | Check the values the line uses. |
 
 When the mistake is inside a helper written in a `define`, the message names the line that

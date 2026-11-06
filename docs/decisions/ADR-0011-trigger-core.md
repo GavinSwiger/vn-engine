@@ -3,8 +3,10 @@
 Status: **accepted** — 2026-11-06 (built with F65 round 3, `specs/skins-contract.md` "Phases 2-4")
 Proposed by: the skins plan (docs/proposals/engine-features.html, "Trigger core"
 foundation). First used by: the Inbox's `send` (F65 round 2, kind `message`: each `send`
-line a trigger armed by its line and fired at once until round 3 adds `after`); Inbox
-delays (I-09), Events (I-02), Places' "open when" (I-04) and Thoughts (I-06) will sit on it.
+line a trigger armed by its line and fired at once; round 3's `after 1 day` / `after 2
+scenes` keep it armed until its timing comes, the first use of the relative timing and of
+`check_triggers`' W316); Events (I-02), Places' "open when" (I-04) and Thoughts (I-06) will
+sit on it.
 
 ## Context
 
