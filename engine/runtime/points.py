@@ -16,6 +16,9 @@ console. Author Python only reads them, through ``PointsView``.
   order, then hidden ones. JSON ``{"values": {name: int}}``; ``from_json`` refuses anything
   else with ``StateInvalid("points")``, never echoing (≤ ``SAVED_NAMES_MAX`` names, each
   ``saved_name_ok``, each value an ``int``, not ``bool``, with |v| ≤ ``POINTS_LIMIT``).
+  F62 round 2: ``shown``, the meters on screen in the order shown (``show meter``), saved as
+  ``"shown": [name, …]`` only when not empty (so a state with none writes what it wrote
+  before), at most ``SHOWN_MAX`` names, each a saved value's name, none twice.
 - ``Points.merge`` is restore step 3 (07 I-6): a declared meter missing from the save starts
   at its start, a saved value outside today's range is clamped, an undeclared one is kept
   hidden while declared + hidden ≤ ``SAVED_NAMES_MAX``.
@@ -47,9 +50,11 @@ from engine.script.suggest import suggest
 
 if TYPE_CHECKING:
     from engine.runtime.interpreter import Interpreter, Step
+    from engine.script.showmeter import MeterShow
 
 SAVED_NAMES_MAX: Final = 1000           # names in a saved ``points`` (declared + hidden)
 SAVED_NAME_MAX: Final = 64              # code points of a saved name (F22 07 I-2)
+SHOWN_MAX: Final = 32                   # F62 round 2: meters on screen at once
 
 
 def saved_name_ok(name: object) -> bool:
@@ -67,10 +72,12 @@ class PointsState(Mapping[str, int]):
     """``GameState.points``: meter name → value, read-only. Built only by ``Points`` and
     ``from_json``; the dict inside is never handed out."""
 
-    __slots__ = ("_values",)
+    __slots__ = ("_values", "shown")
 
-    def __init__(self, values: Mapping[str, int] | None = None) -> None:
+    def __init__(self, values: Mapping[str, int] | None = None,
+                 shown: tuple[str, ...] = ()) -> None:
         self._values: dict[str, int] = dict(values or {})
+        self.shown: tuple[str, ...] = tuple(shown)      # F62 round 2: meters on screen
 
     def __getitem__(self, name: str) -> int:
         return self._values[name]
@@ -84,23 +91,27 @@ class PointsState(Mapping[str, int]):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PointsState):
             return NotImplemented
-        return self._values == other._values
+        return self._values == other._values and self.shown == other.shown
 
     def __hash__(self) -> int:                  # immutable: a frozen field's default
-        return hash(frozenset(self._values.items()))
+        return hash((frozenset(self._values.items()), self.shown))
 
     def __repr__(self) -> str:
-        return f"PointsState({self._values!r})"
+        shown = f", shown={self.shown!r}" if self.shown else ""
+        return f"PointsState({self._values!r}{shown})"
 
     def to_json(self) -> dict[str, object]:
-        return {"values": dict(self._values)}
+        out: dict[str, object] = {"values": dict(self._values)}
+        if self.shown:
+            out["shown"] = list(self.shown)
+        return out
 
     @staticmethod
     def from_json(obj: object) -> "PointsState":
         """Validate untrusted ``obj``; ``StateInvalid("points")`` for anything but
         ``{"values": {<saved name>: <int>, …}}`` within the bounds (module docstring)."""
         from engine.runtime.state import StateInvalid   # state.py imports this module
-        if type(obj) is not dict or obj.keys() != {"values"}:
+        if type(obj) is not dict or not {"values"} <= obj.keys() <= {"values", "shown"}:
             raise StateInvalid("points")
         values = obj["values"]
         if type(values) is not dict or len(values) > SAVED_NAMES_MAX:
@@ -111,7 +122,12 @@ class PointsState(Mapping[str, int]):
                     or not -POINTS_LIMIT <= value <= POINTS_LIMIT):
                 raise StateInvalid("points")
             out[name] = value
-        return PointsState(out) if out else EMPTY_POINTS
+        shown = obj.get("shown", [])
+        if (type(shown) is not list or len(shown) > SHOWN_MAX
+                or not all(type(n) is str and n in out for n in shown)
+                or len(set(shown)) != len(shown)):
+            raise StateInvalid("points")
+        return PointsState(out, tuple(shown)) if out else EMPTY_POINTS
 
 
 EMPTY_POINTS: Final = PointsState()
@@ -139,7 +155,7 @@ def _shown_name(name: object) -> str:
 class Points:
     """The launch's meters (module docstring). ``meters`` is ``Program.meters``."""
 
-    __slots__ = ("_specs", "_names", "_values", "_hidden", "_state")
+    __slots__ = ("_specs", "_names", "_values", "_hidden", "_state", "_shown")
 
     def __init__(self, meters: tuple[MeterSpec, ...] = ()) -> None:
         self._specs: dict[str, MeterSpec] = {m.name: m for m in meters}
@@ -147,6 +163,7 @@ class Points:
         self._values: dict[str, int] = {}
         self._hidden: dict[str, int] = {}
         self._state: PointsState | None = None
+        self._shown: tuple[str, ...] = ()
         self.reset()
 
     # Reading ------------------------------------------------------------------------------
@@ -181,6 +198,10 @@ class Points:
             raise ValueError("no ranks")
         return spec.rank(self._values[name])
 
+    def shown(self) -> tuple[str, ...]:
+        """F62 round 2: the meters on screen, in the order shown."""
+        return self._shown
+
     def _check(self, name: object) -> str:
         if type(name) is not str or name not in self._specs:
             found = suggest(name, self._names) if type(name) is str else None
@@ -210,6 +231,27 @@ class Points:
             self._state = None
         return value, wanted
 
+    def show(self, *names: str) -> None:
+        """F62 round 2: put ``names`` on screen after those already shown (a shown one keeps
+        its place). An unknown name is ``UnknownMeter``; past ``SHOWN_MAX`` the rest are
+        left off."""
+        checked = [self._check(name) for name in names]
+        shown = list(self._shown)
+        for name in checked:
+            if name not in shown and len(shown) < SHOWN_MAX:
+                shown.append(name)
+        self._set_shown(tuple(shown))
+
+    def hide(self, *names: str) -> None:
+        """F62 round 2: take ``names`` off screen (one not shown: nothing)."""
+        checked = {self._check(name) for name in names}
+        self._set_shown(tuple(name for name in self._shown if name not in checked))
+
+    def _set_shown(self, shown: tuple[str, ...]) -> None:
+        if shown != self._shown:
+            self._shown = shown
+            self._state = None
+
     # State ----------------------------------------------------------------------------------
 
     def state(self) -> PointsState:
@@ -217,13 +259,14 @@ class Points:
         next change, so unchanged checkpoints share one object (07 I-7)."""
         state = self._state
         if state is None:
-            state = self._state = PointsState({**self._values, **self._hidden})
+            state = self._state = PointsState({**self._values, **self._hidden}, self._shown)
         return state
 
     def reset(self) -> None:
         """New Game: every meter at its start, no hidden meter (07 I-6)."""
         self._values = {name: spec.start for name, spec in self._specs.items()}
         self._hidden = {}
+        self._shown = ()
         self._state = None
 
     def merge(self, saved: PointsState) -> PointsState:
@@ -235,7 +278,8 @@ class Points:
                 break
             if name not in out:
                 out[name] = value
-        return PointsState(out)
+        # F62 round 2: a shown meter this version no longer declares is no longer shown.
+        return PointsState(out, tuple(n for n in saved.shown if n in self._specs))
 
     def install(self, state: PointsState) -> None:
         """Make ``state`` (from ``merge`` or ``state()``) the current values: restore's
@@ -243,6 +287,7 @@ class Points:
         self._values = {name: state[name] for name in self._names}
         self._hidden = {name: value for name, value in state.items()
                         if name not in self._specs}
+        self._shown = tuple(n for n in state.shown if n in self._specs)
         self._state = state
 
 
@@ -364,5 +409,22 @@ def run_points(interp: "Interpreter", stmt: PointsChange) -> "Step":
     return Step.CONTINUE
 
 
+def run_meter_show(interp: "Interpreter", stmt: "MeterShow") -> "Step":
+    """F62 round 2: ``show meter <name>…`` / ``hide meter <name>…``. The names were checked
+    at load (E233), so an unknown one here is a story error (E236's unknown form). Not a
+    checkpoint: the next checkpoint saves the shown list; the app's corner follows it."""
+    from engine.runtime.interpreter import Step         # below the interpreter (docstring)
+    try:
+        if stmt.shown:
+            interp.points.show(*stmt.names)
+        else:
+            interp.points.hide(*stmt.names)
+    except UnknownMeter as e:
+        message = format_message("E236", ("unknown", _shown_name(e.name), e.suggestion))
+        raise StoryError(message, code="E236", **where(stmt)) from None
+    return Step.CONTINUE
+
+
 __all__ = ["EMPTY_POINTS", "MeterSpec", "Points", "PointsState", "PointsView", "SAVED_NAMES_MAX",
-           "SAVED_NAME_MAX", "UnknownMeter", "bind_view", "run_points", "saved_name_ok"]
+           "SAVED_NAME_MAX", "SHOWN_MAX", "UnknownMeter", "bind_view", "run_meter_show",
+           "run_points", "saved_name_ok"]

@@ -2895,6 +2895,49 @@ def _w290(label: str = "Closee", name: str = "hana", suggestion: str | None = No
     return text + f" Its ranks are {shown}{more}."
 
 
+# F62 round 2 (specs/F62-visible-meters/SPEC.md "Round 2"): load E417, E418
+# (engine/script/showmeter.py, parse), W291–W293 (showmeter.check_story); E233 for an unknown
+# meter. E419 and W294 are spare.
+
+def _e417(form: str = "name", word: str = "show", found: str = "hana,") -> str:
+    """``name`` (what was found); ``modifier`` (the word); ``colon``."""
+    example = f"{word} meter hana sanity"
+    found = found if found.startswith('"') else f'"{found}"'
+    if form == "modifier":
+        return (f"{word} meter takes only meter names, but found {show(found)}. A meter "
+                f"comes and goes on its own; write e.g. {example}")
+    if form == "colon":
+        return f"{word} meter takes no colon or block after it. Write e.g. {example}"
+    return (f"{word} meter takes meter names separated by spaces, but found {show(found)}. "
+            f"Write e.g. {example}")
+
+
+def _e418(form: str = "twice", word: str = "show", arg: object = "hana") -> str:
+    """``twice`` (the name); ``many`` (the limit)."""
+    if form == "many":
+        return (f"{word} meter can name at most {arg} meters on one line. Split it over two "
+                "lines.")
+    return f"{word} meter names {show_name(str(arg))} twice; name each meter once."
+
+
+def _w291(name: str = "hanna", suggestion: str | None = "hana") -> str:
+    text = f"[meter.{show_name(name)}] is set up, but no points line declares a meter named "            f"{show_name(name)}, so it is never used."
+    if suggestion is not None:
+        text += " " + _did_you_mean(suggestion, name)
+    return text
+
+
+def _w292(name: str = "hana", look: str = "hearts") -> str:
+    return (f"{show_name(name)} is shown as {look}, which needs a range, but its points line "
+            f"has none, so it is shown as a number. Give it a range, e.g. points "
+            f"{show_name(name)} 0 to 10.")
+
+
+def _w293(image: str = "meter hana") -> str:
+    return (f'this shows the picture "{show(image)}", not the meter. A meter takes no at, as or '
+            f"with: write show meter {show(image.split(' ', 1)[-1])}")
+
+
 # --- F14 rollback (F14 04 §6.2; 06 D1, G3) ----------------------------------------------------
 # Load E200–E203 (engine/script/rollback.py, parse) and E204 (rollback.py's attach_fixed, in the
 # whole-game checks). Every text is a draft for the narrative designer (06 G3). E205–E209 are
@@ -4802,6 +4845,12 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E415": _e415,
     "E416": _e416,
     "W290": _w290,
+    # F62 round 2: load E417, E418 (showmeter.py), W291–W293 (showmeter.check_story)
+    "E417": _e417,
+    "E418": _e418,
+    "W291": _w291,
+    "W292": _w292,
+    "W293": _w293,
     # F14 rollback (04 §6.2): load E200–E203 (rollback.py), E204 (attach_fixed). Drafts (G3).
     "E200": lambda: (f"rollback needs one word after it: {_ROLLBACK_WORDS}. Write "
                      '"rollback block" to stop rollback here.'),

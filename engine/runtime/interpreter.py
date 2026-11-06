@@ -264,6 +264,7 @@ from engine.script.minigame import Minigame
 from engine.script.nvl import Nvl
 from engine.script.program import Program
 from engine.script.points import PointsChange
+from engine.script.showmeter import MeterShow
 from engine.script.rollback import Rollback
 from engine.script.routes import Ending, Lock
 from engine.script.stage import Hide, Scene, Show
@@ -1896,6 +1897,8 @@ register_executor(CheckRoll, menu_mod.run_check)
 register_executor(nodes.Chapter, chapters_mod.run_chapter)
 # F22: points <name> +=|-=|= <amount> (runtime/points.py). Not a checkpoint type.
 register_executor(PointsChange, points_mod.run_points)
+# F62 round 2: show meter / hide meter (runtime/points.py). Not a checkpoint type.
+register_executor(MeterShow, points_mod.run_meter_show)
 # F14 (04 §6.3): rollback block|off|on|fixed.
 register_executor(Rollback, rollback_mod.run_rollback)
 # F17 (04 §7.1): nvl on|off|clear (runtime/nvl.py). Not a checkpoint type.

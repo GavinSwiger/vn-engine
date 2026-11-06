@@ -495,12 +495,13 @@ def story_load_screen(app: "App", paths: GamePaths, *, on_ready: OnReady) -> Sto
     if start is None:
         options = LoadOptions(collect_todos=app.dev, position_names=positions, dev=app.dev,
                               flowchart=flowchart, username_fallback=fallback,
-                              style_names=styles)
+                              style_names=styles, meter_config=app.config)
     else:
         options = LoadOptions(collect_todos=app.dev, start=start.label,
                               start_names=tuple(name for name, _ in start.values),
                               position_names=positions, dev=app.dev, flowchart=flowchart,
-                              username_fallback=fallback, style_names=styles)
+                              username_fallback=fallback, style_names=styles,
+                              meter_config=app.config)                    # F62 round 2
 
     def make_loader(minigames: Signatures) -> StoryLoader:
         return StoryLoader(paths, dataclasses.replace(options, minigames=minigames))

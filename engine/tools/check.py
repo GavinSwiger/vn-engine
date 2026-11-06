@@ -98,6 +98,7 @@ from engine.script.choicecheck import ChoiceCheck
 from engine.script.codex import CodexLock
 from engine.script.effects import BUILTIN_TRANSITION_NAMES, WithClause
 from engine.script.points import PointsChange
+from engine.script.showmeter import MeterShow
 from engine.script.routes import Lock
 from engine.script.labelgraph import label_links
 from engine.script.assetgroups import MINIGAME_FILE_MAX_BYTES
@@ -925,6 +926,9 @@ class _UseWalk:
             self.add("meter_use", obj.name, ref, line)
         elif isinstance(obj, ChoiceCheck):                   # F59: check <meter> on a choice
             self.add("meter_use", obj.meter, ref, line)
+        elif isinstance(obj, MeterShow):                     # F62: show/hide meter <name>…
+            for name in obj.names:
+                self.add("meter_use", name, ref, line)
         elif isinstance(obj, CodexLock):
             self.add("codex_use", obj.name, ref, line)
         elif isinstance(obj, Lock) and obj.kind == "route":
@@ -1255,7 +1259,9 @@ class CheckJob:
                               # F32: E320 as the game gives it; a broken config.toml (its
                               # errors are listed above) checks no style name.
                               style_names=None if config_result.errors
-                              else frozenset(config.style))
+                              else frozenset(config.style),
+                              # F62 round 2: W291, W292 from [meter.<name>] and the kit.
+                              meter_config=None if config_result.errors else config)
         loaded = load_story(paths, options)
         problems += [_error_item(error, "load") for error in loaded.errors]
         problems += [_error_item(warning, "load", "warning") for warning in loaded.warnings]

@@ -38,7 +38,7 @@ import time
 from collections import deque
 from dataclasses import replace
 from collections.abc import Callable, Generator, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 from engine.core.constants import BUILTIN_POSITIONS, WRITE_ROOT_DIRNAMES
@@ -108,7 +108,9 @@ class LoadOptions:
     (what ``{username}`` holds in the story); the app and ``vn check`` pass it.
     ``style_names`` (F32 ``04`` §5.1): the ``[style.<name>]`` names ``ui style`` may use
     (E320), copied to ``Program.style_names`` (a restore's W205 check); None (tools and tests
-    that read no config) skips E320. The app and ``vn check`` pass ``config.style``'s names."""
+    that read no config) skips E320. The app and ``vn check`` pass ``config.style``'s names.
+    ``meter_config`` (F62 round 2): the ``Config`` whose ``[meter.<name>]`` tables and kit say
+    how a shown meter looks (``kits.meter_look``), for W291 and W292; None skips both."""
 
     collect_todos: bool = False
     start: str | None = None
@@ -119,6 +121,7 @@ class LoadOptions:
     flowchart: FlowOptions | None = None
     username_fallback: str = "friend"                       # F30
     style_names: frozenset[str] | None = None               # F32
+    meter_config: Any = field(default=None, compare=False)  # F62 round 2
 
     def __post_init__(self) -> None:
         names = self.position_names
@@ -275,7 +278,8 @@ class _Job:
                 checks_skipped=self.checks_skipped, limit_hit=self.limit_hit,
                 unincluded=self.unincluded, start=self.options.start,
                 start_names=self.options.start_names, dev=self.options.dev,
-                minigames=self.options.minigames))
+                minigames=self.options.minigames,
+                meter_config=self.options.meter_config))                        # F62
             self.check_warnings = list(check.warnings)
             yield
             if self.sink.error_count == 0 and not self.checks_skipped:

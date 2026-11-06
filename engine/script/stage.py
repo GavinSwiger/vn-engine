@@ -46,6 +46,7 @@ from engine.script.lexer import (
     Token,
 )
 from engine.script.nodes import Node, Statement
+from engine.script.showmeter import MeterShow, is_meter_line, parse_meter_line
 from engine.script.statements import ParseContext, StatementSpec, register
 from engine.script.suggest import suggest
 from engine.script.words import SHOW_MODIFIER_WORDS, canonical_name, is_image_word, is_word_char
@@ -355,8 +356,10 @@ def _one_value(ctx: ParseContext, raw: RawStatement, chunks: list[_Chunk], start
     return True
 
 
-def parse_show(raw: RawStatement, ctx: ParseContext) -> Show | None:
+def parse_show(raw: RawStatement, ctx: ParseContext) -> "Show | MeterShow | None":
     chunks, colon = _chunks(raw)
+    if is_meter_line("show", chunks, WORD, NUMBER):              # F62: show meter <name>…
+        return parse_meter_line(raw, ctx, "show", chunks, colon, WORD)
     stop = _next_modifier(chunks, 0)
     image = _image_name(ctx, "show", raw, chunks[:stop])
     if image is None:
@@ -461,8 +464,10 @@ def parse_scene(raw: RawStatement, ctx: ParseContext) -> Scene | None:
                  image=image, with_clause=with_clause)
 
 
-def parse_hide(raw: RawStatement, ctx: ParseContext) -> Hide | None:
+def parse_hide(raw: RawStatement, ctx: ParseContext) -> "Hide | MeterShow | None":
     chunks, colon = _chunks(raw)
+    if is_meter_line("hide", chunks, WORD, NUMBER):              # F62: hide meter <name>…
+        return parse_meter_line(raw, ctx, "hide", chunks, colon, WORD)
     if not chunks or chunks[0].is_modifier():
         ctx.error("E112", "hide")
         return None
