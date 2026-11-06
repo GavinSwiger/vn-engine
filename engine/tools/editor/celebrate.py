@@ -10,8 +10,10 @@ turns every motion into an instant change.
   ``studio.json``'s ``celebrated`` (``studiostate``): the first Play that reaches the game
   window (``play``), a first choice in the author's own scene (``choice``), the first
   ending a Play reaches (``ending``, from the game's line reports: ``runwiring``'s
-  ``on_game_event``), every Guide step ticked (``guide``) and a first finished build
-  (``build``). Choices and the Guide count only when they change while Studio is open (the
+  ``on_game_event``), the Guide's first chapter done (``guide``: the first game is done)
+  and a first finished build (``build``). Each later Guide chapter done
+  (``chapter_<key>``) is a quieter moment: its toast alone, without lanterns. Choices
+  and the Guide count only when they change while Studio is open (the
   first check of a session is the baseline), so opening an old game never celebrates what
   was already there; a game made from the sample story counts a choice past the sample's
   own (``guide.SAMPLE_BASELINE``). When the Guide finishes on the same step as another
@@ -52,15 +54,18 @@ CHOICE: Final = "choice"
 ENDING: Final = "ending"
 GUIDE: Final = "guide"
 BUILD: Final = "build"
-MILESTONES: Final = (PLAY, CHOICE, ENDING, GUIDE, BUILD)
+CHAPTER_PREFIX: Final = "chapter_"      # chapter_yours …: a later Guide chapter done (quiet)
+CHAPTERS: Final = tuple(CHAPTER_PREFIX + c.key for c in guide.CHAPTERS[1:])
+MILESTONES: Final = (PLAY, CHOICE, ENDING, GUIDE, BUILD, *CHAPTERS)
 
 # Each milestone's one line, as a bold head and the rest ({name}: the ending's title).
 TEXTS: Final = {
     PLAY: ("First Play:", "your story ran in its own window."),
     CHOICE: ("First choice:", "players can take different paths now."),
     ENDING: ("First ending reached:", "{name}."),
-    GUIDE: ("Guide finished:", "your first game is done."),
+    GUIDE: ("First game done:", "it plays from start to an ending."),
     BUILD: ("First build:", "your game is ready to share."),
+    **{key: ("Chapter done:", "{name}.") for key in CHAPTERS},
 }
 NAME_MAX: Final = 60                    # an ending's title is cut to this many characters
 
@@ -104,6 +109,11 @@ class Celebration:
     def line(self) -> str:
         return " ".join(self.texts())
 
+    @property
+    def quiet(self) -> bool:
+        """A later Guide chapter: the toast without lanterns."""
+        return self.key.startswith(CHAPTER_PREFIX)
+
 
 class Milestones:
     """Which milestones a moment brings (pure). ``celebrated``: the game's shown ones;
@@ -114,6 +124,7 @@ class Milestones:
         self.sample = sample
         self._base: GuideFacts | None = None
         self._guide_done: bool | None = None
+        self._chapters_done: frozenset[str] | None = None
 
     def after_check(self, facts: GuideFacts, guide_done: bool) -> list[Celebration]:
         """A check that loaded: the first is the session's baseline; later ones bring a
@@ -135,6 +146,20 @@ class Milestones:
         """A Play reached the game window for the first time in this game."""
         return self._fresh([Celebration(PLAY), *self._guide(guide_done)])
 
+    def guide_progress(self, first_done: bool,
+                       done: Iterable[tuple[str, str]]) -> list[Celebration]:
+        """The Guide redrew: ``first_done``, its first chapter is done; ``done``, its later
+        chapters done now, as (key, title). The first call is the session's baseline for
+        the later chapters; one done since is a quiet milestone."""
+        done = list(done)
+        keys = frozenset(key for key, _title in done)
+        was, self._chapters_done = self._chapters_done, keys
+        found = self._guide(first_done)
+        if was is not None:
+            found += [Celebration(CHAPTER_PREFIX + key, title) for key, title in done
+                      if key not in was]
+        return self._fresh(found)
+
     def built(self) -> list[Celebration]:
         """A build finished."""
         return self._fresh([Celebration(BUILD)])
@@ -152,6 +177,8 @@ class Milestones:
         self.celebrated.update(c.key for c in fresh)
         if any(c.key == GUIDE for c in fresh):
             fresh = [c for c in fresh if c.key == GUIDE]
+        elif any(not c.quiet for c in fresh):      # a chapter's quiet note gives way
+            fresh = [c for c in fresh if not c.quiet]
         return fresh
 
 
@@ -355,7 +382,7 @@ class Toast:
         self.sky: tk.Canvas | None = None
         self.lanterns: Lanterns | None = None
         motion.tween(("toast", "slide"), FADE_MS, self._slide)
-        if not motion.reduce():
+        if not motion.reduce() and not celebration.quiet:
             self._fly(sky_over)
         self._arm(TOAST_MS)
 
@@ -626,10 +653,22 @@ class CelebrationWiring:
         self.toasts.add(self.milestones.played(guide.all_done(win.guide_rows())))
 
     def build_finished(self) -> None:
-        """A build ended well (``builddialog``)."""
+        """A build ended well (``builddialog``): a milestone, and the Guide's last step."""
         self.toasts.add(self.milestones.built())
+        mark = getattr(self, "guide_mark", None)
+        if callable(mark):
+            mark(guide.BUILT)
+
+    def guide_chapters_changed(self, chapters: Any) -> None:
+        """The Guide redrew with these chapters: a later one done since the session's
+        first look is a quiet milestone (the first chapter is ``guide``'s)."""
+        if getattr(self, "closed", False) or not hasattr(self, "milestones"):
+            return
+        done = [(c.key, c.title) for c in chapters[1:] if c.done]
+        self.toasts.add(self.milestones.guide_progress(chapters[0].done, done))
 
 
-__all__ = ["BUILD", "CHOICE", "Celebration", "CelebrationWiring", "ENDING", "GUIDE",
+__all__ = ["BUILD", "CHAPTERS", "CHAPTER_PREFIX", "CHOICE", "Celebration",
+           "CelebrationWiring", "ENDING", "GUIDE",
            "LANTERN_MS", "Lanterns", "MILESTONES", "Milestones", "PLAY", "TEXTS", "TOAST_MS",
            "Toast", "Toasts", "counts_line", "lantern_points"]

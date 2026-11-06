@@ -71,9 +71,17 @@ vn-engine. You can look around it any time. Next you make a game of your own.
 
 
 You should see a second Studio window open on your new game. The first window stays open;
-you can close it. On the right is the **Guide** pane, "Your first game", with seven steps
-and "2 of 7 done". The steps tick themselves as you work. This guide follows the same steps
-and goes further.
+you can close it. On the right is the **Guide** checklist: five chapters, one for each part
+of this guide, with "1. Your first game" open and "0 of 9" beside it.
+
+- Each step ticks itself when your game has it done, never from a click in the Guide.
+- The step to do next shows one sentence of what to do. **Show me** opens the place where
+  you do it; **Read more** opens this guide at that step, inside Studio.
+- A chapter closes with a tick when it's done, and the next one opens. Chapter 4, *Bigger
+  games*, is optional: **Skip this chapter** sets it aside, and **Do it after all** brings
+  it back.
+- **? Guide** at the top right (or **Help ▸ Guide checklist**) shows or hides it. Studio
+  remembers it, and what it has seen you do, for each game.
 
 A **genre kit** (a ready-made look for a romance, horror story, mystery and so on) is not
 part of New game. You pick one in Part 2, and you can change it any time.
@@ -85,7 +93,7 @@ part of New game. You pick one in Part 2, and you can change it any time.
 
 You should see the game open next to Studio, on a title screen with **New Game**, **Load**,
 **Settings** and **Quit**. Click **New Game**. Click, or press Space or Enter, to go to the
-next line. When the choice appears, click one.
+next line. When the choice appears, click one. The Guide ticks "Play the sample".
 
 2. Close the game with **■ Stop** (where Play was), or close its window.
 
@@ -110,8 +118,8 @@ next line. When the choice appears, click one.
 - **Help** (bottom right): what the line under the cursor does, with an example.
 - **▶ Play** (top): plays the game. The words beside it say where it starts, such as "from
   the start".
-- **? Guide** (top right): shows or hides the Guide pane. **Help ▸ Guides** opens this guide
-  and the others.
+- **? Guide** (top right): shows or hides the Guide checklist. **Help ▸ Guides ▸ Beginner's
+  guide** opens this guide, and **Help ▸ Guides** the others.
 
 ### Step 5: Name your game
 
@@ -141,7 +149,8 @@ A **character** is someone who speaks in your story.
 You should see "Added 3 files.", and Studio shows the last picture on the **File preview**
 tab with its name, such as "Image name: mika surprised". Each picture is a **look** of Mika:
 `mika happy`, `mika sad`, `mika surprised`. Back in **Database ▸ Characters ▸ Mika**, the
-three looks are under **Looks**. The Guide ticks "Add a character".
+three looks are under **Looks**. The Guide ticks "Add a character" and "Give them
+pictures".
 
 
 If a file name has spaces or capitals, Studio offers a better one, for example
@@ -197,7 +206,7 @@ What each line does:
   you change a character's **expression**.
 
 You should see "Checked: no problems." in Problems. The Guide ticks "Write your first scene"
-(the sample already had one, so it may be ticked already).
+once Mika speaks in it. The sample's own scene doesn't count.
 
 While you type, **Ctrl+Space** lists the names that fit, such as your characters and
 pictures, and the **Help** pane explains the line under the cursor.
@@ -284,8 +293,9 @@ The arrows are labelled with the choice text, and the two scenes are marked "end
 You should see the choice buttons, then the scene you picked, then the ending card.
 
 
-When every step is ticked, the Guide says "Your game runs from start to an ending. Well
-done!" You have made a game.
+The Guide ticks "Play to an ending" (Studio saw the game reach it). With every step of
+Chapter 1 ticked, the chapter says "Your game runs from start to an ending. Well done!",
+paper lanterns float up, and Chapter 2 opens. You have made a game.
 
 ## Part 2: Make it yours
 
@@ -553,7 +563,7 @@ Replay buttons on or off.
 
 ## Part 4: Bigger games
 
-Each section shows one tool with a tiny example from *The Night Bakery*'s second night. To
+This part is optional: the Guide's Chapter 4 has **Skip this chapter**. Each section shows one tool with a tiny example from *The Night Bakery*'s second night. To
 keep it in its own file, choose **File ▸ New script file** (Ctrl+N), type `night2.vns`, keep
 **Add an include line to main.vns** ticked, and click **Create**. Then add `jump night2` under Mika's
 "No charge" line in `warm_bread`.

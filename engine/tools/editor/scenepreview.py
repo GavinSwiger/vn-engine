@@ -239,6 +239,10 @@ class ScenePreview:
         self.stage, self.line = stage, line
         self.still = self.still_key = self._want = None
         self.redraw()
+        if stage is not None and line is not None:     # the Guide's "See the stage at a line"
+            mark = getattr(self.win, "guide_mark", None)
+            if callable(mark):
+                mark("stage_viewed")
         self._cancel_rest()
         if stage is not None:
             try:

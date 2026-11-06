@@ -63,7 +63,7 @@ from typing import Any
 from engine.tools.editor import consoleclient, gamebeside, studiostate
 from engine.tools.editor import uiprefs
 from engine.tools.editor.dialogs import ask, ask_text, show_info
-from engine.tools.editor.hotreload import HotReload, HotReloadEvent
+from engine.tools.editor.hotreload import HotReload, HotReloadEvent, updated_text
 from engine.tools.editor.playbar import (  # noqa: F401  (re-exported: tests read them here)
     BEGINNING,
     START_VALUES_HEADING,
@@ -88,6 +88,7 @@ from engine.tools.editor.views import set_entry_enabled
 _log = logging.getLogger(__name__)
 
 STATUS_NOT_RUNNING = "Not running."
+UPDATED_WORDS = updated_text("").split(" at ")[0] + " at"     # "… Updated at": an update took
 STATUS_TEXTS = {                        # 03 §2.2; DIDNT_START is didnt_start_text(n)
     PreviewState.NOT_RUNNING: STATUS_NOT_RUNNING,
     PreviewState.STARTING: "Starting…",
@@ -470,6 +471,9 @@ class RunWiring:
         self._saved_refs = []               # a restart, not an update
         self.hot.stop()
         self._start_game(preview_argv(self.paths.root, label, args, fresh=self.play_fresh))
+        mark = getattr(self, "guide_mark", None)
+        if label not in (None, "start") and callable(mark):
+            mark("played_scene")            # the Guide's "Play from a scene"
 
     def stop_game(self) -> None:
         """■ Stop and Ctrl+F2: end the game child (only while it runs)."""
@@ -610,6 +614,9 @@ class RunWiring:
         it as it is."""
         self.preview_state = event.state
         text = self.hot.preview_event(event)        # F39: S1/S2 while an update runs
+        mark = getattr(self, "guide_mark", None)
+        if text is not None and UPDATED_WORDS in text and callable(mark):
+            mark("hot_updated")                     # the Guide's "Update the running game"
         self.status_label.configure(text=status_text(event) if text is None
                                     else text.removeprefix(PREVIEW_GLYPH))
         self.play_bar.set_running(event.state in LIVE)

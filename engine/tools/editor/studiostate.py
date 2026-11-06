@@ -13,10 +13,13 @@ Tk.
   ``.studio`` and the file must ``lstat`` as a real folder and a regular file (no link,
   junction or reparse point); otherwise the ``StateProblem`` has ``link`` set and the caller
   stops writing. Known keys must be JSON booleans; a key that isn't keeps its default.
-  ``celebrated`` (Studio UX 4.2) is a list of milestone words; anything else in it is
-  dropped. Unknown keys are ignored. Never raises.
+  ``celebrated`` (Studio UX 4.2) is a list of milestone words; ``guide`` the Guide's marks
+  (what Studio saw happen, ``guide.MARKS``, and chapters skipped) and ``reached`` the endings
+  a Play from Studio reached, both lists of words too; anything else in them is dropped.
+  Unknown keys are ignored. Never raises.
 - ``encode_state`` is pure and deterministic: one key per line, in ``KEYS`` order, LF
-  (``OPTIONAL_KEYS`` only when true, ``celebrated`` only when not empty, sorted).
+  (``OPTIONAL_KEYS`` only when true; ``celebrated``, ``guide`` and ``reached`` only when not
+  empty, sorted).
 - ``write_state`` writes those bytes as ``layoutfile.write_layout`` does: ``.studio`` made by
   ``safefile.ensure_real_dir``, the target missing or regular, unchanged bytes skipped, then
   ``safefile.write_atomic`` with the stamp re-checked. Never raises; nothing but the file and
@@ -57,12 +60,18 @@ class StudioState:
     panes: dict | None = None       # docking.Layout.to_json(); None: Studio's usual layout
     tabs: dict | None = None        # tabchoice: {"hidden": [...]}; None: the usual tabs
     celebrated: tuple[str, ...] = ()    # Studio UX 4.2: milestones already shown, once each
+    guide: tuple[str, ...] = ()         # the Guide's marks (guide.MARKS, skip_<chapter>)
+    reached: tuple[str, ...] = ()       # endings a Play from Studio reached (the Guide)
 
 
+WORD_LISTS: Final = ("celebrated", "guide", "reached")
 KEYS: Final = tuple(f.name for f in fields(StudioState)
-                    if f.name not in ("panes", "tabs", "celebrated"))
+                    if f.name not in WORD_LISTS + ("panes", "tabs"))
 MILESTONE_MAX: Final = 16               # more words than Studio has milestones: ignored
 MILESTONE_CHARS: Final = 24
+GUIDE_MAX: Final = 32                   # the Guide's marks
+REACHED_MAX: Final = 64                 # endings kept for the Guide
+REACHED_CHARS: Final = 64
 # Written only when true (missing means false), so a game whose author never opened the
 # Assistant pane keeps its bytes.
 OPTIONAL_KEYS: Final = frozenset({"assistant_open", "follow_changes", "reduce_motion"})
@@ -151,15 +160,24 @@ def decode_state(data: bytes) -> StudioState | StateProblem:
     return StudioState(**{key: doc[key] for key in KEYS if type(doc.get(key)) is bool},
                        panes=panes if isinstance(panes, dict) else None,
                        tabs=tabs if isinstance(tabs, dict) else None,
-                       celebrated=_milestones(doc.get("celebrated")))
+                       **{key: _words(doc.get(key), key) for key in WORD_LISTS})
 
 
 def _milestones(value: object) -> tuple[str, ...]:
     """``celebrated``'s words: short identifiers only, sorted, without repeats."""
+    return _words(value, "celebrated")
+
+
+def _words(value: object, key: str) -> tuple[str, ...]:
+    """A word list's words: short identifiers only, sorted, without repeats (``reached``
+    keeps more and longer ones: ending names)."""
     if not isinstance(value, list):
         return ()
-    words = {word for word in value[:MILESTONE_MAX] if isinstance(word, str)
-             and 0 < len(word) <= MILESTONE_CHARS and word.isascii() and word.isidentifier()}
+    most, chars = {"reached": (REACHED_MAX, REACHED_CHARS),
+                   "guide": (GUIDE_MAX, MILESTONE_CHARS)}.get(key,
+                                                              (MILESTONE_MAX, MILESTONE_CHARS))
+    words = {word for word in value[:most] if isinstance(word, str)
+             and 0 < len(word) <= chars and word.isascii() and word.isidentifier()}
     return tuple(sorted(words))
 
 
@@ -173,9 +191,10 @@ def encode_state(state: StudioState) -> bytes:
                                                ensure_ascii=True))
     if state.tabs:                          # written only when the author hid or showed a tab
         rows.append('  "tabs": ' + json.dumps(state.tabs, sort_keys=True, ensure_ascii=True))
-    celebrated = _milestones(list(state.celebrated))
-    if celebrated:                          # written only once a milestone was shown
-        rows.append('  "celebrated": ' + json.dumps(list(celebrated), ensure_ascii=True))
+    for key in WORD_LISTS:                  # written only once there is a word
+        words = _words(list(getattr(state, key)), key)
+        if words:
+            rows.append(f'  "{key}": ' + json.dumps(list(words), ensure_ascii=True))
     return ("{\n" + ",\n".join(rows) + "\n}\n").encode("ascii")
 
 
@@ -231,5 +250,6 @@ def with_change(root: Path, **changes: object) -> StateProblem | None:
 
 
 __all__ = ["KEYS", "OPTIONAL_KEYS", "STATE_DIR", "STATE_NAME", "StateProblem", "StudioState",
+           "WORD_LISTS",
            "decode_state", "encode_state", "read_state", "state_path", "with_change",
            "write_state"]
