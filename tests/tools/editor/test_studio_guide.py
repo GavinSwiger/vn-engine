@@ -24,6 +24,7 @@ from engine.tools.editor import (
     guide,
     guidepane,
     guidereader,
+    guides,
     playbar,
     studiostate,
 )
@@ -291,6 +292,17 @@ def test_ac_f47_25_the_guide_pane_ticks_shows_me_each_place_and_is_remembered(
     assert win.guide_open() and state_of(game)["guide_open"] is True
     assert "variable" in ticked(ed) and not win._guide_stale
     assert win.guides_menu.entrycget(0, "label") == "Beginner's guide"   # FRICTION 10
+    # Help ▸ Guides opens each guide in the same reader inside Studio, never another app.
+    monkeypatch.setattr(guides, "open_path", lambda path: pytest.fail(f"viewer: {path}"))
+    win.guides_menu.invoke(1)                                      # Script language
+    ed.root.update()
+    reader = win._guide_reader
+    assert reader.window.winfo_exists() and reader.window.title() == "Script language"
+    assert reader.path.name == "script-language.md" and reader.text.get("1.0", "end").strip()
+    win.guides_menu.invoke(0)                                      # back to the beginner's
+    ed.root.update()
+    assert not reader.window and win._guide_reader.window.title() == "Beginner's guide"
+    win._guide_reader.close()
     pane.close_button.invoke()                                      # ✕ in its header
     assert not win.guide_open() and state_of(game)["guide_open"] is False
     again = studio(game)

@@ -1,6 +1,7 @@
 """File ▸ Open game… and Help ▸ Guides (user feedback 2026-11-03): an existing game opens in
 its own Studio, a folder that isn't a game is refused with what to choose instead, and every
-guide the Help menu names is a page in ``docs/``."""
+guide the Help menu names is a page in ``docs/`` (read in Studio's reader; its Open in your
+viewer hands the page to the system, ``guides.open_guide``)."""
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -61,14 +62,21 @@ def test_every_guide_is_a_docs_page_and_opens(monkeypatch):
 
 
 def test_a_missing_guide_or_viewer_says_what_to_do(monkeypatch):
-    assert guides.open_guide("Nope", "nope.md") == guides.GUIDE_MISSING.format(title="Nope")
+    # Run with Python, the guide belongs next to main.py; in the Studio app, unzip again.
+    assert guides.open_guide("Nope", "nope.md") == guides.GUIDE_MISSING.format(
+        title="Nope", fix=guides.FIX_DEV)
+    assert "main.py" in guides.missing_text("Nope")
+    monkeypatch.setattr(guides, "is_frozen", lambda: True)
+    assert "main.py" not in guides.missing_text("Nope")
+    assert guides.FIX_APP in guides.missing_text("Nope")
+    monkeypatch.undo()
 
     def no_viewer(_path):
         raise OSError("no app for .md")
 
     monkeypatch.setattr(guides, "open_path", no_viewer)
-    assert "docs/script-language.md" in guides.open_guide("Script language",
-                                                          "script-language.md")
+    problem = guides.open_guide("Script language", "script-language.md")
+    assert str(guides.guide_path("script-language.md")) in problem
 
 
 def test_example_story_points_at_the_guides_menu():

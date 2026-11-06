@@ -34,8 +34,7 @@ from engine.tools.editor.runwiring import (
     UPDATE_ON_SAVE_MENU,
 )
 from engine.tools.editor.guide import GUIDE_TITLE
-from engine.tools.editor.guides import GUIDES, GUIDES_MENU, open_guide
-from engine.tools.editor.dialogs import show_error
+from engine.tools.editor.guides import GUIDES, GUIDES_MENU
 from engine.tools.editor.builddialog import open_build_dialog
 from engine.tools.editor.connectdialog import MENU as CONNECT_MENU, open_connect_dialog
 from engine.tools.editor.aisettings import MENU as SETTINGS_MENU, open_ai_settings
@@ -234,9 +233,9 @@ class StudioMenus:
         open_connect_dialog(self)
 
     def open_guide(self, title: str, name: str) -> None:
-        problem = open_guide(title, name)
-        if problem is not None:
-            show_error(self.root, problem)
+        """Help ▸ Guides ▸ ``title``: the guide ``name`` in Studio's reader window."""
+        from engine.tools.editor import guidereader
+        guidereader.show_guide(self, name, title)
 
     def _build_story_menu(self, bar: tk.Menu) -> tk.Menu:
         """F46 (design §6.1, 04 §6.11): one action table builds the Story menu and the

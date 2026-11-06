@@ -119,7 +119,8 @@ next line. When the choice appears, click one. The Guide ticks "Play the sample"
 - **▶ Play** (top): plays the game. The words beside it say where it starts, such as "from
   the start".
 - **? Guide** (top right): shows or hides the Guide checklist. **Help ▸ Guides ▸ Beginner's
-  guide** opens this guide, and **Help ▸ Guides** the others.
+  guide** opens this guide inside Studio, and **Help ▸ Guides** the others.
+  **Open in your viewer** at the bottom shows it in another app, if your computer has one.
 
 ### Step 5: Name your game
 

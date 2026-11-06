@@ -1,11 +1,13 @@
-"""The beginner's guide, ``docs/first-game.md``, read inside Studio: the Guide pane's **Read
-more** opens it at the step's own heading.
+"""The guides in ``docs/`` read inside Studio: Help ▸ Guides opens each one here, and the
+Guide pane's **Read more** opens the beginner's guide (``docs/first-game.md``) at the step's
+own heading.
 
-Why this module exists: the system's viewer for a ``.md`` file can't open at a heading (and
-on Windows is often Notepad), so a first-time author following the Guide would have to hunt
-through a long page. This window shows the guide as formatted text (headings, lists, bold,
-code) and scrolls to the heading asked for; **Open in your viewer** still hands the file to
-the system. One window per Studio window, reused; Esc closes it.
+Why this module exists: most PCs have no viewer for a ``.md`` file (and on Windows it is
+often Notepad, which can't open at a heading), so a first-time author would never see the
+guides. This window shows a guide as formatted text (headings, lists, bold, code) and
+scrolls to the heading asked for; **Open in your viewer** still hands the file to the
+system. One window per Studio window, reused (another guide replaces the one shown); Esc
+closes it.
 
 ``blocks`` (pure) reads the Markdown subset the guide uses into rows of styled runs, which
 ``GuideReader`` puts in a read-only ``tk.Text``. Imports only the standard library and the
@@ -23,10 +25,9 @@ from typing import Any, Final
 
 from engine.tools.editor.theme import THEME
 
-READER_TITLE: Final = "Beginner's guide"
+READER_TITLE: Final = "Beginner's guide"          # the default guide's title
 OPEN_OUTSIDE: Final = "Open in your viewer"
 CLOSE_TEXT: Final = "Close"
-MISSING: Final = "The beginner's guide isn't in this copy of vn-engine."
 READ_MAX: Final = 1024 * 1024
 WIDTH, HEIGHT = 720, 640                # px at 100 %
 
@@ -111,11 +112,13 @@ def blocks(markdown: str) -> list[tuple[str, list[tuple[str, str]]]]:
 
 class GuideReader:
     """The reader window over ``root`` (made on first ``open``). ``path``: the guide's file;
-    ``fonts``: Studio's; ``open_outside``: hands the file to the system's viewer."""
+    ``title``: the window's; ``fonts``: Studio's; ``open_outside``: hands the file to the
+    system's viewer."""
 
     def __init__(self, root: tk.Misc, path: Path, *, fonts: dict, scale: float,
-                 open_outside: Callable[[], object]) -> None:
+                 open_outside: Callable[[], object], title: str = READER_TITLE) -> None:
         self.root, self.path, self.fonts, self.scale = root, path, fonts, scale
+        self.title = title
         self.open_outside = open_outside
         self.window: tk.Toplevel | None = None
         self.text: tk.Text | None = None
@@ -154,7 +157,7 @@ class GuideReader:
         px, fonts = self.px, self.fonts
         bg, fg = THEME["editor.background"], THEME["editor.foreground"]
         window = self.window = tk.Toplevel(self.root, background=bg)
-        window.title(READER_TITLE)
+        window.title(self.title)
         window.geometry(f"{px(WIDTH)}x{px(HEIGHT)}")
         window.minsize(px(360), px(240))
         try:
@@ -218,23 +221,42 @@ class GuideReader:
         text.bind("<End>", lambda _e: text.yview_moveto(1.0))
 
 
-def reader_for(win: Any) -> GuideReader:
-    """``win``'s reader (made on first use)."""
+def reader_for(win: Any, name: str | None = None, title: str | None = None) -> GuideReader:
+    """``win``'s reader for the guide ``name`` in ``docs/`` titled ``title`` (default: the
+    beginner's guide), made on first use; asked for another guide, the window shown so far
+    closes and a reader for that one replaces it."""
+    from engine.tools.editor import guide, guides
+    name = name or guide.GUIDE_DOC
+    title = title or guide.DOC_TITLE
+    path = guides.guide_path(name)
     reader = win.__dict__.get("_guide_reader")
-    if reader is None:
-        from engine.tools.editor import guide, guides
-        path = guides.guide_path(guide.GUIDE_DOC)
+    if reader is not None and reader.path == path:
+        return reader
+    if reader is not None:
+        reader.close()
 
-        def outside() -> None:
-            problem = guides.open_guide(guide.DOC_TITLE, guide.GUIDE_DOC)
-            if problem is not None:
-                from engine.tools.editor.dialogs import show_error
-                show_error(win.root, problem)
+    def outside() -> None:
+        problem = guides.open_guide(title, name)
+        if problem is not None:
+            from engine.tools.editor.dialogs import show_error
+            show_error(win.root, problem)
 
-        reader = win.__dict__["_guide_reader"] = GuideReader(
-            win.root, path, fonts=win.fonts, scale=win.scale, open_outside=outside)
+    reader = win.__dict__["_guide_reader"] = GuideReader(
+        win.root, path, fonts=win.fonts, scale=win.scale, open_outside=outside, title=title)
     return reader
 
 
-__all__ = ["BOLD", "CLOSE_TEXT", "CODE", "GuideReader", "ITALIC", "MISSING", "OPEN_OUTSIDE",
-           "PLAIN", "READER_TITLE", "blocks", "reader_for", "runs"]
+def show_guide(win: Any, name: str | None = None, title: str | None = None,
+               heading: str | None = None) -> bool:
+    """Open the guide ``name`` (default: the beginner's guide) in ``win``'s reader at
+    ``heading``; when it can't be read, say so (``guides.missing_text``) and return False."""
+    from engine.tools.editor import guide, guides
+    if not reader_for(win, name, title).open(heading):
+        from engine.tools.editor.dialogs import show_error
+        show_error(win.root, guides.missing_text(title or guide.DOC_TITLE))
+        return False
+    return True
+
+
+__all__ = ["BOLD", "CLOSE_TEXT", "CODE", "GuideReader", "ITALIC", "OPEN_OUTSIDE", "PLAIN",
+           "READER_TITLE", "blocks", "reader_for", "runs", "show_guide"]

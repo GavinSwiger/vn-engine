@@ -550,9 +550,7 @@ class GuideWiring:
         if self.closed:
             return
         from engine.tools.editor import guidereader
-        if not guidereader.reader_for(self).open(section):
-            from engine.tools.editor.dialogs import show_error
-            show_error(self.root, guidereader.MISSING)
+        guidereader.show_guide(self, heading=section)
 
     # --- Show me ---------------------------------------------------------------------------
 
