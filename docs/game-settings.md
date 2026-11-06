@@ -20,7 +20,7 @@ editing `config.toml` by hand. Pick a page on the left; its fields are on the ri
 - **Chapters & codex**: the chapter title card, and the Codex page and its notices.
 - **Calendar**: story time: the parts of the day, the start, the last day, how dates read,
   the day card and the clock's corner (see below).
-- **Devices**: how each device (phone, letters, pigeon, radio, terminal, mind) words and
+- **Devices**: how each device (phone, letter, pigeon, radio, terminal, mind) words and
   sounds a message, with a preview of each (see below).
 - **Flowchart**: the players' Flowchart page: whether it shows, which choices get a box,
   jumping, and every box's look.
@@ -45,6 +45,16 @@ in case you also open the file.
 On **Text box** and **Title screen**, the preview shows a still of the game's real drawing
 with your unsaved changes, half a second after you stop typing. If it can't be drawn, it
 says why, for example a value the game refuses.
+
+## Picture memory
+
+`[engine] cache_mb` (All settings, default 256) is how many megabytes of decoded pictures,
+text and sounds the game keeps in memory. A decoded picture is much larger than its file: a
+1920x1080 background takes about 8 MB. A bigger budget means fewer reloads when the story
+goes back to a picture it showed before; a smaller one leaves more memory for the player's
+browser and other programs, which matters on 4-8 GB laptops and handhelds. The game reads
+upcoming pictures ahead of time, so reloads rarely show. Raise it (512 or more) only for
+games with many large pictures that players revisit often.
 
 ## Color scheme
 

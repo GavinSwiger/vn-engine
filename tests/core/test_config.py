@@ -62,7 +62,7 @@ def assert_defaults(config: Config) -> None:
     assert window.letterbox_color == (0, 0, 0)
     assert window.scale_filter == "smooth"
     assert window.integer_scale is False
-    assert (engine.fps, engine.cache_mb, engine.log_level) == (60, 512, "info")
+    assert (engine.fps, engine.cache_mb, engine.log_level) == (60, 256, "info")
     assert config == Config(GameConfig(), WindowConfig(), EngineConfig())
 
 

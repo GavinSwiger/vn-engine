@@ -553,8 +553,12 @@ class WindowConfig:
 class EngineConfig:
     fps: int = field(default=60, metadata=spec(IntRange(30, 240),
         "how many times a second the screen is drawn"))
-    cache_mb: int = field(default=512, metadata=spec(IntRange(64, 8192),
-        "how many megabytes of pictures the game keeps ready in memory"))   # budget = cache_mb * MB
+    # 256, not 512 (v1 perf review): a long game sat at ~650 MB of RAM at 512. A smaller
+    # budget only means more decodes when a picture comes back, which the prefetch hides.
+    cache_mb: int = field(default=256, metadata=spec(IntRange(64, 8192),
+        "how many megabytes of pictures the game keeps ready in memory: more means fewer "
+        "reloads when a picture comes back, less leaves more memory for the player's "
+        "other programs"))   # budget = cache_mb * MB
     log_level: Literal["debug", "info", "warning", "error"] = field(
         default="info", metadata=spec(Choice("debug", "info", "warning", "error"),
         "how much detail the game writes to its log file"))
