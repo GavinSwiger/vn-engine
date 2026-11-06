@@ -40,7 +40,7 @@ row = [
   { id = "a_game_con", group = "A", gen = "meta", key = "game", value = "CON", head = "damaged", full = "damaged", tier = "default" },
   { id = "a_game_10000", group = "A", gen = "meta_text", key = "game", char = "a", chars = 10000, head = "damaged", full = "damaged", tier = "default" },
   { id = "a_nested_8000", group = "A", gen = "nested_line1", levels = 8000, head = "damaged", full = "damaged", tier = "default" },
-  { id = "a_vnsave_2_garbage", group = "A", gen = "newer_garbage", head = "newer", full = "newer", tier = "default" },
+  { id = "a_vnsave_3_garbage", group = "A", gen = "newer_garbage", head = "newer", full = "newer", tier = "default" },
   { id = "a_state_format_2", group = "A", gen = "meta", key = "state_format", value = 2, head = "newer", full = "newer", tier = "default" },
   { id = "a_seq_1", group = "A", gen = "meta", key = "seq", value = 1, head = "ok", full = "ok", tier = "default" },
   { id = "a_seq_2_53", group = "A", gen = "meta", key = "seq", value = 9007199254740992, head = "ok", full = "ok", tier = "default" },

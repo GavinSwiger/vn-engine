@@ -32,7 +32,7 @@ def test_the_bounds_equal_the_design():
     assert (limits.SEQ_MAX, limits.SAVED_AT_MAX) == (2**53, 253_402_300_799)
     assert (limits.DESCRIPTION_MAX, limits.VERSION_MAX) == (200, 64)
     # F20 A13 (AC-F20-54): the index and the saves root's stale-temp scan look at 6,000.
-    assert (limits.SAVE_FORMAT, limits.SLOTS_PER_PAGE, limits.INDEX_MAX_EXAMINED) == (1, 6, 6_000)
+    assert (limits.SAVE_FORMAT, limits.SLOTS_PER_PAGE, limits.INDEX_MAX_EXAMINED) == (2, 6, 6_000)
     assert (limits.INDEX_STEP_EXAMINED, limits.SAVE_TEMP_SCAN_MAX) == (1_000, 6_000)
     assert (limits.SAVE_STEP_S, limits.MAX_REQUESTS) == (0.004, 64)
 

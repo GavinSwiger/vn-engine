@@ -49,6 +49,13 @@ from engine.script.words import (ENGINE_NAMES, PYTHON_KEYWORDS, STATEMENT_WORDS,
                                  STATEMENT_WORDS_F02)
 
 STATE_FORMAT: Final = 1
+# The revision of what ``to_json`` can write within ``STATE_FORMAT`` (F11's line 1 carries it
+# as ``state_rev``). **Bump it with every change to the state's JSON**, additive ones too (a
+# new optional key, a new key inside a nested record, a wider range): an engine reads a save
+# whose ``state_rev`` is above its own as NEWER ("made by a newer version"), never DAMAGED,
+# because its exact key sets would otherwise refuse the new key. 1 is version 1's; a save
+# from before revisions (``vnsave`` 1) reads as 0. A lower revision always loads.
+STATE_REVISION: Final = 1
 
 Hint = tuple[str, tuple[int, ...]]          # ADR-0006 StmtLocation hint: (label, path)
 

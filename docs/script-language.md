@@ -3571,6 +3571,11 @@ statement, so you can see which edit did it:
 To check an update, keep a few saves from the old version (copy the `saves/` folder), make
 your changes, and load each one.
 
+A save made by a later version of the engine than the one your game ships with shows "Made
+by a newer version of the game." on the Load page and isn't loaded; it is never called
+damaged, and loading it again in the newer version works. (Each save records the engine's
+save revision for this.) Saves from older versions always load.
+
 ### Saves are input
 
 A save file is plain text that players can edit and share, so treat what it holds like

@@ -13,12 +13,12 @@ import pytest
 from engine.persist import limits, saves
 from engine.persist.saves import SLOT_NAME_RE, SaveEncoder, SlotId, SlotStatus, TooLarge
 from engine.runtime import limits as runtime_limits
-from engine.runtime.state import GameState
+from engine.runtime.state import STATE_REVISION, GameState
 from tests.persist import save_support as ss
 from tests.persist.helpers import STRING_PARTS
 
 META_KEYS = ["vnsave", "game", "seq", "saved_at", "description", "chapter", "game_version",
-             "state_format", "thumb", "state"]
+             "state_format", "state_rev", "thumb", "state"]
 
 
 # --- AC-F11-01: names and the three lines ------------------------------------------------------
@@ -67,9 +67,10 @@ def test_a_p8_save_has_three_lines():
     meta = json.loads(first)
     assert list(meta) == META_KEYS
     assert first == json.dumps(meta, ensure_ascii=True, separators=(",", ":")).encode() + b"\n"
-    assert meta == {"vnsave": 1, "game": "f11-template", "seq": 1, "saved_at": ss.SAVED_AT,
+    assert meta == {"vnsave": 2, "game": "f11-template", "seq": 1, "saved_at": ss.SAVED_AT,
                     "description": "The wind picks up.", "chapter": None, "game_version": "1.0",
-                    "state_format": 1, "thumb": len(second), "state": len(third)}
+                    "state_format": 1, "state_rev": STATE_REVISION, "thumb": len(second),
+                    "state": len(third)}
     assert len(first) + meta["thumb"] + meta["state"] == len(data)
     assert re.fullmatch(rb'\{"jpeg":(null|"[A-Za-z0-9+/]*={0,2}")\}\n', second)
     assert third == json.dumps(state.to_json(), ensure_ascii=True, separators=(",", ":"),
@@ -101,15 +102,31 @@ def test_svg_confusion_is_never_written():
     (lambda: ss.make_save(game=None), ss.GAME_ID, "ok", "ok"),
     (lambda: ss.make_save(game="other-game"), ss.GAME_ID, "other_game", "other_game"),
     (lambda: ss.make_save(game="other-game"), None, "ok", "ok"),
-    (lambda: b'{"vnsave":2,\x00\xff garbage\n\x01garbage\n{garbage\n', ss.GAME_ID,
+    (lambda: b'{"vnsave":3,\x00\xff garbage\n\x01garbage\n{garbage\n', ss.GAME_ID,
      "newer", "newer"),
     (lambda: ss.with_meta(ss.make_save(), state_format=2), ss.GAME_ID, "newer", "newer"),
+    # Version 1's revision: a later one is NEWER before line 3 is read, even when line 3
+    # holds a nested key this build would refuse; a vnsave 1 (dev) file loads as 0.
+    (lambda: ss.with_meta(ss.make_save(), state_rev=STATE_REVISION + 1), ss.GAME_ID,
+     "newer", "newer"),
+    (lambda: ss.with_line3(ss.with_meta(ss.make_save(), state_rev=STATE_REVISION + 1),
+                           ss.state_json_line({**ss.p8_state().to_json(),
+                                               "items": {"held": [], "later": 1}})),
+     ss.GAME_ID, "newer", "newer"),
+    (lambda: ss.with_meta(ss.make_save(), vnsave=1, drop=("state_rev",)), ss.GAME_ID,
+     "ok", "ok"),
+    (lambda: ss.with_meta(ss.make_save(), vnsave=1), ss.GAME_ID, "damaged", "damaged"),
+    (lambda: ss.with_meta(ss.make_save(), drop=("state_rev",)), ss.GAME_ID,
+     "damaged", "damaged"),
+    (lambda: ss.with_meta(ss.make_save(), state_rev=0), ss.GAME_ID, "damaged", "damaged"),
     (lambda: ss.with_line3(ss.make_save(), ss.state_json_line(
         {**ss.p8_state().to_json(), "format": 2})), ss.GAME_ID, "ok", "newer"),
     (lambda: ss.with_line3(ss.make_save(), ss.state_json_line(
         {**ss.p8_state().to_json(), "history2": {}})), ss.GAME_ID, "ok", "newer"),
-], ids=["missing", "p8", "game null", "other game", "other game, no id", "vnsave 2 garbage",
-        "state_format 2", "line 3 format 2", "line 3 unknown key"])
+], ids=["missing", "p8", "game null", "other game", "other game, no id", "vnsave 3 garbage",
+        "state_format 2", "state_rev later", "state_rev later, nested key", "vnsave 1 (dev)",
+        "vnsave 1 with state_rev", "vnsave 2 without state_rev", "state_rev 0",
+        "line 3 format 2", "line 3 unknown key"])
 def test_slot_status(make, game_id, head, full, tmp_path):
     data = make()
     if data is not None:
@@ -132,7 +149,7 @@ def test_head_stamp_and_meta(tmp_path):
     assert h.meta == saves.SaveMeta(seq=7, saved_at=ss.SAVED_AT, description="The wind picks up.",
                                     chapter="Chapter 2", game=ss.GAME_ID, game_version="1.0",
                                     state_format=1, thumb_len=h.meta.thumb_len,
-                                    state_len=h.meta.state_len)
+                                    state_len=h.meta.state_len, state_rev=STATE_REVISION)
 
 
 def test_entries_that_are_not_files_are_damaged_by_entry(tmp_path):

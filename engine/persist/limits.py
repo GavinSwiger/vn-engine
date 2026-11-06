@@ -39,7 +39,8 @@ MERGES_IN_A_ROW_MAX = 3
 # --- Saves (F11 ``04-technical.md`` §13; SEC-F11-06) ---------------------------------------
 # The read bounds of a ``.vnsave`` file. AC-F11-62 pins them: lowering one is always safe;
 # raising one needs AC-F11-64 re-run on the reference machine first.
-SAVE_FORMAT = 1                      # the meta line's ``vnsave``; > 1 reads as NEWER
+SAVE_FORMAT = 2                      # the meta line's ``vnsave``; higher reads as NEWER. 2 (v1)
+                                     # adds ``state_rev``; a 1 (a dev save) still loads
 SLOTS_PER_PAGE = 6
 SAVE_PAGES_MAX = 100                 # numbered pages ``page1`` … ``page100`` (``[saves] pages``)
 META_MAX = 8_192                     # line 1 and its "\n"

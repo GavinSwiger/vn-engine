@@ -10,8 +10,9 @@ client's job (F16 ``07`` §3): the encoder only makes the pieces.
 
 **The file** (``<slot>.vnsave``), three compact ASCII JSON lines, each ending in ``\\n``::
 
-    {"vnsave":1,"game":"paper-lanterns","seq":42,"saved_at":1793567040,"description":"…",
-     "chapter":null,"game_version":"1.0","state_format":1,"thumb":24113,"state":201877}
+    {"vnsave":2,"game":"paper-lanterns","seq":42,"saved_at":1793567040,"description":"…",
+     "chapter":null,"game_version":"1.0","state_format":1,"state_rev":1,"thumb":24113,
+     "state":201877}
     {"jpeg":"/9j/4AAQ…"}                                    (or {"jpeg":null})
     {"format":1,"identity_scheme":1,"position":{…},…}      (GameState.to_json(), unchanged)
 
@@ -25,7 +26,10 @@ the same steps (``split_lines``, ``strict_loads`` with F12's hooks, the meta tab
 exactly ``RecursionError``, ``ValueError`` (with ``UnicodeDecodeError`` and
 ``JSONDecodeError``), ``MemoryError``, and ``OverflowError`` as DAMAGED; anything else is a
 programmer error. ``vnsave`` is checked first: a later format is NEWER whatever else the file
-holds. Only an OK head decodes line 2 (base64, then ``check_engine_jpeg``; SEC-F11-01, -02).
+holds. Then ``state_format`` and ``state_rev`` (``GameState``'s ``STATE_REVISION``): a higher
+one is NEWER before line 3 is read, so a save from a later engine is never DAMAGED for a key
+this one doesn't know. ``vnsave`` 1 (development saves, before ``state_rev``) still loads, as
+revision 0. Only an OK head decodes line 2 (base64, then ``check_engine_jpeg``; SEC-F11-01, -02).
 The full read pre-scans line 3's structure bytes before ``json.loads`` and validates it with
 ``GameState.from_json``.
 
@@ -49,7 +53,7 @@ from engine.core.imageheader import check_engine_jpeg
 from engine.core.paths import is_valid_app_id
 from engine.core.safefile import ReadKind, Stamp
 from engine.persist import fileformat, limits
-from engine.runtime.state import STATE_FORMAT, GameState, StateInvalid
+from engine.runtime.state import STATE_FORMAT, STATE_REVISION, GameState, StateInvalid
 
 SlotPage = Literal["auto", "quick"] | int              # int: 1 .. SAVE_PAGES_MAX
 THUMB_SIZE = (320, 180)                                 # render/thumbnail.THUMB_SIZE
@@ -58,8 +62,10 @@ SLOT_NAME_RE = re.compile(r"(auto|quick|page(?:[1-9][0-9]?|100))-[1-6]\.vnsave",
 
 # Exactly the meta keys, in the order the encoder writes them (``vnsave`` first, §4).
 META_KEYS = ("vnsave", "game", "seq", "saved_at", "description", "chapter", "game_version",
-             "state_format", "thumb", "state")
+             "state_format", "state_rev", "thumb", "state")
 _META_KEY_SET = frozenset(META_KEYS)
+_META_KEYS_V1 = _META_KEY_SET - {"state_rev"}          # ``vnsave`` 1: development saves
+REVISION_MAX = 1_000_000                                # ``state_rev``'s range on read
 
 # The parse and validation errors both readers turn into DAMAGED (§7.5; SEC-F11-06).
 PARSE_ERRORS = (RecursionError, ValueError, MemoryError, OverflowError)
@@ -185,6 +191,7 @@ class SaveMeta:
     state_format: int
     thumb_len: int
     state_len: int
+    state_rev: int = 0                                  # 0: a ``vnsave`` 1 file
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,12 +287,21 @@ def _text(value: object, cap: int) -> bool:
 
 
 def meta_of(obj: object) -> SaveMeta | None:
-    """Line 1 as ``SaveMeta`` if it has exactly §4's keys with their types and ranges."""
-    if type(obj) is not dict or obj.keys() != _META_KEY_SET:
+    """Line 1 as ``SaveMeta`` if it has exactly §4's keys with their types and ranges: this
+    ``vnsave`` with ``state_rev``, or ``vnsave`` 1 without it (read as revision 0)."""
+    if type(obj) is not dict or type(obj.get("vnsave")) is not int:
+        return None
+    version = obj["vnsave"]
+    if version == limits.SAVE_FORMAT and obj.keys() == _META_KEY_SET:
+        rev = obj["state_rev"]
+        if not _int_in(rev, 1, REVISION_MAX):
+            return None
+    elif version == 1 and obj.keys() == _META_KEYS_V1:
+        rev = 0
+    else:
         return None
     game, chapter = obj["game"], obj["chapter"]
-    if not (obj["vnsave"] == limits.SAVE_FORMAT and type(obj["vnsave"]) is int
-            and (game is None or is_valid_app_id(game))
+    if not ((game is None or is_valid_app_id(game))
             and _int_in(obj["seq"], 1, limits.SEQ_MAX)
             and _int_in(obj["saved_at"], 0, limits.SAVED_AT_MAX)
             and _text(obj["description"], limits.DESCRIPTION_MAX)
@@ -298,7 +314,7 @@ def meta_of(obj: object) -> SaveMeta | None:
     return SaveMeta(seq=obj["seq"], saved_at=obj["saved_at"], description=obj["description"],
                     chapter=chapter, game=game, game_version=obj["game_version"],
                     state_format=obj["state_format"], thumb_len=obj["thumb"],
-                    state_len=obj["state"])
+                    state_len=obj["state"], state_rev=rev)
 
 
 @dataclass(frozen=True, slots=True)
@@ -341,6 +357,9 @@ def _classify(data: bytes, size: int, game_id: str | None) -> _Verdict:
     if meta.state_format > STATE_FORMAT:
         return _Verdict(SlotStatus.NEWER, None, meta,
                         _format_reason("state", meta.state_format), lines)
+    if meta.state_rev > STATE_REVISION:
+        return _Verdict(SlotStatus.NEWER, None, meta,
+                        f"made with state revision {meta.state_rev}", lines)
     if meta.game is not None and game_id is not None and meta.game != game_id:
         return _Verdict(SlotStatus.OTHER_GAME, None, meta, REASON_OTHER_GAME, lines)
     return _Verdict(SlotStatus.OK, None, meta, "", lines)
@@ -730,7 +749,8 @@ class SaveEncoder(StateEncoder):
         return {"vnsave": limits.SAVE_FORMAT, "game": fields["game"], "seq": fields["seq"],
                 "saved_at": fields["saved_at"], "description": fields["description"],
                 "chapter": fields["chapter"], "game_version": fields["game_version"],
-                "state_format": STATE_FORMAT, "thumb": thumb, "state": state}
+                "state_format": STATE_FORMAT, "state_rev": STATE_REVISION, "thumb": thumb,
+                "state": state}
 
 
 def encode_save(state: GameState, **fields: object) -> tuple[bytes, ...] | TooLarge:

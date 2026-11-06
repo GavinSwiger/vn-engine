@@ -14,7 +14,9 @@ F22 ``points``), the test fails; regenerate the saves with one command:
     .venv/Scripts/python -m tests.persist.template_s
 
 A save format change (``vnsave`` or ``state_format`` above 1) must instead keep these files
-and load them through a migration (``06`` §7).
+and load them through a migration (``06`` §7). ``vnsave`` 2 (version 1's ``state_rev``) did:
+these files stay ``vnsave`` 1 and load as revision 0, so their meta is compared without
+``vnsave`` and ``state_rev``. The frozen version 1 saves are ``test_v1_golden_saves.py``'s.
 """
 
 import json
@@ -28,7 +30,7 @@ from tests.persist import template_s as ts
 
 SHOWN = {"p6.vnsave": (Say, ts.LINE6), "menu.vnsave": (ShowMenu, None),
          "p18.vnsave": (Say, ts.LINE18)}
-LENGTHS = ("thumb", "state")
+LENGTHS = ("thumb", "state", "vnsave", "state_rev")   # not compared (docstring)
 
 
 def test_ac37_golden_saves_are_this_builds_and_load_at_their_lines(tmp_path):
@@ -39,6 +41,7 @@ def test_ac37_golden_saves_are_this_builds_and_load_at_their_lines(tmp_path):
         read = saves.parse_full(committed, game_id=ss.GAME_ID)
         ours = saves.parse_full(data, game_id=ss.GAME_ID)
         assert read.status is SlotStatus.OK, (name, read.reason)
+        assert ss.meta(committed)["vnsave"] == 1 and read.meta.state_rev == 0, name
         meta = {k: v for k, v in ss.meta(committed).items() if k not in LENGTHS}
         assert meta == {k: v for k, v in ss.meta(data).items() if k not in LENGTHS}, name
         assert json.loads(ss.lines(committed)[2]) == json.loads(ss.lines(data)[2]), name

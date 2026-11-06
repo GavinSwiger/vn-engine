@@ -252,7 +252,7 @@ def test_no_quick_save_and_modifiers(tmp_path, scripted_app, unthreaded):
     folder = game / "saves"
     folder.mkdir()
     ss.write_slot(folder, b"junk\n", quick(1))
-    ss.write_slot(folder, ss.with_meta(ss.make_save(), vnsave=2), quick(2))
+    ss.write_slot(folder, ss.with_meta(ss.make_save(), vnsave=3), quick(2))
 
     def script(app, out):
         yield from wait(lambda: at_line(app, LINE6))
@@ -465,7 +465,7 @@ def test_group_g_every_quick_slot_unreplaceable(tmp_path, scripted_app, unthread
     folder = game / "saves"
     folder.mkdir()
     for n in range(1, 7):
-        data = (ss.with_meta(ss.make_save(), vnsave=2) if n % 2
+        data = (ss.with_meta(ss.make_save(), vnsave=3) if n % 2
                 else ss.make_save(game="other-game"))
         ss.write_slot(folder, data, quick(n))
     before = {p.name: p.read_bytes() for p in folder.iterdir()}
@@ -649,7 +649,7 @@ def test_save_before_the_index_ends_finishes_it(tmp_path, scripted_app, unthread
     folder = game / "saves"
     folder.mkdir()
     ss.write_slot(folder, ss.make_save(seq=40), SlotId(7, 3))
-    ss.write_slot(folder, ss.with_meta(ss.make_save(seq=90), vnsave=2), SlotId(2, 1))
+    ss.write_slot(folder, ss.with_meta(ss.make_save(seq=90), vnsave=3), SlotId(2, 1))
     ss.write_slot(folder, ss.make_save(seq=95, game="other-game"), SlotId(2, 2))
     real_step = saves.IndexJob.step
     # The frame slot never gets a step done; only ``finish()`` (deadline ∞) runs it.

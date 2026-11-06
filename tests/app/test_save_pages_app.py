@@ -315,7 +315,7 @@ def test_ac45_ac19_reading_pages_and_lazy_decodes(tmp_path, scripted_app, unthre
     write(game, ss.make_save(seq=10, jpeg=valid), SlotId(1, 1))
     write(game, ss.with_line2(ss.make_save(seq=11), b'{"jpeg":"AAAA"}\n'), SlotId(1, 2))
     write(game, ss.with_meta(ss.make_save(seq=12, jpeg=valid), seq="x"), SlotId(1, 3))
-    write(game, ss.with_meta(ss.make_save(seq=13, jpeg=valid), vnsave=2), SlotId(1, 4))
+    write(game, ss.with_meta(ss.make_save(seq=13, jpeg=valid), vnsave=3), SlotId(1, 4))
     write(game, ss.make_save(seq=14, jpeg=valid, game="other-game"), SlotId(1, 5))
     _hostile_page(game)
     reads = ss.ReadSpy().install(monkeypatch)

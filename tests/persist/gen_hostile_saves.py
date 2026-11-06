@@ -213,7 +213,7 @@ def _gen(rng: random.Random, row: dict, data: bytes | None = None,
         "meta_extra": lambda: ss.with_meta(p8, extra=1),
         "dup_vnsave": lambda: b'{"vnsave":1,' + p8[1:],
         "nested_line1": lambda: ss.with_line1(p8, b"[" * row["levels"] + b"\n"),
-        "newer_garbage": lambda: (b'{"vnsave":2,' + bytes(rng.randrange(256) for _ in range(40))
+        "newer_garbage": lambda: (b'{"vnsave":3,' + bytes(rng.randrange(256) for _ in range(40))
                                   .replace(b"\n", b"?") + b"\n" + b"\x00garbage\n" * 3),
         # Group B: sizes (AC-F11-09)
         "length_delta": lambda: _length_delta(row["key"], row["delta"], p8),
