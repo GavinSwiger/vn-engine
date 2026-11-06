@@ -1,0 +1,41 @@
+# The version 1 golden saves' story (tests/persist/v1_saves.py). Never edit: the saves in
+# ../ were made from it and must load at their lines forever.
+define hana = Character("Hana")
+lock contact hana "Hana" on pigeon
+lock contact ren "Ren"
+define invite = ["Meet me at the bridge.", {"ask": "come", "yes": "I will.", "no": "Not this year."}]
+define late = "Running late!"
+points logic 0 to 10 start 3
+points trust 0 to 10
+lock item coin "Coins" in "Purse" count 0 to 999 money
+lock item match "Matches" count 3
+lock item key "Brass Key"
+default visits = 0
+
+label start:
+    "Morning."
+    show clock
+    show meter logic trust
+    show hotbar
+    unlock item coin 30
+    unlock item match 2
+    unlock item key
+    points trust += 2
+    $ visits += 1
+    send invite from hana
+    "Hana wrote."
+    send late from ren after 1 day
+    clock next
+    menu:
+        hana "Admit it."
+        "The gate was locked." check logic hard:
+            success:
+                hana "How?"
+            failure:
+                hana "Nice story."
+        "Train.":
+            points logic += 4
+    "Evening."
+    clock next day
+    "Next morning."
+    "The end."
