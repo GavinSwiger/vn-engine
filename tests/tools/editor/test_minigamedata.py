@@ -711,4 +711,5 @@ def test_shop_stock_round_trip_and_checks():
         theirs = shop_rules.problem({"stock": md.value_of(md.SHOP, case)})
         assert mine == theirs, case
     twice = md.ShopTable((md.ShopRow("tea", 1), md.ShopRow("tea", 2)))
-    assert md.problem(md.SHOP, twice) == 'The item "tea" is used twice. Each one needs its own name.'
+    said = md.problem(md.SHOP, twice)
+    assert said == 'The item "tea" is used twice. Each one needs its own name.'

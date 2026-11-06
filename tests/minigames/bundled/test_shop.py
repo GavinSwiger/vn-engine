@@ -17,7 +17,7 @@ from engine.minigames import api
 from engine.minigames.bundled import shop_rules as rules
 from engine.minigames.bundled.shop import WORDS, Shop
 from engine.runtime.codex import READ_KIND, TIP_KIND, Codex, CodexIndex
-from engine.runtime.commands import MeterView, MinigameBase, StartMinigame
+from engine.runtime.commands import MinigameBase, StartMinigame
 from engine.runtime.minigame import MinigameLedger, RequestError, entry_check
 from engine.runtime.persistent import PersistentStore
 from engine.script.codex import CodexCategory, CodexEntry

@@ -167,7 +167,7 @@ NO_GIFT_ITEMS = "No items yet. Add them in Database ▸ Codex, then pick the gif
 NEW_GIFT = ("liked", 1)               # a new gift's reaction and points
 
 # Shops (F64 round 2), on the Table panel.
-SHOP_HEADS = ("Item", "Price", "How many", "Item's own price")
+SHOP_HEADS = ("Item", "Price", "How many", "Its price")
 ADD_SHOP_ROW = "+ Add item"
 NO_SHOP_ITEMS = "No items yet. Add them in Database ▸ Codex, then put them on sale here."
 NO_ITEMS_FOR_SHOP = ("A shop needs an item to sell. Add one in the Database ▸ Codex ▸ Items "
@@ -1912,7 +1912,7 @@ class GiftsEditor(Editor):
 class ShopEditor(Editor):
     """F64 round 2: the shop's stock on the Table panel, a row per item: the item, its price
     (empty: the item's own ``price``), how many are for sale on a visit (empty: any number),
-    and the item's own price for reference. ↑ and ↓ order the rows as the shop lists them."""
+    and the item's own price for reference. ▲ and ▼ order the rows as the shop lists them."""
 
     kind = mg.SHOP
 
@@ -1921,12 +1921,13 @@ class ShopEditor(Editor):
         super().__init__(host, parent, ds, model)
         px = self.px
         self.panel = tp.TablePanel(self.frame, (
-            tp.Column("item", SHOP_HEADS[0], tp.PICK, choices=lambda: self.lookups.items),
-            tp.Column("price", SHOP_HEADS[1], tp.NUMBER, width=8, lo=0,
+            tp.Column("item", SHOP_HEADS[0], tp.PICK, width=16,
+                      choices=lambda: self.lookups.items),
+            tp.Column("price", SHOP_HEADS[1], tp.NUMBER, width=7, lo=0,
                       hi=mg.SHOP_PRICE_MAX, blank=True, rule=SHOP_PRICE_RULE),
             tp.Column("stock", SHOP_HEADS[2], tp.NUMBER, width=5, lo=1,
                       hi=mg.SHOP_STOCK_MAX, blank=True, rule=SHOP_STOCK_RULE),
-            tp.Column("own", SHOP_HEADS[3], tp.LABEL, width=10, text=self._own_price)),
+            tp.Column("own", SHOP_HEADS[3], tp.LABEL, width=8, text=self._own_price)),
             px=px, on_edit=self.set_row, on_remove=self.remove_row, on_move=self.move_row,
             message=True)
         self.table = self.panel.frame

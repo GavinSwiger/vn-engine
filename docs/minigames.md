@@ -99,7 +99,7 @@ saves once you fix it.
   listed. **+ Add gift** adds a row, and ✕ removes it. The items come from **Codex ▸ Items**.
 - **Shop**: one row per item for sale: the item, its price, and how many are for sale. An
   empty Price uses the item's own **Price** (Codex ▸ Items); an empty How many means any
-  number. **+ Add item** adds a row, ↑ and ↓ move it, and ✕ removes it.
+  number. **+ Add item** adds a row, ▲ and ▼ move it, and ✕ removes it.
 
 Then, in a scene's **Events**, use **Insert ▸ Minigame**. Pick the game. The form shows
 that game's arguments. A data argument lists that game's data, with **Set up…** to edit

@@ -19,7 +19,7 @@ and turns each edit into a new model, which it writes as one plan (one undo step
   ``panel.frame``. ``show(rows, pinned=())`` (re)builds it: a caption row (the heads, upper
   case), then each pinned row (``(label, values)``: a fixed first cell, no remove or move: the
   gift table's "Any other gift"), then each row (``values``: column key → value). Each row
-  ends with ✕ (``on_remove(i)``) and, with ``on_move``, ↑ and ↓ (``on_move(i, -1|+1)``).
+  ends with ✕ (``on_remove(i)``) and, with ``on_move``, ▲ and ▼ (``on_move(i, -1|+1)``).
 - An edit calls ``on_edit(i, key, value)`` for row ``i`` and ``on_pinned(i, key, value)`` for
   a pinned row, once per commit (Enter, a pick, leaving the cell) of a changed cell. A typed
   number outside ``lo``..``hi`` (or not a number) is refused in the cell: its old value
@@ -47,7 +47,7 @@ LABEL: Final = "label"
 KINDS: Final = (PICK, NUMBER, TEXT, LABEL)
 
 REMOVE: Final = "✕"
-UP, DOWN = "↑", "↓"
+UP, DOWN = "▲", "▼"
 PAD_PX: Final = 6
 
 T = TypeVar("T")
@@ -214,8 +214,9 @@ class TablePanel:
             if self.on_move is not None:
                 for step, text in ((-1, UP), (1, DOWN)):
                     ok = 0 <= i + step < len(rows)
+                    move = self.on_move
                     button = ttk.Button(self.frame, text=text, width=3, style="Ghost.TButton",
-                                        command=lambda i=i, s=step: self.on_move(i, s))  # type: ignore[misc]
+                                        command=lambda i=i, s=step, m=move: m(i, s))
                     button.grid(row=r, column=at, sticky="w")
                     if not ok:
                         button.state(["disabled"])

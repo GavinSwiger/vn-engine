@@ -23,13 +23,13 @@ Every rule is in ``shop_rules``; this module is the session:
 Presentation-only: a load or rollback starts the visit again; nothing was bought.
 """
 
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 from engine.minigames.api import Arg, Minigame, Outcome, PluginEvent, StoryNames
 from engine.minigames.bundled import shop_rules as rules
 from engine.minigames.bundled.rule_text import fill
 from engine.ui.focus import Box, FocusGroup
-from engine.ui.layouts import button_height, list_row_height, pitch, scaled
+from engine.ui.layouts import button_height, list_row_height, pitch
 from engine.ui.nav import InputKind, Nav
 from engine.ui.widgets import Button, ListRow, Look, ScrollList
 
@@ -182,9 +182,14 @@ class Shop(Minigame):
     # -- actions --
 
     def select(self, index: int) -> None:
-        if 0 <= index < len(self.offers) and index != self.selected:
+        """Row ``index`` is the one Buy buys; the list's focus follows it."""
+        if not 0 <= index < len(self.offers):
+            return
+        if index != self.selected:
             self.selected = index
             self.message = ""
+        if self.list.focus_row != index:
+            self.list.focus_index(index)
 
     def _row_activated(self, index: int) -> None:
         """A click selects the row; Enter or A on it also goes on to Buy."""

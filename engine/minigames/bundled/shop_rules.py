@@ -102,8 +102,8 @@ def problem(args: dict) -> str | None:
     return text_problem("name", args.get("name"), NAME_MAX)                     # S8
 
 
-def _price_of(row: object) -> int | None:
-    return row[0] if type(row) is list else row                                  # type: ignore[return-value]
+def _price_of(row: object) -> object:
+    return row[0] if type(row) is list else row
 
 
 def story_problem(args: dict, story: StoryNames) -> str | None:
