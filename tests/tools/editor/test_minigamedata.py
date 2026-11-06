@@ -21,7 +21,7 @@ from engine.minigames.bundled import (ask_text, cipher_note, code_lock, gift_giv
                                       heartbeat, lock_rules,
                                       phone_chat, phone_rules, poem_game, poem_rules,
                                       present_evidence, present_rules, puzzle_room, room_rules,
-                                      stay_still)
+                                      shop, shop_rules, stay_still)
 from engine.tools.editor import declplan
 from engine.tools.editor import minigamedata as md
 from engine.tools.editor.scriptedit import Refuse, apply_lines
@@ -431,7 +431,7 @@ def test_builtin_fields_match_the_plugins():
     defaults); the mirrored limits are the rules modules'."""
     plugins = {}
     for module in (poem_game, present_evidence, phone_chat, puzzle_room, heartbeat, code_lock,
-                   stay_still, hand_game, gift_giving, ask_text, cipher_note, terminal):
+                   stay_still, hand_game, gift_giving, ask_text, cipher_note, terminal, shop):
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if isinstance(getattr(cls, "args", None), dict) and getattr(cls, "name", None):
                 plugins[cls.name] = cls.args
@@ -678,3 +678,37 @@ def test_ac_f54_11_hints_and_row_summary():
     line = ('minigame gift_giving skippable gifts=birthday_gifts to="hana" '
             'categories=["Gifts"] into reaction')
     assert md.FORM.summary({"line": line}) == "Gift giving · birthday_gifts → reaction"
+
+
+# --- F64 round 2: the shop's stock ---------------------------------------------------------
+
+SHOP_TEXT = """define stall_stock = {
+    "tea": None,
+    "matches": [1, 10],
+    "lantern": 20,
+    }
+"""
+
+
+def test_shop_stock_round_trip_and_checks():
+    found = md.scan({"script/database.vns": SHOP_TEXT})
+    assert [(d.kind, d.name, d.guessed) for d in found] == [(md.SHOP, "stall_stock", True)]
+    model = found[0].model
+    assert model == md.ShopTable((md.ShopRow("tea"), md.ShopRow("matches", 1, 10),
+                                  md.ShopRow("lantern", 20)))
+    assert "\n".join(md.define_lines(md.SHOP, "stall_stock", model)) + "\n" == SHOP_TEXT
+    assert md.scan({"x.vns": 'define prices = {"tea": 5}\n'}) == ()   # too common to guess
+    used = md.scan({"x.vns": 'define p = {"tea": 5}\nlabel s:\n    minigame shop stock=p\n'})
+    assert [(d.kind, d.guessed) for d in used] == [(md.SHOP, False)]
+    assert (md.SHOP_ROWS_MAX, md.SHOP_PRICE_MAX, md.SHOP_STOCK_MAX) == (
+        shop_rules.ROWS_MAX, shop_rules.PRICE_MAX, shop_rules.STOCK_MAX)
+    # Each refusal is shop_rules' (the same words), and a passing model passes there too.
+    cases = [md.ShopTable(()), md.ShopTable((md.ShopRow("bad name", 1),)),
+             md.ShopTable((md.ShopRow("tea", -1),)), md.ShopTable((md.ShopRow("tea", 1, 0),)),
+             md.ShopTable((md.ShopRow("tea", 1, 1000),)), model]
+    for case in cases:
+        mine = md.problem(md.SHOP, case)
+        theirs = shop_rules.problem({"stock": md.value_of(md.SHOP, case)})
+        assert mine == theirs, case
+    twice = md.ShopTable((md.ShopRow("tea", 1), md.ShopRow("tea", 2)))
+    assert md.problem(md.SHOP, twice) == 'The item "tea" is used twice. Each one needs its own name.'

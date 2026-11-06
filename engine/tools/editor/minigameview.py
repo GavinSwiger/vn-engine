@@ -51,18 +51,20 @@ CATEGORY_TITLE = "Minigame data"
 CATEGORY_AFTER = db.CATEGORY_META   # Minigame data goes before Character files
 GROUP_TITLES: Mapping[str, str] = {
     mg.POEM: "Poem word lists", mg.TESTIMONY: "Evidence", mg.CHAT: "Phone chats",
-    mg.ROOM: "Puzzle rooms", mg.GIFTS: "Gift tables", mg.TERMINAL: "Terminals"}
+    mg.ROOM: "Puzzle rooms", mg.GIFTS: "Gift tables", mg.TERMINAL: "Terminals",
+    mg.SHOP: "Shops"}
 THING: Mapping[str, str] = {
     mg.POEM: "poem word list", mg.TESTIMONY: "evidence", mg.CHAT: "phone chat",
-    mg.ROOM: "puzzle room", mg.GIFTS: "gift table", mg.TERMINAL: "terminal"}
+    mg.ROOM: "puzzle room", mg.GIFTS: "gift table", mg.TERMINAL: "terminal",
+    mg.SHOP: "shop"}
 NEW_BUTTON = "+ New"
 NEW_ITEM = "New {thing}…"
 NEW_ASK = "Name of the new {thing}:"
 IN_SCRIPT = "In the script: define {name}"
 EMPTY_TITLE = "No minigame data yet"
 EMPTY_HINT = "Add one with + New."
-ABOUT = ("Word lists, testimony, phone chats, puzzle rooms and gift tables for the minigames. "
-         "Make one here, then pick it in a Minigame row in Events.")
+ABOUT = ("Word lists, testimony, phone chats, puzzle rooms, gift tables and shops for the "
+         "minigames. Make one here, then pick it in a Minigame row in Events.")
 PICK_ENTRY = "Pick something in the list to see it here."
 NOT_SAVED = "Not saved yet: {problem}"
 COMMENTS_ASK = ("{name} has comments in the script. Saving it from here rewrites it without "
@@ -164,6 +166,20 @@ ADD_GIFT = "+ Add gift"
 NO_GIFT_ITEMS = "No items yet. Add them in Database ▸ Codex, then pick the gifts here."
 NEW_GIFT = ("liked", 1)               # a new gift's reaction and points
 
+# Shops (F64 round 2), on the Table panel.
+SHOP_HEADS = ("Item", "Price", "How many", "Item's own price")
+ADD_SHOP_ROW = "+ Add item"
+NO_SHOP_ITEMS = "No items yet. Add them in Database ▸ Codex, then put them on sale here."
+NO_ITEMS_FOR_SHOP = ("A shop needs an item to sell. Add one in the Database ▸ Codex ▸ Items "
+                     "first.")
+SHOP_PRICE_RULE = ("A price is a whole number from 0 to 999,999. Empty: the item's own "
+                   "price.")
+SHOP_STOCK_RULE = "How many is a whole number from 1 to 999. Empty: any number."
+SHOP_NO_PRICE = ("{item} has no price of its own, so the game will refuse this shop. Type a "
+                 "price here, or give it a Price in Database ▸ Codex ▸ Items.")
+NO_OWN_PRICE = "none"
+NEW_SHOP_PRICE = 1                    # a new row's price when the item has none of its own
+
 GAME = "Game"
 SET_UP = "Set up…"
 NEW_SET = "New…"
@@ -199,6 +215,11 @@ class Lookups:
         names = getattr(win, "check_names", {}) or {}
         decls = dec.scan(texts)
         self.items = [(e.name, e.shown) for e in db.codex_entries(decls, names)[dec.ITEM]]
+        # F64 round 2: each item's own price (``price 5``), for the Shop table.
+        self.prices = {d.name: d.values["price"] for d in decls if d.kind == dec.ITEM
+                       and d.values and type(d.values.get("price")) is int}
+        self.money = {d.name for d in decls if d.kind == dec.ITEM and d.values
+                      and d.values.get("money") is True}
         written = [d.name for d in decls if d.kind == dec.METER and d.name]
         self.meters = list(dict.fromkeys(written + [e.name for e in db.meter_entries(decls,
                                                                                      names)]))
@@ -383,6 +404,12 @@ def starter(kind: str, lookups: Lookups) -> object | None:
     if kind == mg.TERMINAL:                                          # F56 (Q2)
         from engine.tools.editor import terminaldata
         return terminaldata.starter()
+    if kind == mg.SHOP:                                              # F64 round 2
+        items = [n for n in lookups.item_names if n not in lookups.money] or lookups.item_names
+        if not items:
+            return None
+        own = items[0] in lookups.prices
+        return mg.ShopTable((mg.ShopRow(items[0], None if own else NEW_SHOP_PRICE),))
     if kind == mg.GIFTS:
         items = lookups.item_names
         rows = (mg.GiftRow(items[0], *NEW_GIFT),) if items else ()
@@ -1880,9 +1907,107 @@ class GiftsEditor(Editor):
         self._set_section(mg.GiftSection(section.character, rows), rebuild=True)
 
 
+# Shops ---------------------------------------------------------------------------------------
+
+class ShopEditor(Editor):
+    """F64 round 2: the shop's stock on the Table panel, a row per item: the item, its price
+    (empty: the item's own ``price``), how many are for sale on a visit (empty: any number),
+    and the item's own price for reference. ↑ and ↓ order the rows as the shop lists them."""
+
+    kind = mg.SHOP
+
+    def __init__(self, host: "EditorHost", parent: tk.Misc, ds: mg.DataSet,
+                 model: object) -> None:
+        super().__init__(host, parent, ds, model)
+        px = self.px
+        self.panel = tp.TablePanel(self.frame, (
+            tp.Column("item", SHOP_HEADS[0], tp.PICK, choices=lambda: self.lookups.items),
+            tp.Column("price", SHOP_HEADS[1], tp.NUMBER, width=8, lo=0,
+                      hi=mg.SHOP_PRICE_MAX, blank=True, rule=SHOP_PRICE_RULE),
+            tp.Column("stock", SHOP_HEADS[2], tp.NUMBER, width=5, lo=1,
+                      hi=mg.SHOP_STOCK_MAX, blank=True, rule=SHOP_STOCK_RULE),
+            tp.Column("own", SHOP_HEADS[3], tp.LABEL, width=10, text=self._own_price)),
+            px=px, on_edit=self.set_row, on_remove=self.remove_row, on_move=self.move_row,
+            message=True)
+        self.table = self.panel.frame
+        self.table.pack(anchor="w", fill="x", pady=(px(8), 0))
+        assert self.panel.message is not None
+        self.panel.message.pack(anchor="w", fill="x", pady=(px(4), 0))
+        foot = ttk.Frame(self.frame)
+        foot.pack(fill="x", pady=(px(8), 0))
+        self.add_button = ttk.Button(foot, text=ADD_SHOP_ROW, style="Secondary.TButton",
+                                     command=self.add_row)
+        self.add_button.pack(side="left")
+        self.no_items = ttk.Label(foot, text=NO_SHOP_ITEMS, style="Hint.TLabel",
+                                  wraplength=px(420), justify="left")
+        self.status.pack(in_=foot, side="right")
+        self.rows: list[dict[str, Any]] = []
+        self.rebuild()
+
+    @property
+    def shop(self) -> mg.ShopTable:
+        return self.model                                   # type: ignore[return-value]
+
+    def _own_price(self, row: Mapping[str, object]) -> str:
+        price = self.lookups.prices.get(str(row.get("item")))
+        return NO_OWN_PRICE if price is None else f"{price:,}"
+
+    def rebuild(self) -> None:
+        if self.lookups.items:
+            self.no_items.pack_forget()
+            self.add_button.configure(state="normal")
+        else:
+            self.add_button.configure(state="disabled")
+            self.no_items.pack(side="left", padx=(self.px(8), 0))
+        self.panel.show([{"item": r.item, "price": r.price, "stock": r.stock}
+                         for r in self.shop.rows])
+        self.rows = self.panel.rows
+        self.hint()
+
+    def hint(self) -> None:
+        """The panel's line: an item sold at its own price that has none (the game's S12)."""
+        prices = self.lookups.prices
+        lacking = next((r for r in self.shop.rows if r.price is None and r.item not in prices),
+                       None)
+        self.panel.say("" if lacking is None else SHOP_NO_PRICE.format(
+            item=self.lookups.item_title(lacking.item)))
+
+    # -- changes --
+
+    def _set_rows(self, rows: Sequence[mg.ShopRow], *, rebuild: bool = False) -> None:
+        table = mg.ShopTable(tuple(rows))
+        if table == self.shop:
+            return
+        self.changed(table, rebuild=rebuild)
+        if not rebuild:
+            self.hint()
+
+    def set_row(self, index: int, key: str, value: object) -> None:
+        rows = list(self.shop.rows)
+        if not 0 <= index < len(rows):
+            return
+        rows[index] = replace(rows[index], **{key: value})
+        self._set_rows(rows, rebuild=key == "item")
+
+    def add_row(self) -> None:
+        items = self.lookups.item_names
+        if not items or len(self.shop.rows) >= mg.SHOP_ROWS_MAX:
+            return
+        used = {r.item for r in self.shop.rows} | self.lookups.money     # never the money
+        name = next((n for n in items if n not in used), items[0])
+        price = None if name in self.lookups.prices else NEW_SHOP_PRICE
+        self._set_rows((*self.shop.rows, mg.ShopRow(name, price)), rebuild=True)
+
+    def remove_row(self, index: int) -> None:
+        self._set_rows(tp.removed(self.shop.rows, index), rebuild=True)
+
+    def move_row(self, index: int, step: int) -> None:
+        self._set_rows(tp.moved(self.shop.rows, index, step), rebuild=True)
+
+
 EDITORS: Mapping[str, type[Editor]] = {
     mg.POEM: PoemEditor, mg.TESTIMONY: EvidenceEditor, mg.CHAT: ChatEditor,
-    mg.ROOM: RoomEditor, mg.GIFTS: GiftsEditor}
+    mg.ROOM: RoomEditor, mg.GIFTS: GiftsEditor, mg.SHOP: ShopEditor}
 # F56: the Terminal editor lives in ``terminalview`` (imported where it is made).
 EDITABLE_KINDS: tuple[str, ...] = (*EDITORS, mg.TERMINAL)
 
@@ -1939,7 +2064,7 @@ def new_data(win: Any, store: Store, kind: str) -> str | None:
     store.read()
     model = starter(kind, store.lookups)
     if model is None:
-        show_error(win.root, NO_ITEMS_FOR_EVIDENCE)
+        show_error(win.root, NO_ITEMS_FOR_SHOP if kind == mg.SHOP else NO_ITEMS_FOR_EVIDENCE)
         return None
     taken = set(dec.taken_names(dec.scan(store.texts), dec.DEFINE)) | {
         s.name for s in store.sets}
@@ -2084,7 +2209,7 @@ class MinigamePane:
         uses = self.store.uses()
         tree = self.tree
         tree.delete(*tree.get_children())
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL, mg.SHOP):
             members = [ds for ds in sets if ds.kind == kind or
                        (kind == mg.TESTIMONY and ds.kind == mg.ANSWER)]
             if not members:
@@ -2180,7 +2305,7 @@ class MinigamePane:
     # New and delete.
     def new_menu(self) -> None:
         menu = tk.Menu(self.root, tearoff=False)
-        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL):
+        for kind in (mg.POEM, mg.TESTIMONY, mg.CHAT, mg.ROOM, mg.GIFTS, mg.TERMINAL, mg.SHOP):
             menu.add_command(label=NEW_ITEM.format(thing=THING[kind]),
                              command=lambda k=kind: self.new(k))
         self.last_menu = menu

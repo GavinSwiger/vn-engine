@@ -339,6 +339,11 @@ MINIGAME_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "screen": "The game's colors, or a dark amber screen in any color scheme.",
         "hide_passwords": "On: a typed password shows as dots.",
     },
+    "shop": {                                           # F64 round 2
+        "stock": "What is for sale: each item, its price and how many. Set up… edits it.",
+        "money": "The item the player pays with (its script name). Empty: the money item.",
+        "name": "The heading over the shop, such as \"Daichi's Stall\". Empty: Shop.",
+    },
     # F53 W2 (C3): the four older games, drafted from docs/minigames.md.
     "poem_game": {
         "words": "The word list: each word and the points it gives each character.",

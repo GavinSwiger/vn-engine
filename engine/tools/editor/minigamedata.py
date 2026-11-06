@@ -47,7 +47,7 @@ import keyword
 import re
 import tokenize
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Final
@@ -71,19 +71,21 @@ CHAT: Final = "chat"
 ROOM: Final = "room"
 GIFTS: Final = "gifts"                # F54
 TERMINAL: Final = "terminal"          # F56
-KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM, GIFTS, TERMINAL)
+SHOP: Final = "shop"                  # F64 round 2
+KINDS: Final = (POEM, TESTIMONY, ANSWER, CHAT, ROOM, GIFTS, TERMINAL, SHOP)
 KIND_TITLES: Final[Mapping[str, str]] = {
     POEM: "Poem words", TESTIMONY: "Evidence", ANSWER: "Evidence answer",
-    CHAT: "Phone chat", ROOM: "Puzzle room", GIFTS: "Gift table", TERMINAL: "Terminal"}
+    CHAT: "Phone chat", ROOM: "Puzzle room", GIFTS: "Gift table", TERMINAL: "Terminal",
+    SHOP: "Shop"}
 # (minigame, argument) → the kind of data set it takes.
 USE_KINDS: Final[Mapping[tuple[str, str], str]] = {
     ("poem_game", "words"): POEM, ("present_evidence", "testimony"): TESTIMONY,
     ("present_evidence", "answer"): ANSWER, ("phone_chat", "chat"): CHAT,
     ("puzzle_room", "room"): ROOM, ("gift_giving", "gifts"): GIFTS,
-    ("terminal", "data"): TERMINAL}
+    ("terminal", "data"): TERMINAL, ("shop", "stock"): SHOP}
 BUNDLED: Final = ("poem_game", "present_evidence", "phone_chat", "puzzle_room", "heartbeat",
                   "code_lock", "stay_still", "hand_game", "gift_giving", "ask_text",
-                  "cipher_note", "terminal")
+                  "cipher_note", "terminal", "shop")
 
 INDENT: Final = "    "               # docs/minigames.md's layout: one level, closer indented
 LINE_MAX: Final = 100                 # an answer, an ask or combine stays on one line up to this
@@ -153,6 +155,10 @@ CHARACTERS_MAX: Final = 32
 GIFTS_MAX: Final = 200
 GIFT_POINTS: Final = (-10, 10)
 GIFT_LINE_MAX: Final = 160
+# F64 round 2 (shop_rules' limits and S texts, mirrored: ADR-0008).
+SHOP_ROWS_MAX: Final = 40
+SHOP_PRICE_MAX: Final = 999_999
+SHOP_STOCK_MAX: Final = 999
 
 
 # --- Models ------------------------------------------------------------------------------------
@@ -279,6 +285,21 @@ class GiftSection:
 @dataclass(frozen=True, slots=True)
 class GiftTable:
     sections: tuple[GiftSection, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ShopRow:
+    """One row of a shop's stock (F64 round 2): the item, its price (None: the item's own
+    ``price``) and how many are for sale on a visit (None: any number)."""
+
+    item: str
+    price: int | None = None
+    stock: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ShopTable:
+    rows: tuple[ShopRow, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -516,9 +537,34 @@ def _read_gifts(value: object) -> GiftTable | None:
     return GiftTable(tuple(sections))
 
 
+def _whole_or_none(value: object) -> bool:
+    return value is None or type(value) is int
+
+
+def _read_shop(value: object) -> ShopTable | None:
+    """F64 round 2's stock: items → a price, or ``[price, how many]`` (whole numbers or
+    None); else None."""
+    if type(value) is not dict:
+        return None
+    rows = []
+    for item, row in value.items():
+        if type(item) is not str:
+            return None
+        if type(row) is list:
+            if len(row) != 2 or not all(_whole_or_none(v) for v in row):
+                return None
+            rows.append(ShopRow(item, row[0], row[1]))
+        elif _whole_or_none(row):
+            rows.append(ShopRow(item, row))                          # type: ignore[arg-type]
+        else:
+            return None
+    return ShopTable(tuple(rows))
+
+
 READERS: Final = {POEM: _read_poem, TESTIMONY: _read_testimony, ANSWER: _read_answer,
                   CHAT: _read_chat, ROOM: _read_room, GIFTS: _read_gifts,
-                  TERMINAL: terminaldata.read}                       # F56
+                  TERMINAL: terminaldata.read,                       # F56
+                  SHOP: _read_shop}                                  # F64 round 2
 
 
 def read_value(kind: str, value: object) -> object:
@@ -591,6 +637,15 @@ def _gifts_value(model: GiftTable) -> dict:
     return {s.character: {r.item: _gift_value(r) for r in s.rows} for s in model.sections}
 
 
+def _shop_row_value(row: ShopRow) -> object:
+    """A stock row as written: the price alone (any number for sale), else ``[price, n]``."""
+    return row.price if row.stock is None else [row.price, row.stock]
+
+
+def _shop_value(model: ShopTable) -> dict:
+    return {r.item: _shop_row_value(r) for r in model.rows}
+
+
 def evidence_values(model: Evidence) -> tuple[dict, dict]:
     """The testimony and answer values of ``model``."""
     testimony = {s.key: s.text for s in model.statements}
@@ -615,6 +670,8 @@ def value_of(kind: str, model: object) -> object:
         return _gifts_value(model)                               # type: ignore[arg-type]
     if kind == TERMINAL:
         return terminaldata.value_of(model)                      # type: ignore[arg-type]
+    if kind == SHOP:
+        return _shop_value(model)                                # type: ignore[arg-type]
     return _room_value(model)                                    # type: ignore[arg-type]
 
 
@@ -697,6 +754,9 @@ def define_lines(kind: str, name: str, model: object) -> list[str]:
                         [[f"{_s(r.item)}: {literal(_gift_value(r))}"] for r in s.rows], "}")
                  for s in model.sections]                            # type: ignore[union-attr]
         return _block(head + "{", items, "}")
+    if kind == SHOP:                                                 # F64 round 2: a row a line
+        return _block(head + "{", [[f"{_s(r.item)}: {literal(_shop_row_value(r))}"]
+                                   for r in model.rows], "}")        # type: ignore[union-attr]
     return _room_lines(name, model)                                  # type: ignore[arg-type]
 
 
@@ -1062,6 +1122,29 @@ def gift_set_any(section: GiftSection, reaction: str, points: int,
     return GiftSection(section.character, tuple(rows))
 
 
+def _shop_problem(model: ShopTable) -> str | None:
+    """``shop_rules``' data checks (S2, S3, S5-S7), in its words; an item twice in Studio's
+    words (a ``dict`` can't hold it)."""
+    rows = model.rows
+    if not 1 <= len(rows) <= SHOP_ROWS_MAX:
+        return f"stock has {len(rows)} items; a shop sells 1 to {SHOP_ROWS_MAX}."
+    seen: set[str] = set()
+    for r in rows:
+        if METER_RE.fullmatch(r.item) is None:
+            return f"{_gift_echo(r.item)} in stock can't be an item name; write an item's name."
+        if r.item in seen:
+            return SAME_TWICE.format(what=f"The item {_gift_echo(r.item)}")
+        seen.add(r.item)
+        where = f"{_gift_echo(r.item)} in stock"
+        if r.price is not None and not 0 <= r.price <= SHOP_PRICE_MAX:
+            return (f"{where} costs {r.price}; a price is a whole number from 0 to "
+                    f"{SHOP_PRICE_MAX:,}, or None for the item's own price.")
+        if r.stock is not None and not 1 <= r.stock <= SHOP_STOCK_MAX:
+            return (f"{where} has {r.stock} for sale; how many is a whole number from 1 to "
+                    f"{SHOP_STOCK_MAX}, or None for any number.")
+    return None
+
+
 def problem(kind: str, model: object) -> str | None:
     """The first problem the game would refuse ``model`` for (Studio's words), or None.
     ``kind`` ``TESTIMONY`` takes an ``Evidence``. Data only: a poem's word count against
@@ -1076,6 +1159,8 @@ def problem(kind: str, model: object) -> str | None:
         return _gifts_problem(model)                                 # type: ignore[arg-type]
     if kind == TERMINAL:
         return terminaldata.problem(model)                           # type: ignore[arg-type]
+    if kind == SHOP:
+        return _shop_problem(model)                                  # type: ignore[arg-type]
     return _room_problem(model)                                      # type: ignore[arg-type]
 
 
@@ -1205,8 +1290,10 @@ def answer_name(testimony: str, texts: Mapping[str, str]) -> str | None:
 _DEFINE = re.compile(r"define[ \t]+([^\W\d]\w*)[ \t]*=(.*)", re.DOTALL)
 
 
-def _guess(value: object) -> str | None:
-    """A kind from the shape alone, for data no ``minigame`` line names yet."""
+def _guess(value: object, items: "Callable[[], frozenset[str]]" = frozenset) -> str | None:
+    """A kind from the shape alone, for data no ``minigame`` line names yet. ``items()``: the
+    story's declared item names (F64's shop: a table of plain prices counts only when every
+    key is an item)."""
     if type(value) is list:
         if any(type(s) is dict for s in value) and _read_chat(value) is not None:
             return CHAT
@@ -1221,6 +1308,11 @@ def _guess(value: object) -> str | None:
             type(row) is list and row and row[0] in REACTIONS
             for v in value.values() for row in v.values()) and _read_gifts(value) is not None:
         return GIFTS
+    if all(type(k) is str and METER_RE.fullmatch(k) for k in value) \
+            and _read_shop(value) is not None \
+            and (any(v is None or type(v) is list for v in value.values())
+                 or set(value) <= items()):                          # F64 round 2
+        return SHOP
     values = list(value.values())
     if any(type(v) is dict for v in values) and _read_poem(value) is not None:
         return POEM
@@ -1234,6 +1326,13 @@ def scan(texts: Mapping[str, str]) -> tuple[DataSet, ...]:
     """Every minigame data ``define`` in ``texts`` (ref → editor text), in file order."""
     used = uses(texts)
     out = []
+    found: list[frozenset[str]] = []
+
+    def items() -> frozenset[str]:
+        """The declared item names, read once and only when a guess needs them."""
+        if not found:
+            found.append(frozenset(d.name for d in dec.scan(texts) if d.kind == dec.ITEM))
+        return found[0]
     for ref, text in texts.items():
         for first, last, lines in dec.statements(text):
             match = _DEFINE.match("\n".join(lines))
@@ -1245,7 +1344,7 @@ def scan(texts: Mapping[str, str]) -> tuple[DataSet, ...]:
                 continue
             pairs = used.get(name, ())
             kinds = [USE_KINDS[p] for p in pairs if p in USE_KINDS]
-            kind, guessed = (kinds[0], False) if kinds else (_guess(value), True)
+            kind, guessed = (kinds[0], False) if kinds else (_guess(value, items), True)
             if kind is None:
                 continue
             model = read_value(kind, value)
@@ -1676,6 +1775,10 @@ BUILTIN_FIELDS: Final[Mapping[str, tuple[ArgField, ...]]] = {
         _f("screen", "Screen", CHOICE, "game", choices=("game", "dark"),
            labels=("Game colors", "Dark screen")),
         _f("hide_passwords", "Hide passwords", TOGGLE, True)),
+    "shop": (                                                           # F64 round 2
+        _f("stock", "Stock", DATA, data_kind=SHOP),
+        _f("money", "Paid with (empty: the money item)", TEXT, None),
+        _f("name", "Shop's name", TEXT, None)),
 }
 
 # F53 §5: Lock's code must fit its kind (L3/L4 of ``lock_rules``, which Studio may not import,
@@ -1906,7 +2009,7 @@ GAME_TITLES: Final[Mapping[str, str]] = {
     "phone_chat": "Phone chat", "puzzle_room": "Puzzle room", "heartbeat": "Heartbeat",
     "code_lock": "Code lock", "stay_still": "Stay still", "hand_game": "Hand game",
     "gift_giving": "Gift giving", "ask_text": "Ask for text", "cipher_note": "Coded note",
-    "terminal": "Computer terminal"}
+    "terminal": "Computer terminal", "shop": "Shop"}
 
 
 def game_title(game: str) -> str:
