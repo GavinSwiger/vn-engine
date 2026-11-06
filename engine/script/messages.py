@@ -3706,6 +3706,13 @@ def _w317(look: str = "pigeon", file: str = "sfx/wngs.ogg",
     return text + f" Add audio/{show(str(file))} or check the spelling."
 
 
+def _w323(old: str = "on letters", new: str = "on letter") -> str:
+    """v1 name freeze (2026-11-06): ``old``, a spelling from before version 1, read as
+    ``new`` (``renamed.py``)."""
+    return (f"{show(old)} is a spelling from before version 1. It still works for now, but "
+            f"write {show(new)} instead.")
+
+
 def _w320(name: str = "knows_recipe",
           first: Place = ("database.vns", 12), sets: bool = False) -> str:
     """First-game fix (2026-11-06): plain ``name`` used where ``default persistent.<name>``
@@ -5169,6 +5176,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "W220": _w220,
     "W317": _w317,                      # F65 round 3: [device.<look>] arrive_sound
     "W320": _w320,                      # first-game fix: remembered names (remembered.py)
+    "W323": _w323,                      # v1 name freeze: an old spelling (renamed.py)
     "W221": _w221,
     # F36 ending list & scene replay (01 §5.3): load E348, E350, E351, E352 (replay.py,
     # checks.py), E349 (checks.py); run W229 (runtime/replay.py).

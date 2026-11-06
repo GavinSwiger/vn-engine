@@ -236,6 +236,7 @@ def did_you_mean(name: str, names: Iterable[str]) -> str | None:
 def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list[ConfigError]]:
     walk = _Walk(locator)
     sections: dict[str, object] = {}
+    doc = _with_renamed(doc, walk)                                        # v1: W323
     doc = _with_scheme(doc, walk)                                         # F49
     doc = _with_kit(doc, walk)                                            # F60
 
@@ -264,11 +265,52 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
     config = Config(**{name: sections.get(name, cls()) for name, cls in SECTIONS.items()},
                     **{name: sections[name] for name in (*LOOK_SECTIONS, METER_SECTION,
                                                          DEVICE_SECTION)
-                       if name in sections})
+                       if name in sections},
+                    renamed=tuple(walk.renamed))
     walk.errors.extend(_content_warning_errors(config, doc, locator))
     walk.warnings.sort(key=lambda item: _line_order(item[0]))
     walk.errors.sort(key=lambda error: _line_order(error.line))
     return config, [message for _, message in walk.warnings], walk.errors
+
+
+# --- v1 name freeze: old spellings (W323) -------------------------------------------------
+
+# An old ``(section, key)`` (a key, or a named table such as ``[device.letters]``) → its
+# place now, and the two as W323 names them. ``blank``: an old blank text meant "not set",
+# so it isn't moved (it still warns). Studio reads and writes only the new place
+# (``tools/editor/settingsmodel.values``, ``tomlpatch``).
+RENAMED: tuple[tuple[tuple[str, str], tuple[str, str], str, str, bool], ...] = (
+    ((DEVICE_SECTION, "letters"), (DEVICE_SECTION, "letter"), "[device.letters]",
+     "[device.letter]", False),
+)
+
+
+def _with_renamed(doc: dict, walk: "_Walk") -> dict:
+    """``doc`` with each old spelling of ``RENAMED`` moved to its new place, each recorded in
+    ``walk.renamed`` for W323 (``Config.renamed``, ``script/renamed.py``). What the new
+    place sets wins: a key written both ways keeps the new one, and a renamed table's keys
+    join the new table's where it doesn't set them. A section that isn't a table is left for
+    the walk's own report. ``doc`` itself is never changed."""
+    out = doc
+    for (section, key), (new_section, new_key), old_label, new_label, blank in RENAMED:
+        table = out.get(section)
+        if not isinstance(table, dict) or key not in table:
+            continue
+        if not isinstance(out.get(new_section, {}), dict):
+            continue
+        walk.renamed.append((walk.locator.line_of(section, key), old_label, new_label))
+        value = table[key]
+        out = {**out, section: {k: v for k, v in table.items() if k != key}}
+        target = dict(out.get(new_section, {}))
+        mine = target.get(new_key)
+        if isinstance(mine, dict) and isinstance(value, dict):
+            target[new_key] = {**value, **mine}
+        elif new_key in target or (blank and isinstance(value, str) and not value.strip()):
+            continue
+        else:
+            target[new_key] = value
+        out[new_section] = target
+    return out
 
 
 # --- F49: color schemes (SPEC §5) ---------------------------------------------------------
@@ -427,6 +469,7 @@ class _Walk:
         self.locator = locator
         self.warnings: list[tuple[int | None, str]] = []
         self.errors: list[ConfigError] = []
+        self.renamed: list[tuple[int | None, str, str]] = []     # v1: (line, old, new)
 
     def table(self, cls: type, content: dict, path: tuple[str, ...]) -> object:
         """``cls`` built from the valid keys of ``content``; defaults for the rest."""

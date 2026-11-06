@@ -9,7 +9,7 @@ reader and a test read the same words); this view only places and dresses it:
 - **phone**: chat bubbles. The sender's on the left in the focused-button fill, the
   player's on the right in the accent with the panel's fill as text; the line above each
   message and the time dividers centred and small.
-- **letters**: one paper card per delivery, the heading line centred over a short rule
+- **letter**: one paper card per delivery, the heading line centred over a short rule
   with a dot, the signature ("— Hana") at the right.
 - **pigeon**: a smaller note of kraft paper, inset from both sides, with a wax seal and
   ribbon on its top edge.
@@ -70,10 +70,10 @@ SERIF_FACES: Final = FaceSet({Face.REGULAR: FaceSource(None, Face.SERIF),
                               Face.BOLD: FaceSource(None, Face.SERIF),
                               Face.ITALIC: FaceSource(None, Face.SERIF_ITALIC),
                               Face.BOLD_ITALIC: FaceSource(None, Face.SERIF_ITALIC)})
-SERIF_LOOKS: Final = ("letters", "pigeon")
+SERIF_LOOKS: Final = ("letter", "pigeon")
 SERIF_ROLES: Final = ("via", "sign")
 BLINK_S: Final = 0.55
-CARD_INSET: Final = {"letters": 14.0, "pigeon": 30.0, "terminal": 12.0, "mind": 26.0}
+CARD_INSET: Final = {"letter": 14.0, "pigeon": 30.0, "terminal": 12.0, "mind": 26.0}
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,13 +132,13 @@ def spec_for(look: ParaLook, width: float) -> _Spec:
     top_pad = 0.0
     bottom_pad = 0.0
     role, kind = look.role, look.look
-    if kind in ("letters", "pigeon", "terminal"):
-        side = {"letters": 36.0, "pigeon": 52.0, "terminal": 30.0}[kind]
+    if kind in ("letter", "pigeon", "terminal"):
+        side = {"letter": 36.0, "pigeon": 52.0, "terminal": 30.0}[kind]
         top_pad = 18.0 if look.first else 0.0
         bottom_pad = 18.0 if look.last else 0.0
         gap = (GAP_OUT if look.last else 10.0)
         align = "left"
-        if role == "via" and kind == "letters":
+        if role == "via" and kind == "letter":
             align, bottom_pad = "center", bottom_pad + 14.0
         elif role == "sign":
             align = "right"
@@ -394,7 +394,7 @@ class InboxView(CodexView):
         top = box.y + spec.top
         body = self._detail.body
         assert isinstance(body, _InboxBody)
-        if kind in ("letters", "pigeon", "terminal", "mind"):
+        if kind in ("letter", "pigeon", "terminal", "mind"):
             y0, y1 = self._block(body, index, box)
             inset = CARD_INSET[kind]
             card = Box(box.x + inset, y0 + 2, box.w - 2 * inset, max(1.0, y1 - y0 - 4))
@@ -414,7 +414,7 @@ class InboxView(CodexView):
                         canvas.fill(rgb(c.mark), (card.right - 32, card.y, 3, card.h))
                         seal(p, card.right - 30.5, card.y + 26, rgb(c.accent),
                              rgb(c.mark), ring=rgb(c.card or c.page))
-            if kind == "letters" and role == "via":
+            if kind == "letter" and role == "via":
                 mid = card.x + card.w / 2
                 y = top + text_h + 8
                 canvas.fill(rgb(c.heading), (mid - 48, y, 96, 1))

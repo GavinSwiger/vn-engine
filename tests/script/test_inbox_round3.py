@@ -28,11 +28,11 @@ def _stmt(row):
 
 @pytest.mark.parametrize("row,days,scenes,parts,replies", [
     ("send invite from hana after 1 day", 1, None, None, ()),
-    ("send invite from hana on letters after 3 days", 3, None, None, ()),
+    ("send invite from hana on pigeon after 3 days", 3, None, None, ()),
     ("send invite from hana after 2 scenes", None, 2, None, ()),
     ("send invite from hana after 1 scene", None, 1, None, ()),
     ("send invite from hana after 1 part", None, None, 1, ()),
-    ("send invite from hana on letters after 2 parts", None, None, 2, ()),
+    ("send invite from hana on pigeon after 2 parts", None, None, 2, ()),
     ('send late from hana ask "On my way." "Start without me."', None, None, None,
      ("On my way.", "Start without me.")),
     ('send late from hana after 2 days ask "Yes"', 2, None, None, ("Yes",)),
@@ -49,10 +49,10 @@ def test_send_after_and_ask(row, days, scenes, parts, replies):
 
 
 def test_after_parts_in_any_order():
-    parsed, node = _stmt('send late from hana ask "Yes" after 2 parts on letters')
+    parsed, node = _stmt('send late from hana ask "Yes" after 2 parts on letter')
     assert parsed.errors == [] and (node.after_parts, node.device, node.replies) == (
-        2, "letters", ("Yes",))
-    assert node.written() == 'send late from hana on letters after 2 parts ask "Yes"'
+        2, "letter", ("Yes",))
+    assert node.written() == 'send late from hana on letter after 2 parts ask "Yes"'
 
 
 @pytest.mark.parametrize("row,part", [

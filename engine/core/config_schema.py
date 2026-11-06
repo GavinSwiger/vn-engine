@@ -2412,6 +2412,8 @@ class Config:
     meter: Mapping[str, MeterTable] = field(default_factory=_no_meters)
     # F65 round 3: the valid [device.<look>] tables by device look.
     device: Mapping[str, DeviceTable] = field(default_factory=_no_devices)
+    # v1 name freeze: each old spelling config.toml used, as (line, old, new) (W323).
+    renamed: tuple[tuple[int | None, str, str], ...] = ()
 
 
 @dataclass(frozen=True)

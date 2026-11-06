@@ -29,7 +29,7 @@ def _load(tmp_path, body, top=TOP, config=None):
 
 @pytest.mark.parametrize("row,message,contact,device", [
     ("send invite from hana", "invite", "hana", None),
-    ("send invite from hana on letters  # by post", "invite", "hana", "letters"),
+    ("send invite from hana on pigeon  # by post", "invite", "hana", "pigeon"),
 ])
 def test_send(row, message, contact, device):
     parsed, node = _stmt(row)

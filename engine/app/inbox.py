@@ -14,7 +14,7 @@ opens with ``open inbox`` / ``open pigeon``.
   opens on. Each delivery starts with an italic line saying how it came ("Arrived by pigeon
   · Day 3", "Message", a chat's opening time), worded by its device look
   (``kits.device_words``; "" is the game's default, ``kits.device_look``: the kit's, else a
-  phone). A letter look (letters, pigeon, mind) reads as a letter: the contact's lines as
+  phone). A letter look (letter, pigeon, mind) reads as a letter: the contact's lines as
   plain paragraphs, signed "— Hana"; a chat look (phone, radio, terminal) as "Hana: …".
   The player's own lines are under ``[words] inbox_me`` ("You"). Round 3: the port also
   says how each paragraph is drawn (``paragraph_looks``: its look and role, "via", "time",

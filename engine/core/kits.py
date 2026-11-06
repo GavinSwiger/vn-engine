@@ -195,7 +195,9 @@ HOTBAR_WORDS: Final[Mapping[str, str]] = MappingProxyType({
 # F65: the kits' ``messages`` sections (the Inbox page's name, the default device look).
 MESSAGES_TITLE: Final = "title"
 MESSAGES_DEVICE: Final = "device"
-DEVICE_LOOKS: Final = ("phone", "letters", "pigeon", "radio", "terminal", "mind")
+DEVICE_LOOKS: Final = ("phone", "letter", "pigeon", "radio", "terminal", "mind")
+# v1 name freeze: old spellings of a device look, still read (W323 names the new one).
+LOOK_ALIASES: Final[Mapping[str, str]] = MappingProxyType({"letters": "letter"})
 MESSAGE_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
     "romance": ("Messages", "phone"),
     "horror": ("Whispers", "mind"),
@@ -203,7 +205,7 @@ MESSAGE_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
     "fantasy": ("Pigeon post", "pigeon"),
     "cozy": ("Messages", "phone"),
     "scifi": ("Comms", "terminal"),
-    "letters": ("Letters", "letters"),
+    "letters": ("Letters", "letter"),
 })
 
 
@@ -224,7 +226,7 @@ class DeviceWords:
 
 DEVICE_WORDS: Final[Mapping[str, DeviceWords]] = MappingProxyType({
     "phone": DeviceWords("New message from {name}.", "Message", False, "Phone"),
-    "letters": DeviceWords("A letter from {name} has arrived.", "Letter", True, "Letters"),
+    "letter": DeviceWords("A letter from {name} has arrived.", "Letter", True, "Letters"),
     "pigeon": DeviceWords("A pigeon lands on the sill with a note from {name}.",
                           "Arrived by pigeon", True, "Pigeon post"),
     "radio": DeviceWords("The radio crackles. It's {name}.", "Over the radio", False,
@@ -235,9 +237,15 @@ DEVICE_WORDS: Final[Mapping[str, DeviceWords]] = MappingProxyType({
 })
 
 
+def canonical_look(look: str) -> str:
+    """``look`` with an old spelling (``LOOK_ALIASES``) replaced by its name now."""
+    return LOOK_ALIASES.get(look, look)
+
+
 def device_words(look: str, config: Any = None) -> DeviceWords:
     """F65 round 2: ``look``'s wording (a phone's for a look this engine doesn't know).
     Round 3: each key ``config``'s ``[device.<look>]`` sets wins over the engine's word."""
+    look = canonical_look(look)
     words = DEVICE_WORDS.get(look) or DEVICE_WORDS[DEVICE_LOOKS[0]]
     table = getattr(config, "device", _EMPTY).get(look)
     if table is None:
@@ -377,7 +385,8 @@ def device_look(config: Any) -> str:
     return look if look in DEVICE_LOOKS else DEVICE_LOOKS[0]
 
 
-__all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "arrive_text", "device_name_words",
+__all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "LOOK_ALIASES", "arrive_text",
+           "canonical_look", "device_name_words",
            "device_words", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
            "ITEM_WORDS", "MESSAGES_DEVICE", "MESSAGES_TITLE", "MESSAGE_WORDS",
            "bag_words", "device_look", "hotbar_word", "kit_words",

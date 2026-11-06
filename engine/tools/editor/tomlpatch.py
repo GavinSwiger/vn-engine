@@ -43,6 +43,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
+from engine.core.config import RENAMED
 from engine.core.config_schema import (
     EntryMap, HexColor, RawPluginTables, Table, Validator, ValueProblem, config_fields,
     section_class)
@@ -441,6 +442,9 @@ def plan_set(text: str, section: str, key: str, value: object, *, title: str | N
     validator = validator_for(section, key)
     if validator is None:
         return Refuse(NOT_A_SETTING.format(section=section, key=key))
+    moves = _old_spellings(text, section, key)
+    if moves:
+        return _moving(text, moves, (section, key, value), title, ref)
     bad = Refuse(BAD_VALUE.format(section=section, key=key, expected=validator.expected))
     try:
         literal = toml_literal(value, validator)
@@ -504,6 +508,9 @@ def plan_remove(text: str, section: str, key: str, *, title: str | None = None,
     ``Refuse``, or None when the key isn't set. ``drop_empty`` (F62's ``[meter.<name>]``):
     when only blank lines would be left under the header, the header goes too, with one
     blank line before it."""
+    moves = _old_spellings(text, section, key)
+    if moves:
+        return _moving(text, moves, (section, key, None), title, ref)
     prepared = _prepare(text, section, key, ref)
     if isinstance(prepared, Refuse):
         return prepared
@@ -609,8 +616,69 @@ def plan_changes(text: str, changes: Sequence[tuple[str, str, Any]], *,
     guards = tuple((n, old[n - 1]) for n in range(low, high + 1))
     plan = TomlPlan(title if title is not None else CHANGES_TITLE, ref, done[0].section,
                     done[0].key, done[0].value, (edit,), guards,
-                    more=tuple((p.section, p.key, p.value) for p in done[1:]))
+                    more=(*done[0].more, *(c for p in done[1:] for c in p.changes)))
     return plan if verify(plan, text) else Refuse(UNSAFE)
+
+
+# --- Old spellings (v1 name freeze, W323) --------------------------------------------------
+
+def _old_spellings(text: str, section: str, key: str) -> list[tuple[str, str, Any]]:
+    """The changes that take each old spelling of ``[section] key`` (``config.RENAMED``) out
+    of ``text``, so Studio writes only the new names: a renamed key is removed (the game
+    reads the new one); a renamed table (``[device.letters]``) is removed key by key, each
+    of its other keys moving to the new table where that doesn't set it. Removals come
+    first, so each later set finds no old spelling left."""
+    path = (*section.split("."), key)
+    found = [entry for entry in RENAMED if path[:2] == entry[1] and len(path) <= 3]
+    if not found:
+        return []
+    try:
+        doc = tomllib.loads(text)
+    except (tomllib.TOMLDecodeError, RecursionError, ValueError):
+        return []
+    gone: list[tuple[str, str, Any]] = []
+    moved: list[tuple[str, str, Any]] = []
+    for (old_section, old_key), (new_section, new_key), *_rest in found:
+        if len(path) == 2:
+            if _has(doc, (old_section, old_key)):
+                gone.append((old_section, old_key, None))
+            continue
+        table = _get(doc, (old_section, old_key))
+        mine = _get(doc, (new_section, new_key))
+        if not isinstance(table, dict):
+            continue
+        old, new = f"{old_section}.{old_key}", f"{new_section}.{new_key}"
+        for name, value in table.items():
+            gone.append((old, name, None))
+            if name == key or (isinstance(mine, dict) and name in mine):
+                continue
+            validator = validator_for(new, name)
+            try:
+                if validator is not None:
+                    _check_value(new, name, validator, value)
+                    moved.append((new, name, value))
+            except (ValueProblem, AssetRefError):
+                pass
+    return [*gone, *moved]
+
+
+def _moving(text: str, moves: list[tuple[str, str, Any]], change: tuple[str, str, Any],
+            title: str | None, ref: str) -> TomlPlan | Refuse | None:
+    """One plan: ``moves`` (``_old_spellings``) and then ``change``, which stays the plan's
+    own change (``section``, ``key``, ``value``) with the moves in ``more``."""
+    section, key, value = change
+    plan = plan_changes(text, [*moves, change], ref=ref, drop_empty=True)
+    if not isinstance(plan, TomlPlan):
+        return plan
+    own = next((c for c in plan.changes if c[:2] == (section, key)), None)
+    if own is None:
+        return plan
+    if title is None:
+        title = (SET_TITLE if value is not None else REMOVE_TITLE).format(section=section,
+                                                                          key=key)
+    out = TomlPlan(title, plan.ref, section, key, own[2], plan.edits, plan.guards, None,
+                   tuple(c for c in plan.changes if c is not own))
+    return out if verify(out, text) else Refuse(UNSAFE)
 
 
 # --- Verifying (§7.2 step 5, SEC-F42-13) -------------------------------------------------

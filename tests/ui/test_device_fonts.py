@@ -71,7 +71,7 @@ def test_the_terminal_draws_in_noto_sans_mono():
 
 
 def test_letters_and_pigeon_headings_and_signatures_are_serif():
-    for look in ("letters", "pigeon"):
+    for look in ("letter", "pigeon"):
         _drawn, body = _fonts(look)
         roles = [para.role for para in body.looks]
         assert _faces(body, roles.index("via")) == {Face.SERIF_ITALIC}, look
@@ -82,7 +82,7 @@ def test_letters_and_pigeon_headings_and_signatures_are_serif():
 def test_a_game_with_its_own_font_keeps_it_in_every_look():
     drawn, _body = _fonts("terminal", OWN)
     assert drawn and all(f.ref == "fonts/Own.ttf" for f in drawn)
-    _drawn, body = _fonts("letters", OWN)
+    _drawn, body = _fonts("letter", OWN)
     roles = [para.role for para in body.looks]
     assert _faces(body, roles.index("via")) == {Face.ITALIC}
 
@@ -91,7 +91,7 @@ def test_a_thoughts_notice_reads_in_italics():
     cfg = ThemeConfig()
     theme = plain_theme(cfg)
     assets = make_assets(None)
-    assert notice_skin(cfg, "mind").italic and not notice_skin(cfg, "letters").italic
+    assert notice_skin(cfg, "mind").italic and not notice_skin(cfg, "letter").italic
     for look, face in (("mind", Face.ITALIC), ("phone", Face.REGULAR)):
         layer = NoticeLayer(notice_style(theme), measure_with(assets, theme.font(
             cfg.notice.text_size)))

@@ -66,11 +66,11 @@ def test_plan_new_edit_delete_contact():
     assert declplan.verify_decl(plan, texts)
     assert after.endswith('lock contact hana "Hana"')
     decl = dec.find(dec.scan({DB_REF: after}), dec.CONTACT, "hana")
-    edit = declplan.plan_edit(decl, {**decl.values, "device": "letters",
+    edit = declplan.plan_edit(decl, {**decl.values, "device": "letter",
                                      "image": "hana smile"}, {**texts, DB_REF: after})
     assert isinstance(edit, declplan.DeclPlan)
     assert edit.plan.files[0].edits[0].lines == (
-        'lock contact hana "Hana" on letters image hana smile',)
+        'lock contact hana "Hana" on letter image hana smile',)
 
 
 def test_send_lines_entries_and_messages():

@@ -152,7 +152,8 @@ from engine.core.constants import META_NAMES_MAX, META_ORIGINAL_MAX_BYTES, META_
 from engine.core.errors import AssetRefError, EngineError
 from engine.core.minigame_types import REQUIRED, MinigameSig
 from engine.core.paths import DirListing, GamePaths
-from engine.script import bindings, choicecheck, choicepresent, itemcounts, limits, meterranks, showmeter
+from engine.script import (bindings, choicecheck, choicepresent, itemcounts, limits,
+                           meterranks, renamed, showmeter)
 from engine.script.achievements import (ACHIEVEMENTS_MAX, WHEN_MAX, WORD_ACHIEVEMENT,
                                         AchievementDecl)
 from engine.script.audio import AUDIO_FOLDER, PlayAudio, QueueMusic, audio_ref
@@ -1532,6 +1533,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += inbox_checks.check_story(inp.nodes, sink.add,   # E452, W311
                                              inp.meter_config)
     out.warnings += _w317(inp)                                      # F65 round 3
+    out.warnings += renamed.config_warnings(inp.meter_config)       # v1: W323
     from engine.script import remembered                            # W320: plain names
     out.warnings += remembered.check_story(inp.nodes, collected.define_defs,
                                            collected.default_defs)

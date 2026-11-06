@@ -56,6 +56,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Final
 
+from engine.core.kits import canonical_look
+
 if TYPE_CHECKING:
     from engine.core.minigame_types import MinigameSig
     from engine.runtime.interpreter import Interpreter
@@ -355,7 +357,8 @@ def deliveries_from_json(obj: object) -> tuple[Delivery, ...]:
             parsed.append(InboxLine(line[0], line[1], line[2]))
         ask = _ask_from_json(item)
         keys.add(key)
-        out.append(Delivery(key, sid, item["contact"], item["time"], item["device"],
+        out.append(Delivery(key, sid, item["contact"], item["time"],
+                            canonical_look(item["device"]),           # v1: "letters"
                             tuple(parsed), sender, message, ask, item.get("reply", "")))
     if len(out) > 1 and sum(map(size, out)) > CHARS_MAX:
         raise ValueError("inbox")

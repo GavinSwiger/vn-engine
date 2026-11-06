@@ -93,8 +93,8 @@ def device_palette(look: str, token: Token) -> DevicePalette:
     accent = token("button.marker.fill_color")
     accent2 = token("button.focused.border_color")
     muted = token("button.disabled.text_color")
-    if look == "letters" or look == "pigeon":
-        tint = PARCHMENT if look == "letters" else KRAFT
+    if look == "letter" or look == "pigeon":
+        tint = PARCHMENT if look == "letter" else KRAFT
         if luminance(text) > luminance(page):        # a dark scheme: light paper, dark ink
             paper = mix(tint, page, 0.12)
             ink = readable(page, paper, TEXT, BLACK)
@@ -140,7 +140,7 @@ def device_palette(look: str, token: Token) -> DevicePalette:
 # Each look's text on its fill, by ``DevicePalette`` field: (text, fill, minimum).
 PAIRS: Final[dict[str, tuple[tuple[str, str, float], ...]]] = {
     "phone": (("text", "card", TEXT), ("me_text", "me_card", TEXT), ("heading", "page", TEXT)),
-    "letters": (("text", "card", TEXT), ("heading", "card", TEXT), ("accent", "card", GRAPHIC)),
+    "letter": (("text", "card", TEXT), ("heading", "card", TEXT), ("accent", "card", GRAPHIC)),
     "pigeon": (("text", "card", TEXT), ("heading", "card", TEXT), ("accent", "card", GRAPHIC),
                ("mark", "card", GRAPHIC)),
     "radio": (("text", "page", TEXT), ("heading", "page", TEXT), ("me_text", "page", TEXT),

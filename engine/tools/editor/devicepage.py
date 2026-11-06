@@ -7,7 +7,7 @@ and sees the arrival notice and a message drawn in the game's colors, instead of
 calls ``DevicesPage(view, body)`` when the page is built and ``show()`` after each read of
 ``config.toml``.
 
-One card per device (phone, letters, pigeon, radio, terminal, mind), the game's own device
+One card per device (phone, letter, pigeon, radio, terminal, mind), the game's own device
 first and marked ("The game's device (from the Fantasy kit)"): its name, a live preview
 (the arrival notice over a message in that device's look: bubbles, paper, a sealed note, a
 transcript with static, a green terminal, a thought's glow; ``devicemodel.preview``), and
@@ -90,7 +90,7 @@ class DevicePainter:
         x1, y0 = w - px(10), px(8)
         x0, y1 = x1 - tw - px(28), y0 + px(NOTICE_H - 6)
         tags = ("notice",)
-        fill = c.card if look in ("phone", "letters", "pigeon", "terminal") and c.card \
+        fill = c.card if look in ("phone", "letter", "pigeon", "terminal") and c.card \
             else c.page
         if look == "mind":
             rounded(canvas, x0 - px(6), y0 - px(6), x1 + px(6), y1 + px(6), px(18),
@@ -104,7 +104,7 @@ class DevicePainter:
             outline = c.edge
             canvas.create_rectangle(x0, y0, x1, y1, fill=fill, outline=outline,
                                     width=2 if look == "terminal" else 1, tags=tags)
-        if look == "letters":
+        if look == "letter":
             canvas.create_rectangle(x1 - px(12), y0 - px(5), x1 + px(2), y0 + px(11),
                                     fill=c.accent, outline=c.card or c.page, width=2,
                                     tags=tags)
@@ -137,7 +137,7 @@ class DevicePainter:
         px = self.px
         tags = ("message",)
         line = self.font.metrics("linespace")
-        if look in ("letters", "pigeon", "terminal"):
+        if look in ("letter", "pigeon", "terminal"):
             inset = px(60) if look == "pigeon" else 0
             cx0, cx1 = x0 + inset, x1 - inset
             if look == "terminal":
@@ -161,7 +161,7 @@ class DevicePainter:
         room = x1 - x0
         head = fit_text(seen.header, room - (px(70) if look == "radio" else 0),
                         font.measure if mono else self.italic.measure)
-        if look in ("letters", "mind", "phone"):
+        if look in ("letter", "mind", "phone"):
             canvas.create_text((x0 + x1) / 2, y, anchor="n", text=head,
                                font=font if mono else self.italic, fill=c.heading,
                                tags=(*tags, "header"))
@@ -174,7 +174,7 @@ class DevicePainter:
                                fill=c.me_text, tags=(*tags, "signal"))
             self._static(x0, y + line + px(4), room, c.mark, tags)
             y += px(6)
-        if look == "letters":
+        if look == "letter":
             mid = (x0 + x1) / 2
             canvas.create_line(mid - px(30), y + line + px(3), mid + px(30), y + line + px(3),
                                fill=c.heading, tags=tags)

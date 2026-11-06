@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Literal
 
-from engine.core.config import map_decode_error, value_problem_text
+from engine.core.config import RENAMED, map_decode_error, value_problem_text
 from engine.core.config_schema import (
     LOOK_SECTIONS, SECTIONS, AudioRef, Bool, Choice, EntryMap, FontRef, GuiImageRef,
     HexColor, IconRef, IntRange, OffOrRange, Opacity, RawPluginTables, Seconds, Table,
@@ -882,7 +882,21 @@ def values(text: str) -> Mapping[str, object] | None:
             walk(name, value)
         else:
             found[name] = value
-    return MappingProxyType(found)
+    return MappingProxyType(renamed_values(found))
+
+
+def renamed_values(found: dict[str, object]) -> dict[str, object]:
+    """``found`` with each old spelling (``config.RENAMED``, W323) at its new path, as the
+    game reads it: the new path wins, and an old blank text that meant "not set" goes."""
+    for (section, key), (new_section, new_key), _old, _new, blank in RENAMED:
+        old, new = f"{section}.{key}", f"{new_section}.{new_key}"
+        for path in [p for p in found if p == old or p.startswith(old + ".")]:
+            value = found.pop(path)
+            moved = new + path[len(old):]
+            if moved not in found and not (blank and isinstance(value, str)
+                                           and not value.strip()):
+                found[moved] = value
+    return found
 
 
 def section_values(section: str, text: str | None) -> dict[str, object]:

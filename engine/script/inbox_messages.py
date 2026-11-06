@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 
 from engine.script.messages import _did_you_mean, show, show_name
 
-LOOKS = ("phone", "letters", "pigeon", "radio", "terminal", "mind")
+LOOKS = ("phone", "letter", "pigeon", "radio", "terminal", "mind")
 _SEND = "send invite from hana"
 _OPEN = "open inbox or open pigeon"
 _CONTACT = 'lock contact hana "Hana"'

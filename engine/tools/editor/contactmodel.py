@@ -42,7 +42,7 @@ from engine.tools.editor import minigamedata as mg
 # --- Texts ------------------------------------------------------------------------------------
 
 LOOK_NAMES: Final[Mapping[str, str]] = {
-    "phone": "Phone", "letters": "Letters", "pigeon": "Pigeon post", "radio": "Radio",
+    "phone": "Phone", "letter": "Letters", "pigeon": "Pigeon post", "radio": "Radio",
     "terminal": "Terminal", "mind": "Mind (a voice in the head)"}
 DEFAULT_KIT: Final = "Game default ({name}, from the {kit} kit)"
 DEFAULT_PLAIN: Final = "Game default ({name}, with no kit)"

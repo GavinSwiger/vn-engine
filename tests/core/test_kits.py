@@ -159,6 +159,6 @@ def test_f65_messages_words_and_device_looks():
     assert looks == set(kits.DEVICE_LOOKS)
     letters = SimpleNamespace(theme=SimpleNamespace(kit="letters"))
     assert kits.kit_words(letters) == {"inbox": "Letters"}
-    assert kits.device_look(letters) == "letters"
+    assert kits.device_look(letters) == "letter"
     plain = SimpleNamespace(theme=SimpleNamespace(kit=None))
     assert kits.kit_words(plain) == {} and kits.device_look(plain) == "phone"

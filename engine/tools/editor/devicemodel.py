@@ -1,6 +1,6 @@
 """Game settings ▸ Devices, the pure half (F65 round 3, "Studio contacts and devices").
 
-Why this module exists: a message comes by one of six devices (phone, letters, pigeon,
+Why this module exists: a message comes by one of six devices (phone, letter, pigeon,
 radio, terminal, mind), and ``[device.<look>]`` in config.toml sets how each words and
 sounds one: its name, the arrival notice, the arrival sound, the line above each message
 and how the sender's lines read. The Devices page shows one card per device with a live

@@ -134,7 +134,7 @@ class DeviceNoticeSkin:
         c, look = self.colors, self.look
         if look == "phone":
             return FrameSpec(rgb(c.card or c.page), 1.0, rgb(c.card or c.page), 0, 20)
-        if look in ("letters", "pigeon"):
+        if look in ("letter", "pigeon"):
             return FrameSpec(rgb(c.card or c.page), 1.0, rgb(c.edge), 1, 3)
         if look == "terminal":
             return FrameSpec(rgb(c.card or c.page), 1.0, rgb(c.edge), 2, 4)
@@ -156,7 +156,7 @@ class DeviceNoticeSkin:
         if look == "phone":
             p.triangle(Box(box.x + 22, box.bottom - 1, 14, 9), rgb(c.card or c.page),
                        direction="down")
-        elif look == "letters":
+        elif look == "letter":
             stamp = Box(box.right - 18, box.y - 8, 20, 24)
             canvas.fill(rgb(c.edge), (stamp.x - 1, stamp.y - 1, stamp.w + 2, stamp.h + 2))
             canvas.fill(rgb(c.card or c.page), (stamp.x, stamp.y, stamp.w, stamp.h))

@@ -42,7 +42,7 @@ def test_an_unknown_device_warns_with_a_did_you_mean_and_is_skipped(load):
     assert found.warnings == [
         "config.toml, line 1: unknown device [device.pidgeon] — did you mean "
         "[device.pigeon]?",
-        "config.toml, line 4: unknown device [device.fax]. Use one of phone, letters, "
+        "config.toml, line 4: unknown device [device.fax]. Use one of phone, letter, "
         "pigeon, radio, terminal, mind."]
 
 

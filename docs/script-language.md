@@ -1655,9 +1655,10 @@ label morning:
 **Contacts.** `lock contact <name> "shown name" [on <look>] [image <picture>]` goes at the
 top level of a file, like `lock tip`. The name is what the script uses (`from hana`); the
 shown name (1 to 40 characters) is what the Inbox and the notices say. `on` picks the
-device look their messages come by: `phone`, `letters`, `pigeon`, `radio`, `terminal` or
-`mind`. Without it, the kit's look is used (`[theme] kit`: Fantasy sends pigeons, Letters
-sends letters, Sci-fi a terminal, Horror a voice in your head), else a phone. `image` is a
+device look their messages come by: `phone`, `letter`, `pigeon`, `radio`, `terminal` or
+`mind` (`letters`, the spelling from before version 1, still works, with a warning).
+Without it, the kit's look is used (`[theme] kit`: Fantasy sends pigeons, Letters sends
+letters, Sci-fi a terminal, Horror a voice in your head), else a phone. `image` is a
 picture name for the contact's thread and their notices. A contact has no thread until
 they send something; there is no `unlock contact`.
 
@@ -1674,7 +1675,7 @@ A message has 1 to 200 lines of up to 2,000 characters. Its last line may ask fo
 story changed sends its new text.
 
 **send.** `send <message> from <contact>` puts the message in the contact's thread. `send
-invite from hana on letters` sends this one by another look, `after 1 day` holds it for a
+invite from hana on letter` sends this one by another look, `after 1 day` holds it for a
 while (see **Delays**), and `ask "Yes" "No"` lets the player answer (see **Replies**); they
 can come in any order after the contact. The player sees:
 
@@ -1696,7 +1697,7 @@ can come in any order after the contact. The player sees:
 (every color scheme keeps the text readable):
 
 - **phone**: chat bubbles, the contact's on the left and the player's on the right.
-- **letters**: a paper card, the line above it centred, signed at the bottom right; the
+- **letter**: a paper card, the line above it centred, signed at the bottom right; the
   line above and the signature are in a serif italic.
 - **pigeon**: a smaller note tied with twine, with a wax seal, headed and signed like a
   letter.
@@ -1818,8 +1819,9 @@ open, and both stay free as variable names. `contact` is a word only after `lock
 |---|---|
 | `send invite needs from and a contact after it. …` | Write `send invite from hana`. |
 | `write the contact's name without quotes: send … from hana. …` | Use the contact's script name, not its shown name. |
-| `there is no device look called "pigon". Did you mean "pigeon"? …` | Use phone, letters, pigeon, radio, terminal or mind. |
+| `there is no device look called "pigon". Did you mean "pigeon"? …` | Use phone, letter, pigeon, radio, terminal or mind. |
 | `open opens the Inbox, but "door" is not inbox or a device look. …` | Write `open inbox` or `open pigeon`. |
+| `on letters is a spelling from before version 1. It still works for now, but write on letter instead.` (warning W323) | Write `on letter` (and `open letter`). Studio writes the new spelling. |
 | `lock contact needs the contact's name and the name to show in quotes, …` | Write `lock contact hana "Hana"`. |
 | `lock contact declares a contact, so it goes at the top level of a file, …` | Move it above the labels. |
 | `there is already a contact called hana (line 3). …` | Give each contact its own name. |

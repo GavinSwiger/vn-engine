@@ -56,8 +56,9 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any, Final
 
+from engine.core.kits import LOOK_ALIASES
 from engine.core.storyclock import DAY_MAX
-from engine.script import inbox_messages
+from engine.script import inbox_messages, renamed
 from engine.script.chapter import _shown
 from engine.script.diagnostics import Diagnostic, ScriptWarning
 from engine.script.identity import register_declaration, walk_block
@@ -97,6 +98,7 @@ TRIGGER_KIND: Final = "message"          # the trigger core's kind for a send li
 # The device looks (``core/kits.DEVICE_LOOKS``; script may import core, but the words are
 # the script's, so they are listed once in ``inbox_messages``).
 LOOKS: Final = inbox_messages.LOOKS
+_SID_LOOKS: Final = {new: old for old, new in LOOK_ALIASES.items()}
 CONTACTS_MAX: Final = 200                # contacts in a game (E450 ``many``)
 NAME_MAX: Final = 64                     # a contact's script name (code points)
 TITLE_MAX: Final = 40                    # a contact's shown name (code points, as shown)
@@ -138,7 +140,7 @@ class SendStep(Statement):
     after_parts: int | None = None
 
     def identity_key(self) -> tuple[str, ...]:
-        return (WORD_SEND, self.message, self.contact, self.device or "")
+        return (WORD_SEND, self.message, self.contact, _sid_look(self.device))
 
     def written(self) -> str:
         """The line as Studio writes it back."""
@@ -173,7 +175,7 @@ class OpenStep(Statement):
     look: str | None = None
 
     def identity_key(self) -> tuple[str, ...]:
-        return (WORD_OPEN, self.look or WORD_INBOX)
+        return (WORD_OPEN, _sid_look(self.look) or WORD_INBOX)
 
     def written(self) -> str:
         return f"open {self.look or WORD_INBOX}"
@@ -188,6 +190,23 @@ def _after(raw: RawStatement, index: int) -> str:
         return ""
     token = tokens[index]
     return raw.rest_from(token.line, token.column).rstrip().rstrip(":").rstrip()
+
+
+def _look(ctx: ParseContext, written: str, word: str) -> str:
+    """``written`` with an old spelling of a device look (``kits.LOOK_ALIASES``) read as its
+    name now, after W323 (once per load)."""
+    new = LOOK_ALIASES.get(written)
+    if new is None:
+        return written
+    lead = WORD_OPEN if word == WORD_OPEN else WORD_ON
+    renamed.note(ctx, f"{lead} {written}", f"{lead} {new}")
+    return new
+
+
+def _sid_look(look: str | None) -> str:
+    """The look as identity keys spell it: the spelling from before version 1, so a line's
+    sid (and a saved waiting message) is the same whichever spelling the line uses."""
+    return _SID_LOOKS.get(look or "", look or "")
 
 
 def _name_ok(ctx: ParseContext, written: str) -> str | None:
@@ -257,7 +276,7 @@ def parse_send(raw: RawStatement, ctx: ParseContext) -> SendStep | None:
             return None
         seen.add(word)
         if word == WORD_ON:
-            found = tokens[at + 1].text if len(tokens) > at + 1 else ""
+            found = _look(ctx, tokens[at + 1].text if len(tokens) > at + 1 else "", "send")
             if found not in LOOKS:
                 ctx.error("E448", "device", found, suggest(found, LOOKS) if found else None)
                 return None
@@ -340,7 +359,7 @@ def parse_open(raw: RawStatement, ctx: ParseContext) -> OpenStep | None:
     if raw.ends_with_colon:
         ctx.error("E449", "colon")
         return None
-    target = tokens[1].text
+    target = _look(ctx, tokens[1].text, WORD_OPEN)
     if target != WORD_INBOX and target not in LOOKS:
         ctx.error("E449", "target", target, suggest(target, (WORD_INBOX, *LOOKS)))
         return None
@@ -420,7 +439,8 @@ def _contact_top(raw: RawStatement, ctx: ParseContext, unlock: bool, chunks: lis
             return None
         seen.add(word)
         if word == WORD_ON:
-            found = chunks[at + 1].text if at + 1 < len(chunks) else ""
+            found = _look(ctx, chunks[at + 1].text if at + 1 < len(chunks) else "",
+                          "lock contact")
             if found not in LOOKS:
                 ctx.error("E450", "look", found, None, suggest(found, LOOKS) if found else None)
                 return None
@@ -889,7 +909,7 @@ for _doc in (
             "lock", "Contact", "Declarations",
             'lock contact <name> "shown name" [on <look>] [image <picture>]',
             "Declares someone who sends messages: the name the script uses, the name the "
-            "Inbox shows, the device look their messages come by (phone, letters, pigeon, "
+            "Inbox shows, the device look their messages come by (phone, letter, pigeon, "
             "radio, terminal or mind) and their picture.",
             'lock contact ren "Ren" on pigeon', DOCS_HEADING, "F65", fields=("ren", "Ren")),
 ):

@@ -31,7 +31,7 @@ from tests.render.conftest import make_assets
 
 SLOT = Box(416, 112, 808, 552)
 LINES = {"phone": [("them", "Ren", "Running late!"), ("me", "", "Front row.")],
-         "letters": [("them", "Hana", "The river froze.")],
+         "letter": [("them", "Hana", "The river froze.")],
          "pigeon": [("them", "Hana", "Meet me at the bridge.")],
          "radio": [("them", "Kade", "Do you read?"), ("me", "", "Loud and clear.")],
          "terminal": [("them", "VEGA", "Hull breach."), ("me", "", "Crew?")],
@@ -101,7 +101,7 @@ def test_a_pale_author_color_still_gets_readable_text():
 def test_the_looks_differ_where_they_should():
     cfg = ThemeConfig()
     phone, letters, terminal, mind = (palette(cfg, k) for k in
-                                      ("phone", "letters", "terminal", "mind"))
+                                      ("phone", "letter", "terminal", "mind"))
     assert phone.card != phone.me_card                    # two kinds of bubble
     assert letters.card != letters.page                   # paper on the panel
     assert terminal.card == "#1E161B"                     # Sakura's dark text, darker
@@ -111,19 +111,19 @@ def test_the_looks_differ_where_they_should():
 # --- The Inbox ------------------------------------------------------------------------------
 
 def test_each_paragraph_says_its_look_and_role_and_a_thought_reads_in_italics():
-    letter = delivery("letters")
+    letter = delivery("letter")
     (thread,) = group_threads((letter,), {"sender": "Sender"})
     entry, looks = thread_parts(thread, "You")
     assert [(k.look, k.role, k.first, k.last) for k in looks] == [
-        ("letters", "via", True, False), ("letters", "them", False, False),
-        ("letters", "sign", False, True)]
+        ("letter", "via", True, False), ("letter", "them", False, False),
+        ("letter", "sign", False, True)]
     assert len(entry.paragraphs) == len(looks)
     (thread,) = group_threads((delivery("mind", ""),), {"sender": "Sender"})
     entry, looks = thread_parts(thread, "You")
     assert [k.role for k in looks] == ["via", "them", "sign"]
     assert all(span.style.italic for span in entry.paragraphs[1].plain())
     # [device.x] reading = "chat" turns a letter look into chat lines.
-    config = SimpleNamespace(device={"letters": DeviceTable(reading="chat",
+    config = SimpleNamespace(device={"letter": DeviceTable(reading="chat",
                                                             header_text="Post")})
     (thread,) = group_threads((letter,), {"sender": "Sender"})
     entry, looks = thread_parts(thread, "You", config=config)
@@ -136,11 +136,11 @@ def test_places_follow_the_look():
     them = spec_for(ParaLook("phone", "them"), width)
     me = spec_for(ParaLook("phone", "me"), width)
     assert them.left < me.left and me.align == "end"       # bubbles on two sides
-    assert spec_for(ParaLook("letters", "sign"), width).align == "right"
-    assert spec_for(ParaLook("letters", "via", first=True), width).align == "center"
+    assert spec_for(ParaLook("letter", "sign"), width).align == "right"
+    assert spec_for(ParaLook("letter", "via", first=True), width).align == "center"
     assert spec_for(ParaLook("terminal", "them"), width).mono
     assert spec_for(ParaLook("pigeon", "them"), width).left > \
-        spec_for(ParaLook("letters", "them"), width).left  # a smaller note
+        spec_for(ParaLook("letter", "them"), width).left  # a smaller note
 
 
 def _drawn(look, *, reduce=False, config=None):
@@ -234,7 +234,7 @@ def test_the_arrival_notice_wears_the_look(look):
     layer.draw(canvas, painter)
     (view,) = layer.views()
     c = palette(cfg, look)
-    fill = c.card if look in ("phone", "letters", "pigeon", "terminal") else c.page
+    fill = c.card if look in ("phone", "letter", "pigeon", "terminal") else c.page
     inside = Box(view.box.x + 4, view.box.y + 4, view.box.w - 8, view.box.h - 8)
     see_through = look in ("radio", "mind")                    # the panel's opacity
     assert _has(frame, inside, rgb(fill), tol=24 if see_through else 6), look
