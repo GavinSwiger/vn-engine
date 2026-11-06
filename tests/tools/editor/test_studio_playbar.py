@@ -61,15 +61,21 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     win, view = ed.win, ed.story_map
     game = fake_game(win)
     bar = win.play_bar
-    # 2026-11-04: running the game is the Run menu's; the bar keeps the pane toggles.
-    assert [b.cget("text") for b in bar.buttons] == ["AI Assistant", "? Guide"]   # F48
+    # 2026-11-06 (proposal 2.1): one split button, ▶ Play and its ▾, then the pane toggles;
+    # the old cluster stays hidden (the Run menu holds it too).
+    assert [b.cget("text") for b in bar.buttons] == ["▶ Play", "▾", "AI Assistant", "? Guide"]
+    assert bar.play_button.winfo_ismapped() and bar.more_button.winfo_ismapped()
     assert not any(w.winfo_ismapped() for w in bar.run_widgets)
     assert bar.frame.winfo_ismapped() and bar.frame.winfo_y() < win.hpane.winfo_y()
     assert bar.stop_button.instate(["disabled"])                     # not running yet
+    assert str(bar.play_button.cget("style")) == "Split.TButton"     # the accent
 
     bar.play_button.invoke()                                         # ▶ Play: the start
     assert start_of(game.argvs[-1]) is None
     assert not bar.stop_button.instate(["disabled"])                 # starting
+    assert bar.play_button.cget("text") == "■ Stop"                  # it turns into Stop
+    assert str(bar.play_button.cget("style")) == "Split.Secondary.TButton"
+    assert bar.play_button.tooltip.text == playbar.TIP_STOP
     win.apply_events([PreviewEvent(PreviewState.RUNNING)])
     played = json.loads((lanterns / ".studio" / "studio.json").read_text(encoding="utf-8"))
     assert played["played"] is True                                  # Guide step 7
@@ -77,15 +83,17 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     view.focus_box(view.layout.index_of("river"))                    # the selected box
     win._poll_preview()
     assert bar.scene_label.cget("text") == "river"
-    bar.scene_button.invoke()
+    assert bar.menu.entrycget(1, "label") == "Play this scene: river"     # the ▾ names it
+    bar.menu.invoke(1)                                               # ▾ ▸ Play this scene
     assert start_of(game.argvs[-1]) == "river"
     ed.press(ed.map_canvas, "<Shift-F5>")
     assert start_of(game.argvs[-1]) is None
     ed.press(ed.map_canvas, "<F5>")
     assert start_of(game.argvs[-1]) == "river"
 
-    bar.stop_button.invoke()                                         # ■ Stop ends it
+    bar.play_button.invoke()                                         # ■ Stop ends it
     assert game.stops == 1 and bar.stop_button.instate(["disabled"])
+    assert bar.play_button.cget("text") == "▶ Play"                  # and reads Play again
     assert win.status_label.cget("text").endswith("Closed.")
     ed.press(ed.map_canvas, "<Control-F2>")                          # not running: nothing
     assert game.stops == 1
@@ -101,6 +109,7 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     win.text.mark_set("insert", "2.0")                               # above every label
     ed.idle()
     assert bar.scene_label.cget("text") == "the beginning"
+    assert bar.menu.entrycget(1, "label") == "Play this scene"
     ed.press(ed.text, "<F5>")
     assert start_of(game.argvs[-1]) is None
 
@@ -114,9 +123,11 @@ def test_ac_f47_01_the_play_bar_plays_from_the_start_this_scene_and_stops(
     patch_studio(monkeypatch, "ask_play_options",
                  lambda parent, values, fresh, font=None:
                  asked.append((values, fresh)) or ("trust = 2", True))
-    bar.options_button.invoke()
+    assert [bar.menu.entrycget(i, "label") for i in range(3)] == [
+        "Play", "Play this scene", "Play options…"]
+    bar.menu.invoke(2)                                               # ▾ ▸ Play options…
     assert asked == [("", False)]
-    bar.play_button.invoke()
+    bar.menu.invoke(0)                          # ▾ ▸ Play (the game runs: the button is Stop)
     argv = game.argvs[-1]
     assert "--no-persistent" in argv and argv[-2:] == ["--set", "trust = 2"]
 

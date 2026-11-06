@@ -22,8 +22,8 @@ calls ``show_guide``); whether it is open is remembered per game in ``studiostat
 Show me targets (``guide.ShowMe``): Game settings' "game" page (the Game settings tab when
 it exists, else ``config.toml``'s title line in the Editor), a Database category with its
 **+ New** button focused, the Story map's ``start`` scene opened beside the map on its
-Events list, the Insert form for a choice or an ending on that scene, and the Run menu with
-Play chosen.
+Events list, the Insert form for a choice or an ending on that scene, and the ▶ Play split
+button (focused, its tooltip shown for 4 s).
 
 Imports only the standard library, ``engine.script`` and the editor's own modules
 (ADR-0008).
@@ -59,9 +59,10 @@ STEP_HINTS: dict[str, str] = {
     "scene": "Open the first scene and give it a few lines.",
     "choice": "Let the player pick what happens next.",
     "ending": "Finish your story with an ending card.",
-    "play": "Choose Run ▸ Play (Shift+F5) to see your game run.",
+    "play": "Press ▶ Play at the top (Shift+F5) to see your game run.",
 }
 
+SHOW_TIP_MS = 4000                      # Show me for Play: how long the tooltip stays
 GUIDE_WIDTH = 280                       # px at 100 %: the column's first width
 GUIDE_MIN_WIDTH = 220
 INSET = 12                              # 08 §7: panel inset
@@ -328,16 +329,16 @@ class GuideWiring:
                 doc = insert_doc(target.item)
                 self.story.insert(None, doc=doc)
         elif target.place == guide.PLAY:
-            self.show_run_menu()
+            self.show_play_button()
 
-    def show_run_menu(self) -> None:
-        """Show me for Play: the Run menu open with Play chosen (macOS's own bar can't be
-        opened from code, so there it does nothing)."""
-        bar = getattr(self, "menu_bar", None)
-        if bar is None or not self.root.winfo_viewable():
-            return
-        index = bar.labels().index("Run")
-        self.root.after_idle(lambda: bar.open(index, keyboard=True))
+    def show_play_button(self) -> None:
+        """Show me for Play: the ▶ Play button focused, its tooltip shown for 4 s."""
+        button = self.play_bar.play_button
+        button.focus_set()
+        tip = getattr(button, "tooltip", None)
+        if tip is not None and self.root.winfo_viewable():
+            tip.show()
+            self.root.after(SHOW_TIP_MS, tip.hide)
 
     def _show_me_settings(self, page: str | None) -> None:
         """Game settings on ``page``; before that tab exists, ``config.toml``'s title."""

@@ -1,11 +1,12 @@
 """Studio's Play bar wiring (F47 ``01`` PR-F47-07..09, ``04`` §7.4; F44 ``03`` §2.2, ``04``
 §7.6 "Preview (F5)"), as the ``RunWiring`` mixin of ``window.EditorWindow``.
 
-``playbar.PlayBar`` sits under the menu bar. Play (Shift+F5, the primary button) plays from
-the game's ``start``; Play this scene (F5) plays from the selected story-map box while the
-Story map shows, else from the label above the editor's cursor; Play from this scene (a
-box's or an Events row's context menu) plays from that scene; Stop (Ctrl+F2) ends the game
-child. Every Play saves every unsaved file, checks the start values (kept for the session in
+``playbar.PlayBar`` sits under the menu bar (on Windows and Linux, in its row). Its split
+button (▶ Play, ■ Stop while the game runs, and a ▾ menu) and the Run menu start and stop
+the game. Play (Shift+F5) plays from the game's ``start``; Play this scene (F5) plays from
+the selected story-map box while the Story map shows, else from the label above the
+editor's cursor; Play from this scene (a box's or an Events row's context menu) plays from
+that scene; Stop (Ctrl+F2) ends the game child. Every Play saves every unsaved file, checks the start values (kept for the session in
 Play options, with "Play as a new player"), and hands argv to ``preview.PreviewRunner``. The
 first Play that reaches the game window marks ``played`` in ``studiostate`` (the Guide's
 step 7). One poll loop (every ``POLL_INTERVAL_MS``) polls the game runner, the check runner,
@@ -140,7 +141,7 @@ class RunWiring:
                                 on_assistant=getattr(self, "toggle_assistant", None))
         self.play_bar.frame.pack(side="top", fill="x")
         self.play_bar.divider.pack(side="top", fill="x")
-        self.play_button = self.play_bar.play_button       # hidden: Run ▸ Play
+        self.play_button = self.play_bar.play_button       # ▶ Play, ■ Stop while running
         self.bar_focus = self.play_bar.buttons[0]         # the bar's Tab and F6 stop
         self.stop_button = self.play_bar.stop_button
         self.start_label = self.play_bar.scene_label

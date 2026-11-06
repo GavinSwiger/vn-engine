@@ -5,14 +5,19 @@ Why this module exists: playing the game is the one thing every author does all 
 it gets a 36 px toolbar on ``chrome`` under the menu bar, across the window, instead of F44's
 small button at the bottom of the left column::
 
-    [▶ Play] [▶ Play this scene] club_poem  [■ Stop]  Play options…  [AI Assistant] [? Guide]
+    [▶ Play|▾]                                                   [AI Assistant] [? Guide]
 
-**▶ Play** is the window's one primary button (from the start, Shift+F5). **▶ Play this
-scene** is secondary (F5) and the muted name after it says which scene that is. **■ Stop**
-(Ctrl+F2) is a ghost button, enabled only while the game runs. **Play options…** opens the
-dialog that holds the start values and "Play as a new player"; **? Guide** toggles the
-Guide pane and F48's **AI Assistant**, left of it, the Assistant pane (they share the
-column). Each button has a tooltip; Left and Right move between the bar's buttons.
+**▶ Play** is the window's one primary button, a split button (proposal 2.1, 2026-11-06):
+a click plays from the start (Shift+F5); its **▾** opens a small menu with Play, Play this
+scene (F5, with the scene's name) and Play options…, plus what ``add_check`` adds (the
+"Game beside Studio" switch). While the game runs the button reads **■ Stop** (Ctrl+F2) in
+gray. The Run menu keeps every row and key. **? Guide** toggles the Guide pane and F48's
+**AI Assistant**, left of it, the Assistant pane (they share the column). Each button has a
+tooltip; Left and Right move between the bar's buttons, Down opens the ▾ menu.
+
+The old cluster's widgets (Play this scene, the scene name, a separate Stop, Play options…)
+are still made, hidden, so the run code keeps their state (2026-11-04 moved running the
+game to the Run menu; the one split button came back on 2026-11-06).
 
 On Windows and Linux the bar shares the in-window menu bar's row (``merge_into``: the menu
 titles, then these buttons), so the window has no separate toolbar row; macOS, whose menu bar
@@ -52,17 +57,23 @@ BAR_GAP = 8
 TIP_DELAY_MS = 500
 
 PLAY = "▶ Play"
+MORE = "▾"                              # the split button's menu half
 PLAY_SCENE = "▶ Play this scene"
 STOP = "■ Stop"
 PLAY_OPTIONS = "Play options…"
 GUIDE = "? Guide"
 ASSISTANT = "AI Assistant"              # F48 01 §6.1
+PLAY_MENU_ROW = "Play"                  # the ▾ menu's rows, as the Run menu's
+PLAY_SCENE_MENU_ROW = "Play this scene"
+PLAY_SCENE_NAMED = "Play this scene: {name}"
 BEGINNING = "the beginning"             # what Play this scene plays with no scene chosen
 
 TIP_PLAY = "Play from the start (Shift+F5)"
 TIP_SCENE = "Play from the selected scene (F5)"
 TIP_STOP = "Stop the game (Ctrl+F2)"
 TIP_OPTIONS = "Start values, and playing as a new player"
+TIP_MORE = "More ways to play"
+MENUS_POST = True                       # tests set False: tk_popup would wait for a click
 TIP_GUIDE = "Show or hide the Guide"
 TIP_ASSISTANT = "Show or hide the AI Assistant (Ctrl+Shift+A)"
 
@@ -143,6 +154,11 @@ class PlayBar:
         self.merged = False                 # True once it shares the menu bar's row
         self.divider = tk.Frame(parent, background=THEME["divider"], height=1)
         inset, gap = px(BAR_INSET), px(BAR_GAP)
+        style = ttk.Style(parent)
+        for name in ("Split.TButton", "Split.Secondary.TButton"):     # ▶ Play, ■ Stop
+            style.configure(name, padding=(px(12), px(3)))
+        for name in ("More.Split.TButton", "More.Split.Secondary.TButton"):     # the ▾
+            style.configure(name, padding=(px(5), px(3)))
 
         def button(text: str, style: str, command: Callable[[], object], tip: str,
                    side: str = "left", pad: tuple[int, int] = (0, gap)) -> ttk.Button:
@@ -168,18 +184,31 @@ class PlayBar:
         if on_assistant is not None:                    # F48: left of ? Guide
             self.assistant_button = button(ASSISTANT, "Chrome.Ghost.TButton", on_assistant,
                                            TIP_ASSISTANT, side="right", pad=(0, 0))
-        # Play, Play this scene, the scene name, Stop and Play options live in the Run menu
-        # only (2026-11-04: one place to run the game). They are still made, so the run
-        # code keeps their state, but never shown; the bar holds the pane toggles.
-        self.run_widgets = (self.play_button, self.scene_button, self.scene_label,
-                            self.stop_button, self.options_button)
+        # Play this scene, the scene name, Stop and Play options are made but never shown:
+        # the split button's ▾ and the Run menu hold them (the run code keeps their state).
+        self.run_widgets = (self.scene_button, self.scene_label, self.stop_button,
+                            self.options_button)
         for widget in self.run_widgets:
             widget.pack_forget()
-        self.buttons = (*((self.assistant_button,) if self.assistant_button else ()),
+        self.running = False
+        self._on_play, self._on_stop = on_play, on_stop
+        self.play_button.configure(command=self._play_or_stop, style="Split.TButton",
+                                   width=-max(len(PLAY), len(STOP)))
+        self.play_button.pack_configure(padx=(inset, 1))   # a 1 px seam, then the ▾
+        self.more_button = button(MORE, "More.Split.TButton", self.open_menu, TIP_MORE)
+        self.more_button.pack_configure(after=self.play_button)
+        self.menu = tk.Menu(self.frame, tearoff=0)
+        self.menu.add_command(label=PLAY_MENU_ROW, accelerator="Shift+F5", command=on_play)
+        self.menu.add_command(label=PLAY_SCENE_MENU_ROW, accelerator="F5", command=on_scene)
+        self.menu.add_command(label=PLAY_OPTIONS, command=on_options)
+        self.buttons = (self.play_button, self.more_button,
+                        *((self.assistant_button,) if self.assistant_button else ()),
                         self.guide_button)          # left to right on screen
         for widget in self.buttons:                       # a toolbar: arrows move along it
             widget.bind("<Left>", lambda _e, w=widget: self._step(w, -1))
             widget.bind("<Right>", lambda _e, w=widget: self._step(w, 1))
+        for widget in (self.play_button, self.more_button):
+            widget.bind("<Down>", lambda _e: self.open_menu() or "break")
 
     def merge_into(self, row: tk.Frame) -> None:
         """Share the in-window menu bar's row (Windows, Linux): the buttons sit right of the
@@ -191,8 +220,9 @@ class PlayBar:
         self.frame.pack(in_=row, side="left", fill="both", expand=True,
                         padx=(round(BAR_GAP * scale_of(row)), 0))
         self.frame.lift(row)
-        # Pack order is who keeps room in a narrow window: ? Guide, then AI Assistant.
-        keep = [self.guide_button,
+        # Pack order is who keeps room in a narrow window: ▶ Play and its ▾, ? Guide, then
+        # AI Assistant.
+        keep = [self.play_button, self.more_button, self.guide_button,
                 *((self.assistant_button,) if self.assistant_button else ())]
         packed = {str(w): w.pack_info() for w in keep}
         for widget in keep:
@@ -208,13 +238,45 @@ class PlayBar:
         return "break"
 
     def set_running(self, running: bool) -> None:
-        """Stop is enabled only while the game runs (or is starting)."""
+        """While the game runs (or is starting) the split button reads ■ Stop in gray and
+        the hidden Stop is enabled; at rest it reads ▶ Play in the accent."""
         self.stop_button.state(["!disabled"] if running else ["disabled"])
+        if running == self.running:
+            return
+        self.running = running
+        gray = "Secondary." if running else ""
+        self.play_button.configure(text=STOP if running else PLAY,
+                                   style=f"Split.{gray}TButton")
+        self.more_button.configure(style=f"More.Split.{gray}TButton")
+        self.play_button.tooltip.text = TIP_STOP if running else TIP_PLAY  # type: ignore
+
+    def _play_or_stop(self) -> None:
+        (self._on_stop if self.running else self._on_play)()
+
+    def open_menu(self) -> None:
+        """The ▾ menu, under the split button's left edge."""
+        if not MENUS_POST:
+            return
+        x = self.play_button.winfo_rootx()
+        y = self.more_button.winfo_rooty() + self.more_button.winfo_height()
+        try:
+            self.menu.tk_popup(x, y)
+        finally:
+            self.menu.grab_release()
+
+    def add_check(self, label: str, variable: tk.Variable,
+                  command: Callable[[], object]) -> None:
+        """A switch at the ▾ menu's end, under a line (2.3's "Game beside Studio")."""
+        self.menu.add_separator()
+        self.menu.add_checkbutton(label=label, variable=variable, command=command)
 
     def set_scene(self, name: str | None) -> None:
+        """What Play this scene plays now: the hidden name, and the ▾ menu's row."""
         text = name if name is not None else BEGINNING
         if self.scene_label.cget("text") != text:
             self.scene_label.configure(text=text)
+            self.menu.entryconfigure(1, label=PLAY_SCENE_MENU_ROW if name is None
+                                     else PLAY_SCENE_NAMED.format(name=name))
 
     def set_guide(self, shown: bool) -> None:
         """The Guide button looks pressed (secondary fill) while the Guide is shown."""
@@ -275,6 +337,6 @@ def ask_play_options(parent: tk.Misc, values: str, fresh: bool, *,
     return result[0]
 
 
-__all__ = ["ASSISTANT", "BEGINNING", "FRESH", "GUIDE", "OPTIONS_TITLE", "PLAY", "PLAY_OPTIONS",
-           "PLAY_SCENE", "START_VALUES_HEADING", "START_VALUES_HINT", "STOP", "TIP_PLAY",
+__all__ = ["ASSISTANT", "BEGINNING", "FRESH", "GUIDE", "MORE", "OPTIONS_TITLE", "PLAY",
+           "PLAY_OPTIONS", "PLAY_SCENE", "PLAY_SCENE_NAMED", "TIP_MORE", "START_VALUES_HEADING", "START_VALUES_HINT", "STOP", "TIP_PLAY",
            "TIP_SCENE", "TIP_STOP", "PlayBar", "Tooltip", "ask_play_options"]
