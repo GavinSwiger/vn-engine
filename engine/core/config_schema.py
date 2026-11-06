@@ -2211,7 +2211,7 @@ class CalendarConfig:
     day_text: str | None = field(default=None, metadata=spec(
         OneLine(storyclock.TEXT_MAX, why="how a date is written"),
         "how a date is written, with fields in curly brackets such as day, weekday, month "
-        "and season; when not set, the kit's wording, or Day and the number"))
+        "and season; when not set, the genre's wording, or Day and the number"))
 
 
 # --- [meter.<name>] (F62 round 2, specs/F62-visible-meters) ---------------------------------

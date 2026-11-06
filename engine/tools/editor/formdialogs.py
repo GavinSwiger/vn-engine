@@ -1215,6 +1215,8 @@ GROUP_HELP: Mapping[str, str] = {
     "Choices": "A menu of options for the player, and how it shows on the flowchart.",
     "Logic": "Remember things and react to them: set a variable, check it with If, or "
              "change a meter such as affection.",
+    "Time": "Story time: the next part of the day, the next day, or a day you name. "
+            "Conditions can then ask what day or time it is.",
     "Stage": "What's on screen: the background, and characters coming, going or moving.",
     "Audio": "Music, sound effects and voice lines.",
     "Effects": "Screen effects and tricks: transitions, shakes, flashes, glitches, pauses, "

@@ -71,6 +71,13 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
     "hide_meter": {"meter": "The meter to take off the screen. It keeps its value.",
                    "meter2": "Another meter to hide at the same time (optional).",
                    "meter3": "A third meter to hide (optional)."},
+    # F63: Time (clock next / clock next day / clock go to).
+    "clock": {"move": "Story time moves on: to the next part of the day, to the next "
+                      "morning, or to a day or part you name.",
+              "target": "For Go to: a day number such as 7, or a date such as 31 October. "
+                        "Empty: the part of the day below, later today or tomorrow.",
+              "part": "For Go to: a part of the day, such as Evening. Empty: the first "
+                      "part of that day."},
     "points": {"meter": "The meter to change (made on the Database's Meters page).",
                "op": "+= adds, -= takes away, = sets it to the amount.",
                "amount": "A whole number.",
