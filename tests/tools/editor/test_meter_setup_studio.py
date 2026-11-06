@@ -75,6 +75,28 @@ def test_clearing_the_last_key_takes_its_table():
     assert isinstance(tomlpatch.plan_set(text, "meter.sanity", "look", "spiral"), Refuse)
 
 
+def test_show_and_hide_meter_forms():
+    from engine.script.statement_docs import StatementDoc
+    from engine.tools.editor.forms import form_by_key, form_for_doc, rows
+    from tests.tools.editor.test_forms import _inline
+    show, hide = form_by_key("show_meter"), form_by_key("hide_meter")
+    assert [f.name_kind for f in show.fields] == ["meter"] * 3
+    assert show.write({"meter": "hana", "meter2": "sanity", "meter3": "hana"}) == (
+        "show meter hana sanity")
+    assert hide.write({"meter": "hana"}) == "hide meter hana"
+    read, lines = _inline("show meter hana sanity", "hide meter hana",
+                          "show meter a b c d", "show hana happy")
+    got = [(row.form, row.text) for row in rows(read, lines)]
+    assert got[:2] == [("show_meter", "Show meter  hana, sanity"),
+                       ("hide_meter", "Hide meter  hana")]
+    assert got[2][0] not in ("show_meter", "show") and got[3][0] == "show"
+    doc = StatementDoc("show", "Show a meter", "Stage", "show meter <name>…", "", "", None,
+                       "F62")
+    assert form_for_doc(doc) is show
+    assert form_for_doc(StatementDoc("show", "x", "Stage", "show <image>", "", "", None,
+                                     "F04")).key == "show"
+
+
 tk = pytest.importorskip("tkinter")
 pytest.importorskip("engine.tools.editor.window")
 from tests.tools.editor.test_studio_database import open_database, text_of  # noqa: E402

@@ -698,9 +698,10 @@ CHOICE: Final = CommandForm(
 def _line_forms() -> tuple[CommandForm, ...]:
     """F46's one-line forms, then F47's (``forms_more``, ``minigamedata``'s Minigame row and
     W9's Meta file and Game UI, ``forms_files_ui``; imported here, as they import us)."""
-    from engine.tools.editor import forms_files_ui, forms_more, minigamedata
+    from engine.tools.editor import forms_files_ui, forms_meters, forms_more, minigamedata
     return (*FORMS, *forms_more.FORMS, minigamedata.FORM, *forms_files_ui.FORMS,
-            minigamedata.ASK_NAME)                              # F52: Ask for a name…
+            minigamedata.ASK_NAME,                              # F52: Ask for a name…
+            *forms_meters.FORMS)                                # F62: Show/Hide meter
 
 
 def all_forms() -> tuple[CommandForm, ...]:
@@ -718,11 +719,13 @@ def form_for_doc(doc: StatementDoc) -> CommandForm | None:
     ``lock tip|item <name>``)."""
     if doc.group == DECLARATIONS_GROUP:
         return None
-    for form in all_forms():
+    best: tuple[int, CommandForm] | None = None
+    for form in all_forms():          # the longest prefix wins: ``show meter`` over ``show``
         for key, prefix in form.docs:
-            if doc.key == key and doc.syntax.startswith(prefix):
-                return form
-    return None
+            if doc.key == key and doc.syntax.startswith(prefix) and (
+                    best is None or len(prefix) > best[0]):
+                best = (len(prefix), form)
+    return best[1] if best is not None else None
 
 
 def missing_forms() -> list[str]:
