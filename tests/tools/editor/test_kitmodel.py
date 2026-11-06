@@ -31,10 +31,10 @@ def test_cards_no_kit_first_then_each_kit_with_its_preview():
 
 def test_in_use_and_the_unknown_note():
     assert km.in_use({}) == km.NONE and km.unknown_text({}) is None
-    assert km.in_use({"theme.kit": "cozy"}) == "cozy"
-    assert km.in_use({"theme.kit": "western"}) is None
-    assert "\x1b" not in km.unknown_text({"theme.kit": "a\x1bb"})    # through echo()
-    assert km.unknown_text({"theme.kit": "western"}) == (
+    assert km.in_use({"game.kit": "cozy"}) == "cozy"
+    assert km.in_use({"game.kit": "western"}) is None
+    assert "\x1b" not in km.unknown_text({"game.kit": "a\x1bb"})    # through echo()
+    assert km.unknown_text({"game.kit": "western"}) == (
         'config.toml asks for a kit this version doesn\'t have ("western"), so the game '
         "uses no kit. Pick one and press Apply.")
 
@@ -62,19 +62,20 @@ def test_scheme_offer():
 def test_apply_changes_one_plan():
     text = '[game]\ntitle = "x"\n'
     both = km.apply_changes("horror", True, {})
-    assert both == (("theme", "kit", "horror"), ("theme", "preset", "blood_moon"))
-    assert plan(text, both).endswith('[theme]\nkit = "horror"\npreset = "blood_moon"\n')
-    assert km.apply_changes("horror", False, {}) == (("theme", "kit", "horror"),)
+    assert both == (("game", "kit", "horror"), ("theme", "preset", "blood_moon"))
+    assert plan(text, both) == ('[game]\ntitle = "x"\nkit = "horror"\n\n'
+                                '[theme]\npreset = "blood_moon"\n')
+    assert km.apply_changes("horror", False, {}) == (("game", "kit", "horror"),)
     # Only what differs; the kit in use with its scheme writes nothing.
-    found = {"theme.kit": "horror", "theme.preset": "blood_moon"}
+    found = {"game.kit": "horror", "theme.preset": "blood_moon"}
     assert km.apply_changes("horror", True, found) == ()
-    assert km.apply_changes("horror", True, {"theme.kit": "horror"}) == (
+    assert km.apply_changes("horror", True, {"game.kit": "horror"}) == (
         ("theme", "preset", "blood_moon"),)
     # No kit removes the line; an unknown id is replaced.
-    assert km.apply_changes(km.NONE, True, {"theme.kit": "horror"}) == (
-        ("theme", "kit", None),)
+    assert km.apply_changes(km.NONE, True, {"game.kit": "horror"}) == (
+        ("game", "kit", None),)
     assert km.apply_changes(km.NONE, True, {}) == ()
-    assert km.apply_changes(km.NONE, True, {"theme.kit": "nope"}) == (("theme", "kit", None),)
+    assert km.apply_changes(km.NONE, True, {"game.kit": "nope"}) == (("game", "kit", None),)
     # Applying a scheme clears an imported palette, as the Color scheme page does.
     assert ("theme.scheme", "fill", None) in km.apply_changes(
         "cozy", True, {"theme.scheme.fill": "#123456"})
@@ -84,10 +85,10 @@ def test_apply_changes_one_plan():
 def test_the_page_and_the_field():
     assert [p.key for p in sm.pages()][:3] == ["game", sm.SCHEMES, sm.KITS]
     assert sm.page(sm.KITS).title == "Kit" and sm.page(sm.KITS).preview == ""
-    field = sm.fields_by_path()["theme.kit"]
+    field = sm.fields_by_path()["game.kit"]
     assert field.kind == "choice" and field.label == "Genre kit"
     assert field.widget.options == tuple(KITS)
     assert dict(field.widget.labels)["scifi"] == "Sci-fi"
     # Searching Game settings finds it.
-    assert [f.path for s in sm.search("kit") for f in s.fields] == ["theme.kit"]
-    assert "theme.kit" in [f.path for s in sm.search("genre") for f in s.fields]
+    assert [f.path for s in sm.search("kit") for f in s.fields] == ["game.kit"]
+    assert "game.kit" in [f.path for s in sm.search("genre") for f in s.fields]

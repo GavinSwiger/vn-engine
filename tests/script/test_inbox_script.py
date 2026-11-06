@@ -146,7 +146,7 @@ def test_whole_game_checks(tmp_path):
 
 
 def test_w311_open_by_a_look_nothing_comes_by(tmp_path):
-    config = SimpleNamespace(theme=SimpleNamespace(kit=None))
+    config = SimpleNamespace(game=SimpleNamespace(kit=None))
     result = _load(tmp_path, ["send invite from hana", "open pigeon", "open inbox"],
                    config=config)
     assert not [w for w in result.warnings if w.code == "W311"]
@@ -157,7 +157,7 @@ def test_w311_open_by_a_look_nothing_comes_by(tmp_path):
     assert not [w for w in _load(tmp_path / "b", ["send invite from hana on radio",
                                                   "open radio"], config=config).warnings
                 if w.code == "W311"]
-    mystery = SimpleNamespace(theme=SimpleNamespace(kit="mystery"))
+    mystery = SimpleNamespace(game=SimpleNamespace(kit="mystery"))
     assert not [w for w in _load(tmp_path / "c", ["open radio"],
                                  top='lock contact ren "Ren"\n', config=mystery).warnings
                 if w.code == "W311"]

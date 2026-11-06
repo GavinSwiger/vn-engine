@@ -133,7 +133,7 @@ class SchemeName(Choice):
 
 
 class KitName(Choice):
-    """F60: ``[theme] kit``, a built-in genre kit id (``engine.core.kits``); its ``labels``
+    """F60: ``[game] kit`` (``[theme] kit`` before version 1), a built-in genre kit id (``engine.core.kits``); its ``labels``
     are the kits' names. As with ``SchemeName``, an unknown id is a warning: config drops it
     first (``config._with_kit``)."""
 
@@ -525,6 +525,9 @@ class GameConfig:
     id: str | None = field(default=None, metadata=spec(AppId(),
         "the name of the folder that keeps players' saves and settings; set it once and "
         "never change it"))        # ADR-0003 §4, SEC-F01-16
+    kit: str | None = field(default=None, metadata=spec(KitName(),                    # F60
+        "a genre kit (romance, horror, mystery, …): how meters are shown and named; what "
+        "you set yourself still wins"))
 
 
 @dataclass(frozen=True)
@@ -1402,8 +1405,6 @@ def _no_plugin_tables() -> Mapping[str, RawPluginTable]:
     return MappingProxyType({})
 
 
-KIT_DOC = ("a genre kit (romance, horror, mystery, …): how meters are shown and named; "
-           "what you set yourself still wins")
 SCHEME_DOC = ("a built-in color scheme for every box, menu and button; colors you set "
               "yourself still win")
 
@@ -1461,7 +1462,6 @@ class ThemeConfig:
     """``[theme.<area>]``: one ``Table`` field per area, after F49's ``preset`` (the one
     key that isn't an area: walkers look areas up by name, never by position)."""
     preset: str | None = field(default=None, metadata=spec(SchemeName(), SCHEME_DOC))  # F49
-    kit: str | None = field(default=None, metadata=spec(KitName(), KIT_DOC))          # F60
     scheme: SchemeRolesTheme = field(default_factory=SchemeRolesTheme, metadata=spec(
         Table(SchemeRolesTheme), "your own color scheme: one color per role, over preset's"))
     stage: StageTheme = field(default_factory=StageTheme, metadata=spec(Table(StageTheme)))

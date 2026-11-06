@@ -465,7 +465,7 @@ LABELS: Final[Mapping[str, str]] = MappingProxyType({
     "content_warning.min_seconds": "Wait before continuing (seconds)",
     "engine.fps": "Frames per second", "engine.cache_mb": "Image memory (MB)",
     "theme.preset": "Color scheme",                                 # F49 §4
-    "theme.kit": "Genre kit",                                       # F60
+    "game.kit": "Genre kit",                                        # F60
     # P2 pages (AC-F47-49)
     "choice.show_locked": "Show locked choices",
     "saves.pages": "Save pages", "saves.autosave_interval": "Auto-save every (seconds)",

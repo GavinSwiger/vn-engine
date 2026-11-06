@@ -121,8 +121,7 @@ def test_theme_areas():
         "corner",                                                # F61
         "minigame", "plugin",                                    # F23 s5b
         "preset",                                                # F49 S1
-        "kit",                                                   # F60
-        "scheme"}                                                # imported palettes
+        "scheme"}                                              # imported palettes
 
 
 def test_theme_tables_are_frozen():

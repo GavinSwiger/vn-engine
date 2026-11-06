@@ -71,7 +71,7 @@ def test_rule_4_names_the_other_reading(tmp_path):
 def _config(kit=None, **calendar):
     defaults = dict(start=None, parts=None, weekdays=None, months=None, month_days=None,
                     seasons=None, season_days=None, last_day=None, day_text=None)
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit),
+    return SimpleNamespace(game=SimpleNamespace(kit=kit),
                            calendar=SimpleNamespace(**(defaults | calendar)))
 
 

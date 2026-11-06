@@ -116,7 +116,7 @@ def own(found: Mapping[str, object], name: str) -> dict[str, str | None]:
 
 def _config(found: Mapping[str, object], tables: Mapping[str, object]) -> SimpleNamespace:
     """The shape ``kits.meter_look`` reads, from ``found``."""
-    return SimpleNamespace(theme=SimpleNamespace(kit=found.get(km.PATH)), meter=tables)
+    return SimpleNamespace(game=SimpleNamespace(kit=found.get(km.PATH)), meter=tables)
 
 
 def shown(found: Mapping[str, object], name: str) -> tuple[str, str, str]:

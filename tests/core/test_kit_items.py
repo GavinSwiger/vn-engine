@@ -20,7 +20,7 @@ def test_every_kit_names_its_bag(found):
 
 
 def _config(kit=None, **codex):
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit), codex=CodexConfig(**codex))
+    return SimpleNamespace(game=SimpleNamespace(kit=kit), codex=CodexConfig(**codex))
 
 
 def test_bag_words_precedence():
@@ -34,7 +34,7 @@ def test_bag_words_precedence():
 
 def test_hotbar_word_precedence():
     def config(kit=None, word=""):
-        return SimpleNamespace(theme=SimpleNamespace(kit=kit), hotbar=HotbarConfig(word=word))
+        return SimpleNamespace(game=SimpleNamespace(kit=kit), hotbar=HotbarConfig(word=word))
     assert hotbar_word(config()) == ""
     assert hotbar_word(config("fantasy")) == "Belt"
     assert hotbar_word(config("horror", " Sack ")) == "Sack"

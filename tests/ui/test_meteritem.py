@@ -190,7 +190,7 @@ def _owner(points):
     shell, textbox = game_shell()
     interp = SimpleNamespace(points=points, status=Status.WAITING)
     app = SimpleNamespace(shell=shell, textbox=textbox, config=SimpleNamespace(
-        theme=SimpleNamespace(kit="romance"), meter={}))
+        game=SimpleNamespace(kit="romance"), meter={}))
     return shell, MeterCorner(app, interp)
 
 

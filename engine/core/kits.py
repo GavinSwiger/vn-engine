@@ -2,7 +2,7 @@
 
 Why this module exists: the engine's shared systems (meters now; messages, the clock,
 items and checks later) are one mechanic each, dressed per genre. A **kit** is that
-dressing in one bundle, so an author picks "Fantasy" once with ``[theme] kit = "fantasy"``
+dressing in one bundle, so an author picks "Fantasy" once with ``[game] kit = "fantasy"``
 and the wording, the look and the defaults match. A kit never changes what a game does on
 its own: it only fills in what the author left unset.
 
@@ -13,7 +13,7 @@ its own: it only fills in what the author left unset.
   day is worded), ``items`` (F64) and ``messages`` (F65), filled below, and ``checks``:
   reserved, empty until that system lands.
 - ``KITS`` / ``kit(id)`` / ``kit_ids()``: the registry, in Studio's order.
-- ``kit_of(config)``: the kit ``[theme] kit`` names, or None (no kit: today's behavior).
+- ``kit_of(config)``: the kit ``[game] kit`` names, or None (no kit: today's behavior).
 - ``meter_look(config, meter)``: how meter ``meter`` is shown, as ``(look, place, label)``,
   with the precedence ``[meter.<name>]`` > kit > ``skins`` defaults.
 - F64: each kit's ``items`` holds ``ITEMS_BAG`` (the bag's name: Satchel, Evidence, Cargo)
@@ -282,10 +282,10 @@ def kit(id_: str) -> Kit | None:
 
 
 def kit_of(config: Any) -> Kit | None:
-    """The kit ``config``'s ``[theme] kit`` names, or None: no kit, or an id this version
+    """The kit ``config``'s ``[game] kit`` names, or None: no kit, or an id this version
     doesn't have (config warned and dropped it)."""
-    theme = getattr(config, "theme", None)
-    value = getattr(theme, "kit", None)
+    game = getattr(config, "game", None)
+    value = getattr(game, "kit", None)
     return KITS.get(value) if isinstance(value, str) else None
 
 

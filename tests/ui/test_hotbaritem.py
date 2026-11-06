@@ -122,7 +122,7 @@ def test_hotbar_follows_show_hotbar_and_cuts_after_a_reset(monkeypatch):
     interp = SimpleNamespace(codex=codex, status=Status.WAITING)
     monkeypatch.setattr(itemuse, "usable_items", lambda i: ("tea",))
     app = SimpleNamespace(shell=shell, config=SimpleNamespace(
-        hotbar=HotbarConfig(slots=5, place="top_right"), theme=SimpleNamespace(kit=None)))
+        hotbar=HotbarConfig(slots=5, place="top_right"), game=SimpleNamespace(kit=None)))
     hotbar = Hotbar(app, lambda: interp, user=None, port=None)     # type: ignore[arg-type]
     shell.corner.add_source(hotbar.sync)
     shell.update_layer(0.0, focused=True)
@@ -132,7 +132,7 @@ def test_hotbar_follows_show_hotbar_and_cuts_after_a_reset(monkeypatch):
     assert shell.corner.keys("top_right") == (KEY,)
     assert hotbar.names() == ("tea", None, None, None, None)
     app.config = SimpleNamespace(hotbar=HotbarConfig(slots=4, items=("key", "tea", "nope")),
-                                 theme=SimpleNamespace(kit=None))
+                                 game=SimpleNamespace(kit=None))
     assert hotbar.names() == ("key", "tea", None, None)      # "nope": empty
     codex.held = ["tea"]
     assert hotbar.names() == (None, "tea", None, None)       # not held: empty

@@ -282,6 +282,7 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
 RENAMED: tuple[tuple[tuple[str, str], tuple[str, str], str, str, bool], ...] = (
     ((DEVICE_SECTION, "letters"), (DEVICE_SECTION, "letter"), "[device.letters]",
      "[device.letter]", False),
+    (("theme", "kit"), ("game", "kit"), "[theme] kit", "[game] kit", False),
 )
 
 
@@ -310,6 +311,7 @@ def _with_renamed(doc: dict, walk: "_Walk") -> dict:
         else:
             target[new_key] = value
         out[new_section] = target
+        walk.locator.moved[(new_section, new_key)] = (section, key)
     return out
 
 
@@ -376,22 +378,23 @@ def _scheme_id(value: object, walk: "_Walk", path: tuple[str, ...]) -> object:
 
 
 def _with_kit(doc: dict, walk: "_Walk") -> dict:
-    """F60: ``doc`` without ``[theme] kit`` when it names no kit, after one warning with a
+    """F60: ``doc`` without ``[game] kit`` when it names no kit, after one warning with a
     did-you-mean (as F49's preset), so the game runs as with no kit. A value that isn't text
-    stays for the walk's usual error; ``doc`` itself is never changed."""
-    theme = doc.get("theme")
-    value = theme.get("kit") if isinstance(theme, dict) else None
+    stays for the walk's usual error; ``doc`` itself is never changed. (An old ``[theme]
+    kit`` was moved here first, ``_with_renamed``.)"""
+    game = doc.get("game")
+    value = game.get("kit") if isinstance(game, dict) else None
     if type(value) is not str or value in KITS:
         return doc
-    line = walk.locator.line_of("theme", "kit")
-    message = f'{_where(line)}: unknown genre kit "{echo(value)}" in [theme] kit'
+    line = walk.locator.line_of("game", "kit")
+    message = f'{_where(line)}: unknown genre kit "{echo(value)}" in [game] kit'
     close = did_you_mean(value.casefold(), KITS)
     if close is not None:
         message += f' — did you mean "{close}"?'
     else:
         message += ". Use one of " + ", ".join(f'"{key}"' for key in KITS) + "."
     walk.warnings.append((line, message))
-    return {**doc, "theme": {k: v for k, v in theme.items() if k != "kit"}}
+    return {**doc, "game": {k: v for k, v in game.items() if k != "kit"}}
 
 
 def _merged_under(table: dict, colors: Iterable[tuple[str, str]]) -> dict:
@@ -866,13 +869,21 @@ class KeyLocator:
     def __init__(self, text: str) -> None:
         self._text = text
         self._first_seen: dict[tuple[str, ...], int] | None = None
+        # v1 (W323): a new path → the old spelling it was read from (``_with_renamed``).
+        self.moved: dict[tuple[str, ...], tuple[str, ...]] = {}
 
     def line_of(self, *path: str) -> int | None:
         """1-based line where the table or key path was first defined, e.g.
-        line_of('window') or line_of('window', 'width'); None only if absent."""
+        line_of('window') or line_of('window', 'width'); None only if absent. A value read
+        from an old spelling is found at that spelling's line."""
         if self._first_seen is None:
             self._first_seen = _KeyScan(self._text).run()
-        return self._first_seen.get(path)
+        found = self._first_seen.get(path)
+        if found is None:
+            for new, old in self.moved.items():
+                if path[:len(new)] == new:
+                    return self._first_seen.get(old + path[len(new):])
+        return found
 
 
 class _KeyScan:

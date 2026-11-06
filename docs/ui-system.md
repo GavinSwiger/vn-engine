@@ -323,7 +323,7 @@ way from five picked colors (`palette.complete_roles`), so they give no W67 warn
   warnings name the style's scheme, else the main one). If either color is yours, it is
   left out.
 
-**Genre kits (F60).** `[theme] kit = "<id>"` dresses the shared systems for a genre:
+**Genre kits (F60).** `[game] kit = "<id>"` (`[theme] kit` before version 1) dresses the shared systems for a genre:
 `romance`, `horror`, `mystery`, `fantasy`, `cozy`, `scifi` or `letters`
 (`engine/core/kits.py`; Studio: Game settings > Kit). A kit fills in only what the author
 left unset; today that is how a shown meter looks (`bar`, `number`, `hearts`, `pips` or

@@ -17,7 +17,7 @@ from tests.script.test_inbox_script import _load
 TOP = ('lock contact hana "Hana" on pigeon\n'
        'define invite = ["Meet me?", {"ask": "come", "yes": "I will.", "no": "No."}]\n'
        'define late = "Running late!"\n')
-CONFIG = SimpleNamespace(theme=SimpleNamespace(kit=None),
+CONFIG = SimpleNamespace(game=SimpleNamespace(kit=None),
                          calendar=SimpleNamespace(last_day=5, parts=None))
 
 

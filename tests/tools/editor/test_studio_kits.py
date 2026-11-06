@@ -71,8 +71,8 @@ def test_kit_cards_select_and_apply_with_its_scheme_as_one_undo_step(studio, tmp
     # Enter applies the kit and its scheme as one undo step.
     press(ed, cards, "<Return>")
     applied = config_text(ed)
-    assert applied.startswith(original)
-    assert applied.endswith('[theme]\nkit = "mystery"\npreset = "noir"')
+    assert 'version = "0.1.0"\nkit = "mystery"\n' in applied
+    assert applied.endswith('[theme]\npreset = "noir"')
     page = ed.win.settings.kit_page
     assert drawn(page.cards, "in_use") == [("mystery", "In use")]
     assert str(page.apply_button.cget("state")) == "disabled"
@@ -88,7 +88,7 @@ def test_kit_cards_select_and_apply_with_its_scheme_as_one_undo_step(studio, tmp
     page.with_scheme.set(False)
     page.apply_button.invoke()
     ed.root.update()
-    assert config_text(ed).endswith('[theme]\nkit = "fantasy"')
+    assert config_text(ed).endswith('version = "0.1.0"\nkit = "fantasy"')
     page = ed.win.settings.kit_page
     press(ed, page.cards, "<Left>")
     assert page.pick == "mystery"

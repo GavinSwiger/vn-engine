@@ -4,12 +4,12 @@ Why this module exists: the Kit page lives in ``settingsview``'s form column but
 own widgets and state here, so the shared view only calls ``KitPage(view, body)`` when the
 page is built and ``show()`` after each read of ``config.toml``. Top to bottom:
 
-- the unknown-id note (when ``[theme] kit`` names no kit);
+- the unknown-id note (when ``[game] kit`` names no kit);
 - the picked kit: its name, blurb and what it sets (``kitmodel.details``);
 - **Apply <kit>** and, for a kit, "Also use its color scheme (<name>)";
 - the cards (``kitcards``), "No kit" first.
 
-Selecting a card writes nothing. Apply (or Enter, a double-click) writes ``[theme] kit``
+Selecting a card writes nothing. Apply (or Enter, a double-click) writes ``[game] kit``
 and, when ticked, ``[theme] preset`` too, as one ``tomlpatch.plan_changes`` plan: one undo
 step of ``config.toml``.
 

@@ -710,7 +710,11 @@ def facts_from(result: CheckResult | None, texts: Mapping[str, str], *,
 
     styled = frozenset(d.name for d in declared if d.kind == dec.CHARACTER and d.values
                        and (d.values.get("text_color") or d.values.get("text_italic")))
-    theme = theme_of(config_text).get("theme")
+    doc = theme_of(config_text)
+    theme = doc.get("theme")
+    game = doc.get("game")
+    if isinstance(game, dict) and "kit" in game:          # [game] kit ([theme] before v1)
+        theme = {**(theme if isinstance(theme, dict) else {}), "kit": game["kit"]}
     return GuideFacts(
         folder_name=folder_name, title=title_of(config_text),
         characters=_names(names, "character") | kind(dec.CHARACTER), backgrounds=backgrounds,

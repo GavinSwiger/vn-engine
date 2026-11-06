@@ -70,7 +70,7 @@ def own(found: Mapping[str, object]) -> dict[str, object | None]:
 def _config(found: Mapping[str, object]) -> SimpleNamespace:
     kit = found.get(km.PATH)
     return SimpleNamespace(calendar=SimpleNamespace(**own(found)),
-                           theme=SimpleNamespace(kit=kit if isinstance(kit, str) else None))
+                           game=SimpleNamespace(kit=kit if isinstance(kit, str) else None))
 
 
 def calendar(found: Mapping[str, object]) -> Calendar:

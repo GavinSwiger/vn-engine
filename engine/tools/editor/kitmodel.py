@@ -1,7 +1,7 @@
 """Studio's Kit page, the pure half (F60; specs/F60-genre-kits/SPEC.md).
 
 Why this module exists: an author dresses the whole game for a genre with one click instead
-of writing ``[theme] kit``. This module reads the open ``config.toml``'s values
+of writing ``[game] kit``. This module reads the open ``config.toml``'s values
 (``settingsmodel.values``) and says what the page shows and writes; the card grid is
 ``kitcards``, the page's widgets ``kitpage``.
 
@@ -13,7 +13,7 @@ of writing ``[theme] kit``. This module reads the open ``config.toml``'s values
 - ``scheme_offer(id, found)``: the "Also use its color scheme" option's text, and whether
   it starts ticked and can be changed.
 - ``apply_changes(id, with_scheme, found)``: the ``tomlpatch.plan_changes`` changes that
-  pick a kit (``[theme] kit``) and, when asked, its scheme (``schememodel.apply_changes``),
+  pick a kit (``[game] kit``) and, when asked, its scheme (``schememodel.apply_changes``),
   one undo step.
 
 Pure Python: ``core`` and this package's pure modules only; no Tk, no pygame (ADR-0008).
@@ -55,7 +55,7 @@ PLACE_WORDS: Final[Mapping[str, str]] = {
     "top_left": "top-left", "top_right": "top-right", "bottom_left": "bottom-left",
     "bottom_right": "bottom-right"}
 
-SECTION: Final = "theme"
+SECTION: Final = "game"                       # [theme] before version 1 (W323)
 KEY: Final = "kit"
 PATH: Final = f"{SECTION}.{KEY}"
 
@@ -98,7 +98,7 @@ def cards(found: Mapping[str, object] | None = None) -> tuple[KitCard, ...]:
 
 
 def in_use(found: Mapping[str, object]) -> str | None:
-    """The kit ``found`` uses: its ``[theme] kit``, ``NONE`` without one, None when the value
+    """The kit ``found`` uses: its ``[game] kit``, ``NONE`` without one, None when the value
     names no kit."""
     value = found.get(PATH)
     if value is None:
@@ -107,7 +107,7 @@ def in_use(found: Mapping[str, object]) -> str | None:
 
 
 def unknown_text(found: Mapping[str, object]) -> str | None:
-    """The unknown-id note when ``[theme] kit`` names no kit, else None (the author's value
+    """The unknown-id note when ``[game] kit`` names no kit, else None (the author's value
     through ``echo()``)."""
     if in_use(found) is not None:
         return None

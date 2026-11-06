@@ -97,7 +97,7 @@ def test_send_lines_entries_and_messages():
 
 
 def test_device_looks_and_preview():
-    fantasy = {"theme.kit": "fantasy"}
+    fantasy = {"game.kit": "fantasy"}
     assert cm.look_choices(fantasy)[0] == (None, "Game default (Pigeon post, from the Fantasy kit)")
     assert cm.look_choices({})[0] == (None, "Game default (Phone, with no kit)")
     assert [v for v, _ in cm.look_choices({})[1:]] == list(dec.CONTACT_LOOKS)
@@ -122,13 +122,13 @@ def test_device_looks_and_preview():
 def test_default_look_is_the_games_device_and_says_where_it_comes_from():
     # As the game picks it (kits.device_look): the kit's device, else a phone; the name is
     # the one the game shows ([device.<look>] name wins).
-    horror = {"theme.kit": "horror"}
+    horror = {"game.kit": "horror"}
     look = dm.default_look(horror)
     assert look == "mind" and cm.default_look(horror) == ("mind", "Horror")
     assert cm.look_of(horror, {"device": None}) == look
-    named = {"theme.kit": "fantasy", "device.pigeon.name": "Rookery"}
+    named = {"game.kit": "fantasy", "device.pigeon.name": "Rookery"}
     assert cm.default_text(named) == "Game default (Rookery, from the Fantasy kit)"
-    assert cm.default_look({"theme.kit": "nope"}) == ("phone", None)
+    assert cm.default_look({"game.kit": "nope"}) == ("phone", None)
 
 
 def test_preview_uses_the_devices_page_preview_of_the_look():

@@ -56,7 +56,7 @@ def test_a_bad_value_is_an_error_and_its_key_stays_unset(load):
 
 
 def config(kit=None, **tables):
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit), device=tables)
+    return SimpleNamespace(game=SimpleNamespace(kit=kit), device=tables)
 
 
 def test_config_words_win_over_the_engine_words_key_by_key():

@@ -1657,7 +1657,7 @@ top level of a file, like `lock tip`. The name is what the script uses (`from ha
 shown name (1 to 40 characters) is what the Inbox and the notices say. `on` picks the
 device look their messages come by: `phone`, `letter`, `pigeon`, `radio`, `terminal` or
 `mind` (`letters`, the spelling from before version 1, still works, with a warning).
-Without it, the kit's look is used (`[theme] kit`: Fantasy sends pigeons, Letters sends
+Without it, the kit's look is used (`[game] kit`: Fantasy sends pigeons, Letters sends
 letters, Sci-fi a terminal, Horror a voice in your head), else a phone. `image` is a
 picture name for the contact's thread and their notices. A contact has no thread until
 they send something; there is no `unlock contact`.
@@ -2144,7 +2144,7 @@ label = "Hana"         # the name shown beside it, up to 30 characters
 look = "dial"
 ```
 
-- What a table leaves out comes from the game's kit (`[theme] kit`), then the defaults: a
+- What a table leaves out comes from the game's kit (`[game] kit`), then the defaults: a
   bar at the top left, labelled with the meter's name (`hana_love` shows as "Hana love").
 - **bar**: an outlined bar filled by the meter's share of its range. **number**: the
   value. **hearts** and **pips**: one mark per point when the range spans 10 or fewer,
@@ -2206,7 +2206,7 @@ label after_class:
 #### The calendar: [calendar]
 
 Without settings the day has Morning, Afternoon, Evening and Night, the week runs Monday to
-Sunday, and dates read "Day 4". A kit (`[theme] kit`) brings its own parts and wording:
+Sunday, and dates read "Day 4". A kit (`[game] kit`) brings its own parts and wording:
 romance "Thursday, day 4", horror "Night 3", mystery "Day 4 of the case", fantasy "Day 4 of
 the journey", cozy "Spring, day 4", sci-fi "Shift 2", letters "4 April". Your own keys
 always win:

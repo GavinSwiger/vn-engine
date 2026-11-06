@@ -75,7 +75,7 @@ def test_unknown_meter_is_e233(tmp_path):
 
 
 def _config(kit=None, **tables):
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit),
+    return SimpleNamespace(game=SimpleNamespace(kit=kit),
                            meter={k: MeterTable(**v, line=7) for k, v in tables.items()})
 
 

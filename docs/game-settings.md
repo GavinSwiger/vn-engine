@@ -104,16 +104,17 @@ meter (Sanity for Horror, Affection for Romance).
 - **Click a card** (or use the arrow keys) to read what it does: a one-line description,
   how meters you show will look and where they sit, and the meters it suggests with their
   ranges and ranks (Horror: Sanity 0–100, from Breaking to Steady). Nothing is written yet.
-- **Apply** (or Enter, or a double-click) writes `kit = "horror"` under `[theme]`. With
+- **Apply** (or Enter, or a double-click) writes `kit = "horror"` under `[game]`. With
   **Also use its color scheme** ticked (Horror's is Blood Moon), it writes
-  `preset = "blood_moon"` too. Both are one step that Ctrl+Z takes back. The box starts
+  `preset = "blood_moon"` under `[theme]` too. Both are one step that Ctrl+Z takes back. The box starts
   unticked when you use an imported palette, so your palette stays unless you tick it.
 - **Use no kit** (on the No kit card) removes the line; the engine's plain defaults apply.
 - Anything you set yourself still wins over the kit. If `config.toml` names a kit this
   version doesn't have, the page says so.
 
-All settings lists the same key as `[theme] kit` ("Genre kit"), so searching for "kit"
-finds it.
+All settings lists the same key as `[game] kit` ("Genre kit"), so searching for "kit"
+finds it. Before version 1 the kit was written under `[theme]`; that still works, the check
+warns (W323), and the page writes it under `[game]` the next time you apply a kit.
 
 ## Calendar
 

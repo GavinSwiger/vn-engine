@@ -20,9 +20,9 @@ def test_offers_come_from_the_kit_or_a_short_general_list():
     general, kit = mm.offers({})
     assert kit is None and [o.label for o in general] == ["Affection", "Trust", "Courage",
                                                           "Coins"]
-    horror, kit = mm.offers({"theme.kit": "horror"})
+    horror, kit = mm.offers({"game.kit": "horror"})
     assert kit is KITS["horror"] and horror[0].label == "Sanity"
-    assert mm.offers({"theme.kit": "nope"})[1] is None
+    assert mm.offers({"game.kit": "nope"})[1] is None
     sanity = horror[0]
     line = dec.meter_line((sanity.name,), mm.offer_values(sanity))
     assert line == ('points sanity 0 to 100 start 100 ranks "Breaking" 0 "Shaken" 25 '
@@ -35,7 +35,7 @@ def test_offers_come_from_the_kit_or_a_short_general_list():
 
 
 def test_defaults_own_values_and_preview():
-    romance = {"theme.kit": "romance"}
+    romance = {"game.kit": "romance"}
     assert mm.default_text(romance, "affection") == "Kit default: hearts, top right"
     assert mm.default_text({}, "hana_love") == "Default: bar, top left"
     assert mm.label_text(romance, "affection") == "Empty: shows “Affection”."

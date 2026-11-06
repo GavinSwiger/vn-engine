@@ -1,4 +1,4 @@
-"""F60 genre kits: the registry, ``[theme] kit`` in config, ``kit_of`` and ``meter_look``
+"""F60 genre kits: the registry, ``[game] kit`` in config, ``kit_of`` and ``meter_look``
 (specs/F60-genre-kits/SPEC.md)."""
 
 import dataclasses
@@ -56,7 +56,7 @@ def test_each_kit_is_well_formed(found):
     assert clock is not None and 1 <= len(clock.parts) <= PARTS_MAX
     assert len(set(clock.parts)) == len(clock.parts)
     assert all(0 < len(part) <= NAME_MAX for part in clock.parts)
-    calendar, problems = calendar_of(SimpleNamespace(theme=SimpleNamespace(kit=found.id)))
+    calendar, problems = calendar_of(SimpleNamespace(game=SimpleNamespace(kit=found.id)))
     assert problems == [] and calendar.parts == clock.parts
     assert calendar.wording() == clock.day_text          # every field it uses is there
 
@@ -82,39 +82,44 @@ def test_kit_name_lists_the_kits_by_name():
     assert names.labels["scifi"] == "Sci-fi"
 
 
-def test_theme_kit_in_config(load):
-    result = load('[theme]\nkit = "horror"\n')
+def test_game_kit_in_config(load):
+    result = load('[game]\nkit = "horror"\n')
     assert result.errors == [] and result.warnings == []
-    assert result.config.theme.kit == "horror"
+    assert result.config.game.kit == "horror"
     assert kit_of(result.config) is KITS["horror"]
     # A kit never sets the colors on its own: Studio offers its scheme separately.
-    assert dataclasses.replace(result.config.theme, kit=None) == ThemeConfig()
+    assert result.config.theme == ThemeConfig()
     assert kit_of(load("").config) is None
 
 
-def test_unknown_and_wrong_kits(load):
+def test_unknown_and_wrong_kits_written_the_old_way(load):
+    """``[theme] kit`` (before version 1) is read as ``[game] kit``, at its own line."""
     near = load('[theme]\n\nkit = "horor"\n')
     assert near.errors == [] and near.warnings == [
-        'config.toml, line 3: unknown genre kit "horor" in [theme] kit — did you mean '
+        'config.toml, line 3: unknown genre kit "horor" in [game] kit — did you mean '
         '"horror"?']
-    assert near.config.theme == ThemeConfig() and kit_of(near.config) is None
+    assert near.config.game.kit is None and kit_of(near.config) is None
     assert load('[theme]\nkit = "Sci-fi"\n').warnings[0].endswith('did you mean "scifi"?')
     far = load('[theme]\nkit = "western"\n')
     assert far.errors == [] and far.warnings == [
-        f'config.toml, line 2: unknown genre kit "western" in [theme] kit. Use one of '
+        f'config.toml, line 2: unknown genre kit "western" in [game] kit. Use one of '
         f'{KIT_LIST}.']
     wrong = load("[theme]\nkit = 3\n")
     assert [e.format() for e in wrong.errors] == [
-        f"config.toml, line 2: [theme] kit must be one of {KIT_LIST}, but found 3"]
+        f"config.toml, line 2: [game] kit must be one of {KIT_LIST}, but found 3"]
     assert wrong.warnings == []
     assert "\\x1b" in load('[theme]\nkit = "x\\u001b"\n').warnings[0]
     # With a preset beside it, both are read.
     both = load('[theme]\npreset = "noir"\nkit = "mystery"\n')
     assert both.warnings == [] and both.config.theme.preset == "noir"
+    assert both.config.game.kit == "mystery"
+    assert load('[game]\nkit = "western"\n').warnings == [
+        f'config.toml, line 2: unknown genre kit "western" in [game] kit. Use one of '
+        f'{KIT_LIST}.']
 
 
 def _config(kit_id=None, meter=None):
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit_id),
+    return SimpleNamespace(game=SimpleNamespace(kit=kit_id),
                            **({"meter": meter} if meter is not None else {}))
 
 
@@ -157,8 +162,8 @@ def test_f65_messages_words_and_device_looks():
     ``kit_words`` gives the page's word, and the device look falls back to the phone."""
     looks = {k.messages[kits.MESSAGES_DEVICE] for k in KITS.values()}
     assert looks == set(kits.DEVICE_LOOKS)
-    letters = SimpleNamespace(theme=SimpleNamespace(kit="letters"))
+    letters = SimpleNamespace(game=SimpleNamespace(kit="letters"))
     assert kits.kit_words(letters) == {"inbox": "Letters"}
     assert kits.device_look(letters) == "letter"
-    plain = SimpleNamespace(theme=SimpleNamespace(kit=None))
+    plain = SimpleNamespace(game=SimpleNamespace(kit=None))
     assert kits.kit_words(plain) == {} and kits.device_look(plain) == "phone"

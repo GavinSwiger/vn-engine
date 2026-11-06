@@ -95,7 +95,7 @@ def _config(found: Mapping[str, object]) -> SimpleNamespace:
     kit = found.get(km.PATH)
     tables = {look: DeviceTable(**{k: v for k, v in own(found, look).items()})
               for look in DEVICE_LOOKS}
-    return SimpleNamespace(theme=SimpleNamespace(kit=kit if isinstance(kit, str) else None),
+    return SimpleNamespace(game=SimpleNamespace(kit=kit if isinstance(kit, str) else None),
                            device=tables)
 
 

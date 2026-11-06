@@ -83,3 +83,15 @@ def test_studio_reads_the_old_table_at_its_new_name_and_moves_it_when_writing():
     new = tomllib.loads("\n".join(apply_lines(text.split("\n"), plan.edits)))
     assert new == {"device": {"phone": {"name": "Cell"},
                               "letter": {"name": "Postbox", "arrive_text": "Mail"}}}
+
+
+def test_theme_kit_is_read_as_game_kit_and_studio_moves_it():
+    config, warnings = _config('[game]\ntitle = "x"\n\n[theme]\nkit = "horror"\n')
+    assert config.game.kit == "horror" and warnings == []
+    assert config.renamed == ((5, "[theme] kit", "[game] kit"),)
+    text = '[game]\ntitle = "x"\n\n[theme]\nkit = "horror"\npreset = "noir"'
+    assert settingsmodel.values(text)["game.kit"] == "horror"
+    plan = tomlpatch.plan_set(text, "game", "kit", "mystery")
+    new = "\n".join(apply_lines(text.split("\n"), plan.edits))
+    assert tomllib.loads(new) == {"game": {"title": "x", "kit": "mystery"},
+                                  "theme": {"preset": "noir"}}
