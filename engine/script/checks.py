@@ -1353,6 +1353,26 @@ def _iter_tracks(inp: CheckInput, labels: "_Labels | None"
     return warnings
 
 
+def _w317(inp: CheckInput) -> list[ScriptWarning]:
+    """F65 round 3, dev loads: each ``[device.<look>] arrive_sound`` that names no file in
+    ``audio/`` (``_missing_audio``, W220's lookup), at the table's config.toml line."""
+    devices = getattr(inp.meter_config, "device", None)
+    if not inp.dev or not devices:
+        return []
+    warnings: list[ScriptWarning] = []
+    listings: dict[str, DirListing | None] = {}
+    for look, table in devices.items():
+        file = getattr(table, "arrive_sound", None)
+        if not file:
+            continue
+        missing, suggestion = _missing_audio(inp.paths, file, listings)
+        if missing:
+            warnings.append(ScriptWarning(format_message("W317", (look, file, suggestion)),
+                                          code="W317", file="config.toml",
+                                          line=getattr(table, "line", None)))
+    return warnings
+
+
 # --- Step 15: scene replays (F36) --------------------------------------------------------------
 
 def _iter_replays(inp: CheckInput, labels: "_Labels | None") -> Generator[None, None, None]:
@@ -1509,6 +1529,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     from engine.script import inbox as inbox_checks                 # F65 round 2: E450-
     out.warnings += inbox_checks.check_story(inp.nodes, sink.add,   # E452, W311
                                              inp.meter_config)
+    out.warnings += _w317(inp)                                      # F65 round 3
     yield
     if not inp.checks_skipped:
         out.warnings += yield from _iter_w42(collected)

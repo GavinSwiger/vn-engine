@@ -3695,6 +3695,17 @@ def _e337(form: str = "twice", *args: object) -> str:
             f"{_place(first)}. Give each track its own name.")  # type: ignore[arg-type]
 
 
+def _w317(look: str = "pigeon", file: str = "sfx/wngs.ogg",
+          suggestion: str | None = "sfx/wings.ogg") -> str:
+    """F65 round 3: a ``[device.<look>] arrive_sound`` naming no file in ``audio/`` (the
+    load's own form of the run's W26, so ``engine check`` lists it)."""
+    text = (f'[device.{show(str(look))}] arrive_sound "{show(str(file))}" names '
+            "no such file in audio/, so no sound plays when a message arrives.")
+    if suggestion is not None:
+        text += f' Did you mean "{show(str(suggestion))}"?'
+    return text + f" Add audio/{show(str(file))} or check the spelling."
+
+
 def _e338(name: str = "ture", suggestion: str | None = "true") -> str:
     text = f'until names endings, but there is no ending "{show_name(str(name))}".'
     if suggestion is not None:
@@ -5142,6 +5153,7 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E337": _e337,
     "E338": _e338,
     "W220": _w220,
+    "W317": _w317,                      # F65 round 3: [device.<look>] arrive_sound
     "W221": _w221,
     # F36 ending list & scene replay (01 §5.3): load E348, E350, E351, E352 (replay.py,
     # checks.py), E349 (checks.py); run W229 (runtime/replay.py).

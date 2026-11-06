@@ -1721,6 +1721,8 @@ reading = "letter"                          # or "chat"
 The sound plays once, at the player's sound volume, when the message arrives; not when
 going back and forward again, not during a scene replay, and not while skipping. A
 `[device.…]` name that isn't one of the six looks is a warning that suggests the closest.
+An `arrive_sound` that names no file in `audio/` is a warning too (W317), listed by the check
+and in Studio's Problems.
 
 A `send` is a story step: a save keeps what arrived, going back before the line takes the
 message out again, going forward brings it back (without a second notice), and New Game
@@ -1819,6 +1821,7 @@ open, and both stay free as variable names. `contact` is a word only after `lock
 | `inbox.reply("invte") reads the reply to message invte, but no send line sends it with replies, …` (warning W313) | Fix the name, or give the message replies. |
 | `inbox.reply("invite") is compared with "maybe", which isn't one of its replies ("no" or "yes"), …` (warning W314) | Compare with one of its reply ids. |
 | `message invite must be text, or a list of lines like a phone chat's, …` | Make it text or a list. |
+| `[device.pigeon] arrive_sound "sfx/wngs.ogg" names no such file in audio/, …` (warning W317) | Add the file to `audio/`, or check the spelling. |
 | `open pigeon opens the Inbox at the newest message that came by pigeon, but nothing in this game comes by pigeon. …` (warning) | Send something by that look, or write `open inbox`. |
 
 A message whose value goes wrong while the game runs (a `default` changed into something
