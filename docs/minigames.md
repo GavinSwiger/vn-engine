@@ -35,8 +35,9 @@ line.
 
 - **The name** comes first: `lantern_memory`. It is the name the minigame's plugin gives
   itself. Nine names come with the engine: `poem_game`, `present_evidence`, `phone_chat`,
-  `puzzle_room`, `heartbeat`, `code_lock`, `stay_still`, `hand_game`, and `gift_giving`. Any
-  others are plugins in your game's `game/minigames/` folder.
+  `puzzle_room`, `heartbeat`, `code_lock`, `stay_still`, `hand_game`, and `gift_giving`;
+  `ask_text`, `cipher_note`, `terminal` and `shop` come with it too. Any others are plugins
+  in your game's `game/minigames/` folder.
 - **Arguments** come next, written `name=value`: `pairs=6`. Each minigame has its own; its
   section below (or its plugin) lists them. A value is worked out when the line runs, like
   a condition, so `hints=points.hana >= 3` works. Misspelled or missing arguments are
@@ -70,7 +71,7 @@ The script language reference has the full form of the line and its error messag
 ## Setting up a minigame in Studio
 
 You don't have to type the data or the line. In Studio, open **Database ▸ Minigame data**.
-The list shows the story's word lists, evidence, phone chats, puzzle rooms and gift tables. **+ New**
+The list shows the story's word lists, evidence, phone chats, puzzle rooms, gift tables and shops. **+ New**
 makes one in `script/database.vns`, ready to change. Each change is saved into the script
 straight away, and **Edit ▸ Undo** takes it back. If the game wouldn't accept a change yet,
 for example a room with no way out, the panel shows "Not saved yet" and the reason, and
@@ -96,6 +97,9 @@ saves once you fix it.
   One row per gift: the item, the reaction (Loved, Liked, Neutral or Disliked), the points
   (-10 to 10) and what the character says. The "Any other gift" row is for every item not
   listed. **+ Add gift** adds a row, and ✕ removes it. The items come from **Codex ▸ Items**.
+- **Shop**: one row per item for sale: the item, its price, and how many are for sale. An
+  empty Price uses the item's own **Price** (Codex ▸ Items); an empty How many means any
+  number. **+ Add item** adds a row, ↑ and ↓ move it, and ✕ removes it.
 
 Then, in a scene's **Events**, use **Insert ▸ Minigame**. Pick the game. The form shows
 that game's arguments. A data argument lists that game's data, with **Set up…** to edit
@@ -1812,6 +1816,122 @@ With no goal command, not reached.
 `[words.plugin.terminal]` holds every word the terminal shows, including the built-ins'
 `help`, `clear` and `exit`.
 
+## Shop
+
+The shop (`shop`) comes with the engine. The player buys items with the story's money: the
+item marked `money` (see "Item counts and money" in [script-language.md](script-language.md)).
+The panel shows the money the player holds at the top right ("Coins ×30", in the bag's own
+word for money), then one row per item for sale: its name ("×2" when the player has some),
+"3 left" or "Sold out" when only a few are for sale, and the price ("5 Coins", or "Free").
+
+```
+lock item coin "Coins" in "Purse" money
+lock item tea "Jasmine Tea" count 0 to 9 price 5
+lock item matches "Matches" count 0 to 99
+lock item lantern "Red Lantern"
+default bought = {}
+
+define stall_stock = {
+    "tea": None,
+    "matches": [1, 10],
+    "lantern": 20,
+    }
+
+label stall:
+    unlock item coin 30
+    minigame shop skippable stock=stall_stock name="Daichi's Stall" into bought
+    if "lantern" in bought:
+        daichi happy "Take good care of it."
+```
+
+### The stock
+
+- Each key is an item's name (declared with `lock item`), in the order the shop lists them
+  (1 to 40 items).
+- Each value is the price, or a list of the price and how many are for sale:
+  - `20`: 20 each, as many as the player likes.
+  - `[1, 10]`: 1 each, 10 for sale on this visit (1 to 999).
+  - `None` or `[None, 10]`: the item's own price, from `price 5` on its `lock item` line
+    (Studio's **Price** field). An item with no price there needs one in the stock.
+- A price is a whole number from 0 (free) to 999,999.
+- The stock is counted again on each visit. To sell out for good, keep the table in a
+  `default` and lower it from the result, or show a different table later.
+- An item without `count` can be held once, so the shop sells one; a counted item stops at
+  its most ("You can't carry more Jasmine Tea.").
+
+### Arguments
+
+| Argument | Default | Allowed | Meaning |
+|---|---|---|---|
+| `stock` | required | a stock table | What is for sale, and at what price |
+| `money` | `None` (the item marked `money`) | an item's name | What the player pays with |
+| `name` | `None` (the `title` word, "Shop") | text, 1 to 40 characters | The heading |
+
+### Playing
+
+The shop opens over the dimmed scene. The player picks a row and presses **Buy**: the price
+is taken from the money and one item goes into the bag, and the panel shows the new money
+and count at once. **Buy** can be pressed again to buy more. When a row can't be bought, its
+price is dimmed and Buy says why: "Matches is sold out.", "Not enough Coins." or "You can't
+carry more Jasmine Tea.". **Put back** undoes the last Buy (the item goes back and the money
+comes back), so a slip costs nothing.
+
+**Leave** (or Backspace, the right mouse button, or the gamepad's B button) ends the visit.
+The result is what was bought, such as `{"tea": 2, "matches": 1}`, or `{}` for nothing. The
+money and items change only then, together with the result, so a save or a rollback never
+sees half a purchase. Going back to the shop's line opens the shop again as it was.
+
+- Mouse: click a row to pick it, then **Buy**. Keyboard and gamepad: Up and Down pick a row,
+  Enter (or A) goes to **Buy**.
+- Nothing is timed or moves. **Skip Game** (with `skippable`) buys nothing: `{}`.
+
+### When the arguments are refused
+
+A problem stops the story with E272, `shop can't use these arguments:` and the reason:
+
+| Reason | Fix |
+|---|---|
+| `stock must be a dictionary of items and prices, such as {"tea": 5, "matches": [1, 10]}, but it is a list.` | Write the stock in `{ }`, as above. |
+| `stock has 0 items; a shop sells 1 to 40.` | Sell 1 to 40 items. |
+| `"jasmine tea" in stock can't be an item name; write an item's name.` | Write the item's name as declared. |
+| `"tea" in stock must be a price, such as 5, or a list of the price and how many, such as [5, 3], but it is text.` | Write a number, or `[price, how many]`. |
+| `"tea" in stock costs -1; a price is a whole number from 0 to 999,999, or None for the item's own price.` | Use 0 to 999,999. |
+| `"tea" in stock has 0 for sale; how many is a whole number from 1 to 999, or None for any number.` | Use 1 to 999, or `None`. |
+| `stock names the item "tee", but there is no item named "tee". Did you mean "tea"?` | Spell the item as its `lock item` line does. |
+| `the shop needs money, but no item is the money. …` | Add `money` to an item's line, or write `money="coin"`. |
+| `"coin" is the money, so the shop can't sell it.` | Take the money out of the stock. |
+| `"matches" has no price: write one in stock, e.g. "matches": 5, or add price 5 to its lock item line.` | Give it a price. |
+
+### Testing the shop
+
+A headless run, Shift+F8 in a test run, and Skip Game buy nothing (`{}`). To test a
+purchase, give the result and the changes with `finish`.
+
+### Changing the look and the words
+
+The shop draws with the game's `panel`, `list` and `button` colors, so it fits every color
+scheme. `[theme.plugin.shop]` has `buy_sound` (none). `{item}` is an item's name, `{money}`
+the money word and `{n}` a number:
+
+```toml
+[words.plugin.shop]
+title = "Shop"
+hint = "Choose something, then Buy."
+buy = "Buy"
+put_back = "Put back"
+leave = "Leave"
+price = "{n} {money}"
+free = "Free"
+left = "{n} left"
+sold_out = "Sold out"
+gone = "{item} is sold out."
+bought = "Bought {item}."
+returned = "Put {item} back."
+short = "Not enough {money}."
+full = "You can't carry more {item}."
+enough = "That's all for this visit."
+```
+
 ## Writing a minigame
 
 A minigame of your own is a **plugin**: a Python file in your game's `game/minigames/`
@@ -2183,6 +2303,26 @@ Minigame API 1.4 adds **`api.TextField`**, the engine's one-line text field (the
 - **Never log typed text** or show it anywhere but your own screen; finish with it as the
   result (`ctx.finish(field.text)`) if the story needs it.
 
+### API 1.5 notes (item counts)
+
+Minigame API 1.5 lets a game read and change **how many** of an item the player holds (items
+declared with `count`; see "Item counts and money" in the script language). The shop uses it.
+
+- **Declare `api = "1.5"`.** An older engine refuses a 1.5 plugin with E278.
+- **Read:** `ctx.codex.count("coin")` is how many the player holds now, this game's own
+  changes included (0 for none). `ctx.codex.most("coin")` is the most they can hold (1 for an
+  item without `count`). `ctx.codex.money_word()` is the bag's word for the money ("Coins").
+  `ctx.story.money` names the item marked `money` (or `None`), and `ctx.story.prices` lists
+  each item's `price` as `(name, price)` pairs.
+- **Change:** `ctx.codex.give("coin", 5)` and `ctx.codex.take("coin", 5)`, and in an outcome
+  `api.give("coin", 5)` and `api.take("coin", 5)`. The number is a whole number from 1 to
+  999,999; leaving it out means 1, so older code is unchanged. Giving stops at the item's
+  most and taking stops at none, exactly as `unlock item coin 5` and `lock item coin 5` do.
+- **The usual rules hold.** The name must be a declared item (E253), the number must be in
+  range (E275), a game makes at most 1,000 changes, and nothing reaches the story until the
+  game finishes. Then the changes are made in order through the story's own rules, so a
+  save, a load, a rollback and Skip Game stay exact.
+
 ### Achievement hook
 
 Achievements (docs/script-language.md, section 7, "lock achievement") are kept on the
@@ -2246,7 +2386,7 @@ save holds, that save goes back to the nearest point it can.
 |---|---|
 | `name` | The minigame's name in scripts: lower-case letters, digits, `_`. Required. |
 | `title` | The heading and save description; `[words.plugin.<name>] title` wins. Default: the name. |
-| `api` | The minigame API version the plugin was written for: `"1.0"` (default), `"1.1"`, `"1.2"`, or `"1.3"`. |
+| `api` | The minigame API version the plugin was written for: `"1.0"` (default) up to `"1.5"`. |
 | `args` | `{"name": Arg(), "other": Arg(default=value)}`. Names start with a letter. |
 | `test_outcome` | `Outcome(result, changes)` for headless runs and Shift+F8, or `None`. |
 | `skipped_outcome` | `Outcome(…)` for Skip Game, or `None` (then the game can't be `skippable`). |
@@ -2256,7 +2396,8 @@ save holds, that save goes back to the nearest point it can.
 
 `Outcome(result, changes)`: `result` is a plain value (text, a number, `True`, `False`,
 `None`, a list, or a dictionary with text keys); `changes` is a tuple of `add_points(name,
-n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
+n)`, `set_points(name, n)`, `give(item)`, `take(item)` (API 1.5: `give(item, n)`,
+`take(item, n)`), and `unlock_tip(tip)`.
 
 ### Methods the engine calls
 
@@ -2279,8 +2420,8 @@ n)`, `set_points(name, n)`, `give(item)`, `take(item)`, and `unlock_tip(tip)`.
 | `ctx.args` | The checked arguments, a dictionary (yours to read; a copy). |
 | `ctx.random` | The story's random source: `roll(a, b)`, `pick(list)`, `decimal()`, `shuffle(list)` (returns a new list). |
 | `ctx.points` | Meters: `get(name)`, `names()`, `highest()`, and `add(name, n)`, `set(name, n)` (made when the game finishes). |
-| `ctx.codex` | `items()`, `tips()`, `has(kind, name)`, `title(name)`, and `give(item)`, `take(item)`, `unlock_tip(tip)` (made when the game finishes). |
-| `ctx.story` | The story's declared names: `meters`, `items`, `tips`, `item_categories`. |
+| `ctx.codex` | `items()`, `tips()`, `has(kind, name)`, `title(name)`, API 1.5's `count(item)`, `most(item)`, `money_word()`, and `give(item, n=1)`, `take(item, n=1)`, `unlock_tip(tip)` (made when the game finishes). |
+| `ctx.story` | The story's declared names: `meters`, `items`, `tips`, `item_categories`, `tip_categories`, and (API 1.5) `money` and `prices`. |
 | `ctx.settings` | `text_scale`, `reduce_motion`, the volumes, and (API 1.3) `timing_assist` (`"normal"`, `"slower"`, `"off"`) with `timed(seconds)`: the player's time limit, or `None` for no limit. |
 | `ctx.area` | The play area, a `Box`. |
 | `ctx.scope` | The focus scope: `set_groups([FocusGroup(buttons)])`, `set_default(button)`, `focused`. |

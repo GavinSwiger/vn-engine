@@ -317,3 +317,67 @@ def test_ledger_preview_equals_the_codex():
             getattr(codex, change.verb)(change.name, change.amount)
         assert codex.items() == led.items()
         assert [codex.count(n) for n in names] == [led.count(n) for n in names]
+
+
+# --- At run time: the story, the base's counts, apply, rollback, headless ---------------------
+
+STORY = '''lock item coin "Coins" money
+lock item tea "Jasmine Tea" count 0 to 9 price 5
+define stall_stock = {"tea": None}
+default bought = None
+
+label start:
+    unlock item coin 30
+    "Before."
+    minigame shop skippable stock=stall_stock into bought
+    "After."
+'''
+
+
+def _story(root: Path):
+    from engine.core.paths import GamePaths
+    from engine.minigames.loader import load_plugins
+    from engine.script import load_story
+    from engine.script.loader import LoadOptions
+    (root / "script").mkdir(parents=True, exist_ok=True)
+    (root / "script" / "main.vns").write_text(STORY, encoding="utf-8")
+    sigs = load_plugins(GamePaths(root), dev=False).signatures()
+    result = load_story(GamePaths(root.resolve()), LoadOptions(dev=False, minigames=sigs))
+    assert result.program is not None, [e.format() for e in result.errors]
+    return result.program, sigs
+
+
+def test_runtime_counts_apply_and_rollback(tmp_path):
+    from engine.runtime import headless
+    from engine.runtime.commands import StepBack
+    from tests.runtime.minigame_story import ALL, finish, launched, said, start_of, step
+    program, sigs = _story(tmp_path / "g")
+    commands = headless.run_headless(program, seed=1, minigames=sigs,
+                                     inputs=["advance", "advance"])
+    assert said(commands) == ["Before.", "After."]             # the test outcome: {}
+    interp = launched(program, sigs=sigs)
+    interp.new_game(42)
+    interp.run(10_000)
+    step(interp)                                               # past "Before."
+    start = start_of(interp.take_commands(ALL))
+    assert (start.base.items, start.base.counts) == (("coin",), (30,))
+    assert start.names.money == "coin" and start.names.prices == (("tea", 5),)
+    finish(interp, {"tea": 3}, (api.take("coin", 15), api.give("tea", 3)))
+    assert (interp.codex.count("coin"), interp.codex.count("tea")) == (15, 3)
+    assert interp.G["bought"] == {"tea": 3}
+    interp.post(StepBack(1))
+    interp.run(10_000)
+    interp.take_commands(ALL)
+    # Back from "After." lands on the shop again, as it was: nothing bought yet.
+    assert (interp.codex.count("coin"), interp.codex.count("tea")) == (30, 0)
+    assert start_of([*interp.take_commands(ALL)] or [start]).base.counts == (30,)
+    interp = launched(program, sigs=sigs)
+    interp.new_game(42)
+    interp.run(10_000)
+    step(interp)
+    interp.take_commands(ALL)
+    from engine.runtime.commands import StoryFailed
+    failed = [c for c in finish(interp, {}, (CodexChange("give", "tea", 0),))
+              if type(c) is StoryFailed]                       # E276: a bad amount
+    assert failed and failed[0].error.code == "E276"
+    assert "an item's change is a whole number from 1 to 999,999" in failed[0].error.message

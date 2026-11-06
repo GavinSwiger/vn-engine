@@ -855,6 +855,9 @@ as "Coins ×30".
   "Coins ×30", even when the player has none. Money always counts, so `count` can be left out
   (`lock item coin "Coins" money`). `count` and `money` go anywhere after the title; both are
   words only there, so they stay free as names.
+- **`price 5`** is what a shop asks for one of the item when its stock names no price
+  (`lock item tea "Jasmine Tea" count 0 to 9 price 5`): a whole number from 0 to 999,999,
+  anywhere after the title, items only. See "Shops" under `minigame`.
 - **Read a count** with **`items.count("coin")`** anywhere Python runs: `if
   items.count("coin") >= 5:`, `$ left = items.count("coin")`. It is 0 when the player has none.
   To show it in a line, copy it to a variable first, as above. `codex.count("coin")` is the
@@ -1519,6 +1522,14 @@ come with the engine and "Writing a minigame".
 Esc opens the game menu as usual. A save made during a minigame starts it again from the
 beginning, and rolling back to it lets the player play it again, like a choice. Random
 layouts come out the same each time.
+
+**Shops.** `minigame shop stock=stall_stock into bought` opens a shop where the player buys
+items with the story's money (the item marked `money`). The stock is a `define` of items and
+prices: `define stall_stock = {"tea": None, "matches": [1, 10], "lantern": 20}` sells tea at
+its own `price`, matches at 1 each (10 for sale this visit) and the lantern at 20.
+`bought` gets what was bought, such as `{"tea": 2}`. Money and items change when the player
+leaves, together with the result. [minigames.md](minigames.md), "Shop", has the details and
+Studio's Shop table.
 
 **Testing.** A headless run uses each minigame's test outcome, or one you give in the
 inputs: `finish 9`, or `finish 9; points hana += 1`. In a dev run, Shift+F8 ends a

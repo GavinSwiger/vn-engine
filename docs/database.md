@@ -33,7 +33,12 @@ positions go into `config.toml`.
   step each. The story shows the meter with `show meter <name>` (Insert ▸ Show meter).
 - **Codex**: tips (kept in every playthrough) and items (this playthrough only), each with a
   title, a category, a picture and its text, one paragraph per line (`lock tip`/`lock item`).
-  The Kind field switches an entry between tip and item.
+  The Kind field switches an entry between tip and item. An item also has Count, Most held
+  and Money, and **Price**: what a shop asks for one when its stock names no price (empty:
+  none; written as `price 5`).
+- **Minigame data**: the data the bundled minigames take, such as word lists, gift tables
+  and **shops** (each row: an item, its price, how many are for sale; an empty price uses
+  the item's own). See [minigames.md](minigames.md), "Setting up a minigame in Studio".
 - **Endings & routes**: routes, with their title and the endings the player must reach to
   open them (`lock route … until …`); **+ New** asks which scene the route starts at. The
   endings are listed from your story's Ending lines, read-only, with **Go to**.
