@@ -29,7 +29,10 @@ its own: it only fills in what the author left unset.
 - F65 round 2: ``DEVICE_WORDS`` / ``device_words(look)``: how each device look words a
   message (``DeviceWords``: the arrival notice, the line above each message in the Inbox,
   and whether the sender's lines read as a letter or as chat lines), so a pigeon lands on
-  the sill while a phone buzzes. Round 3's ``[device.<name>]`` overrides these.
+  the sill while a phone buzzes. Round 3: ``device_words(look, config)`` lays
+  ``[device.<look>]`` over these key by key (``DeviceWords`` gains the device's ``name``
+  and arrival ``sound``), ``arrive_text`` fills in ``{name}``, and the game's device's
+  name names the Inbox (``kit_words``).
 
 Pure data, read-only; imports only ``core``.
 """

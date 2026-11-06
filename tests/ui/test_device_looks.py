@@ -104,7 +104,7 @@ def test_the_looks_differ_where_they_should():
                                       ("phone", "letters", "terminal", "mind"))
     assert phone.card != phone.me_card                    # two kinds of bubble
     assert letters.card != letters.page                   # paper on the panel
-    assert terminal.card == "#3D2B36"                     # Sakura's dark text: the screen
+    assert terminal.card == "#1E161B"                     # Sakura's dark text, darker
     assert mind.card is None and palette(cfg, "radio").card is None   # no frame
 
 

@@ -13,7 +13,8 @@ and its text stays readable.
   them (``editor/devicemodel``).
 - Every text color is checked against the fill it sits on (4.5:1, WCAG AA, as W67's text
   pairs): a derived fill (the letter's paper, the terminal's screen) moves less far from
-  the panel while it would cost the text its contrast, and a text color that still falls
+  the panel while it would cost the text its contrast (in a dark scheme the paper stays
+  light and the ink is the panel's dark fill), and a text color that still falls
   short becomes the most readable of the panel's text, the panel's fill, black or white.
   Marks (the wax seal, the cursor, the static) are graphics: 3:1.
 - ``PAIRS``: each look's (text, fill, minimum) pairs, by ``DevicePalette`` field, for the
@@ -93,8 +94,13 @@ def device_palette(look: str, token: Token) -> DevicePalette:
     accent2 = token("button.focused.border_color")
     muted = token("button.disabled.text_color")
     if look == "letters" or look == "pigeon":
-        paper = _paper(page, PARCHMENT if look == "letters" else KRAFT, (text,))
-        ink = readable(text, paper, TEXT, page)
+        tint = PARCHMENT if look == "letters" else KRAFT
+        if luminance(text) > luminance(page):        # a dark scheme: light paper, dark ink
+            paper = mix(tint, page, 0.12)
+            ink = readable(page, paper, TEXT, BLACK)
+        else:
+            paper = _paper(page, tint, (text,))
+            ink = readable(text, paper, TEXT, page)
         head = readable(heading, paper, TEXT, ink)
         seal = readable(accent, paper, GRAPHIC, ink)
         ribbon = readable(accent2, paper, GRAPHIC, seal)
@@ -102,7 +108,7 @@ def device_palette(look: str, token: Token) -> DevicePalette:
         return DevicePalette(look, page, paper, ink, head, edge, seal, ribbon, paper, ink)
     if look == "terminal":
         dark, light = sorted((page, text), key=luminance)
-        screen = dark if luminance(dark) < 0.05 else mix(dark, BLACK, 0.55)
+        screen = mix(dark, BLACK, 0.5)                 # darker than any panel
         green = light
         for t in (0.85, 0.7, 0.55, 0.4, 0.25, 0.1, 0.0):
             green = mix(light, PHOSPHOR, t)

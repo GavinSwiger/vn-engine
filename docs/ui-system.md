@@ -1213,7 +1213,9 @@ for every use), `engine/ui/builtin/codex_page.py` (`UseAction`).
 Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can reread",
 "Contacts and send", "Open on cue". Modules: `engine/core/codexkinds.py` (codex kinds),
 `engine/core/kits.py` (`DEVICE_WORDS`), `engine/ui/builtin/kind_page.py` (`KindPage`),
-`engine/app/inbox.py` (the port, the entries, the notice, `open`).
+`engine/app/inbox.py` (the port, the entries, the notice, `open`); round 3's looks:
+`engine/core/devicelooks.py` (colors), `engine/ui/devicelook.py` (notice skins, marks),
+`engine/ui/builtin/inbox_view.py` (`InboxView`).
 
 - **Codex kinds.** Every page of collected entries is the Codex view (§9 "Codex view") over
   the kinds registered for that page: tips and items on the Codex page, finished chats on
@@ -1241,7 +1243,8 @@ Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can rere
   radio, terminal) shows "Hana: …" with the name in bold. The player's lines are under
   `[words] inbox_me` ("You"); dividers in italics. No purse, pick or Use button.
 - **Device looks** (`kits.DEVICE_WORDS`; the look is `send … on`, else the contact's `on`,
-  else the kit's `messages` device, else phone). Round 3's `[device.<name>]` overrides:
+  else the kit's `messages` device, else phone). `[device.<look>]` (`arrive_text`,
+  `header_text`, `reading`, `name`, `arrive_sound`) wins over these, key by key:
 
   | Look | Arrival notice | Line above a message | Reads as |
   |---|---|---|---|
@@ -1270,8 +1273,34 @@ Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can rere
   thread (the newest that came by that look) selected and shown, the page's default
   widget focused; the story holds (a story wait, no checkpoint) until the menu closes,
   then goes on at once. While skipping it is passed without opening.
-- **Colors and motion.** The Codex view's tokens (`codex.*`, `list.*`, `panel.*`), so the
-  page follows the theme, the scheme and W67 as the Codex page does; nothing moves.
+- **Drawing each look** (round 3, `InboxView`). The paragraphs are the same text for
+  every look (History and screen readers read the same); the port gives each one its look
+  and role (the line above, a divider, the contact's, the player's, the signature), and
+  the view places and dresses it. Cards are drawn whole and clipped to each paragraph's
+  row, so a delivery is one card at any scroll; 28 units between deliveries.
+
+  | Look | Drawn as |
+  |---|---|
+  | phone | Bubbles (radius 14, 12 padding, at most 76 % of the width): the contact's on the left in `button.focused.fill_color` with `button.text_color`; the player's on the right in the accent (`button.marker.fill_color`) with the panel's fill as text. The line above and dividers centred. |
+  | letters | A paper card (the panel's fill moved toward parchment, radius 6, `panel.border_color`, a 3-unit shadow); the line above centred over a 96-unit rule with a dot in the accent; the signature right-aligned. |
+  | pigeon | A smaller kraft note (30 in from each side), a twine line down its right side and a wax seal (26) in the accent with ribbon tails. |
+  | radio | No card: "[signal]" right of the line above, a rule of static (2-unit ticks every 4, heights 1 to 7) under it, a 2-unit margin line beside the messages. |
+  | terminal | A dark screen (the darker of panel text and fill, halved toward black; 2-unit border), green text (the lighter one mixed toward phosphor green) in fixed cells 0.58 × the text size, a block cursor after the last line that blinks every 0.55 s. |
+  | mind | No frame: the words in italics, centred under the line above, in five nested hazes of the accent (5 % to 3.5 %) that breathe slowly. |
+
+- **Colors and motion.** Every look's colors come from the theme tokens above
+  (`core/devicelooks.device_palette`), so the scheme dresses them all. Each text color is
+  checked on what it sits on (4.5:1; marks 3:1): a derived fill (paper, screen) moves less
+  far while it would cost the text its contrast (in a dark scheme the paper stays light
+  and the ink is the panel's dark fill), and a text color that still falls short becomes
+  the most readable of the panel's text, the panel's fill, black or white. Tested for all
+  28 schemes. Under **Reduce motion** the static, the cursor and the glow hold still.
+- **Arrival notice skin.** The notice (§9 "Notice") keeps its layout, timing and text and
+  takes the look's colors and marks (`notice.NoticeSkin`): a phone's bubble with a tail, a
+  letter's paper with a stamp on its corner, a pigeon's note with twine and a seal at the
+  left, a radio's static along the bottom, a terminal's screen with a cursor, a thought's
+  glow with no border. Nothing in a notice moves. `arrive_sound` plays once with it as a
+  UI sound (`audio.play_ui`, the sound volume), never while skipping or in a replay.
 
 ### Check roll (F59)
 

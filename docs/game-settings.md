@@ -20,6 +20,8 @@ editing `config.toml` by hand. Pick a page on the left; its fields are on the ri
 - **Chapters & codex**: the chapter title card, and the Codex page and its notices.
 - **Calendar**: story time: the parts of the day, the start, the last day, how dates read,
   the day card and the clock's corner (see below).
+- **Devices**: how each device (phone, letters, pigeon, radio, terminal, mind) words and
+  sounds a message, with a preview of each (see below).
 - **Flowchart**: the players' Flowchart page: whether it shows, which choices get a box,
   jumping, and every box's look.
 - **Content warning**: when it shows, its text and how long players wait.
@@ -131,6 +133,26 @@ Beside the fields (under them in a narrow window), the preview draws the day car
 chapter card's colors and the clock in its corner on a small stage, both in your color
 scheme, and changes as you type. If the start is a date the calendar can't read, the page
 says so at the top.
+
+## Devices
+
+The **Devices** page sets how messages that contacts `send` arrive and read, one card per
+device, and writes `[device.<look>]`. The game's own device (the kit's, else Phone) is
+first and marked "The game's device"; messages and contacts with no device of their own
+come by it. Each card shows a preview in your color scheme: the arrival notice over a
+message as the Inbox draws it (chat bubbles, a letter on paper, a sealed note, a radio
+transcript with static, a green terminal, a thought's glow). It changes as you type.
+
+- **Name**: the device's name. When it is the game's device, the Inbox button and page use
+  it (unless you renamed the Inbox under Button words).
+- **Arrival notice**: what the notice says when a message arrives. `{name}` is who sent it.
+- **Arrival sound**: a sound that plays once when a message arrives (▶ plays it here).
+- **Line above each message**: shown in the Inbox before the message's day ("Arrived by
+  pigeon · Day 3").
+- **Reads as**: a signed letter, or chat lines with the sender's name first.
+
+An empty field's hint shows what the game uses instead. Each change is one step that Ctrl+Z
+takes back; **Use default** removes it (and the device's section once nothing is left).
 
 If `config.toml` has a mistake, the tab shows only the line to fix and **Open in Editor**.
 A setting written in a way the form can't change, such as `textbox = { … }` on one line,

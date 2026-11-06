@@ -1692,6 +1692,36 @@ can come in any order after the contact. The player sees:
   and terminals as chat lines, "Ren: Running late". A finished phone chat joins the thread
   of the contact whose shown name it uses.
 
+**Device looks.** Each look also draws its messages its own way, in the game's colors
+(every color scheme keeps the text readable):
+
+- **phone**: chat bubbles, the contact's on the left and the player's on the right.
+- **letters**: a paper card, the line above it centred, signed at the bottom right.
+- **pigeon**: a smaller note tied with twine, with a wax seal.
+- **radio**: a transcript with "[signal]" and a line of static under the heading.
+- **terminal**: green text on a dark screen, in even columns, with a block cursor.
+- **mind**: no frame, the words in italics in a soft glow.
+
+The arrival notice wears the same look (a phone's bubble, a letter's stamp, a pigeon's
+seal, static, a green screen, a glow). With **Reduce motion** on, the static, the cursor
+and the glow stay still.
+
+`[device.<look>]` in config.toml changes how a look words and sounds a message. Every key
+is optional; Game settings ▸ Devices writes them for you:
+
+```toml
+[device.pigeon]
+name = "Pigeon Post"                        # names the Inbox when it is the game's device
+arrive_text = "A grey bird lands on the sill."   # the notice; {name} is who sent it
+arrive_sound = "sfx/wings.ogg"              # plays once when a message arrives
+header_text = "By wing"                     # the line above each message
+reading = "letter"                          # or "chat"
+```
+
+The sound plays once, at the player's sound volume, when the message arrives; not when
+going back and forward again, not during a scene replay, and not while skipping. A
+`[device.…]` name that isn't one of the six looks is a warning that suggests the closest.
+
 A `send` is a story step: a save keeps what arrived, going back before the line takes the
 message out again, going forward brings it back (without a second notice), and New Game
 empties the Inbox. Whether a thread was opened is remembered across saves and
