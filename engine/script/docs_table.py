@@ -91,8 +91,9 @@ ROWS: tuple[StatementDoc, ...] = (
         'if coins >= 2:\n    "Two or more."\nelse:\n    "Fewer."',
         "if, elif, else", "F02", insert=False),
     StatementDoc(
-        "points", "Change a meter", "Logic", "points <name> +=|-=|= <amount>",
-        "Raises, lowers, or sets a meter. The value stays in the meter's range.",
+        "points", "Change a meter", "Logic", "points <name> +=|-=|= <amount> [\"<notice>\"]",
+        "Raises, lowers, or sets a meter. The value stays in the meter's range. Text after "
+        "the amount shows as a notice.",
         "points friendship += 1", "points (character stats)", "F22", fields=("friendship", "1"),
         names=("meter",)),
     # --- Stage --------------------------------------------------------------------------
@@ -195,8 +196,8 @@ ROWS: tuple[StatementDoc, ...] = (
         "Names a file outside images/, or a solid color.",
         'image bg dusk = "#2b2140"', "image", "F04", fields=("bg dusk", "#2b2140")),
     StatementDoc(
-        "points", "Meter", "Declarations", "points <name> [<low> to <high>] [start <n>]",
-        "Declares a meter, a whole-number stat with a range.",
+        "points", "Meter", "Declarations", "points <name> [<low> to <high>] [start <n>] [ranks \"<label>\" <at> …]",
+        "Declares a meter, a whole-number stat with a range, and optional named ranks.",
         "points courage 0 to 10 start 5", "points (character stats)", "F22", fields=("courage",)),
     # --- Files --------------------------------------------------------------------------
     StatementDoc(

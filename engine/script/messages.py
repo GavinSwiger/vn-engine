@@ -2810,12 +2810,89 @@ def _e236(form: str = "unknown", *args: object) -> str:
     if form == "none":
         return ("points.highest() needs a meter, but this story declares none. Declare meters at "
                 "the top level, e.g. points sayori 0 to 10.")
+    if form == "no_ranks":
+        return _e416(str(args[0]) if args else _METER_EXAMPLE)
     name = str(args[0]) if args else "sayory"
     suggestion = args[1] if len(args) > 1 else None
     text = f'there is no meter named "{show_name(name)}".'
     if type(suggestion) is str:
         text += " " + _did_you_mean(suggestion, name)
     return text
+
+
+# F62 round 1 (specs/F62-visible-meters/SPEC.md): load E411–E415 (engine/script/points.py), E416
+# and W290 (engine/script/meterranks.py, the whole-game checks); run E236's ``no_ranks`` form.
+
+_RANKS_EXAMPLE = 'ranks "Stranger" 0 "Friend" 4 "Close" 8'
+
+
+def _e411(form: str = "need", *args: object) -> str:
+    """``need``; ``label`` (found); ``at`` (label); ``many`` (limit)."""
+    if form == "label":
+        return (f"ranks takes a label in quotes, then the number it starts at, but found "
+                f"{show(str(args[0]))}. Write e.g. {_RANKS_EXAMPLE}")
+    if form == "at":
+        return (f'the rank "{show(str(args[0]))}" needs the number it starts at after it, e.g. '
+                f'"{show(str(args[0]))}" 4')
+    if form == "many":
+        return f"a meter can have at most {args[0] if args else 20} ranks."
+    return f"ranks needs at least one label and the number it starts at, e.g. {_RANKS_EXAMPLE}"
+
+
+def _plain_text(form: str, what: str, args: tuple) -> str:
+    """The plain-text forms shared by E412 (a rank label) and E415 (a notice)."""
+    if form == "long":
+        count, limit = args[:2] if len(args) >= 2 else (50, 40)
+        return f"{what} has {count:,} characters; keep it to {limit:,}."
+    if form == "newline":
+        return f"{what} is one line: remove the \\n."
+    if form == "tags":
+        return f"{what} is plain text, without {{b}} or {{var}}. Write {{{{ to show a {{."
+    return f"{what} is empty; write a few words between the quotes."
+
+
+def _e412(form: str = "empty", *args: object) -> str:
+    """``empty``, ``long`` (count, limit), ``newline``, ``tags``; ``twice`` (label)."""
+    if form == "twice":
+        return (f'two ranks are named "{show(str(args[0]))}"; give each rank its own label.')
+    return _plain_text(form, "a rank label", args)
+
+
+def _e413(form: str = "rising", *args: object) -> str:
+    """``range`` (label, at, low, high); ``rising`` (label, at, previous label, its at)."""
+    if form == "range":
+        label, at, low, high = args
+        return (f'the rank "{show(str(label))}" starts at {_n(at)}, outside the range '
+                f"{_n(low)} to {_n(high)}.")
+    label, at, before, before_at = args or ("Friend", 4, "Stranger", 4)
+    return (f'the rank "{show(str(label))}" starts at {_n(at)}, but it must start higher than '
+            f'"{show(str(before))}" ({_n(before_at)}). List ranks from lowest to highest.')
+
+
+def _e414() -> str:
+    return ('"rank" can\'t be a meter name: points.rank("hana") gives a meter\'s rank. Pick '
+            "another name, e.g. standing.")
+
+
+def _e415(form: str = "empty", *args: object) -> str:
+    """``empty``, ``long`` (count, limit), ``newline``, ``tags``."""
+    return _plain_text(form, "the notice", args)
+
+
+def _e416(name: str = "sayori") -> str:
+    return (f"points.rank needs a meter with ranks, but {show_name(name)} has none. Add ranks "
+            f"to its points line, e.g. points {show_name(name)} 0 to 10 {_RANKS_EXAMPLE}")
+
+
+def _w290(label: str = "Closee", name: str = "hana", suggestion: str | None = None,
+          labels: tuple = ("Stranger", "Friend", "Close")) -> str:
+    """A rank comparison that can't match: ``labels`` are the meter's ranks."""
+    text = f'{show_name(name)} has no rank named "{show(label)}".'
+    if suggestion is not None:
+        text += " " + _did_you_mean(suggestion, label)
+    shown = ", ".join(f'"{show(str(item))}"' for item in labels[:6])
+    more = f" and {len(labels) - 6} more" if len(labels) > 6 else ""
+    return text + f" Its ranks are {shown}{more}."
 
 
 # --- F14 rollback (F14 04 §6.2; 06 D1, G3) ----------------------------------------------------
@@ -4717,6 +4794,14 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E235": _e235,
     "E236": _e236,
     "W120": _w120,
+    # F62 visible meters, round 1: load E411–E416, W290 (points.py, meterranks.py)
+    "E411": _e411,
+    "E412": _e412,
+    "E413": _e413,
+    "E414": _e414,
+    "E415": _e415,
+    "E416": _e416,
+    "W290": _w290,
     # F14 rollback (04 §6.2): load E200–E203 (rollback.py), E204 (attach_fixed). Drafts (G3).
     "E200": lambda: (f"rollback needs one word after it: {_ROLLBACK_WORDS}. Write "
                      '"rollback block" to stop rollback here.'),

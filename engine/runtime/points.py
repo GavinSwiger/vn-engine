@@ -6,7 +6,8 @@ the type, and the range the same way for the ``points`` line, F23/F24 plugins, a
 console. Author Python only reads them, through ``PointsView``.
 
 - ``Points`` (``interp.points``; plain data, main thread only): ``names()``, ``spec(name)``,
-  ``get``, ``add -> int``, ``set -> int``, ``highest(*names) -> str``. An unknown name is
+  ``get``, ``add -> int``, ``set -> int``, ``highest(*names) -> str``, ``rank(name) -> str``
+  (F62: derived from the value, so saves and rollback need nothing new). An unknown name is
   ``UnknownMeter`` (a ``KeyError`` with did-you-mean); an amount that isn't an ``int`` (or is a
   ``bool``) is ``TypeError``. Results are clamped to the meter's range. It keeps hidden meters
   (saved meters this version doesn't declare) so they are saved again, and caches its
@@ -23,7 +24,9 @@ console. Author Python only reads them, through ``PointsView``.
   read is E236's define form (``bind_view`` gives the view its ``Points``).
 - ``run_points`` is the ``PointsChange`` executor: the amount runs like a condition, must be an
   ``int`` (E236), and is applied through ``Points``; dev runs log W120 (area ``runtime``) the
-  first time each line is clamped. Not a checkpoint.
+  first time each line is clamped. Not a checkpoint. F62: a line with a notice then holds
+  ``MeterNotice`` (released with the burst like F21's ``CodexAdded``: shown under skip, never
+  by restore or load, dropped by F14's quiet re-run).
 
 ``MeterSpec`` is ``script/points.py``'s, re-exported here (07 I-1, the ``runtime.commands``
 rule). Layering as ``chapters.py``: ``state.py`` holds a ``PointsState``, so this module sits
@@ -170,6 +173,14 @@ class Points:
                 best = name
         return best
 
+    def rank(self, name: str) -> str:
+        """F62: ``name``'s rank label at its value ("" below the first rank). ``ValueError``
+        when the meter has no ranks."""
+        spec = self._specs[self._check(name)]
+        if not spec.ranks:
+            raise ValueError("no ranks")
+        return spec.rank(self._values[name])
+
     def _check(self, name: object) -> str:
         if type(name) is not str or name not in self._specs:
             found = suggest(name, self._names) if type(name) is str else None
@@ -281,6 +292,17 @@ class PointsView:
             raise AuthorRefusal.of("E236", "unknown", _shown_name(e.name),
                                    e.suggestion) from None
 
+    def rank(self, name: str) -> str:
+        """F62: ``points.rank("hana")``, the meter's rank label ("" below the first)."""
+        points = self._source()
+        try:
+            return points.rank(name)
+        except UnknownMeter as e:
+            raise AuthorRefusal.of("E236", "unknown", _shown_name(e.name),
+                                   e.suggestion) from None
+        except ValueError:
+            raise AuthorRefusal.of("E236", "no_ranks", name) from None
+
     def _refuse(self, name: object = None) -> None:
         points = object.__getattribute__(self, "_points")
         names = points.names() if points is not None else ()
@@ -301,7 +323,7 @@ class PointsView:
 
     def __dir__(self) -> list[str]:
         points = object.__getattribute__(self, "_points")
-        return [*(points.names() if points is not None else ()), "highest"]
+        return [*(points.names() if points is not None else ()), "highest", "rank"]
 
     def __repr__(self) -> str:
         return "points"
@@ -322,6 +344,7 @@ def bind_view(G: dict, points: Points) -> None:
 def run_points(interp: "Interpreter", stmt: PointsChange) -> "Step":
     """``points <name> +=|-=|= <amount>``: the amount (author code, like a condition), then
     ``Points.change``; W120 in dev runs, once per line."""
+    from engine.runtime.commands import MeterNotice
     from engine.runtime.interpreter import Step         # below the interpreter (docstring)
     interp.running.set(stmt.file.ref, stmt.amount)
     amount = interp._eval(stmt.amount.code)
@@ -336,6 +359,8 @@ def run_points(interp: "Interpreter", stmt: PointsChange) -> "Step":
                                        wanted > value, value, wanted))
         warning = ScriptWarning(text, code="W120", file=stmt.file.ref, line=stmt.line)
         interp.log.warning("%s", warning.format())
+    if stmt.notice is not None:                         # F62: the change notice
+        interp._hold(MeterNotice(stmt.name, stmt.notice))
     return Step.CONTINUE
 
 

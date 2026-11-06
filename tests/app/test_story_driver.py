@@ -34,7 +34,7 @@ from engine.runtime import interpreter as interpreter_module
 from engine.runtime.commands import (Advance, AudioRestore, Command, Flash, Glitch,
                                      PrefetchImages, Say,
                                      Shake, ShowMenu, ShowStage, StoryEnded, StoryFailed,
-                                     StoryWait, ChapterStarted, NvlPage, CodexAdded,
+                                     StoryWait, ChapterStarted, NvlPage, CodexAdded, MeterNotice,
                                      StartMinigame, WindowTitle, FakeCrash,
                                      UiStyle, UiBlocks, DeleteSaves, MetaWrite, MetaDelete)
 from engine.runtime.headless import run_headless
@@ -391,6 +391,7 @@ def test_install_story_registers_one_handler_per_command(tmp_path):
                                              ChapterStarted,          # F18 step 3
                                              NvlPage,                 # F17 step 2
                                              CodexAdded,              # F21 step 2
+                                             MeterNotice,             # F62 round 1
                                              StartMinigame,           # F23 s4
                                              Glitch,                  # F28 s3
                                              WindowTitle, FakeCrash,  # F30 s3, s4
@@ -543,6 +544,7 @@ def test_ac_f03_70_the_example_game_plays_to_the_end(tmp_path, user_roots, scrip
                                          ChapterStarted,                          # F18
                                          NvlPage,                                 # F17
                                          CodexAdded,                              # F21
+                                         MeterNotice,                             # F62
                                          StartMinigame,                           # F23
                                          Glitch,                                  # F28 s3
                                          WindowTitle, FakeCrash,                  # F30 s3, s4

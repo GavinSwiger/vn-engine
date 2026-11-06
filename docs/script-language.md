@@ -1599,7 +1599,45 @@ player.
   starts it at its start, and a saved value outside a range you changed later moves into the
   range.
 - In dev runs, **F3** shows every meter under the frame rate, such as `hana 2 (0-10)` (the
-  range only when you declared one). After 12 meters it shows how many more there are.
+  range only when you declared one, and the rank when it has ranks). After 12 meters it
+  shows how many more there are.
+
+#### Ranks
+
+```
+points hana 0 to 10 ranks "Stranger" 0 "Friend" 4 "Close" 8
+
+label bridge:
+    if points.rank("hana") == "Close":
+        hana happy "Same time next year?"
+```
+
+- **Ranks** name parts of a meter's range. After the range (and `start`), write `ranks`,
+  then each rank's label in quotes and the number it starts at, lowest first. They apply to
+  every meter on the line.
+- `points.rank("hana")` gives the label of the highest rank the meter has reached, such as
+  `"Friend"` at 4 to 7, or `""` while it is below the first rank. Use it wherever Python
+  runs: conditions, `$` lines, choice conditions. To show it in text, copy it to a
+  variable first: `$ hana_rank = points.rank("hana")`, then `{var=hana_rank}`.
+- Labels are plain text, up to 40 characters, each used once. The numbers are whole, inside
+  the range, and each higher than the one before. A story can give a meter up to 20 ranks.
+- The rank comes from the meter's value, so it saves, loads, and goes back with it.
+- `ranks` is a word only right before a quoted label, so a meter or variable can still be
+  called `ranks`. `rank` can't be a meter name, because `points.rank` is taken.
+
+#### Change notices
+
+```
+    points hana += 1 "Hana will remember that."
+    points trust -= 2 "Daichi noticed."
+```
+
+- Text in quotes after the amount shows as a **notice** in the top-right corner when the
+  line runs, the same notice as a new codex tip. It works with `+=`, `-=`, and `=`.
+- The notice is plain text up to 200 characters (write `{{` for a `{`). It shows whether
+  or not the meter changed, so write it for the moment, not the number.
+- Skipping shows it too. Going back and forward again doesn't show it twice, and loading
+  a save never shows it.
 
 | Message | Fix |
 |---|---|
@@ -1611,6 +1649,15 @@ player.
 | `this story has 240 meters; the engine allows 200.` | Keep the rest in story variables. |
 | `the amount for points sayori must be a whole number, but it is 1.5 (a decimal number).` | Round it: `points sayori += round(bonus)`. |
 | `points sayori += 5 went past the top of its range, so sayori is 10, not 12.` (warning, dev runs, once per line) | Fine if you meant it; otherwise widen the range or change the meter by less. |
+| `ranks needs at least one label and the number it starts at, e.g. ranks "Stranger" 0 "Friend" 4 "Close" 8` | Add the ranks, or remove `ranks`. |
+| `the rank "Friend" needs the number it starts at after it, e.g. "Friend" 4` | Write the number after each label. |
+| `two ranks are named "Friend"; give each rank its own label.` / `a rank label has 50 characters; keep it to 40.` | Rename or shorten the label. |
+| `the rank "Close" starts at 12, outside the range 0 to 10.` | Lower the number, or widen the range. |
+| `the rank "Friend" starts at 4, but it must start higher than "Stranger" (4). List ranks from lowest to highest.` | Put the ranks in order, each starting higher. |
+| `"rank" can't be a meter name: points.rank("hana") gives a meter's rank. Pick another name, e.g. standing.` | Rename the meter. |
+| `the notice is plain text, without {b} or {var}. Write {{ to show a {.` / `the notice is empty; write a few words between the quotes.` | Plain words only in a notice. |
+| `points.rank needs a meter with ranks, but hana has none. Add ranks to its points line, e.g. points hana 0 to 10 ranks "Stranger" 0 "Friend" 4 "Close" 8` | Add ranks to that meter, or read `points.hana` instead. (Also while playing, when the name is computed.) |
+| `hana has no rank named "Closee". Did you mean "Close"? Its ranks are "Stranger", "Friend", "Close".` (warning) | Fix the label in the condition. |
 
 ---
 
@@ -3260,12 +3307,30 @@ reserved so your script keeps working when they arrive.
 `off`, they mean something only right after `effect`, so `default static = 0` still works.
 The same goes for `window_title` and `crash` ([Fourth-wall tricks](#25-fourth-wall-tricks)).
 `tip` and `item` aren't reserved: they mean something only right after `lock` or `unlock`,
-so `default item = None` still works. `codex`, like `dice` and `points`, is an engine name,
+so `default item = None` still works. `ranks` is the same: it means something only on a
+`points` line, right before a quoted label. `codex`, like `dice` and `points`, is an engine name,
 so it can't be a variable, a label, or a character.
 `gallery` isn't reserved either: it means something only right after `lock` or `unlock`
 ([lock gallery, unlock gallery](#lock-gallery-unlock-gallery)), so `default gallery = []`
 still works. `cg` is no longer reserved: a picture in `images/cg/` is `cg name`, and `cg`
 can be a variable.
+
+### New words stay free (the positional-words rule)
+
+The 40 words above are the last ones reserved. Every word the language adds from now on is
+a **positional word**: it means something only in its own place, and everywhere else it is
+an ordinary name. So a game written today never breaks when a later version adds a word.
+
+- **A word inside a statement** (like `tip`, `item`, `gallery`, `ranks`) is that word only
+  right where the statement expects it, and usually only when what it needs follows (for
+  `ranks`, a quoted label). Anywhere else it is a name: `points ranks 0 to 10` declares a
+  meter called `ranks`.
+- **A new statement word** is that statement only at the start of its own line. A line
+  that starts with the word and then a quote, like `event "Wait for me!"`, stays dialogue
+  by a character of that name. `$` lines, conditions, and values are Python, where the word
+  is always a name: `$ event = 3`.
+- Names an engine name gives you (like `points.highest` and `points.rank`) are taken on
+  that name only: a meter can't be called `rank`, but a variable can.
 
 ---
 

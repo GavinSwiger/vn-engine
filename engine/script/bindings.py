@@ -107,6 +107,7 @@ CODEX = "codex"
 CODEX_ATTRS: tuple[str, ...] = ("tips", "items")      # F21: what codex has (E255)
 POINTS = "points"
 HIGHEST = "highest"               # points.highest(...) is a method, not a meter read
+RANK = "rank"                     # F62: so is points.rank(...) (meterranks.py checks its uses)
 PERSISTENT = "persistent"
 READ = "read"
 WRITE = "write"
@@ -545,7 +546,7 @@ def meter_error(piece: Piece, uses: Iterable[AttrUse],
     if meter is not None and meter not in meters:
         return at(piece.stmt, "E233", (meter, suggest(meter, meters)))
     for use in found:
-        if use.name != HIGHEST and use.name not in meters:
+        if use.name not in (HIGHEST, RANK) and use.name not in meters:
             return at(py.line + use.line - 1, "E233", (use.name, suggest(use.name, meters)))
     return None
 

@@ -91,3 +91,22 @@ def test_ac08_overlay_lists_meters(monkeypatch, tmp_path):
                                    extra=lambda: called.append(1) or ["x"])
         assert called == [] and all(texts == [] for texts in seen.values())
         assert len(app.overlay_lines) == (2 if dev else 1)          # the spy, + meters in dev
+
+
+def test_f62_rank_on_the_overlay_and_the_notice_handler(monkeypatch, tmp_path):
+    # A meter with ranks shows its rank ("-" below the first).
+    interp = interp_for(tmp_path / "ranks", 'points hana 0 to 10 ranks "Friend" 4\n')
+    _, seen = overlay_frames(monkeypatch, interp, frames=3,
+                             at={2: lambda: interp.points.add("hana", 5)})
+    assert seen[1][1:] == ["hana 0 (0-10) -"] and seen[2][1:] == ["hana 5 (0-10) Friend"]
+    # MeterNotice → shell.notify, in every launch (none before the shell exists).
+    from engine.runtime.commands import MeterNotice
+    for dev in (True, False):
+        app, _ = make_app(FakeWindow())
+        app.dev = dev
+        install_points(app, interp)
+        app.router.dispatch(MeterNotice("hana", "Hana will remember that."))   # no shell yet
+        told = []
+        app.shell = type("Shell", (), {"notify": lambda self, text: told.append(text)})()
+        app.router.dispatch(MeterNotice("hana", "Hana will remember that."))
+        assert told == ["Hana will remember that."]

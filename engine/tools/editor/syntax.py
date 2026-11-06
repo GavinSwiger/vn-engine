@@ -50,6 +50,7 @@ _PY_STOP = re.compile(r"[\"'#]")
 _TIME = re.compile(r"[ \t]+(time)\b")                     # F51, after a leading ``menu``
 _TIMEOUT = re.compile(r"[ \t]+(timeout)(?=[ \t]*:)")      # F51, between a choice and ":"
 _CHECK = re.compile(r"[ \t]+(check)(?=[ \t]+\w)")          # F59, after a choice's text
+_RANKS = re.compile(r"[ \t](ranks)(?=[ \t]+\")")           # F62, on a points line (ADR-0010)
 _BRANCH = re.compile(r"(success|failure)[ \t]*:[ \t]*(?:#|$)")   # F59, under a check
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
@@ -93,6 +94,10 @@ def color_spans(line: str) -> list[Span]:
     elif word is not None and word.group() in STATEMENT_WORDS:
         spans.append((word.start(), word.end(), TAG_KEYWORD))
         pos = word.end()
+        ranks = _RANKS.search(line, pos) if word.group() == "points" else None
+        if ranks is not None and '"' not in line[pos:ranks.start(1)]:   # F62: before a label
+            spans.append((ranks.start(1), ranks.end(1), TAG_KEYWORD))
+            pos = ranks.end(1)
         if word.group() == "menu":                  # F51: menu time 5:
             time = _TIME.match(line, pos)
             if time is not None:

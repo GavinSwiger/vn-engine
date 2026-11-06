@@ -453,6 +453,17 @@ class CodexAdded(Command):
     title: str
 
 
+@dataclass(frozen=True, slots=True)
+class MeterNotice(Command):
+    """F62: a ``points`` line with a notice ran (``points hana += 1 "Hana will remember
+    that."``); ``text`` is the notice as shown. Held in run order like ``CodexAdded``: never
+    by restore, load, or New Game; F14's quiet re-run drops it with the rest of its burst.
+    Handler: ``app/points.install_points``'s notice; headless records it and shows nothing."""
+
+    meter: str
+    text: str
+
+
 # --- F23 minigames (F23 04-technical.md §4.1) ----------------------------------------------
 
 @dataclass(frozen=True, slots=True)
@@ -597,7 +608,7 @@ class RollbackView:
 
 
 __all__ = ["Advance", "AudioRestore", "BASE_STYLE", "BlipSpec", "Change", "ChapterStarted",
-           "Choose", "CodexAdded", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
+           "Choose", "CodexAdded", "MeterNotice", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
            "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MetaDelete", "MetaWrite", "MeterChange", "MeterView", "MinigameBase",
            "MinigameDone", "MinigameUsed", "NameMark", "NvlLine", "NvlPage", "PauseMark", "PlayMusic", "PlaySound", "PlayVoice", "PrefetchImages", "QueueMusic",
            "RollbackView", "Say", "Shake", "ShowMenu", "ShowStage", "ShownChoice", "Span",

@@ -9,10 +9,15 @@ each time the App asks. Nothing is shown before a game starts (the interpreter i
 
 ``install_story`` calls it once per launch. Dev runs only: release adds no provider (ADR-0005:
 zero cost), and the App calls providers only while the overlay is on, never in error mode.
+A meter with ranks (F62) shows its rank after the value, ``hana 5 (0-10) Friend``.
+
+F62 round 1: it also registers the ``MeterNotice`` handler, every launch: the notice goes to
+``shell.notify`` like F21's codex notices (none before the shell exists).
 """
 
 from typing import TYPE_CHECKING
 
+from engine.runtime.commands import MeterNotice
 from engine.runtime.interpreter import Status
 
 if TYPE_CHECKING:
@@ -32,6 +37,8 @@ def meter_lines(points: "Points") -> list[str]:
         spec = points.spec(name)
         if spec.ranged:
             line += f" ({spec.low}-{spec.high})"
+        if spec.ranks:
+            line += f" {spec.rank(points.get(name)) or '-'}"
         out.append(line)
     if len(names) > MAX_METER_LINES:
         out.append(f"+{len(names) - MAX_METER_LINES} more")
@@ -40,7 +47,14 @@ def meter_lines(points: "Points") -> list[str]:
 
 def install_points(app: "App", interp: "Interpreter") -> None:
     """Dev runs: add the meters' provider to ``app.overlay_lines``. Release (or an App wired
-    by hand, with no ``overlay_lines``): nothing."""
+    by hand, with no ``overlay_lines``): nothing. Every launch: the ``MeterNotice`` handler."""
+
+    def on_notice(cmd: MeterNotice) -> None:
+        shell = getattr(app, "shell", None)
+        if shell is not None:
+            shell.notify(cmd.text)
+
+    app.router.register(MeterNotice, on_notice)
     providers = getattr(app, "overlay_lines", None)
     if not getattr(app, "dev", False) or providers is None:
         return
