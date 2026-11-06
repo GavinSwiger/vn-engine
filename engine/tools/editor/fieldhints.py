@@ -124,7 +124,8 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
              "route": "The route to lock (players can't take it until it's unlocked).",
              "ending": "The ending players forget they've reached.",
              "tip": "The codex tip players lose.",
-             "item": "The item players lose."},
+             "item": "The item players lose.",
+             "amount": "How many to take. Empty: one. Never goes below none."},
     "unlock": {"what": "What to open or give: a route, a codex tip, an item, a gallery "
                        "picture, a scene replay or an achievement.",
                "achievement": "The achievement players earn here, for good, with its "
@@ -133,7 +134,9 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
                "gallery": "The picture that joins the player's gallery without being shown.",
                "route": "The route to open.",
                "tip": "The codex tip players get.",
-               "item": "The item players get."},
+               "item": "The item players get.",
+               "amount": "How many to give. Empty: one. An item holds more than one only "
+                         "when its Count is on (Database ▸ Codex)."},
     "flow_scene": {"title": "The scene's name on the Flowchart page (plain text)."},
     "flow_mark": {"title": "The box's name on the Flowchart page. Empty: the choice's "
                            "question (above a menu) or the chapter's own title."},
@@ -219,6 +222,10 @@ DATABASE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
         "Category": "The tab it's listed under in the codex.",
         "Picture": "A picture shown with it in the codex. Empty: none.",
         "Text": "What the codex says about it. One paragraph per line.",
+        "Count": "On: players can carry many of this item, shown as Coins ×30. Off: they "
+                 "have it or they don't.",
+        "Most held": "The most players can carry. Giving more stops here.",
+        "Money": "Shown at the top of the bag, as Coins ×30. One item can be the money.",
     },
     ROUTE: {
         "Script name": _NAME,

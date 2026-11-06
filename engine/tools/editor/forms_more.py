@@ -64,7 +64,7 @@ from typing import Final
 from engine.core.constants import (
     COLOR_WORDS, GLITCH_KINDS, GLITCH_SIZES, SHAKE_DIRECTIONS, SHAKE_SIZES)
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
-from engine.script.codex import CodexLock
+from engine.script.codex import ITEM_COUNT_MAX, CodexLock
 from engine.script.effects import Flash, Shake
 from engine.script.flowchart import Flowchart
 from engine.script.fourthwall import CrashEffect, TitleEffect
@@ -552,13 +552,31 @@ def _lock_read(word: str, whats: tuple[str, ...]):
     def read(node: Statement, code: str) -> dict[str, str] | None:
         tokens = _tokens(code)
         size = len(tokens) if getattr(node, "kind", None) == GALLERY_WHAT else 3
+        amount = ""
+        if isinstance(node, CodexLock) and node.written and tokens and len(tokens) == 4 \
+                and tokens[3] == str(node.amount):           # F64: lock|unlock item coin 30
+            amount, tokens = tokens[3], tokens[:3]
         if not isinstance(node, (Lock, CodexLock)) or node.unlock != (word == "unlock") \
                 or not tokens or not 3 <= len(tokens) == size or tokens[:2] != [word, node.kind] \
                 or node.kind not in whats \
                 or " ".join(canonical_name(t) for t in tokens[2:]) != node.name:
             return None
-        return {"what": node.kind, **dict.fromkeys(whats, ""), node.kind: " ".join(tokens[2:])}
+        found = {"what": node.kind, **dict.fromkeys(whats, ""),
+                 node.kind: " ".join(tokens[2:])}
+        if amount:                                           # F64: only a written amount
+            found["amount"] = amount
+        return found
     return read
+
+
+def _amount(values: Values) -> str:
+    """F64: the How many field as written after an item's name ("" for none or 1)."""
+    text = values.get("amount", "").strip()
+    if not text or text == "1":
+        return ""
+    if not text.isdigit() or not 1 <= int(text) <= ITEM_COUNT_MAX:
+        raise ValueError(f"how many must be a whole number from 1 to {ITEM_COUNT_MAX:,}")
+    return str(int(text))
 
 
 def _lock_write(word: str, whats: tuple[str, ...]):
@@ -566,8 +584,18 @@ def _lock_write(word: str, whats: tuple[str, ...]):
         what = values.get("what") or whats[0]
         if what not in whats:
             raise ValueError(f"{word} can't take {what!r}")
-        return f"{word} {what} {' '.join(values[what].split())}"
+        line = f"{word} {what} {' '.join(values[what].split())}"
+        return _join(line, _amount(values)) if what == "item" else line
     return write
+
+
+def _lock_summary(whats: tuple[str, ...]):
+    def summary(values: Values) -> str:
+        what = values.get("what") or whats[0]
+        name = values.get(what, "")
+        amount = values.get("amount", "").strip() if what == "item" else ""
+        return f"{name} ×{amount}" if amount and amount != "1" else name
+    return summary
 
 
 def _lock_form(word: str, title: str, whats: tuple[str, ...],
@@ -576,9 +604,10 @@ def _lock_form(word: str, title: str, whats: tuple[str, ...],
         word, title, title, docs, (Lock, CodexLock),
         (Field("what", "What", "pick", options=whats,
                shown=tuple(_LOCK_LABELS[what] for what in whats)),
-         *(Field(what, _LOCK_LABELS[what], "name", what, optional=True) for what in whats)),
-        _lock_read(word, whats), _lock_write(word, whats),
-        lambda v: v.get(v.get("what") or whats[0], ""),
+         *(Field(what, _LOCK_LABELS[what], "name", what, optional=True) for what in whats),
+         *((Field("amount", "How many", "number", optional=True),) if "item" in whats
+           else ())),
+        _lock_read(word, whats), _lock_write(word, whats), _lock_summary(whats),
         lambda v: _LOCK_WORDS.get((word, v.get("what") or whats[0]), title))
 
 

@@ -1947,12 +1947,12 @@ class CodexConfig:
     # item's own title (kits.bag_words)
     bag_word: str = field(default="", metadata=spec(
         OneLine(BAG_WORD_MAX, why="the name of the items tab"),
-        "what the items tab is called, such as Satchel or Evidence; when empty, the kit's "
-        "word, else Items"))
+        "what the items tab is called, such as Satchel or Evidence; when empty, the "
+        "genre's word, else Items"))
     money_word: str = field(default="", metadata=spec(
         OneLine(BAG_WORD_MAX, why="the money's name at the top of the bag"),
         "what the money is called at the top of the bag, such as Gold or Credits; when "
-        "empty, the kit's word, else the money item's own title"))
+        "empty, the genre's word, else the money item's own title"))
 
 
 @dataclass(frozen=True)

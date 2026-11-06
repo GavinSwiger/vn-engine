@@ -203,10 +203,13 @@ def test_p2_form_dialogs_and_insert_picker(studio, tmp_path, helper, monkeypatch
 
     # Lock / Unlock: only the name field of "What".
     lock = dialog("lock", {"what": "tip", "tip": "river_god"})
-    assert lock.hidden() == {"route", "ending", "item", "gallery", "replay"}
+    assert lock.hidden() == {"route", "ending", "item", "gallery", "replay", "amount"}
     assert lock.labels["tip"].winfo_manager() and not lock.labels["route"].winfo_manager()
     lock.vars["what"].set("route")
-    assert lock.hidden() == {"tip", "ending", "item", "gallery", "replay"}
+    assert lock.hidden() == {"tip", "ending", "item", "gallery", "replay", "amount"}
+    lock.vars["what"].set("item")                              # F64: How many, items only
+    assert lock.hidden() == {"route", "tip", "ending", "gallery", "replay"}
+    lock.vars["what"].set("route")
     # Plain words in the list ("Codex tip", "Gallery picture"); the line keeps script words.
     what = lock.widgets["what"]
     assert tuple(what.cget("values")) == ("Route", "Ending", "Codex tip", "Item",
@@ -214,7 +217,7 @@ def test_p2_form_dialogs_and_insert_picker(studio, tmp_path, helper, monkeypatch
     assert what.get() == "Route"
     what.set("Gallery picture")
     assert lock.vars["what"].get() == "gallery" and lock.hidden() == {
-        "route", "ending", "tip", "item", "replay"}
+        "route", "ending", "tip", "item", "replay", "amount"}
     lock.vars["gallery"].set("cg festival")
     assert card(lock) == "lock gallery cg festival"
     lock._pick(1)

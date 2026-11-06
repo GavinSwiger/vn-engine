@@ -825,6 +825,51 @@ change them, give them a `default`, or read them in a `define` (use a `lambda`):
 `unlock` and `lock`. A copy (`$ seen = codex.items`) is an ordinary list. `tip` and `item`
 are still free as variable names; `codex` is the engine's.
 
+**Item counts and money.**
+
+```
+lock item coin "Coins" in "Purse" count 0 to 999 money
+lock item match "Matches" count 3
+default left = 0
+
+label market:
+    unlock item coin 30
+    unlock item match 3
+    if items.count("coin") >= 5:
+        lock item coin 5
+        unlock item red_lantern
+        $ left = items.count("coin")
+        daichi "Here you go. You have {var=left} coins left."
+```
+
+An item can be held **more than once** when its declaration has **`count`**: the bag shows it
+as "Coins ×30".
+- **`count`** alone lets the player hold up to 999,999; **`count 0 to 999`** (or **`count
+  999`**) holds at most 999. A count always starts at 0.
+- **`unlock item coin 30`** gives 30, and stops at the most the item holds. **`lock item coin
+  5`** takes 5, and never goes below none: at 0 the item is gone from the bag. Without a
+  number, `unlock item` gives one and `lock item` takes one, as before. An item without
+  `count` is held once or not at all, so `unlock item key 3` still gives one key (with a
+  warning).
+- **`money`** marks the one item that is the player's money: the bag shows it at the top,
+  "Coins ×30", even when the player has none. Money always counts, so `count` can be left out
+  (`lock item coin "Coins" money`). `count` and `money` go anywhere after the title; both are
+  words only there, so they stay free as names.
+- **Read a count** with **`items.count("coin")`** anywhere Python runs: `if
+  items.count("coin") >= 5:`, `$ left = items.count("coin")`. It is 0 when the player has none.
+  To show it in a line, copy it to a variable first, as above. `codex.count("coin")` is the
+  same thing; use it if your story has a variable of its own named `items` (then `items` stays
+  yours, and `items.count` is that variable's).
+- Counts are saved, loaded and rolled back with the items. A save made before counts loads
+  with one of each item it held.
+- The story map follows counts like variables: a scene behind `if items.count("coin") >= 30:`
+  lists the `unlock item coin` and `lock item coin` lines that change it.
+
+**The bag's words.** A genre kit names the items tab and the money: Fantasy's bag is the
+"Satchel" and its money "Gold"; Mystery's is "Evidence"; Sci-fi's "Cargo" and "Credits".
+`[codex] bag_word` and `money_word` in config.toml change them for your game. Without a kit
+or a word, the tab is "Items" and the money shows its own title.
+
 **Rolling back** past `unlock item` takes the item away again, and scrolling forward gives
 it back without a second notice. A tip stays, so a condition on `codex.tips` can turn out
 differently when the player goes forward again; then the lines ahead are played afresh.
@@ -846,6 +891,8 @@ the fortune slip, which stays tied to the rail on bad luck.
 |---|---|---|
 | `[codex] notify` | true | A notice for each new tip or item; false: none |
 | `[codex] show_locked` | false | true: tips the player doesn't have yet are listed as `???` |
+| `[codex] bag_word` | "" | The items tab's name, such as "Satchel"; empty: the kit's, else "Items" |
+| `[codex] money_word` | "" | The money's name at the top of the bag, such as "Gold"; empty: the kit's, else the item's title |
 
 **Looks** (`[theme.codex]`, `[theme.codex.new]`, `[theme.codex.locked]`) and **words**
 
@@ -867,7 +914,16 @@ each changed under `[words]`.
 | `the tip title has 75 characters; keep it to 60.` / `a tip paragraph can use {b}, {i}, and {color}, but not {var}.` | Plain titles up to 60 characters; only `{b}`, `{i}`, `{color}` in the text. |
 | `there is no tip "lantern". Did you mean "lanterns"? Declare tips at the top level, e.g. lock tip lantern "Title".` / `brass_key is an item, not a tip. Write unlock item brass_key.` | Fix the name, or declare the entry. |
 | `this story has 1,204 tips; the engine allows 1,000.` | Up to 1,000 tips, 1,000 items, and 24 categories. |
-| `there is no codex.itmes. Did you mean "items"? codex has tips and items.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock`. |
+| `there is no codex.itmes. Did you mean "items"? codex has tips, items, and count.` / `Python can't change codex.items. Use unlock item and lock item.` | Read `codex.tips` and `codex.items`; change them with `unlock` and `lock`. |
+| `the amount in unlock item coin is a whole number from 1 to 999,999, but found "0". Write e.g. unlock item coin 3.` / `lock item coin takes a number after the name, but found "all". …` / `a tip is given or forgotten all at once, so unlock tip lanterns takes no number. …` | Write a whole number after an item's name, or none; to take some away, use `lock item`. |
+| `tip lanterns can't have a count: a tip is known or not. …` / `tip lanterns can't be the money: …` | Only items have `count` and `money`. |
+| `a count always starts at 0, so write count 0 to 999 (or count 999) …` / `the most of coin a player can hold is a whole number from 1 to 999,999, but found "0". …` | Write `count`, `count 999` or `count 0 to 999`. |
+| `gold and coin (script/items.vns, line 1) are both marked money, but the bag shows one purse. Remove money from one of them.` | Keep `money` on one item. |
+| `there is no item named "coins". Did you mean "coin"? …` / `"lanterns" is a tip, not an item, so it has no count. …` / `items.count needs an item's name in quotes, e.g. items.count("coin"), not 3.` | Count a declared item by its name in quotes. (Also while playing, when the name is computed.) |
+| `there is no items.total. items has one thing, count: …` / `Python can't change items. …` | Read `items.count("coin")`; change counts with `unlock item` and `lock item`. |
+| `item brass_key has no count, so the player holds at most one and the 3 here acts as 1. …` (warning) | Add `count` to the item's declaration, or drop the number. |
+| `this story has its own variable named items, so items.count("coin") reads that variable, not the bag. Write codex.count("coin") to count the item.` (warning) | Use `codex.count`, or rename your variable. |
+| `coin holds at most 999, so unlock item coin 2,000 stops there. …` (warning) | Raise the item's most, or give less. |
 | `define hint couldn't be set: it reads codex, which holds items only once a game has started. Use a lambda or a default.` (when the game starts) | Use `define hint = lambda: …` or a `default`. |
 | `the category "festival" differs from "Festival" (script/codex.vns, line 1) only in capitals or spaces, so they show as two tabs. Use one spelling.` (warning, dev runs) | Spell the category one way. |
 | `tip river_god is declared, but no unlock tip river_god line names it, so players get it only if code unlocks it.` (warning, dev runs) | Add an `unlock tip` line, or remove the tip. |

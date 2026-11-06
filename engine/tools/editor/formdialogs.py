@@ -99,8 +99,10 @@ COLOUR_KEYS = frozenset(("colour",))          # Transition, Flash, Chapter: the 
 CONDITION_FORMS = frozenset(("if",))          # forms whose ``condition`` is the builder
 # Fields only one pick of another field uses: form key → (that field, pick → keys shown).
 SWITCHED: Mapping[str, tuple[str, Mapping[str, tuple[str, ...]]]] = {
-    "lock": ("what", {what: (what,) for what in forms_more.LOCK_WHAT}),
-    "unlock": ("what", {what: (what,) for what in forms_more.UNLOCK_WHAT}),
+    "lock": ("what", {what: (what, "amount") if what == "item" else (what,)
+                      for what in forms_more.LOCK_WHAT}),                 # F64: How many
+    "unlock": ("what", {what: (what, "amount") if what == "item" else (what,)
+                        for what in forms_more.UNLOCK_WHAT}),
     "transition": ("change", {"background": ("image",),
                               "show": ("character", "look", "position"),
                               "hide": ("character",)}),

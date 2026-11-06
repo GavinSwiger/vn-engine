@@ -283,8 +283,8 @@ def test_ac_f03_22_names(tmp_path):
     advance(interp)
     assert interp.checkpoint().variables["names"] == [
         "Character", "Dissolve", "Fade", "Mask", "__builtins__", "codex",   # F09, F21
-        "daichi", "dice", "fortunes", "hana", "hana_name", "module", "persistent", "points",
-        "trust"]                                                            # F22
+        "daichi", "dice", "fortunes", "hana", "hana_name", "items", "module", "persistent",
+        "points", "trust"]                                                  # F22, F64
 
 
 @pytest.mark.parametrize("S, T, name, expected", [

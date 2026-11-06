@@ -140,6 +140,11 @@ LABEL_TITLE = "Title"
 LABEL_CATEGORY = "Category"
 LABEL_PICTURE = "Picture"
 LABEL_TEXT = "Text"
+LABEL_COUNT = "Count"                    # F64: an item held many times
+LABEL_MOST = "Most held"
+LABEL_MONEY = "Money"
+COUNT_TEXT = "Can hold more than one"
+MONEY_TEXT = "This is the money"
 LABEL_HEADING = "Heading"
 LABEL_WHERE = "Where"
 LABEL_SECONDS = "Seconds"
@@ -799,6 +804,8 @@ class MoreCategories(MeterSetup):
                                  none_text=NO_PICTURE, thumb=thumb, scale=self.scale,
                                  on_change=lambda v: self._edit(entry, {"image": v}))
         grid.row(LABEL_PICTURE, f["image"])
+        if entry.kind == dec.ITEM:                                   # F64: counts, money
+            self._count_rows(grid, f, entry, values)
         f["text"] = LongTextField(grid.frame, "\n\n".join(values.get("text") or ()),
                                   width=40, height=6,
                                   on_change=lambda v: self._codex_text(entry, str(v)))
@@ -819,11 +826,45 @@ class MoreCategories(MeterSetup):
             f["title"].set(str(now["title"]))
             var.set(str(now.get("category") or ""))
             f["image"].set(now.get("image"))
+            if "count" in f:                                         # F64
+                f["count"].set(now.get("count") is not None)
+                f["most"].set(int(now.get("count") or dec.ITEM_COUNT_MAX))
+                f["money"].set(now.get("money") is True)
             f["text"].set("\n\n".join(now.get("text") or ()))
             if "name" in f:
                 f["name"].set(entry.name)
 
         form.update = update
+
+    def _count_rows(self, grid: FormGrid, f: dict, entry: db.Entry,
+                    values: Mapping[str, object]) -> None:
+        """F64: Count (can hold more than one), Most held, and This is the money."""
+        count = values.get("count")
+        f["count"] = ToggleField(grid.frame, COUNT_TEXT, count is not None,
+                                 on_change=lambda v: self._codex_count(entry, bool(v)))
+        grid.row(LABEL_COUNT, f["count"].widget)
+        f["most"] = NumberField(grid.frame, int(count or dec.ITEM_COUNT_MAX), lo=1,
+                                hi=dec.ITEM_COUNT_MAX, width=10,
+                                on_change=lambda v: self._edit(entry, {"count": int(v)}))
+        grid.row(LABEL_MOST, f["most"])
+        f["money"] = ToggleField(grid.frame, MONEY_TEXT, values.get("money") is True,
+                                 on_change=lambda v: self._codex_money(entry, bool(v)))
+        grid.row(LABEL_MONEY, f["money"].widget)
+
+    def _codex_count(self, entry: db.Entry, on: bool) -> bool:
+        """F64: Count on keeps (or sets) the most held; off makes a plain item again."""
+        now = self._now_values(entry) or {}
+        if on:
+            return self._edit(entry, {"count": now.get("count") or dec.ITEM_COUNT_MAX})
+        return self._edit(entry, {"count": None, "money": False})
+
+    def _codex_money(self, entry: db.Entry, on: bool) -> bool:
+        """F64: the money is always counted, so turning it on turns Count on too."""
+        now = self._now_values(entry) or {}
+        if on:
+            return self._edit(entry, {"money": True,
+                                      "count": now.get("count") or dec.ITEM_COUNT_MAX})
+        return self._edit(entry, {"money": False})
 
     def _codex_text(self, entry: db.Entry, text: str) -> bool:
         paragraphs = _paragraphs(text)

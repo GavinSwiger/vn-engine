@@ -76,7 +76,9 @@ Click a line to open it.
 When no playthrough can meet those conditions (every way in needs `has_key`, and `has_key` is
 always `False` by the time the story gets there), the box shows **⚠ can't be reached** and
 Events says why. Studio follows plain values (`True`, `3`, `"red"`, `+= 1`) after each check;
-a condition it can't follow (a function call, `persistent`) never gets a warning.
+a condition it can't follow (a function call, `persistent`) never gets a warning. Item counts
+count as values too: `items.count("coin")` starts at 0, and **SET BY** lists the `unlock item
+coin 30` and `lock item coin 5` lines that change it (a minigame can change any count).
 
 ## Undo on the map
 

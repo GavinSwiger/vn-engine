@@ -71,6 +71,7 @@ from engine.script.codex import CATEGORY_MAX as CODEX_CATEGORY_MAX
 from engine.script.codex import NAME_MAX as CODEX_NAME_MAX
 from engine.script.codex import PARAGRAPH_MAX as CODEX_PARAGRAPH_MAX
 from engine.script.codex import PARAGRAPHS_MAX as CODEX_PARAGRAPHS_MAX
+from engine.script.codex import ITEM_COUNT_MAX
 from engine.script.codex import TITLE_MAX as CODEX_TITLE_MAX
 from engine.script.effects import BUILTIN_TRANSITION_NAMES
 from engine.script.gallery import TITLE_MAX as GALLERY_TITLE_MAX
@@ -604,6 +605,11 @@ def codex_ok(values: Mapping[str, object]) -> bool:
         return False
     if type(text) not in (tuple, list) or len(text) > CODEX_PARAGRAPHS_MAX:  # type: ignore[arg-type]
         return False
+    count, money = values.get("count"), values.get("money")         # F64, items only
+    if count is not None and (type(count) is not int or not 1 <= count <= ITEM_COUNT_MAX):
+        return False
+    if money not in (None, False, True):
+        return False
     return all(type(p) is str and len(p) <= CODEX_PARAGRAPH_MAX for p in text)  # type: ignore[union-attr]
 
 
@@ -622,16 +628,42 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
             return None
         i += 2
     image: str | None = None
-    if i < len(rest) and rest[i] == "image":
-        words = rest[i + 1:]
-        if any(word in (",", ":") or word.startswith('"') for word in words):
+    count: int | None = None
+    money = False
+    while i < len(rest) and rest[i] in ("count", "money", "image"):    # F64: count, money
+        word = rest[i]
+        if word == "money" and not money:
+            money, i = True, i + 1
+        elif word == "count" and count is None:
+            i += 1
+            if i + 2 < len(rest) and rest[i] == "0" and rest[i + 1] == "to":
+                found = _count_number(rest[i + 2])
+                i += 3
+            elif i < len(rest) and rest[i].isdigit():
+                found = _count_number(rest[i])
+                i += 1
+            else:
+                found = ITEM_COUNT_MAX
+            if found is None:
+                return None
+            count = found
+        elif word == "image" and image is None:
+            stop = i + 1
+            while stop < len(rest) and rest[stop] not in ("count", "money"):
+                stop += 1
+            words = rest[i + 1:stop]
+            if any(w in (",", ":") or w.startswith('"') for w in words):
+                return None
+            image = _image_name(" ".join(words))
+            if image is None:
+                return None
+            i = stop
+        else:
             return None
-        image = _image_name(" ".join(words))
-        if image is None:
-            return None
-        i = len(rest)
     if i != len(rest) or title is None:
         return None
+    if money and count is None:
+        count = ITEM_COUNT_MAX
     paragraphs: list[str] = []
     for line in body:
         if not line.strip():
@@ -643,8 +675,31 @@ def _codex_read(tokens: list[str], body: list[str]) -> dict[str, object] | None:
         paragraphs.append(paragraph)
     if colon and not paragraphs:
         return None
-    values = {"title": title, "category": category, "image": image, "text": tuple(paragraphs)}
+    values: dict[str, object] = {"title": title, "category": category, "image": image,
+                                 "text": tuple(paragraphs)}
+    if count is not None:                   # F64: only when written, so plain entries keep
+        values["count"] = count             # F21's four values
+    if money:
+        values["money"] = True
     return values if codex_ok(values) else None
+
+
+def _count_number(token: str) -> int | None:
+    """F64: a count's most as written, or None."""
+    if token.isascii() and token.isdigit() and len(token) <= 9 \
+            and 1 <= int(token) <= ITEM_COUNT_MAX:
+        return int(token)
+    return None
+
+
+def count_words(values: Mapping[str, object]) -> str:
+    """F64: `` count …`` and `` money`` as written after an item's head ("" for neither):
+    ``count`` alone for the engine's most, ``count 0 to n`` otherwise."""
+    count, money = values.get("count"), values.get("money") is True
+    out = ""
+    if count is not None and not (money and count == ITEM_COUNT_MAX):
+        out += " count" if count == ITEM_COUNT_MAX else f" count 0 to {count}"
+    return out + (" money" if money else "")
 
 
 def codex_lines(kind: str, name: str, values: Mapping[str, object]) -> tuple[str, ...]:
@@ -655,6 +710,8 @@ def codex_lines(kind: str, name: str, values: Mapping[str, object]) -> tuple[str
     head = f"lock {kind} {name} {quote(written_text(str(values['title'])))}"
     if values.get("category") is not None:
         head += f" in {quote(written_text(str(values['category'])))}"
+    if kind == ITEM:
+        head += count_words(values)                                  # F64
     if values.get("image") is not None:
         head += f" image {values['image']}"
     text = tuple(values.get("text") or ())                           # type: ignore[arg-type]
@@ -1577,7 +1634,7 @@ def taken_names(decls: Iterable[Decl], kind: str = CHARACTER) -> frozenset[str]:
 
 
 __all__ = ["BACKGROUND_TAG", "CHAPTER", "CHARACTER", "CHARACTER_OPTIONS", "CODEX_INDENT",
-           "CODEX_KEYS", "COLOR", "DEFINE", "DISSOLVE", "EDITABLE_KINDS", "ENDING", "FADE",
+           "CODEX_KEYS", "ITEM_COUNT_MAX", "count_words", "COLOR", "DEFINE", "DISSOLVE", "EDITABLE_KINDS", "ENDING", "FADE",
            "GALLERY", "GALLERY_KEYS", "IMAGE", "ITEM", "KIND_TITLES", "MASK", "METER", "METER_KEYS", "NAME", "NUMBER",
            "OPTION_DEFAULTS", "PERSISTENT", "POSITION", "ROUTE", "SWAPS", "TEXT", "TIP",
            "TRANSITION", "TRANSITION_DEFAULTS", "TRANSITION_KINDS", "TRANSITION_PARAMS",

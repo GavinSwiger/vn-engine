@@ -302,7 +302,7 @@ def test_ac_f47_33_lock_and_unlock_forms():
     assert forms.TEXT_ONLY["lock"] == forms.DATABASE_REASON
     assert [(f.key, f.name_kind) for f in lock.fields[1:]] == [
         ("route", "route"), ("ending", "ending"), ("tip", "tip"), ("item", "item"),
-        ("gallery", "gallery"), ("replay", "replay")]    # F34-W4, F36-W4
+        ("gallery", "gallery"), ("replay", "replay"), ("amount", None)]  # F34-W4, F36-W4, F64
     assert lock.fields[0].options == ("route", "ending", "tip", "item", "gallery", "replay")
     assert unlock.fields[0].options == ("route", "tip", "item", "gallery", "replay",
                                         "achievement")                  # F37-S3
@@ -314,6 +314,8 @@ def test_ac_f47_33_lock_and_unlock_forms():
          "Forget tip  lanterns"),
         ("lock", "lock item red_lantern", {"what": "item", "item": "red_lantern"},
          "Take item  red_lantern"),
+        ("lock", "lock item coin 5", {"what": "item", "item": "coin", "amount": "5"},
+         "Take item  coin ×5"),                                             # F64
     ], {"route": "", "ending": "", "tip": "", "item": "", "gallery": "", "replay": ""})
     _check([
         ("unlock", "unlock route promise", {"what": "route", "route": "promise"},
@@ -322,9 +324,15 @@ def test_ac_f47_33_lock_and_unlock_forms():
          "Give tip  lanterns"),
         ("unlock", "unlock item red_lantern", {"what": "item", "item": "red_lantern"},
          "Give item  red_lantern"),
+        ("unlock", "unlock item coin 30", {"what": "item", "item": "coin", "amount": "30"},
+         "Give item  coin ×30"),                                            # F64
     ], {"route": "", "tip": "", "item": "", "gallery": "", "replay": "", "achievement": ""})
     with pytest.raises(ValueError):
         unlock.write({"what": "ending", "ending": "sad"})
+    # F64: How many 1 (or empty) writes the plain line; a bad number is refused.
+    assert unlock.write({"what": "item", "item": "coin", "amount": "1"}) == "unlock item coin"
+    with pytest.raises(ValueError):
+        unlock.write({"what": "item", "item": "coin", "amount": "0"})
 
 
 # --- AC-F47-53 --------------------------------------------------------------------------------

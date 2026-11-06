@@ -27,6 +27,12 @@ How (pure: nothing here runs author code):
   set to "anything") counts as possible. So a warning is only given when the script shows,
   in plain values, that a way can never be taken.
 
+- **Item counts** (F64): ``items.count("coin")`` (or ``codex.count("coin")``) in a condition
+  is watched like a variable named ``items.count("coin")``: it starts at 0, ``unlock item
+  coin 30`` adds and ``lock item coin 5`` takes (within 0 and the item's most), and a
+  ``minigame`` makes every count "anything" (a minigame can give and take items). While the
+  story has its own variable named ``items``, only ``codex.count`` is read this way.
+
 ``analyze(program, starts)`` returns a ``SceneReach`` for each scene with a condition on a
 way in, or that can't be reached although a ``jump``, ``call`` or choice leads to it
 (scenes nothing leads to at all are lint's W237).
@@ -41,6 +47,7 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from engine.script.choicecheck import CheckRoll
+from engine.script.codex import WORD_ITEM, CodexLock
 from engine.script.choicepresent import reaction_text
 from engine.script.menu import Menu
 from engine.script.minigame import Minigame
@@ -234,11 +241,38 @@ class _Guard:
         return _short(f"not {self.source}" if simple else f"not ({self.source})")
 
 
-def _guard(source: str, want: bool) -> _Guard:
+COUNT_ROOTS: Final = ("items", "codex")      # F64: <root>.count("<item>")
+
+
+def count_key(item: str) -> str:
+    """F64: the watched name of an item's count."""
+    return f'items.count("{item}")'
+
+
+class _Counts(ast.NodeTransformer):
+    """F64: each ``<root>.count("<item>")`` becomes a name, ``count_key(item)``."""
+
+    def __init__(self, roots: tuple[str, ...]) -> None:
+        self.roots = roots
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        func = node.func
+        if (isinstance(func, ast.Attribute) and func.attr == "count"
+                and isinstance(func.value, ast.Name) and func.value.id in self.roots
+                and len(node.args) == 1 and not node.keywords
+                and isinstance(node.args[0], ast.Constant)
+                and type(node.args[0].value) is str):
+            return ast.copy_location(ast.Name(count_key(node.args[0].value), ast.Load()), node)
+        return self.generic_visit(node)
+
+
+def _guard(source: str, want: bool, roots: tuple[str, ...] = COUNT_ROOTS) -> _Guard:
     try:
         tree = ast.parse(source.strip(), mode="eval")
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return _Guard(None, frozenset(), want, source)
+    if "count" in source and roots:
+        tree = _Counts(roots).visit(tree)
     names = frozenset(n.id for n in ast.walk(tree) if isinstance(n, ast.Name))
     return _Guard(tree, names, want, source)
 
@@ -309,6 +343,8 @@ class _Walk:
     setters: dict[str, list[Setter]] = field(default_factory=dict)
     links: list[tuple[_Link, State]] = field(default_factory=list)
     record: bool = False
+    roots: tuple[str, ...] = COUNT_ROOTS              # F64: whose .count(...) is an item's
+    caps: Mapping[str, int] = field(default_factory=dict)   # F64: item → its most held
 
     def scene(self, name: str, state: State) -> None:
         label = self.program.labels.get(name)
@@ -343,14 +379,15 @@ class _Walk:
             out: State | None = None
             earlier: list[_Guard] = []
             has_else = False
+            roots = self.roots
             for branch in stmt.branches:
                 if branch.condition is None:
                     has_else = True
-                    here = tuple(_guard(g.source, False) for g in earlier)
+                    here = tuple(_guard(g.source, False, roots) for g in earlier)
                 else:
-                    here = tuple(_guard(g.source, False) for g in earlier) + (
-                        _guard(branch.condition.source, True),)
-                    earlier.append(_guard(branch.condition.source, True))
+                    here = tuple(_guard(g.source, False, roots) for g in earlier) + (
+                        _guard(branch.condition.source, True, roots),)
+                    earlier.append(_guard(branch.condition.source, True, roots))
                 out = _join(out, self.block(scene, branch.block, dict(state),
                                             guards + here, choice))
             return _join(out, state) if not has_else else out
@@ -362,7 +399,7 @@ class _Walk:
         if isinstance(stmt, Menu):
             out = None
             for item in stmt.choices:
-                here = guards + ((_guard(item.condition.source, True),)
+                here = guards + ((_guard(item.condition.source, True, self.roots),)
                                  if item.condition is not None else ())
                 out = _join(out, self.block(scene, item.block, dict(state), here, item.text))
             option = stmt.present                       # F64: one branch per reaction
@@ -378,7 +415,28 @@ class _Walk:
         if isinstance(stmt, Minigame) and stmt.target in self.watched:
             self.set_any(state, stmt.target, scene, stmt, f"minigame {stmt.name} into "
                                                           f"{stmt.target}")
+        if isinstance(stmt, Minigame):                  # F64: it may give and take items
+            for name in self.watched:
+                if name.startswith(_COUNT_PREFIX) and state.get(name, ANY) is not ANY:
+                    self.set_any(state, name, scene, stmt, f"minigame {stmt.name}")
+        if isinstance(stmt, CodexLock) and stmt.kind == WORD_ITEM:
+            self.count(scene, stmt, state)
         return state
+
+    def count(self, scene: str, stmt: CodexLock, state: State) -> None:
+        """F64: ``unlock|lock item <name> [<n>]`` on a watched count."""
+        name = count_key(stmt.name)
+        if name not in self.watched:
+            return
+        values = state.get(name, ANY)
+        cap = self.caps.get(stmt.name, 1)
+        if values is not ANY:
+            step = stmt.amount if stmt.unlock else -stmt.amount
+            out = frozenset(min(cap, max(0, v + step)) for v in values)
+            state[name] = ANY if len(out) > VALUES_MAX else out
+        word = "unlock" if stmt.unlock else "lock"
+        amount = f" {stmt.amount}" if stmt.written else ""
+        self.note(name, scene, stmt, f"{word} item {stmt.name}{amount}")
 
     def set_any(self, state: State, name: str, scene: str, stmt: Statement, text: str) -> None:
         state[name] = ANY
@@ -445,9 +503,18 @@ def _written(node: ast.AST) -> set[str]:
     return found
 
 
-def _guards_of(program: Program) -> list[_Link]:
+_COUNT_PREFIX: Final = 'items.count("'
+
+
+def _count_roots(program: Program) -> tuple[str, ...]:
+    """F64: ``codex``, and ``items`` unless the story has a variable of its own by that name."""
+    from engine.script.itemcounts import program_binds_items
+    return ("codex",) if program_binds_items(program) else COUNT_ROOTS
+
+
+def _guards_of(program: Program, roots: tuple[str, ...] = COUNT_ROOTS) -> list[_Link]:
     """Every way, with its guards, without values (for the watched names and calls)."""
-    walk = _Walk(program, frozenset(), {})
+    walk = _Walk(program, frozenset(), {}, roots=roots)
     for name in program.labels:
         walk.scene(name, {})
     return [link for link, _state in walk.links]
@@ -466,6 +533,10 @@ def _sets_in(program: Program, watched: frozenset[str]) -> dict[str, frozenset[s
                     continue
             elif isinstance(stmt, Minigame) and stmt.target:
                 found.add(stmt.target)
+            if isinstance(stmt, Minigame):              # F64: it may give and take items
+                found |= {w for w in watched if w.startswith(_COUNT_PREFIX)}
+            elif isinstance(stmt, CodexLock) and stmt.kind == WORD_ITEM:
+                found.add(count_key(stmt.name))
         direct[name] = found & watched
     links = {name: {s.target for s in _statements(label.block)
                     if isinstance(s, (Jump, Call))}
@@ -500,6 +571,9 @@ def _statements(block: Iterable[Statement]) -> Iterable[Statement]:
 def _first_values(program: Program, watched: frozenset[str], walk: _Walk) -> State:
     """Each watched name's values at a start: its ``default`` (or a ``define``), else ANY."""
     state: State = {name: ANY for name in watched}
+    for name in watched:                            # F64: a new game holds no items
+        if name.startswith(_COUNT_PREFIX):
+            state[name] = frozenset({0})
     for node in (*program.defines, *program.defaults):
         if node.name not in watched:
             continue
@@ -521,9 +595,11 @@ def analyze(program: Program, starts: Iterable[str]) -> dict[str, SceneReach]:
     """``SceneReach`` for every scene with a condition on a way in, or that no playthrough
     reaches although something leads to it."""
     starts = tuple(starts)
-    plain_links = _guards_of(program)
+    roots = _count_roots(program)
+    plain_links = _guards_of(program, roots)
     watched = frozenset(name for link in plain_links for g in link.guards for name in g.names)
-    walk = _Walk(program, watched, _sets_in(program, watched) if watched else {})
+    walk = _Walk(program, watched, _sets_in(program, watched) if watched else {}, roots=roots,
+                 caps={e.name: e.cap for e in program.codex if e.kind == WORD_ITEM})
     walk.record = True
     first = _first_values(program, watched, walk)
     entry: dict[str, State] = {}
@@ -591,4 +667,4 @@ def _reason(way: Way) -> str:
     return f"From {way.src}, it needs {' and '.join(way.needs)}, but {way.why}."
 
 
-__all__ = ["SceneReach", "Setter", "VALUES_MAX", "Way", "analyze"]
+__all__ = ["SceneReach", "Setter", "VALUES_MAX", "Way", "analyze", "count_key"]

@@ -1070,7 +1070,7 @@ def test_ac_f21_39_codex_docs(tmp_path):
     for code, args in F21_MESSAGES.items():
         assert format_message(code, args) in section, code
     blocks = re.findall(r"^```([a-z]*)\n(.*?)^```", section, re.M | re.S)
-    assert len(blocks) == 2 and all(lang == "" for lang, _ in blocks)
+    assert len(blocks) == 3 and all(lang == "" for lang, _ in blocks)    # F64: counts
     code = "\n".join(body for _, body in blocks)
     walk = (REPO / "tests" / "fixtures" / "F21" / "walk" / "script" / "main.vns").read_text(
         encoding="utf-8")
