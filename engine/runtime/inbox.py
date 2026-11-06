@@ -1,20 +1,32 @@
-"""The Inbox's threads: chats you can reread (F65 round 1; plan: specs/skins-contract.md,
-"Phases 2-4", and proposal I-09 "Chats you can reread").
+"""The Inbox's deliveries and threads: chats you can reread (F65 round 1) and messages sent by
+contacts (round 2; plan: specs/skins-contract.md, "Phases 2-4", and proposal I-09 "Chats you
+can reread", "Contacts and send").
 
 Why this module exists: a phone chat (F26) used to run once and close, leaving nothing to
 reread and nothing in History. Now, when a chat finishes, its lines go into History (F13) in
-story order and the whole chat is kept as one **thread** of the codex's ``chat`` kind
-(``core/codexkinds.CHAT``), listed on the Inbox page newest first. Threads are story state:
-they live in ``GameState.items`` beside the held items (the codex's one store, ``Codex``),
-so saves, loads and rollback replay them exactly, and a save from before F65 loads with an
-empty inbox.
+story order and the whole chat is kept as one **delivery**. Round 2's ``send`` (``runtime/
+send.py``) adds a delivery for each message a contact sends. Deliveries are story state: they
+live in ``GameState.items`` beside the held items (the codex's one store, ``Codex``), so
+saves, loads and rollback replay them exactly, and a save from before F65 loads with an
+empty inbox. The Inbox page lists **threads**, one per contact (the codex's ``chat`` kind,
+``core/codexkinds.CHAT``), newest first: ``group_threads`` gathers the deliveries, so a
+round 1 save's per-chat rows become each contact's history with no change to the save.
 
 - ``InboxLine(side, name, text)``: one shown line: ``"them"`` (``name`` the sender),
   ``"me"`` (the player's message or picked reply), or ``"time"`` (a time divider).
-- ``InboxThread(key, sid, contact, time, device, lines)``: one finished chat. ``key`` is
-  ``<blake2s of sid, 16 hex>.<n>`` (``n`` counts this line's chats in the playthrough), short
-  and stable, so the read mark (persistent kind ``READ_KIND``, as the codex's own marks) of
-  the first chat at a line stays with it in later playthroughs.
+- ``Delivery(key, sid, contact, time, device, lines, sender, message)``: one finished chat
+  or one sent message. ``key`` is ``<blake2s of sid, 16 hex>.<n>`` (``n`` counts this line's
+  deliveries in the playthrough), short and stable, so the read mark (persistent kind
+  ``READ_KIND``, as the codex's own marks) of the first delivery at a line stays with it in
+  later playthroughs. ``contact`` is the name shown when it arrived; ``sender`` the declared
+  contact's script name ("" for a phone chat); ``message`` the define sent ("" for a chat);
+  ``device`` the look it came by ("" for the game's default, which the app resolves from the
+  kit; ``"phone"`` for a chat).
+- ``ContactThread(key, sender, title, parts)``: one contact's deliveries, oldest first.
+  ``group_threads(deliveries, titles)``: the threads, newest first (by their newest
+  delivery). A delivery joins its ``sender``'s thread; a phone chat joins the declared
+  contact whose shown name (or script name) is its contact, else a thread of its own per
+  contact name (``key`` ``"chat:" + name``; a declared contact's key is its script name).
 - ``record_chat(interp, m, sig, wait, result)``: ``runtime/minigame.apply``'s hook after a
   minigame's result is stored. For a bundled minigame (``sig.source == "engine"``) with a
   reader in ``CHAT_READERS`` (``phone_chat``), the reader turns the arguments and the result
@@ -23,13 +35,16 @@ empty inbox.
   ``them`` line joins History as a named line and each ``me`` line as a choice row (time
   dividers don't); then the thread joins the inbox (``Codex.add_thread``). A game's own
   plugin that replaces ``phone_chat``, a bad argument, or an empty chat records nothing.
-- ``threads_json`` / ``threads_from_json``: ``ItemsState``'s ``"inbox"`` key: written only
-  when there is a thread; read from untrusted data with exact keys, shapes and sizes
-  (``StateInvalid("items")``, never echoing the input).
+- ``deliveries_json`` / ``deliveries_from_json``: ``ItemsState``'s ``"inbox"`` key: written
+  only when there is a delivery (``from`` and ``message`` only when not empty, so a chat is
+  written as round 1 wrote it); read from untrusted data with exact keys, shapes and sizes
+  (``StateInvalid("items")``, never echoing the input). Round 1 saves have no ``from`` or
+  ``message`` and load as they are.
 
-Limits: ``THREADS_MAX`` threads and ``CHARS_MAX`` code points of text in all (the oldest
-threads drop, ``kept``), ``LINES_MAX`` lines a thread (the first ones kept), texts cut to ``TEXT_MAX`` and names to ``NAME_MAX`` code points (lone surrogates
-shown as U+FFFD). Pure: no file, clock, or randomness; ``hashlib`` only for the key.
+Limits: ``DELIVERIES_MAX`` deliveries and ``CHARS_MAX`` code points of text in all (the
+oldest drop, ``kept``), ``LINES_MAX`` lines a delivery (the first ones kept), texts cut to
+``TEXT_MAX`` and names to ``NAME_MAX`` code points (lone surrogates shown as U+FFFD). Pure:
+no file, clock, or randomness; ``hashlib`` only for the key.
 """
 
 import hashlib
@@ -43,7 +58,7 @@ if TYPE_CHECKING:
     from engine.runtime.interpreter import Interpreter
     from engine.script.minigame import Minigame
 
-THREADS_MAX: Final = 100                # threads kept; past this the oldest drops
+DELIVERIES_MAX: Final = 1_000           # deliveries kept; past this the oldest drops
 LINES_MAX: Final = 1_000                # lines a thread keeps (F26's TOTAL_MAX messages)
 TEXT_MAX: Final = 2_000                 # a line's text (code points, "…"-cut)
 NAME_MAX: Final = 200                   # a sender, contact, time or device (code points)
@@ -52,7 +67,9 @@ READ_KIND: Final = "inbox_read"         # persistent unlock kind: threads opened
 SIDES: Final = frozenset({"them", "me", "time"})
 PHONE: Final = "phone"                  # the device look of a phone chat
 _KEY: Final = re.compile(r"[0-9a-f]{16}\.[1-9][0-9]{0,5}")
-_THREAD_KEYS: Final = frozenset({"key", "sid", "contact", "time", "device", "lines"})
+_KEYS: Final = frozenset({"key", "sid", "contact", "time", "device", "lines"})
+_MORE: Final = frozenset({"from", "message"})          # round 2, each only when not empty
+CHAT_KEY: Final = "chat:"               # the key prefix of an undeclared contact's thread
 _SURROGATE: Final = re.compile("[\ud800-\udfff]")
 
 
@@ -64,13 +81,29 @@ class InboxLine:
 
 
 @dataclass(frozen=True, slots=True)
-class InboxThread:
+class Delivery:
     key: str
-    sid: str                            # the minigame line's sid (ADR-0006)
-    contact: str
-    time: str                           # the chat's opening time ("" for none)
-    device: str                         # the look it came from ("phone")
+    sid: str                            # the minigame or send line's sid (ADR-0006)
+    contact: str                        # the name shown when it arrived
+    time: str                           # the chat's opening time, a message's date ("": none)
+    device: str                         # the look it came by ("": the game's default)
     lines: tuple[InboxLine, ...]
+    sender: str = ""                    # round 2: the declared contact ("" for a chat)
+    message: str = ""                   # round 2: the define sent ("" for a chat)
+
+
+@dataclass(frozen=True, slots=True)
+class ContactThread:
+    """One contact's thread on the Inbox page (module docstring)."""
+
+    key: str                            # the contact's script name, or "chat:" + a name
+    sender: str                         # the declared contact ("" for none)
+    title: str                          # the name shown
+    parts: tuple[Delivery, ...]         # oldest first
+
+    @property
+    def newest(self) -> Delivery:
+        return self.parts[-1]
 
 
 def shown(text: str, limit: int) -> str:
@@ -79,26 +112,51 @@ def shown(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit - 1] + "…"
 
 
-def thread_key(sid: str, threads: Sequence[InboxThread]) -> str:
-    """The next key for a chat at ``sid`` (module docstring)."""
+def delivery_key(sid: str, threads: Sequence[Delivery]) -> str:
+    """The next key for a delivery at ``sid`` (module docstring)."""
     base = hashlib.blake2s(sid.encode("utf-8", "surrogatepass"), digest_size=8).hexdigest()
     n = 1 + max((int(t.key.rpartition(".")[2]) for t in threads if t.sid == sid), default=0)
     return f"{base}.{min(n, 999_999)}"
 
 
-def size(thread: InboxThread) -> int:
+def size(thread: Delivery) -> int:
     """The code points of text ``thread`` holds (``CHARS_MAX``)."""
     return sum(len(line.text) + len(line.name) for line in thread.lines)
 
 
-def kept(threads: Sequence[InboxThread]) -> tuple[InboxThread, ...]:
-    """``threads`` without the oldest ones past ``THREADS_MAX`` or ``CHARS_MAX``; the newest
-    is always kept."""
-    out = list(threads[-THREADS_MAX:])
+def kept(threads: Sequence[Delivery]) -> tuple[Delivery, ...]:
+    """``threads`` without the oldest ones past ``DELIVERIES_MAX`` or ``CHARS_MAX``; the
+    newest is always kept."""
+    out = list(threads[-DELIVERIES_MAX:])
     total = sum(map(size, out))
     while len(out) > 1 and total > CHARS_MAX:
         total -= size(out.pop(0))
     return tuple(out)
+
+
+def group_threads(deliveries: Sequence[Delivery],
+                  titles: Mapping[str, str]) -> tuple[ContactThread, ...]:
+    """The Inbox's threads, newest first (module docstring). ``titles``: each declared
+    contact's script name to its shown name, in declaration order."""
+    by_title: dict[str, str] = {}
+    for name, title in titles.items():
+        by_title.setdefault(title, name)
+    parts: dict[str, list[Delivery]] = {}
+    for delivery in deliveries:
+        sender = delivery.sender
+        if not sender or sender not in titles:
+            sender = by_title.get(delivery.contact) or (
+                delivery.contact if delivery.contact in titles else "")
+        key = sender or CHAT_KEY + delivery.contact
+        parts.setdefault(key, []).append(delivery)
+    order = {d.key: i for i, d in enumerate(deliveries)}
+    threads = []
+    for key, found in parts.items():
+        sender = "" if key.startswith(CHAT_KEY) else key
+        title = titles.get(sender) or found[-1].contact
+        threads.append(ContactThread(key, sender, title, tuple(found)))
+    threads.sort(key=lambda t: order[t.newest.key], reverse=True)
+    return tuple(threads)
 
 
 # --- Readers: a finished minigame's lines ------------------------------------------------------
@@ -148,20 +206,21 @@ CHAT_READERS: Final[dict[str, tuple[Callable[[Mapping[str, object], object], Lin
 }
 
 
-def build_thread(sid: str, threads: Sequence[InboxThread], contact: str, time: str,
-                 device: str, lines: Sequence[tuple[str, str, str]]) -> InboxThread | None:
-    """A thread from a reader's lines (cut to the limits), or None when nothing shows."""
+def build_delivery(sid: str, threads: Sequence[Delivery], contact: str, time: str,
+                   device: str, lines: Sequence[tuple[str, str, str]], *, sender: str = "",
+                   message: str = "") -> Delivery | None:
+    """A delivery from a reader's lines (cut to the limits), or None when nothing shows."""
     out = tuple(InboxLine(side, shown(name, NAME_MAX), shown(text, TEXT_MAX))
                 for side, name, text in lines[:LINES_MAX]
                 if side in SIDES and type(text) is str and text.strip())
     if not any(line.side != "time" for line in out):
         return None
-    return InboxThread(thread_key(sid, threads), sid, shown(contact, NAME_MAX),
-                       shown(time, NAME_MAX), device, out)
+    return Delivery(delivery_key(sid, threads), sid, shown(contact, NAME_MAX),
+                    shown(time, NAME_MAX), device, out, sender, message)
 
 
 def record_chat(interp: "Interpreter", m: "Minigame", sig: "MinigameSig | None",
-                wait: object, result: object) -> InboxThread | None:
+                wait: object, result: object) -> Delivery | None:
     """``apply``'s hook (module docstring): History lines and the thread, or nothing."""
     if sig is None or sig.source != "engine" or m.name not in CHAT_READERS:
         return None
@@ -174,7 +233,7 @@ def record_chat(interp: "Interpreter", m: "Minigame", sig: "MinigameSig | None",
     except Exception:                                       # checked args never get here
         return None
     codex = interp.codex
-    thread = build_thread(m.sid, codex.threads(), contact, time, device, lines)
+    thread = build_delivery(m.sid, codex.deliveries(), contact, time, device, lines)
     if thread is None:
         return None
     history = interp.history
@@ -182,38 +241,56 @@ def record_chat(interp: "Interpreter", m: "Minigame", sig: "MinigameSig | None",
         if line.side != "time":
             history = history.add_message(m.sid, line.name, line.text, mine=line.side == "me")
     interp.history = history
-    codex.add_thread(thread)
+    codex.add_delivery(thread)
     return thread
 
 
 # --- Saved (ItemsState's "inbox") ---------------------------------------------------------------
 
-def threads_json(threads: Sequence[InboxThread]) -> list:
-    return [{"key": t.key, "sid": t.sid, "contact": t.contact, "time": t.time,
-             "device": t.device, "lines": [[ln.side, ln.name, ln.text] for ln in t.lines]}
-            for t in threads]
+def _delivery_json(t: Delivery) -> dict:
+    out: dict = {"key": t.key, "sid": t.sid, "contact": t.contact, "time": t.time,
+                 "device": t.device, "lines": [[ln.side, ln.name, ln.text] for ln in t.lines]}
+    if t.sender:
+        out["from"] = t.sender
+    if t.message:
+        out["message"] = t.message
+    return out
+
+
+def deliveries_json(threads: Sequence[Delivery]) -> list:
+    return [_delivery_json(t) for t in threads]
 
 
 def _text(value: object, lo: int, hi: int) -> bool:
     return type(value) is str and lo <= len(value) <= hi
 
 
-def threads_from_json(obj: object) -> tuple[InboxThread, ...]:
+def _saved_name(value: object) -> bool:
+    """A saved ``from`` or ``message``: a script name (1 to 64 code points, no space)."""
+    return type(value) is str and 0 < len(value) <= 64 and not any(
+        c.isspace() or ord(c) < 32 or 0xD800 <= ord(c) <= 0xDFFF for c in value)
+
+
+def deliveries_from_json(obj: object) -> tuple[Delivery, ...]:
     """Validate a saved ``"inbox"`` value; ``ValueError`` for anything else (the caller
     raises ``StateInvalid("items")``)."""
     from engine.runtime.menu import sid_ok
-    if type(obj) is not list or not 0 < len(obj) <= THREADS_MAX:
+    if type(obj) is not list or not 0 < len(obj) <= DELIVERIES_MAX:
         raise ValueError("inbox")
-    out: list[InboxThread] = []
+    out: list[Delivery] = []
     keys: set[str] = set()
     for item in obj:
-        if type(item) is not dict or item.keys() != _THREAD_KEYS:
+        if type(item) is not dict or not _KEYS <= item.keys() <= _KEYS | _MORE:
+            raise ValueError("inbox")
+        sender, message = item.get("from", ""), item.get("message", "")
+        if ("from" in item and not _saved_name(sender)) \
+                or ("message" in item and not _saved_name(message)):
             raise ValueError("inbox")
         key, sid, lines = item["key"], item["sid"], item["lines"]
         if type(key) is not str or not _KEY.fullmatch(key) or key in keys or not sid_ok(sid):
             raise ValueError("inbox")
         if not (_text(item["contact"], 0, NAME_MAX) and _text(item["time"], 0, NAME_MAX)
-                and _text(item["device"], 1, NAME_MAX)):
+                and _text(item["device"], 0, NAME_MAX)):
             raise ValueError("inbox")
         if type(lines) is not list or not 0 < len(lines) <= LINES_MAX:
             raise ValueError("inbox")
@@ -225,14 +302,15 @@ def threads_from_json(obj: object) -> tuple[InboxThread, ...]:
                 raise ValueError("inbox")
             parsed.append(InboxLine(line[0], line[1], line[2]))
         keys.add(key)
-        out.append(InboxThread(key, sid, item["contact"], item["time"], item["device"],
-                               tuple(parsed)))
+        out.append(Delivery(key, sid, item["contact"], item["time"], item["device"],
+                            tuple(parsed), sender, message))
     if len(out) > 1 and sum(map(size, out)) > CHARS_MAX:
         raise ValueError("inbox")
     return tuple(out)
 
 
-__all__ = ["CHARS_MAX", "CHAT_READERS", "InboxLine", "InboxThread", "LINES_MAX", "NAME_MAX",
-           "PHONE", "READ_KIND", "SIDES", "TEXT_MAX", "THREADS_MAX", "build_thread", "kept",
-           "phone_lines", "record_chat", "shown", "size", "thread_key", "threads_from_json",
-           "threads_json"]
+__all__ = ["CHARS_MAX", "CHAT_KEY", "CHAT_READERS", "ContactThread", "DELIVERIES_MAX",
+           "Delivery", "InboxLine", "LINES_MAX", "NAME_MAX", "PHONE", "READ_KIND", "SIDES",
+           "TEXT_MAX", "build_delivery", "deliveries_from_json", "deliveries_json",
+           "delivery_key", "group_threads", "kept", "phone_lines", "record_chat", "shown",
+           "size"]

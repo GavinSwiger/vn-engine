@@ -107,6 +107,7 @@ from engine.script.limits import SCRIPT_FILE_MAX_BYTES
 from engine.script.flowchart import Flowchart
 from engine.script.flowgraph import FlowNode, FlowOptions
 from engine.script.glitch import EFFECT_STATEMENT_KINDS, WORD_OFF
+from engine.script.inbox import message_problem, plain_value
 from engine.script.metafiles import MetaFile
 from engine.script.minigame import Minigame
 from engine.script.nodes import Chapter, Define, PyCode, Say, Statement
@@ -713,6 +714,26 @@ def _variable_names(ctx: CheckContext) -> Iterable[NameRow] | None:
     return [(d.name, *_where(d)) for d in ctx.program.defaults]
 
 
+def _contact_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F65 round 2: each ``lock contact``, at its line (Insert ▸ Messages ▸ Send's picker)."""
+    if ctx.program is None:
+        return None
+    return [(c.name, *_where(c)) for c in ctx.program.contacts]
+
+
+def _message_names(ctx: CheckContext) -> Iterable[NameRow] | None:
+    """F65 round 2: each define or default whose plain value is a message ``send`` can
+    deliver, at its line (Insert ▸ Messages ▸ Send's picker)."""
+    if ctx.program is None:
+        return None
+    rows: list[NameRow] = []
+    for node in (*ctx.program.defines, *ctx.program.defaults):
+        plain, value = plain_value(node.value.source)
+        if plain and message_problem(value) is None:
+            rows.append((node.name, *_where(node)))
+    return rows
+
+
 def _python_tree(source: str, mode: str) -> ast.AST | None:
     try:
         return ast.parse(source, mode=mode)
@@ -1176,6 +1197,8 @@ NAME_SOURCES: dict[str, Callable[[CheckContext], Iterable[NameRow] | None]] = {
     "playthrough": _playthrough_names,      # F32: each [playthrough.N] look, at its table
     "sprite": _sprite_names,                # F28: sprite tags (effect jitter <sprite>)
     "variable": _variable_names,            # F47: each default, at its line
+    "contact": _contact_names,              # F65 round 2: each lock contact
+    "message": _message_names,              # F65 round 2: defines send can deliver
     "character_use": _uses("character_use"),   # F47: each line a character speaks or is named
     "image_use": _uses("image_use"),        # F47: each scene/show line (and say attributes)
     "audio_use": _uses("audio_use"),        # F47: each audio line, and Character blips

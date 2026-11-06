@@ -42,6 +42,7 @@ consumes those inputs, so F05's own handling never sees them. The shell opens th
 in mode GAME and when no menu is open (``GameShell.open_game_menu``).
 """
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import pygame
@@ -52,7 +53,7 @@ from engine.ui.focus import Box, FocusGroup, move_target, reading_key
 from engine.ui.input import UiEvent
 from engine.ui.layouts import CONTENT_PANEL, SIDEBAR, SidebarLayout, sidebar_layout
 from engine.ui.menu_screen import MenuScreen, Phase
-from engine.ui.menus import EntryContext, MenuEntry, MenuPage
+from engine.ui.menus import EntryContext, MenuEntry, MenuPage, badged
 from engine.ui.nav import InputKind, Nav, NavReader
 from engine.ui.paint import Painter
 from engine.ui.widgets import Button, Widget
@@ -82,6 +83,7 @@ class GameMenuScreen(MenuScreen):
         self.page_groups: list[FocusGroup] = []
         self._page_focus: Widget | None = None
         self._seen_revision = shell.overrides.revision
+        self.on_closed: Callable[[], None] | None = None     # F65: open inbox's wait
         super().__init__(shell, by=by, backdrop=backdrop)
         self.scope.on_edge = self._edge
         if title_page is not None:
@@ -162,7 +164,7 @@ class GameMenuScreen(MenuScreen):
         # F36: the shell's ``entry_word`` (Main Menu reads "End Replay" during a replay); a
         # bare ``MenuShell`` (test rigs) has only its words.
         word = getattr(self.shell, "entry_word", self.shell.words.get)
-        return Button(lambda: word(entry.id), lambda: self._activate(entry),
+        return Button(lambda: badged(word(entry.id), entry), lambda: self._activate(entry),
                       enabled=entry.enabled, on=entry.on,
                       selected=lambda: self.page_id == entry.id)
 
@@ -333,6 +335,9 @@ class GameMenuScreen(MenuScreen):
         super().on_exit()
         if self.page is not None:
             self._drop_page()
+        done, self.on_closed = self.on_closed, None
+        if done is not None:
+            done()
 
     def draw_content(self, p: Painter) -> None:
         assert self.layout is not None

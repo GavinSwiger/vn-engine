@@ -347,6 +347,17 @@ class CheckRolled(StoryWait):
     ok: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class OpenInbox(StoryWait):
+    """F65 round 2: ``open inbox`` / ``open <look>``, a story wait (``begin_wait(make=...)``)
+    that opens the Inbox at the newest thread (``look``: the newest that came by it; None:
+    any), until the player closes it. ``seconds`` is None and ``for_stage`` False. Handler:
+    ``app/inbox.open_inbox`` (by MRO, ``StageScreen``'s ``StoryWait`` handler until then). A
+    quiet F14 re-run holds none (``begin_wait``'s rule)."""
+
+    look: str | None = None
+
+
 # --- F30 fourth-wall tricks (F30 04-technical.md §3, §4.3; 07 I-4) ---------------------------
 
 @dataclass(frozen=True, slots=True)
@@ -480,6 +491,22 @@ class MeterNotice(Command):
 
     meter: str
     text: str
+
+
+@dataclass(frozen=True, slots=True)
+class MessageArrived(Command):
+    """F65 round 2: ``send`` delivered a message. ``title`` is the contact's shown name,
+    ``device`` the look it came by ("" for the game's default), ``image`` the contact's
+    picture name (None for none), ``thread`` the Inbox thread's key. Held in run order like
+    ``CodexAdded``: never by restore, load, or New Game; F14's quiet re-run drops it with the
+    rest of its burst. Handler: ``app/inbox.install_inbox``'s arrival notice; headless
+    records it and shows nothing."""
+
+    contact: str
+    title: str
+    device: str
+    image: str | None = None
+    thread: str = ""
 
 
 # --- F23 minigames (F23 04-technical.md §4.1) ----------------------------------------------
@@ -630,7 +657,7 @@ class RollbackView:
 
 
 __all__ = ["Advance", "AudioRestore", "BASE_STYLE", "BlipSpec", "Change", "ChapterStarted",
-           "CheckRolled", "Choose", "CodexAdded", "MeterNotice", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
+           "CheckRolled", "Choose", "CodexAdded", "MessageArrived", "OpenInbox", "MeterNotice", "CodexChange", "Command", "DeleteSaves", "EMPTY_TEXT", "EndVoice", "Event",
            "Fade", "FakeCrash", "Flash", "Glitch", "GlitchBurst", "GlitchKey", "INSTANT", "MetaDelete", "MetaWrite", "MeterChange", "MeterView", "MinigameBase",
            "MinigameDone", "MinigameUsed", "NameMark", "NvlLine", "NvlPage", "PauseMark", "PlayMusic", "PlaySound", "PlayVoice", "PrefetchImages", "QueueMusic",
            "RollbackView", "Say", "Shake", "ShowMenu", "ShowStage", "ShownChoice", "Span",

@@ -1233,6 +1233,8 @@ GROUP_HELP: Mapping[str, str] = {
     "Time": "Story time: the next part of the day, the next day, or a day you name, and "
             "the clock in a corner of the screen. Conditions can then ask what day or time "
             "it is.",
+    "Messages": "Letters and messages that arrive in the Inbox while the story goes on, "
+                "and opening the Inbox where the story stops to read them.",
     "Stage": "What's on screen: the background, and characters coming, going or moving.",
     "Audio": "Music, sound effects and voice lines.",
     "Effects": "Screen effects and tricks: transitions, shakes, flashes, glitches, pauses, "

@@ -22,7 +22,8 @@ as it needs (``SuggestPool.iter_suggest``: a few ms each; F04 step 9):
    (W12 at the declaration's line); then (F34, PR-F34-06) each picture of each gallery entry
    (``Program.gallery``: the entry picture, then its versions), likewise, once per picture
    at the entry's line; then (F36, PR-F36-07) each scene replay's declared ``image``
-   (``Program.replays``), likewise; when the pass ends, W60 for each ``Mask`` file ``locate`` can't
+   (``Program.replays``), likewise, and (F65 round 2) each contact's ``image``
+   (``Program.contacts``); when the pass ends, W60 for each ``Mask`` file ``locate`` can't
    find.
 
 Record order (§7.2, AC-F04-41): the scan stop line W10b (F04 07 I-10: its own record,
@@ -52,6 +53,7 @@ from engine.runtime.transitions import Locate, TransitionCheck
 from engine.script.codex import CodexEntry
 from engine.script.diagnostics import ScriptError, ScriptWarning
 from engine.script.gallery import GalleryEntry
+from engine.script.inbox import ContactDecl
 from engine.script.messages import format_message, w10_text
 from engine.script.nodes import Say
 from engine.script.replay import ReplayEntry
@@ -101,7 +103,8 @@ class StageCheck:
                     self.program.iter_statements(),  # type: ignore[attr-defined]
                     getattr(self.program, "codex", ()),
                     getattr(self.program, "gallery", ()),
-                    getattr(self.program, "replays", ()))
+                    getattr(self.program, "replays", ()),
+                    getattr(self.program, "contacts", ()))     # F65 round 2
             return False
         if self._pass == _CHECK:
             if self._each_statement(self._check):
@@ -192,6 +195,10 @@ class StageCheck:
                     self._add("W12", stmt, name)
             return
         elif isinstance(stmt, ReplayEntry):              # F36: the Scenes tile's picture
+            if stmt.image is not None and stmt.image not in self.index.names:
+                self._add("W12", stmt, stmt.image)
+            return
+        elif isinstance(stmt, ContactDecl):              # F65: the thread's picture
             if stmt.image is not None and stmt.image not in self.index.names:
                 self._add("W12", stmt, stmt.image)
             return

@@ -46,8 +46,8 @@ DEFAULT_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "title": ("new_game", "load", "flowchart", "settings", "extras", "codex", "help", "quit"),
     "game": ("return", "skip_minigame", "history", "codex", "inbox", "flowchart", "save",
              "load", "settings", "help", "main_menu", "quit"),
-    "quick": ("back", "history", "skip", "auto", "save", "q_save", "q_load", "settings",
-              "hide", "menu"),
+    "quick": ("back", "history", "inbox", "skip", "auto", "save", "q_save", "q_load",
+              "settings", "hide", "menu"),                                 # F65 round 2: inbox
     # F34 (07 I-4): the Extras screen's pages, opened from the title's one ``extras``
     # button. Fixed order and no config key; each page joins with one ``app/extras.py:
     # add_extras_page`` call (F36 ``endings`` and ``replays``, F35 ``music_room``, F37
@@ -87,6 +87,7 @@ class MenuEntry:
     enabled: Callable[[], bool] = _always
     visible: Callable[[], bool] = _always                     # e.g. Extras once unlocked
     on: Callable[[], bool] | None = None                      # on/off entries (F15)
+    badge: Callable[[], int] | None = None                    # F65: "Inbox (2)" when > 0
 
 
 class MenuPage(Protocol):
@@ -323,6 +324,13 @@ class MenuRegistry:
         return shown
 
 
+def badged(word: str, entry: MenuEntry) -> str:
+    """F65 round 2: ``word`` with the entry's count when it has one above 0 ("Inbox (2)")."""
+    badge = getattr(entry, "badge", None)              # a stand-in entry may have none
+    count = badge() if badge is not None else 0
+    return f"{word} ({count})" if count > 0 else word
+
+
 def join_names(names: Sequence[str]) -> str:
     """W66's list of names: "a", "a and b", "a, b, and c" (G7 draft)."""
     if not names:
@@ -334,6 +342,6 @@ def join_names(names: Sequence[str]) -> str:
     return ", ".join(names[:-1]) + f", and {names[-1]}"
 
 
-__all__ = ["DEFAULT_ORDER", "MENU_NOUNS", "OPT_IN", "EntryContext", "MenuEntry",
+__all__ = ["DEFAULT_ORDER", "MENU_NOUNS", "OPT_IN", "EntryContext", "MenuEntry", "badged",
            "MenuName",
            "MenuPage", "MenuPageBase", "MenuRegistry", "PageHost", "UiOverrides", "join_names"]

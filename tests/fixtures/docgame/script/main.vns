@@ -14,6 +14,9 @@ lock route river "By the River"
 lock tip lanterns "Paper Lanterns"
 lock item brass_key "Brass Key"
 lock gallery cg festival "Festival Night"
+# F65 round 2: hana is the send example's contact, invite its message.
+lock contact hana "Hana"
+define invite = "Meet me at the bridge when the lanterns are lit."
 
 label start:
     "Start."

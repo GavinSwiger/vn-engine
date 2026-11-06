@@ -54,6 +54,7 @@ _RANKS = re.compile(r"[ \t](ranks)(?=[ \t]+\")")           # F62, on a points li
 _BRANCH = re.compile(r"(success|failure)[ \t]*:[ \t]*(?:#|$)")   # F59, under a check
 _PRESENT = re.compile(r"present(?=[ \t]*:|[ \t]+if[ \t(])")    # F64, in a menu (ADR-0010)
 _CLOCK = re.compile(r"clock[ \t]+(next|go)\b")          # F63: a statement only here (ADR-0010)
+_SEND_OPEN = re.compile(r"(send|open)[ \t]+[^\W\d]\w*([ \t]+from\b)?")   # F65 (ADR-0010)
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
 Span = tuple[int, int, str]
@@ -111,7 +112,8 @@ def color_spans(line: str) -> list[Span]:
             if name is not None:
                 spans.append((name.start(1), name.end(1), TAG_LABEL))
                 pos = name.end(1)
-    elif word is not None and _is_clock(line, start):         # F63: clock next / go to
+    elif word is not None and (_is_clock(line, start)         # F63: clock next / go to
+                               or _is_send_open(line, start)):  # F65: send / open
         spans.append((word.start(), word.end(), TAG_KEYWORD))
         pos = word.end()
     elif word is not None:
@@ -128,6 +130,16 @@ def _is_clock(line: str, start: int) -> bool:
     ``clock next`` with no quoted text after it (``clock next "Tick."`` is dialogue)."""
     found = _CLOCK.match(line, start)
     return found is not None and (found.group(1) == "go" or '"' not in line[found.end():])
+
+
+def _is_send_open(line: str, start: int) -> bool:
+    """F65: the line is ``send`` or ``open`` (``script/inbox.send_claims``/``open_claims``):
+    a name after the word and no quoted text, or (``send``) ``from`` as its third word."""
+    found = _SEND_OPEN.match(line, start)
+    if found is None:
+        return False
+    return (found.group(1) == "send" and found.group(2) is not None) \
+        or '"' not in line[found.end():]
 
 
 def _scan_text(line: str, pos: int, spans: list[Span]) -> None:

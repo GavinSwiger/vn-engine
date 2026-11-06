@@ -109,7 +109,7 @@ def test_i5_words_are_registered_at_import():
     specs = {w: get_spec(w) for w in ("ending", "lock", "unlock")}
     assert all(spec is not None and spec.placement == "either" for spec in specs.values())
     rows = ["route", "ending", "tip", "item", "gallery", "track", "replay",
-            "achievement"]                                          # F21, F34-F37
+            "achievement", "contact"]                               # F21, F34-F37, F65
     assert list(LOCK_TARGETS) == rows
     with scoped_registry():
         register_words()

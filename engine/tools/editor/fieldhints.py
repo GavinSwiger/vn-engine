@@ -78,6 +78,15 @@ FORM_HINTS: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType({
                         "Empty: the part of the day below, later today or tomorrow.",
               "part": "For Go to: a part of the day, such as Evening. Empty: the first "
                       "part of that day."},
+    # F65 round 2: Messages (send / open).
+    "send": {"message": "The message to deliver: a define holding one text, or a list of "
+                        "lines like a phone chat's.",
+             "contact": "Who it is from (a lock contact line). Their thread in the Inbox "
+                        "gets the message.",
+             "look": "How this one arrives, if not the contact's usual way: a pigeon, a "
+                     "letter, a phone, a radio, a terminal or a voice in your head."},
+    "open": {"at": "Where the Inbox opens: on the newest message, or on the newest that "
+                   "came one way (by pigeon, say). The story waits until it is closed."},
     "points": {"meter": "The meter to change (made on the Database's Meters page).",
                "op": "+= adds, -= takes away, = sets it to the amount.",
                "amount": "A whole number.",

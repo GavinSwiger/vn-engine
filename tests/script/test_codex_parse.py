@@ -106,7 +106,7 @@ def test_i4_rows_are_registered_at_import():
     ``register_words()`` again (the ``words`` fixture) changes nothing, and
     ``scoped_registry()`` keeps them."""
     assert list(LOCK_TARGETS) == ["route", "ending", "tip", "item", "gallery", "track",
-                                 "replay", "achievement"]                         # F36, F37
+                                 "replay", "achievement", "contact"]    # F36, F37, F65
     rows = dict(LOCK_TARGETS)
     with scoped_registry():
         routes.register_words()

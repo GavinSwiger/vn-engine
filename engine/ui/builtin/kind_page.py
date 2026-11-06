@@ -10,6 +10,8 @@ description, a port that lists it, and ``KindPage(port, "<page>")`` in a ``MenuE
 - ``heading`` is the page name, a ``[words]`` key (``inbox``); a kit can fill that word in
   (``kits.kit_words``: "Messages", "Letters") where the author left it at its default.
 - No purse, no pick or Use button, never opened from the title screen.
+- F65 round 2: ``select`` names the entry to show first (``open pigeon``: the newest thread
+  that came by pigeon), when it is listed; else the first row, as before.
 """
 
 from typing import TYPE_CHECKING
@@ -25,16 +27,18 @@ if TYPE_CHECKING:
 class KindPage(CodexPage):
     """The page ``page`` (module docstring)."""
 
-    def __init__(self, port: CodexPort, page: str) -> None:
+    def __init__(self, port: CodexPort, page: str, *, select: str | None = None) -> None:
         super().__init__(port, from_title=False)
         self.heading = page
         self.filter = CodexFilter(frozenset(k.name for k in page_kinds(page)))
+        self.select = select
 
     def build(self, host: "PageHost", body: "Box") -> "list[FocusGroup]":
         self.host = host
         if self.view is None:
             self.view = CodexView(self.port, ui=host.shell, filter=self.filter,
                                   scope=lambda: host.scope)
+            self.view.selected = self.select           # kept by build when it is listed
         return self.view.build(body, host.painter.text_scale())
 
 

@@ -42,7 +42,7 @@ from engine.render.frames import FrameSpec
 from engine.ui.focus import Box
 from engine.ui.input import UiEvent
 from engine.ui.layouts import QuickItem, QuickMenuLayout
-from engine.ui.menus import EntryContext, MenuEntry
+from engine.ui.menus import EntryContext, MenuEntry, badged
 from engine.ui.nav import InputKind
 from engine.ui.theme import measure_with
 
@@ -91,11 +91,13 @@ class QuickMenu:
 
     def label(self, entry: MenuEntry) -> str:
         """The entry's word (overrides, then ``[words]``). An id whose feature hasn't added its
-        ``WordsConfig`` field yet shows the id capitalized."""
+        ``WordsConfig`` field yet shows the id capitalized. F65: with its count ("Inbox
+        (2)") when the entry has a badge above 0."""
         try:
-            return self.shell.words.get(entry.id)
+            word = self.shell.words.get(entry.id)
         except KeyError:
-            return entry.id.replace("_", " ").capitalize()
+            word = entry.id.replace("_", " ").capitalize()
+        return badged(word, entry)
 
     def _measure_for(self, theme) -> object:
         return measure_with(self.shell.assets, theme.font(theme.cfg.quick_menu.text_size))

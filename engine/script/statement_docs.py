@@ -25,9 +25,10 @@ from typing import Final
 
 from engine.script.words import STATEMENT_WORDS
 
-GROUPS: Final = ("Text", "Story flow", "Choices", "Logic", "Time", "Stage", "Audio",
-                 "Effects", "Minigames", "Declarations", "Files")
-# Minigames: 2026-11-02, AC-F45-53. Time: F63's clock (Insert ▸ Time).
+GROUPS: Final = ("Text", "Story flow", "Choices", "Logic", "Time", "Messages", "Stage",
+                 "Audio", "Effects", "Minigames", "Declarations", "Files")
+# Minigames: 2026-11-02, AC-F45-53. Time: F63's clock (Insert ▸ Time). Messages: F65 round
+# 2's send and open (Insert ▸ Messages).
 DOC_FORMS: Final = ("dialogue", "narration", "$")
 DOC_MODIFIERS: Final = ("with", "at")
 # A name kind (``names``): the same pattern as the check child's ``CHECK_KIND_RE`` (04 §4.3).

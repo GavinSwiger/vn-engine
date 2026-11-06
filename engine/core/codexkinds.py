@@ -35,7 +35,10 @@ The API:
 - ``register_codex_kind(kind)``: add a kind (again with the same name replaces it, so a
   reload is harmless); ``codex_kind(name)``, ``codex_kinds()`` (registration order: the
   order rows are made in), ``page_kinds(page)``, ``declared_kinds()``, ``page_of(name)``.
-- ``TIP``, ``ITEM``, ``CHAT``: the built-in kinds, registered on import.
+- ``TIP``, ``ITEM``, ``CHAT``, ``CONTACT``: the built-in kinds, registered on import. F65
+  round 2: a ``CHAT`` entry is one contact's thread (every message and finished phone chat
+  from them, newest thread first); ``CONTACT`` is a declared contact (name, display name,
+  picture, device look), the thread's sender.
 
 Adding a kind is: a description here, its entries in ``Codex`` (its ``listed`` order and
 read marks), and a page (``ui/builtin/kind_page.KindPage(port, page)`` plus one game-menu
@@ -112,11 +115,16 @@ TIP: Final = register_codex_kind(CodexKind(
 ITEM: Final = register_codex_kind(CodexKind(
     "item", "codex", "codex_items", shows=frozenset({"picture", "category", "count", "body"}),
     order=ORDER_OBTAINED))
-CHAT: Final = register_codex_kind(CodexKind(            # F65: a finished phone chat
-    "chat", "inbox", "inbox", kit_title=("messages", "title"), shows=frozenset({"body"}),
-    order=ORDER_NEWEST, declared=False))
+CHAT: Final = register_codex_kind(CodexKind(            # F65: a contact's thread
+    "chat", "inbox", "inbox", kit_title=("messages", "title"),
+    shows=frozenset({"picture", "body"}), order=ORDER_NEWEST, declared=False))
+# F65 round 2: a contact (``lock contact hana "Hana" on pigeon image hana portrait``). Declared
+# by its own ``lock contact`` row (``script/inbox.py``), not the codex's tip and item rows,
+# so ``declared`` stays False here; the Inbox lists a contact through its thread (``CHAT``).
+CONTACT: Final = register_codex_kind(CodexKind(
+    "contact", "inbox", "inbox", shows=frozenset({"picture"}), declared=False))
 
 
-__all__ = ["CHAT", "FIELDS", "ITEM", "ORDERS", "ORDER_DECLARED", "ORDER_NEWEST",
+__all__ = ["CHAT", "CONTACT", "FIELDS", "ITEM", "ORDERS", "ORDER_DECLARED", "ORDER_NEWEST",
            "ORDER_OBTAINED", "TIP", "CodexKind", "codex_kind", "codex_kinds", "declared_kinds",
            "page_kinds", "page_of", "register_codex_kind"]

@@ -26,6 +26,10 @@ its own: it only fills in what the author left unset.
   ``DEVICE_LOOKS``), from ``MESSAGE_WORDS``. ``kit_words(config)`` gives the ``[words]``
   a kit fills in, by key (the pages of ``codexkinds`` kinds with a ``kit_title``), for
   ``ui/theme.Words`` to use where the author left the word at its default.
+- F65 round 2: ``DEVICE_WORDS`` / ``device_words(look)``: how each device look words a
+  message (``DeviceWords``: the arrival notice, the line above each message in the Inbox,
+  and whether the sender's lines read as a letter or as chat lines), so a pigeon lands on
+  the sill while a phone buzzes. Round 3's ``[device.<name>]`` overrides these.
 
 Pure data, read-only; imports only ``core``.
 """
@@ -198,6 +202,36 @@ MESSAGE_WORDS: Final[Mapping[str, tuple[str, str]]] = MappingProxyType({
     "scifi": ("Comms", "terminal"),
     "letters": ("Letters", "letters"),
 })
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceWords:
+    """F65 round 2: how a device look words a message. ``arrive``: the arrival notice
+    (``{name}``: the sender's display name); ``via``: the line above each message in the
+    Inbox ("Arrived by pigeon"); ``letter``: the sender's lines read as one letter (plain
+    paragraphs, signed "— Hana") rather than as chat lines ("Hana: …")."""
+
+    arrive: str
+    via: str
+    letter: bool
+
+
+DEVICE_WORDS: Final[Mapping[str, DeviceWords]] = MappingProxyType({
+    "phone": DeviceWords("New message from {name}.", "Message", False),
+    "letters": DeviceWords("A letter from {name} has arrived.", "Letter", True),
+    "pigeon": DeviceWords("A pigeon lands on the sill with a note from {name}.",
+                          "Arrived by pigeon", True),
+    "radio": DeviceWords("The radio crackles. It's {name}.", "Over the radio", False),
+    "terminal": DeviceWords("Incoming transmission from {name}.", "Transmission", False),
+    "mind": DeviceWords("{name}'s voice, inside your head.", "A thought", True),
+})
+
+
+def device_words(look: str) -> DeviceWords:
+    """F65 round 2: ``look``'s wording (a phone's for a look this engine doesn't know)."""
+    return DEVICE_WORDS.get(look) or DEVICE_WORDS[DEVICE_LOOKS[0]]
+
+
 KITS = MappingProxyType({  # type: ignore[misc]
     id_: replace(k, items=MappingProxyType({ITEMS_BAG: ITEM_WORDS[id_][0],
                                             ITEMS_MONEY: ITEM_WORDS[id_][1],
@@ -312,7 +346,7 @@ def device_look(config: Any) -> str:
     return look if look in DEVICE_LOOKS else DEVICE_LOOKS[0]
 
 
-__all__ = ["DEVICE_LOOKS", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
+__all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "device_words", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
            "ITEM_WORDS", "MESSAGES_DEVICE", "MESSAGES_TITLE", "MESSAGE_WORDS",
            "bag_words", "device_look", "hotbar_word", "kit_words",
            "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",

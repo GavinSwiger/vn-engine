@@ -30,7 +30,7 @@ from engine.runtime.clock import EMPTY_CLOCK, ClockState, clock_json
 from engine.runtime.flowchart import EMPTY_FLOW, FlowState
 from engine.runtime.glitch import EMPTY_GLITCH, GlitchState
 from engine.runtime.history import EMPTY_HISTORY, HistoryState
-from engine.runtime.inbox import InboxThread, threads_from_json, threads_json
+from engine.runtime.inbox import Delivery, deliveries_from_json, deliveries_json
 from engine.runtime.limits import (CALL_DEPTH_MAX, HINT_MAX_PATH, INT_LIMIT,
                                    POSITION_MAX_CHARS, STATE_MAX_DEPTH, STATE_MAX_ITEMS,
                                    STATE_MAX_NAMES, STATE_NAME_MAX_CHARS)
@@ -106,14 +106,14 @@ class ItemsState:
     F64 round 2: ``bar`` is whether ``show hotbar`` put the hotbar on screen; JSON adds
     ``"bar": true`` only then, so older saves load with it hidden.
 
-    F65: ``inbox`` holds the Inbox's threads, oldest first (``runtime/inbox.py``: the codex's
-    ``chat`` kind); JSON adds ``"inbox": [...]`` only when there is one, so older saves load
-    with an empty inbox."""
+    F65: ``inbox`` holds the Inbox's deliveries (finished chats and, round 2, sent messages),
+    oldest first (``runtime/inbox.py``); JSON adds ``"inbox": [...]`` only when there is one,
+    so older saves load with an empty inbox."""
 
     held: tuple[str, ...] = ()
     counts: tuple[int, ...] = ()
     bar: bool = False
-    inbox: "tuple[InboxThread, ...]" = ()
+    inbox: "tuple[Delivery, ...]" = ()
 
     def count_of(self, index: int) -> int:
         return self.counts[index] if self.counts else 1
@@ -125,7 +125,7 @@ class ItemsState:
         if self.bar:
             out["bar"] = True
         if self.inbox:
-            out["inbox"] = threads_json(self.inbox)
+            out["inbox"] = deliveries_json(self.inbox)
         return out
 
     @staticmethod
@@ -153,10 +153,10 @@ class ItemsState:
         bar = obj.get("bar", False)         # F64 round 2: only ever written as true
         if bar is not True and "bar" in obj:
             raise StateInvalid("items")
-        inbox: tuple[InboxThread, ...] = ()
+        inbox: tuple[Delivery, ...] = ()
         if "inbox" in obj:                  # F65; absent (an older save): no threads
             try:
-                inbox = threads_from_json(obj["inbox"])
+                inbox = deliveries_from_json(obj["inbox"])
             except Exception:
                 raise StateInvalid("items") from None
         if not held and not bar and not inbox:

@@ -1506,6 +1506,9 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     out.warnings += choicepresent.check_story(inp.nodes, sink.add)  # F64: E447, W310
     from engine.script import hotbar as hotbar_checks               # F64 round 2: W308
     out.warnings += hotbar_checks.check_story(inp.nodes, inp.meter_config)
+    from engine.script import inbox as inbox_checks                 # F65 round 2: E450-
+    out.warnings += inbox_checks.check_story(inp.nodes, sink.add,   # E452, W311
+                                             inp.meter_config)
     yield
     if not inp.checks_skipped:
         out.warnings += yield from _iter_w42(collected)

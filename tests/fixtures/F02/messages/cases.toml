@@ -6246,8 +6246,8 @@ ac = "AC-F19-04"
 feature = "F19"
 code = "E244"
 needs = "load"
-each = [['unlock promise', '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.'''],
-        ['lock route promise now', '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.'''],
+each = [['unlock promise', '''lock and unlock take route, ending, tip, item, gallery, replay, achievement, or contact, then a name, e.g. unlock route promise.'''],
+        ['lock route promise now', '''lock and unlock take route, ending, tip, item, gallery, replay, achievement, or contact, then a name, e.g. unlock route promise.'''],
         ['unlock route promis', '''there is no route "promis". Did you mean "promise"? Declare routes at the top level with lock route promise "Title".'''],
         ['lock ending god', '''there is no ending "god". Did you mean "good"?'''],
         ['unlock ending sad', '''unlock ending can't be used: an ending is recorded when the story reaches its ending line.'''],
@@ -6265,7 +6265,7 @@ needs = "load"
 each = ['unlock route promise', 'lock ending sad']
 edit = { T = '<x>' }
 where = "16"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, achievement, or contact, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F19-05-E241-ending"
@@ -6498,7 +6498,7 @@ needs = "load"
 each = ['unlock lanterns', 'unlock tip lanterns now']
 edit = { S = '<x>' }
 where = "10"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, achievement, or contact, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F21-02-E244-top"
@@ -6508,7 +6508,7 @@ code = "E244"
 needs = "load"
 edit = { T = 'lock ending sad' }
 where = "12"
-expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, or achievement, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
+expect = { exact = '''at the top level, lock only declares a route, tip, item, gallery picture, music-room track, scene replay, achievement, or contact, e.g. lock route promise "Hana's Promise". Put unlock and lock ending inside a label.''' }
 
 [[case]]
 id = "F21-03-E252"
@@ -8291,7 +8291,7 @@ needs = "load"
 each = ['unlock gallery', 'unlock gallery cg festival "Festival Night"']
 edit = { S = '<x>', T = 'lock gallery cg festival "Festival Night"' }
 where = "5"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, achievement, or contact, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F34-03-E343"
@@ -8533,7 +8533,7 @@ needs = "load"
 each = ['unlock replay', 'unlock replay bridge "The Bridge"', 'lock replay bridge start']
 edit = { S = '<x>', T = 'lock replay bridge "The Bridge"' }
 where = "5"
-expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, or achievement, then a name, e.g. unlock route promise.''' }
+expect = { exact = '''lock and unlock take route, ending, tip, item, gallery, replay, achievement, or contact, then a name, e.g. unlock route promise.''' }
 
 [[case]]
 id = "F36-03-E349"

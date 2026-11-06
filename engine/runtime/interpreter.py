@@ -214,6 +214,7 @@ from engine.runtime import menu as menu_mod
 from engine.runtime import metafiles as metafiles_mod
 from engine.runtime import minigame as minigame_mod
 from engine.runtime import triggers as triggers_mod
+from engine.runtime import send as send_mod
 from engine.runtime import nvl as nvl_mod
 from engine.runtime import points as points_mod
 from engine.runtime import replay as replay_mod
@@ -255,6 +256,7 @@ from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
 from engine.script.choicecheck import CheckRoll
 from engine.script.clock import ClockStep
+from engine.script.inbox import OpenStep, SendStep
 from engine.script.clockshow import ClockShow
 from engine.script.choicepresent import PresentOption
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
@@ -1952,6 +1954,10 @@ register_executor(Lock, endings_mod.run_lock)
 register_executor(CodexLock, codex_mod.run_codex_lock)
 # F64 round 2: show hotbar / hide hotbar (runtime/itemuse.py). Not a checkpoint type.
 register_executor(HotbarShow, itemuse_mod.run_hotbar_show)
+# F65 round 2: send and open (runtime/send.py). Not checkpoint types: send delivers through
+# the trigger core's "message" kind, open is a story wait until the Inbox closes.
+register_executor(SendStep, send_mod.run_send)
+register_executor(OpenStep, send_mod.run_open)
 # F23: minigame (runtime/minigame.py), a checkpoint type like the menu (04 §4.2, 07 I-6).
 register_executor(Minigame, minigame_mod.run_minigame, present=minigame_mod.present_minigame,
                   check=minigame_mod.minigame_position_ok)

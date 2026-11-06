@@ -886,16 +886,29 @@ class GameShell:
 
     # -- the game menu (§7.7.3) --
 
-    def open_game_menu(self, by: InputKind) -> None:
+    def open_game_menu(self, by: InputKind, *, page: str | None = None,
+                       on_closed: Callable[[], None] | None = None) -> GameMenuScreen | None:
         """Push the game menu over the in-game screens: only in mode GAME and while no
-        menu is open (Esc or right click under a menu never stacks a second one)."""
+        menu is open (Esc or right click under a menu never stacks a second one). F65 round
+        2: ``page`` opens that entry's page when it shows (``open inbox``, the quick menu's
+        Inbox), focusing its default widget; ``on_closed`` runs once when the menu leaves
+        the stack. None when nothing was pushed."""
         if self.mode is not Mode.GAME:
-            return
+            return None
         if any(isinstance(s, MenuScreen) for s in self.stack):
-            return
+            return None
         menu = GameMenuScreen(self, by=by)
+        menu.on_closed = on_closed
         self._watch_backdrop(menu)
         self.stack.push(menu)
+        if page is not None and any(e.id == page and e.page is not None
+                                    for e in self.menus.shown("game")):
+            menu.open_page(page)
+            target = menu.page.default_widget() if menu.page is not None else None
+            if menu.scope.can_focus(target):
+                assert target is not None
+                menu.scope.focus(target, by, sound=False, visible=by is InputKind.KEYS)
+        return menu
 
     def game_menu(self) -> GameMenuScreen | None:
         """The open game menu (F11's ``scene_picture``, F16's ``refresh_backdrop``)."""

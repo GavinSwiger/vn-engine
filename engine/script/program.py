@@ -43,6 +43,7 @@ from typing import TYPE_CHECKING, Any
 
 from engine.script.achievements import AchievementDecl
 from engine.script.codex import CodexCategory, CodexEntry, CodexEntryDecl, build_entries
+from engine.script.inbox import ContactDecl
 from engine.script.fourthwall import TitleEffect
 from engine.script.gallery import GalleryDecl, GalleryEntry, build_gallery
 from engine.script.identity import IDENTITY_SCHEME, IDENTITY_YIELD_ITEMS, iter_assign, walk_block
@@ -135,7 +136,10 @@ class Program:
     E349), each with its tile picture (PR-F36-07).
 
     F37: ``achievements`` holds every ``lock achievement`` declaration in reading order (names
-    unique, at most 200, E340), each with its ``when`` compiled once (``when_code``)."""
+    unique, at most 200, E340), each with its ``when`` compiled once (``when_code``).
+
+    F65 round 2: ``contacts`` holds every ``lock contact`` declaration (``script/inbox.py``'s
+    ``ContactDecl``) in reading order, after the sids (names unique, at most 200, E450)."""
 
     files: tuple[ScriptFile, ...]                 # reading order
     labels: Mapping[str, Label]                   # read-only, reading order
@@ -168,6 +172,7 @@ class Program:
     tracks: tuple[Track, ...] = ()                             # F35, see above
     replays: tuple[ReplayEntry, ...] = ()                      # F36, see above
     achievements: tuple[AchievementDecl, ...] = ()             # F37, see above
+    contacts: "tuple[ContactDecl, ...]" = ()                   # F65, see above
     # F63: the story clock's ``storyclock.Calendar`` from config.toml (the loader sets it
     # from ``LoadOptions.meter_config``); None: the default calendar.
     calendar: Any = None
@@ -323,6 +328,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
     track_decls: list[TrackDecl] = []
     replay_decls: list[ReplayDecl] = []
     achievement_decls: list[AchievementDecl] = []
+    contacts: list[ContactDecl] = []
     for node in nodes:
         if isinstance(node, Label):
             labels.setdefault(node.name, node)
@@ -344,6 +350,8 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
             replay_decls.append(node)
         elif isinstance(node, AchievementDecl):             # F37: reading order
             achievement_decls.append(node)
+        elif isinstance(node, ContactDecl):                 # F65: reading order
+            contacts.append(node)
     if defines is None:
         defines = [node for node in nodes if isinstance(node, Define)]
     if defaults is None:
@@ -390,7 +398,7 @@ def iter_build_program(files: Sequence[ScriptFile], nodes: Iterable[Node], *,
                    style_names=style_names, meta_files=frozenset(meta_files),
                    gallery=gallery, gallery_pictures=gallery_pictures, tracks=tracks,
                    replays=replays, achievements=tuple(achievement_decls),
-                   _index=index)
+                   contacts=tuple(contacts), _index=index)
 
 
 def _mark_sid(target: Node) -> str:

@@ -505,7 +505,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_fourthwall(app)                                  # F30: title bar, fake crash
     install_check_roll(app)                                  # F59: the dice of a check
     install_codex(app, interp, images)                       # F21 (I-11): notices, Codex
-    install_inbox(app, interp)                               # F65: the Inbox page
+    install_inbox(app, interp, images)                       # F65: the Inbox, notices, open
     install_minigames(app, interp, images)                   # F23 s4: after F21, before F16
     install_flowchart(app, interp)                           # F20 (07 I-12): App.flow
     install_flowchart_page(app, interp)                      # F20 s8: page, entries
