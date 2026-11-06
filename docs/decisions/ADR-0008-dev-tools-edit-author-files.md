@@ -385,3 +385,7 @@ OS read.
   Studio files) proposed in F48 `04` §18 and accepted with modifications (F48 `07`).
 - 2026-11-04: Amendment 6 (Studio's OS reduce-motion read, the script watch thread, the
   motion rule, two `studio.json` keys) accepted with modifications (F58 `07`).
+- 2026-11-06: Amendment 6 §3 widened by the owner (Studio UX 4.1, 4.2): "no animation" becomes
+  a written motion budget (`specs/F45-studio/08` §10; `tools/editor/motion.py`): each motion
+  answers an action, lasts at most 250 ms, and is an instant change under Reduce motion.
+  `studio.json` gains an optional `celebrated` word list (milestones shown once per game).

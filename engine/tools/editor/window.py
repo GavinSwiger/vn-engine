@@ -145,6 +145,7 @@ from engine.tools.editor.fileactions import (  # re-exported: tests read window.
 )
 from engine.tools.editor.mapwiring import GO_TO_LABEL_ASK, MapWiring
 from engine.tools.editor.guidepane import GuideWiring
+from engine.tools.editor.celebrate import CelebrationWiring
 from engine.tools.editor.assistwiring import AssistWiring
 from engine.tools.editor.docking import DockWiring
 from engine.tools.editor.tabchoice import TabChoice
@@ -338,7 +339,8 @@ class OpenFile:
 
 
 class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring, RunWiring,
-                   MapWiring, AssistWiring, GuideWiring, DockWiring, TabChoice):
+                   MapWiring, AssistWiring, CelebrationWiring, GuideWiring, DockWiring,
+                   TabChoice):
     """Studio on ``root`` for the game at ``paths`` (``03`` §1.1, F45 ``01`` §6.1).
     ``runner`` is the preview runner and ``check_runner`` the check runner; tests pass
     fakes (F45 ``07`` I-2)."""
@@ -465,6 +467,7 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
         self._build_hot_reload()            # F39: before the Run menu's toggle row
         self._build_menus()
         self._build_tab_choice()            # which tabs the strip shows (``tabchoice``)
+        self._build_celebrations()          # milestones and motions (``celebrate``)
         self._bind_keys()
         self.refresh_project()
         if self.refs:
@@ -1601,6 +1604,7 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
         self.runner.stop()
         self.check_runner.stop()
         self.close_assistant()                  # F48 07 I-7: the pane's run and check child
+        self.stop_celebrations()
         for runner, _on_events in self.runners:     # joined runners (runwiring)
             runner.stop()
         self.root.destroy()

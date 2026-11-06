@@ -236,6 +236,9 @@ def _on_build_events(win: Any, events: list) -> None:
         for event in events:
             _apply_check(win, event)
     update_menu(win)
+    finished = getattr(win, "build_finished", None)
+    if finished is not None and any(event.state is BuildState.DONE for event in events):
+        finished()                              # Studio UX 4.2: the first build's toast
 
 
 def _on_install_events(win: Any, events: list) -> None:

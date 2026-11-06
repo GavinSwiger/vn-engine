@@ -13,9 +13,10 @@ Tk.
   ``.studio`` and the file must ``lstat`` as a real folder and a regular file (no link,
   junction or reparse point); otherwise the ``StateProblem`` has ``link`` set and the caller
   stops writing. Known keys must be JSON booleans; a key that isn't keeps its default.
-  Unknown keys are ignored. Never raises.
+  ``celebrated`` (Studio UX 4.2) is a list of milestone words; anything else in it is
+  dropped. Unknown keys are ignored. Never raises.
 - ``encode_state`` is pure and deterministic: one key per line, in ``KEYS`` order, LF
-  (``OPTIONAL_KEYS`` only when true).
+  (``OPTIONAL_KEYS`` only when true, ``celebrated`` only when not empty, sorted).
 - ``write_state`` writes those bytes as ``layoutfile.write_layout`` does: ``.studio`` made by
   ``safefile.ensure_real_dir``, the target missing or regular, unchanged bytes skipped, then
   ``safefile.write_atomic`` with the stamp re-checked. Never raises; nothing but the file and
@@ -55,9 +56,13 @@ class StudioState:
     reduce_motion: bool = False     # F58: View ▸ Reduce motion (the glow is static)
     panes: dict | None = None       # docking.Layout.to_json(); None: Studio's usual layout
     tabs: dict | None = None        # tabchoice: {"hidden": [...]}; None: the usual tabs
+    celebrated: tuple[str, ...] = ()    # Studio UX 4.2: milestones already shown, once each
 
 
-KEYS: Final = tuple(f.name for f in fields(StudioState) if f.name not in ("panes", "tabs"))
+KEYS: Final = tuple(f.name for f in fields(StudioState)
+                    if f.name not in ("panes", "tabs", "celebrated"))
+MILESTONE_MAX: Final = 16               # more words than Studio has milestones: ignored
+MILESTONE_CHARS: Final = 24
 # Written only when true (missing means false), so a game whose author never opened the
 # Assistant pane keeps its bytes.
 OPTIONAL_KEYS: Final = frozenset({"assistant_open", "follow_changes", "reduce_motion"})
@@ -145,7 +150,17 @@ def decode_state(data: bytes) -> StudioState | StateProblem:
     panes, tabs = doc.get("panes"), doc.get("tabs")
     return StudioState(**{key: doc[key] for key in KEYS if type(doc.get(key)) is bool},
                        panes=panes if isinstance(panes, dict) else None,
-                       tabs=tabs if isinstance(tabs, dict) else None)
+                       tabs=tabs if isinstance(tabs, dict) else None,
+                       celebrated=_milestones(doc.get("celebrated")))
+
+
+def _milestones(value: object) -> tuple[str, ...]:
+    """``celebrated``'s words: short identifiers only, sorted, without repeats."""
+    if not isinstance(value, list):
+        return ()
+    words = {word for word in value[:MILESTONE_MAX] if isinstance(word, str)
+             and 0 < len(word) <= MILESTONE_CHARS and word.isascii() and word.isidentifier()}
+    return tuple(sorted(words))
 
 
 # --- Encoding and writing --------------------------------------------------------------------
@@ -158,6 +173,9 @@ def encode_state(state: StudioState) -> bytes:
                                                ensure_ascii=True))
     if state.tabs:                          # written only when the author hid or showed a tab
         rows.append('  "tabs": ' + json.dumps(state.tabs, sort_keys=True, ensure_ascii=True))
+    celebrated = _milestones(list(state.celebrated))
+    if celebrated:                          # written only once a milestone was shown
+        rows.append('  "celebrated": ' + json.dumps(list(celebrated), ensure_ascii=True))
     return ("{\n" + ",\n".join(rows) + "\n}\n").encode("ascii")
 
 
