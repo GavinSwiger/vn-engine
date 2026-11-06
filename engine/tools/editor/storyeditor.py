@@ -6,7 +6,11 @@ window's scene index into ``forms.rows`` for it, and maps rows to text lines bot
 
 - selecting a row puts the Script peer's insert mark on the row's line (§6.7.7);
 - showing Events, or a ``follow``, shows the scene holding the Script cursor and selects the
-  row whose ``span`` holds it (the innermost one).
+  row whose ``span`` holds it (the innermost one);
+- Studio UX 2.5: the preview over the side pane shows the stage at the selected row or the
+  Script cursor's line (``stagemoment``), drawn at once, so Up/Down flip it like a
+  storyboard; on the scene's label line it is the opening shot. ``cursor_moved`` (the
+  window's refresh) follows the Script page's cursor.
 
 Step 3 adds the actions (04 §6.3): ``act(planner)`` guards the scene (editable, not a
 duplicate label, its live chunk, found by its label (07 I-5), still the one drawn, and
@@ -68,6 +72,14 @@ class StoryEditor:
         self.status = ""                        # the last status line (tests read it)
         self._bind_keys()
         self._cache: dict[tuple[str, Key], tuple[bytes, tuple[Row, ...]]] = {}
+        # 2.5: the stage preview's inputs, kept between flips (each keyed by what it reads).
+        self._lines_cache: tuple[object, list[str]] | None = None
+        self._texts_cache: tuple[object, Any] | None = None
+        self._lead_cache: tuple[object, tuple[list[str], str | None]] | None = None
+        self._speakers: tuple[dict, Callable[[str], str]] = ({}, lambda who: who)
+        self._cursor_seen: object = None
+        self._refreshed_changes: object = None
+        self._edit_pause: str | None = None
 
     # --- Which scene ------------------------------------------------------------------------
 
@@ -109,6 +121,8 @@ class StoryEditor:
         assert self.ref is not None and self.key is not None
         self.start = index.starts[self.key]
         self.drawn = index.digests.get(self.key)
+        record = self.win.files.get(self.ref)
+        self._refreshed_changes = getattr(record, "changes", None)
         read = index.reads.get(self.key)
         cached = self._cache.get((self.ref, self.key))
         if read is None or read.error is not None:
@@ -145,34 +159,177 @@ class StoryEditor:
             preview.show(None)
             preview.frame.grid_remove()
             return
+        new = self.key != getattr(self, "_preview_key", None)
+        if new:
+            self._preview_key = self.key
+            self._speakers = _speakers_of(self.form_assets())   # pictures added since
+        line = self._cursor_line(lines)         # 2.5: the stage at the cursor's line
+        stage = self._moment(lines, line) if line is not None else self._opening(lines)
+        if new or stage != preview.stage or line != preview.line:
+            preview.show(stage, line)
+        preview.frame.grid()
+
+    # --- 2.5: the stage at the cursor ---------------------------------------------------------
+
+    def preview_cursor(self) -> None:
+        """The preview at the Script cursor's line in the shown scene (an Events row
+        chosen, or the cursor moved): drawn now, from the text."""
+        preview = getattr(self.win, "scene_preview", None)
+        if preview is None or self.ref is None or self.key is None or self.read is None:
+            return
+        lines = self._lines()
+        if lines is None:
+            return
+        line = self._cursor_line(lines)
+        stage = self._moment(lines, line) if line is not None else self._opening(lines)
+        if stage != preview.stage or line != preview.line:
+            preview.show(stage, line)
+
+    def cursor_moved(self) -> None:
+        """The window's refresh (after idle): the Script page's cursor may have moved. Cheap
+        when it didn't; after an edit the preview waits for a pause and reads again."""
+        preview = getattr(self.win, "scene_preview", None)
+        peer, record = self.win.side_text, self.win.current
+        if preview is None or peer is None or record is None or self.ref is None \
+                or getattr(record, "ref", None) != self.ref:
+            return
+        try:
+            if not preview.frame.winfo_ismapped():
+                return
+            line = int(peer.index("insert").split(".")[0])
+        except (tk.TclError, ValueError):
+            return
+        seen = (line, record.changes)
+        if seen == self._cursor_seen:
+            return
+        self._cursor_seen = seen
+        if record.changes != self._refreshed_changes:
+            self._pause_after_edit()
+            return
+        index = self.win.scene_indexes.get(self.ref)
+        if index is not None and _chunk_at(index, line) not in (None, self.key):
+            self.follow_cursor()                # into another scene on the Script page
+            return
+        self.preview_cursor()
+
+    def _pause_after_edit(self) -> None:
+        root = self.win.root
+        if self._edit_pause is not None:
+            root.after_cancel(self._edit_pause)
+
+        def done() -> None:
+            self._edit_pause = None
+            if not getattr(self.win, "closed", False) and self.ref is not None:
+                self._cursor_seen = None
+                self.refresh()
+
+        self._edit_pause = root.after(scenepreview_rest(), done)
+
+    def _lines(self) -> list[str] | None:
+        """The shown scene's lines (label line first), kept until the file changes."""
+        record = self.win.files.get(self.ref)
+        index = self.win.scene_indexes.get(self.ref)
+        if record is None or index is None or self.key not in index.starts:
+            return None
+        version = (self.ref, self.key, self.start, record.changes)
+        if self._lines_cache is None or self._lines_cache[0] != version:
+            self._lines_cache = (version, self._chunk_lines(index))
+        return self._lines_cache[1]
+
+    def _cursor_line(self, lines: list[str]) -> int | None:
+        """The Script cursor's line in the shown scene, moved to the head of the statement
+        holding it (a line of a long text: its first); None on the label line or outside."""
+        peer, record = self.win.side_text, self.win.current
+        if peer is None or record is None or getattr(record, "ref", None) != self.ref:
+            return None
+        try:
+            line = int(peer.index("insert").split(".")[0])
+        except (tk.TclError, ValueError):
+            return None
+        if not self.start < line < self.start + len(lines):
+            return None
+        if self.rows and self.read is not None and not self.stale:
+            row = self.row_at(line)
+            span = _span_of(self.read, self.rows[row])
+            rel = line - self.start + 1
+            if span is not None and span.first <= rel <= span.last:
+                head = self.line_of(row)
+                if head is not None and self.start < head <= line:
+                    line = head
+        return line
+
+    def _opening(self, lines: list[str]) -> Any:
         stage = opening_stage(lines)
-        if stage.carried:                       # no background of its own: the way in's
+        if stage.carried:
             lead, came_from = self._lead_in()
             if lead:
                 stage = opening_stage(lines, lead, came_from)
-        if self.key != getattr(self, "_preview_key", None):
-            self._preview_key = self.key
-            self.form_assets()                  # pictures added since are found
-            preview.show(stage)
-        elif stage != preview.stage:
-            preview.show(stage)
-        preview.frame.grid()
+        return stage
+
+    def _moment(self, lines: list[str], line: int) -> Any:
+        from engine.tools.editor.stagemoment import moment
+        speakers, tag_of = self._speakers
+        found = self._scene_texts()
+        scene_lines = None
+        if found is not None:
+            texts, places, starts = found
+
+            def scene_lines(name: str) -> list[str] | None:
+                place = places.get(name)
+                if place is None:
+                    return None
+                ref, start = place
+                all_lines = texts[ref].splitlines()
+                later = [n for n in starts[ref] if n > start]
+                return all_lines[start - 1:(min(later) - 1 if later else len(all_lines))]
+
+        stage = moment(lines, line - self.start, speakers=speakers, tag_of=tag_of,
+                       scene_lines=scene_lines)
+        if stage.carried:
+            lead, came_from = self._lead_in()
+            if lead:
+                stage = moment(lines, line - self.start, speakers=speakers, tag_of=tag_of,
+                               scene_lines=scene_lines, lead=lead, came_from=came_from)
+        return stage
+
+    def _texts_version(self) -> tuple:
+        return tuple((ref, getattr(record, "changes", None))
+                     for ref, record in self.win.files.items())
+
+    def _scene_texts(self) -> tuple[dict, dict, dict] | None:
+        """The scripts' texts (unsaved edits included) and where each label starts, kept
+        until a script changes."""
+        from engine.tools.editor import declarations as dec
+        from engine.tools.editor.database import script_texts
+        version = self._texts_version()
+        if self._texts_cache is None or self._texts_cache[0] != version:
+            try:
+                texts = script_texts(self.win)
+                places = dec.label_places(texts)
+            except Exception:  # noqa: BLE001  (a preview never stops the Events tab)
+                self._texts_cache = (version, None)
+                return None
+            starts: dict[str, list[int]] = {}
+            for ref, start in places.values():
+                starts.setdefault(ref, []).append(start)
+            self._texts_cache = (version, (texts, places, starts))
+        return self._texts_cache[1]
 
     def _lead_in(self) -> tuple[list[str], str | None]:
         """``scenepreview.lead_in`` for the shown scene, over the last check's arrows and
-        the scripts' texts (unsaved edits included)."""
-        from engine.tools.editor import declarations as dec
-        from engine.tools.editor.database import script_texts
+        the scripts' texts (unsaved edits included); kept until either changes."""
         from engine.tools.editor.scenepreview import lead_in
         result = getattr(self.win, "check_result", None)
         links = getattr(result, "links", None) or ()
         if not links or self.key is None:
             return [], None
-        texts = script_texts(self.win)
-        places = dec.label_places(texts)
-        starts: dict[str, list[int]] = {}
-        for ref, line in places.values():
-            starts.setdefault(ref, []).append(line)
+        version = (self.key, id(result), self._texts_version())
+        if self._lead_cache is not None and self._lead_cache[0] == version:
+            return self._lead_cache[1]
+        found = self._scene_texts()
+        if found is None:
+            return [], None
+        texts, places, starts = found
 
         def scene_lines(name: str) -> tuple[list[str], int] | None:
             place = places.get(name)
@@ -183,7 +340,9 @@ class StoryEditor:
             later = [line for line in starts[ref] if line > start]
             return lines[start - 1:(min(later) - 1 if later else len(lines))], start
 
-        return lead_in(self.key[0], links, scene_lines)
+        lead = lead_in(self.key[0], links, scene_lines)
+        self._lead_cache = (version, lead)
+        return lead
 
     def _index(self) -> SceneIndex | None:
         """The shown file's index, with the shown scene parsed."""
@@ -252,6 +411,7 @@ class StoryEditor:
         peer.mark_set("insert", f"{line}.0")
         peer.see("insert")
         self.win.text_cursor_moved()
+        self.preview_cursor()                   # 2.5: at once, not after idle
 
     def row_opened(self, index: int) -> None:
         """Enter or a double-click on a row: a form row's form, Insert… on a ◆ row, else
@@ -811,6 +971,28 @@ def _chunk_at(index: SceneIndex, line: int) -> Key | None:
         if start <= line and (found is None or start >= index.starts[found]):
             found = key
     return found
+
+
+def scenepreview_rest() -> int:
+    """How long the preview waits after an edit before reading the scene again."""
+    from engine.tools.editor.scenepreview import REST_MS
+    return REST_MS
+
+
+def _speakers_of(assets: Any) -> tuple[dict, Callable[[str], str]]:
+    """The defined characters → (shown name or None, colour), and their sprite tags, from
+    the window's ``WindowAssets`` (2.5's text box). A name read from a variable shows the
+    character's own name; an empty name has no name plate."""
+    from engine.tools.editor import declarations as dec
+    speakers: dict[str, tuple[str | None, str | None]] = {}
+    for name, values in (getattr(assets, "characters", None) or {}).items():
+        shown = values.get(dec.NAME)
+        if not isinstance(shown, str):
+            shown = name[:1].upper() + name[1:]
+        color = values.get("color")
+        speakers[name] = (shown or None, color if isinstance(color, str) else None)
+    tag = getattr(assets, "tag", None)
+    return speakers, (tag if callable(tag) else (lambda who: who))
 
 
 def _span_of(read: SceneRead, row: Row) -> Span | None:

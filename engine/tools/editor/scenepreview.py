@@ -15,6 +15,11 @@ running, so it is a sketch, not the game's own frame:
   colour picture is its colour); each character stands on its position (``left``,
   ``center``, ``right`` or ``[stage.positions]``), scaled as ``[stage] art_height`` says.
   The caption names the pictures, and the scene a carried-on background comes from.
+- Studio UX 2.5: ``show(stage, line=N)`` is the stage at line N (``stagemoment``) under
+  the heading ``AT LINE N``, with the text box (the line, the name in its colour) drawn in
+  Tk at once and a small "sketch" badge. After ``REST_MS`` at rest the window's stage
+  stills cache (``stagestills``) gives the game's own still, which replaces the sketch: a
+  short settle under motion, a cut under Reduce motion. A failed still keeps the sketch.
 
 PNG and GIF pictures load here; JPEG and WebP come from the helper child as thumbnails
 (``helperhub``), and the picture is drawn again when one arrives. Imports the standard
@@ -44,6 +49,11 @@ CARRIED: Final = "Carries on from the scene before."
 CARRIED_FROM: Final = "Background from {scene}."
 LEAD_DEPTH: Final = 8                       # scenes followed back for a carried background
 NO_STAGE: Final = "Nothing on stage yet: add a Background."
+AT_LINE: Final = "AT LINE {line}"           # 2.5: the stage at the cursor's line
+SKETCH: Final = "sketch"                    # the badge while Studio's own drawing shows
+REST_MS: Final = 300                        # at rest this long: ask for the game's still
+SETTLE_MS: Final = 160                      # the still settles in (none under Reduce motion)
+STILL_OWNER: Final = "preview"              # this preview's asks in ``stagestills``
 MISSING: Final = "No picture named {name}."
 # A line the player reads or chooses at: the opening shot is the stage before it.
 _TEXT = re.compile(r'^(?:[A-Za-z_]\w*\s+){0,3}"|^menu\b|^nvl\b')
@@ -66,6 +76,8 @@ class Stage:
     carried: bool               # no ``scene`` line found: the stage before is unknown
     sprites: tuple[Sprite, ...] = ()
     came_from: str | None = None    # the scene a carried-on background was set in
+    say: Any = None                 # 2.5: the text box's ``stagemoment.Say``, or None
+    note: str | None = None         # 2.5: what the stage assumed (``BRANCH_NOTE``)
 
 
 def opening_stage(lines: Iterable[str], lead: Sequence[str] = (),
@@ -191,8 +203,8 @@ class ScenePreview:
                                 background=THEME["editor.background"], borderwidth=0)
         self.canvas.grid(row=0, column=0, rowspan=2, sticky="nw")
         gap = round(10 * scale)
-        ttk.Label(self.frame, text=HEADING, style="Header.TLabel").grid(
-            row=0, column=1, sticky="nw", padx=(gap, 0))
+        self.heading = ttk.Label(self.frame, text=HEADING, style="Header.TLabel")
+        self.heading.grid(row=0, column=1, sticky="nw", padx=(gap, 0))
         self.caption = ttk.Label(self.frame, text="", justify="left",
                                  foreground=THEME["muted"], wraplength=round(160 * scale))
         if font is not None:
@@ -205,30 +217,64 @@ class ScenePreview:
         self.images: list[tk.PhotoImage] = []        # kept while drawn
         self._cache: dict[tuple[str, object, int], tk.PhotoImage | None] = {}
         self._loaders: dict[int, Any] = {}
+        # 2.5: the line shown (None: the opening shot), the "sketch" badge, the game's
+        # still once it replaced the sketch, and the rest timer that asks for it.
+        self.line: int | None = None
+        try:
+            self._family = font.actual("family") if font is not None else "TkDefaultFont"
+        except (AttributeError, tk.TclError):
+            self._family = "TkDefaultFont"
+        self.badge = tk.Label(self.canvas, text=SKETCH, background=THEME["editor.background"],
+                              foreground=THEME["muted"],
+                              font=(self._family, -max(9, round(10 * scale))),
+                              borderwidth=0, padx=round(3 * scale), pady=0)
+        self.still: tk.PhotoImage | None = None
+        self.still_key: Any = None
+        self._want: Any = None
+        self._rest_id: str | None = None
 
-    def show(self, stage: Stage | None) -> None:
-        """Draw ``stage`` (None: nothing shown)."""
-        self.stage = stage
+    def show(self, stage: Stage | None, line: int | None = None) -> None:
+        """Draw ``stage`` (None: nothing shown); ``line``: it is the stage at that line
+        (2.5), else the opening shot. The game's still is asked for at rest."""
+        self.stage, self.line = stage, line
+        self.still = self.still_key = self._want = None
         self.redraw()
+        self._cancel_rest()
+        if stage is not None:
+            try:
+                # On the root, as Studio's other timers (a bench cancels them all there).
+                self._rest_id = self.canvas._root().after(REST_MS, self._at_rest)
+            except tk.TclError:
+                pass
 
     def redraw(self) -> None:
         canvas, stage = self.canvas, self.stage
         canvas.delete("all")
         self.images = []
+        self.heading.configure(text=HEADING if self.line is None
+                               else AT_LINE.format(line=self.line))
         if stage is None:
             self.caption.configure(text="")
+            self.badge.place_forget()
             return
+        if self.still is not None:
+            canvas.create_image(0, 0, image=self.still, anchor="nw")
+            self.badge.place_forget()
+        else:
+            self.badge.place(x=2, y=2)
         assets = self._assets()
         notes: list[str] = []
         canvas.configure(background="#000000")
-        if stage.background is not None:
+        if self.still is not None:
+            pass
+        elif stage.background is not None:
             color = assets.colors.get(_fold(stage.background)) if assets else None
             if color is not None:
                 canvas.create_rectangle(0, 0, self.w + 2, self.h + 2, fill=color, width=0)
             elif not self._picture(stage.background, cover=True):
                 notes.append(MISSING.format(name=stage.background))
         positions, art_height = stage_settings(self._config_text())
-        for sprite in stage.sprites:
+        for sprite in (stage.sprites if self.still is None else ()):
             x, y = positions.get(sprite.at or "center", positions["center"])
             if sprite.x is not None:
                 x = sprite.x
@@ -244,7 +290,96 @@ class ScenePreview:
             lines.append(CARRIED)
         elif not shown:
             lines.append(NO_STAGE)
+        if self.still is None and stage.say is not None:
+            self._draw_say(stage.say, assets)
+        if stage.note:
+            lines.append(stage.note)
         self.caption.configure(text="\n".join(lines + notes))
+
+    # -- 2.5: the text box, and the game's still at rest ------------------------------------
+
+    def _draw_say(self, say: Any, assets: Any) -> None:
+        """The text box as a sketch: a dark box over the lower part, the name in its
+        colour above the line (narration: no name), the words cut to fit."""
+        w, h, canvas = self.w, self.h, self.canvas
+        pad = max(2, round(w * 0.02))
+        top = round(h * 0.70)
+        canvas.create_rectangle(pad, top, w - pad, h - pad, fill="#14141c",
+                                outline=say.color or "#3c3c48", width=1)
+        size = max(7, round(h * 0.065))
+        y = top + pad
+        if say.who:
+            canvas.create_text(pad * 2, y, text=say.who, anchor="nw",
+                               fill=say.color or "#e8e8f0",
+                               font=(self._family, -size, "bold"))
+            y += size + 2
+        words = " ".join(getattr(say, "plain", say.text).split())
+        room = max(8, round((w - pad * 4) / (size * 0.5)) * max(1, (h - pad - y) // (size + 2)))
+        if len(words) > room:
+            words = words[:room - 1].rstrip() + "…"
+        canvas.create_text(pad * 2, y, text=words, anchor="nw", fill="#e8e8f0",
+                           width=w - pad * 4, font=(self._family, -size))
+
+    def _cancel_rest(self) -> None:
+        if self._rest_id is not None:
+            try:
+                self.canvas._root().after_cancel(self._rest_id)
+            except tk.TclError:
+                pass
+            self._rest_id = None
+
+    def _at_rest(self) -> None:
+        """At rest: the game's still from the cache, or asked for (only while shown)."""
+        self._rest_id = None
+        stage = self.stage
+        try:
+            if stage is None or not self.canvas.winfo_viewable():
+                return
+        except tk.TclError:                     # the window closed
+            return
+        try:
+            from engine.tools.editor import stagestills as ss
+            config = ss.config_of(self.win)
+            key = ss.StillKey(ss.spec_of(stage, self._assets(), self.win.paths.root),
+                              self.w, ss.look_of(config))
+            stills = ss.stills_for(self.win)
+        except Exception:  # noqa: BLE001  (no helper: the sketch stays)
+            return
+        self._want = key
+        if stills.get(key) is not None:
+            self._still_ready(key, stills.get(key))
+            return
+        stills.ask(STILL_OWNER, [key], config, self._still_ready)
+
+    def _still_ready(self, key: Any, still: Any) -> None:
+        if key != self._want or self.stage is None or not still.ok:
+            return                              # moved on, or failed: the sketch stays
+        from engine.tools.editor.stagestills import stills_for
+        image = stills_for(self.win).photo(key, self.canvas)
+        if image is None:
+            return
+        self.still, self.still_key = image, key
+        self.redraw()
+        self._settle()
+
+    def _settle(self) -> None:
+        """The still settles in from a veil (``SETTLE_MS``); a cut under Reduce motion."""
+        motion = getattr(self.win, "motion", None)
+        if motion is None:
+            return
+        veil = self.canvas.create_rectangle(0, 0, self.w + 2, self.h + 2, width=0,
+                                            fill=THEME["editor.background"], stipple="gray50")
+
+        def step(p: float) -> None:
+            try:
+                if p >= 1.0:
+                    self.canvas.delete(veil)
+                else:
+                    self.canvas.itemconfigure(veil, stipple="gray50" if p < 0.5 else "gray25")
+            except tk.TclError:
+                pass
+
+        motion.tween(("scene-preview-still", id(self)), SETTLE_MS, step)
 
     # -- pictures ----------------------------------------------------------------------------
 
@@ -335,5 +470,5 @@ def _fold(name: str) -> str:
     return " ".join(name.split()).casefold()
 
 
-__all__ = ["CARRIED", "CARRIED_FROM", "HEADING", "lead_in", "NO_STAGE", "ScenePreview", "Sprite", "Stage",
-           "opening_stage", "stage_settings"]
+__all__ = ["AT_LINE", "CARRIED", "CARRIED_FROM", "HEADING", "REST_MS", "SKETCH", "lead_in",
+           "NO_STAGE", "ScenePreview", "Sprite", "Stage", "opening_stage", "stage_settings"]

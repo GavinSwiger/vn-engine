@@ -1336,6 +1336,9 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
         self._update_check_status()
         self._update_cursor_items(widget)
         self._update_side_name()
+        story = getattr(self, "story", None)
+        if story is not None:
+            story.cursor_moved()                # 2.5: the stage preview follows the cursor
         if self.popup.is_open:
             self._update_completion()
 
