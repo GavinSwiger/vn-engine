@@ -710,7 +710,9 @@ class StatementReader:
         """``if_tail`` (F07 C8, narration): right after the first string, ``if`` followed by
         a space, a tab, or ``(`` is a NAME token and the rest of the statement is read as
         Python, exactly like a ``TAIL_CONDITION`` (a menu choice's condition). The rule is
-        context-free; outside a menu such a line is E74 or E53 (``statements._after_text``)."""
+        context-free; outside a menu such a line is E74 or E53 (``statements._after_text``).
+        F59: also right after ``check <meter> <difficulty>`` (any words after the string that
+        start with ``check``), so a checked choice can have a condition."""
         tokens = raw.tokens
         text = segment.text
         number = segment.number
@@ -764,6 +766,12 @@ class StatementReader:
                 tokens.append(Token(SQUOTE, char, number, column))
             elif is_word_char(char):
                 end = word_end(text, i)
+                if (if_tail and len(tokens) > 1 and text[i:end] == "if" and end < length
+                        and text[end] in " 	(" and tokens[1].kind == NAME
+                        and tokens[1].text == "check"):                 # F59
+                    tokens.append(Token(NAME, "if", number, column))
+                    self._read_python(raw, segment, _indent_end_any(text, end))
+                    return None
                 tokens.append(Token(NAME, text[i:end], number, column))
                 i = end
                 continue

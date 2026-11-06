@@ -99,7 +99,8 @@ from engine.render.choices import (
 from engine.render.choicetimer import (TimerGeometry, TimerPanelView, number_size,
                                       panel_height, timer_colors)
 from engine.render.textlayout import FaceSet
-from engine.runtime.commands import Choose, Say, ShowMenu
+from engine.runtime.commands import (Choose, Say, ShowMenu, ShownChoice, Span, Style,
+                                     TaggedText)
 from engine.ui.builtin.choice_clock import ChoiceClock
 from engine.ui.input import UiEvent
 from engine.ui.nav import Nav, NavReader
@@ -412,7 +413,8 @@ class ChoiceController:
             theme = self.theme
             colors = [rgb_hex(theme.locked.text_color if c.locked else theme.text_color)
                       for c in cmd.choices]
-            layout = ChoiceLayout([c.body for c in cmd.choices], assets=self.assets,
+            layout = ChoiceLayout([with_badge(c, theme) for c in cmd.choices],
+                                  assets=self.assets,
                                   faces=self.faces, theme=theme, text_size=size,
                                   area=ChoiceArea() if nvl else self.area(cmd.line),
                                   colors=colors, header=header)
@@ -423,6 +425,17 @@ class ChoiceController:
             layout = layout.relaid(area)
         self._layout, self._layout_key, self._layout_cmd = layout, (size, area), cmd
         return layout
+
+
+def with_badge(choice: ShownChoice, theme: "ChoiceTheme") -> TaggedText:
+    """F59: a checked choice's body with its badge first (``[Logic · Hard · 42%] ``), in
+    ``[theme.choice.marker] fill_color`` (every color scheme sets it), or in the base color
+    when locked; a plain choice's body as it is."""
+    if choice.check is None:
+        return choice.body
+    color = None if choice.locked else rgb_hex(theme.marker.fill_color)
+    badge = Span(choice.check + " ", Style(color=color))
+    return TaggedText((badge, *choice.body.pieces), choice.body.auto_next)
 
 
 class ChoiceScreen(Screen):

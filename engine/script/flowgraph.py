@@ -56,6 +56,7 @@ from engine.core.logsetup import get_logger
 from engine.script import limits
 from engine.script.diagnostics import Diagnostic, DiagnosticSink, ScriptWarning
 from engine.script.flowchart import Flowchart, FlowMark
+from engine.script.choicecheck import CheckRoll
 from engine.script.menu import Menu
 from engine.script.messages import format_message
 from engine.script.nodes import Call, Chapter, If, Jump, Label, Return, Say, Statement
@@ -263,6 +264,11 @@ def _rule_menu(stmt: Menu, walk: Walk) -> Iterable[Succ]:        # type: ignore[
     return [walk.first(choice.block, stmt) for choice in stmt.choices]
 
 
+def _rule_check(stmt: CheckRoll, walk: Walk) -> Iterable[Succ]:  # type: ignore[misc]
+    """F59: a checked choice goes to its success or its failure lines."""
+    return [walk.first(branch.block, stmt) for branch in stmt.branches]
+
+
 def _rule_jump(stmt: Jump, walk: Walk) -> Iterable[Succ]:        # type: ignore[misc]
     return (walk.entry(stmt.target),)
 
@@ -285,6 +291,7 @@ def _rule_ending(stmt: Statement, walk: Walk) -> Iterable[Succ]:
 FLOW_RULES: dict[type, "Rule | Literal['OPAQUE']"] = {
     If: _rule_if,                                               # type: ignore[dict-item]
     Menu: _rule_menu,                                           # type: ignore[dict-item]
+    CheckRoll: _rule_check,                                     # type: ignore[dict-item]
     Jump: _rule_jump,                                           # type: ignore[dict-item]
     Call: _rule_call,                                           # type: ignore[dict-item]
     Return: _rule_return,

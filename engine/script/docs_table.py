@@ -61,10 +61,12 @@ ROWS: tuple[StatementDoc, ...] = (
     # --- Choices ------------------------------------------------------------------------
     StatementDoc(
         "menu", "Menu", "Choices",
-        'menu [time <seconds>]:\n    "choice" [timeout] [if condition]:',
+        'menu [time <seconds>]:\n    "choice" [timeout] [check <meter> <difficulty>] '
+        '[if condition]:',
         "Shows choices as buttons. The picked choice's lines run, then the story goes on "
         "after the menu. With a time limit, the choice marked timeout is picked when the "
-        "time runs out.",
+        "time runs out. A choice with a check rolls two dice plus the meter against the "
+        "difficulty and runs its success: or failure: lines.",
         'menu:\n    "Go to the river":\n        jump river\n    "Stay here":\n'
         '        "You stay a while."', "menu (choices)", "F07",
         fields=("Go to the river", "Stay here")),

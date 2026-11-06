@@ -250,6 +250,7 @@ from engine.runtime.values import Unsaveable, freeze, kind_words, same_value
 from engine.script import nodes
 from engine.script.diagnostics import ScriptWarning
 from engine.script.messages import format_message
+from engine.script.choicecheck import CheckRoll
 from engine.script.nodes import Call, Default, If, Jump, PythonLine, Return, Statement
 from engine.script.audio import PlayAudio, QueueMusic, StopAudio, Voice
 from engine.script.codex import CodexLock
@@ -1888,6 +1889,8 @@ register_executor(effect_nodes.Pause, effects_mod.run_pause)
 # F07: the menu (runtime/menu.py; registered here, as the stage's). A checkpoint type (C1).
 register_executor(Menu, menu_mod.run_menu, present=menu_mod.present_menu,
                   check=menu_mod.check_position)
+# F59: a checked choice's roll (runtime/menu.py). Not a checkpoint type.
+register_executor(CheckRoll, menu_mod.run_check)
 # F18: chapter (runtime/chapters.py), registered once here, at import (F19 07 I-1). Not a
 # checkpoint type: its card is three F09 waits chained with ``then``.
 register_executor(nodes.Chapter, chapters_mod.run_chapter)

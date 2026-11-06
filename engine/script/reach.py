@@ -40,6 +40,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final
 
+from engine.script.choicecheck import CheckRoll
 from engine.script.menu import Menu
 from engine.script.minigame import Minigame
 from engine.script.nodes import Call, Default, Define, If, Jump, PythonLine, Return, Statement
@@ -352,6 +353,11 @@ class _Walk:
                 out = _join(out, self.block(scene, branch.block, dict(state),
                                             guards + here, choice))
             return _join(out, state) if not has_else else out
+        if isinstance(stmt, CheckRoll):                 # F59: success or failure, no guard
+            out = None
+            for branch in stmt.branches:
+                out = _join(out, self.block(scene, branch.block, dict(state), guards, choice))
+            return out
         if isinstance(stmt, Menu):
             out = None
             for item in stmt.choices:

@@ -23,6 +23,10 @@ what it read, or the row stays a plain Script row. Pure: no Tk.
   F51: its time limit (``ChoiceValues.time``, ``ChoiceItem.timeout``) patches only the
   ``menu`` line and the choice headers it changes; ``choice_problems`` is the form's problem
   line, ``default_timeout`` the option ticking the box picks.
+  F59: an option's check (``ChoiceItem.check``, ``"logic hard"``) goes in its header; a new
+  checked option gets ``success:`` (its target) and ``failure:`` (``$ pass``); a check added
+  to an option wraps its lines under ``success:``; removing one is refused
+  (``CHECK_REMOVE_TEXT``). Events show a check's lines under "On success"/"On failure".
 
 Lines here are chunk-relative, as ``scenes`` gives them: ``lines[k - 1]`` is chunk line ``k``
 (the label line is 1).
@@ -36,6 +40,7 @@ from typing import Final, Literal
 
 from engine.core.constants import BUILTIN_POSITIONS
 from engine.script.audio import PlayAudio, StopAudio
+from engine.script.choicecheck import WORD_CHECK, CheckRoll, parse_difficulty
 from engine.script.diagnostics import DiagnosticSink
 from engine.script.effects import Pause
 from engine.script.menu import MENU_MAX_CHOICES, Menu
@@ -64,6 +69,13 @@ IN_TEXT: Final = "(lines in the text)"     # a choice block the form can't hold
 CONTINUES: Final = "continues here"
 # F51 (01 §7): the Choice form's time limit.
 TIMEOUT_SUMMARY: Final = "when time runs out"
+# F59 (SPEC §5)
+CHECK_LINES: Final = "(success and failure lines)"   # a checked option's Goes to
+CHECK_SUCCESS: Final = "On success"
+CHECK_FAILURE: Final = "On failure"
+CHECK_REMOVE_TEXT: Final = ("To remove a check, edit the option's success: and failure: "
+                            "lines in the script.")
+CHECK_BAD_TEXT: Final = "Pick a meter and a difficulty for each check."
 TIME_DEFAULT: Final = "5"
 TIME_RE: Final = re.compile(r"[0-9]+(?:\.[0-9]+)?")       # SR-F51-01 (script/menu.py)
 TIMEOUT_PICK_TEXT: Final = "Pick the option to choose when time runs out."
@@ -186,7 +198,9 @@ class ChoiceItem:
     """One choice in the Choice form. ``goes``: a scene, or None for "continues here";
     ``in_text``: its block is neither, so the form keeps it as is (read-only). ``old``: the
     index of the choice it was read from (None: new). ``timeout`` (F51): the option time
-    running out picks (written only while the menu has a ``time``)."""
+    running out picks (written only while the menu has a ``time``). ``check`` (F59): the
+    meter and the difficulty as written (``"logic hard"``), "" for none; ``had_check``:
+    the option was read with one."""
 
     text: str
     condition: str = ""
@@ -194,6 +208,8 @@ class ChoiceItem:
     in_text: bool = False
     old: int | None = None
     timeout: bool = False
+    check: str = ""
+    had_check: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -879,8 +895,15 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
             summary = "" if choice.condition is None else _condition(choice.condition.source)
             if choice.timeout:                                  # F51 (01 §7.2)
                 summary = TIMEOUT_SUMMARY
+            if choice.check is not None:                        # F59
+                check = f"{WORD_CHECK} {choice.check.meter} {choice.check.written}"
+                summary = f"{check} · {summary}" if summary else check
             out.append(Row(index, block, depth, f'"{_one_line(choice.text)}"', summary,
                            CHOICE_FORM, None, "header"))
+            continue
+        if task[0] == "failure":                                # F59
+            _, index, block, depth = task
+            out.append(Row(index, block, depth, CHECK_FAILURE, "", None, None, "header"))
             continue
         if task[0] == "branch":
             _, index, block, depth, n = task
@@ -920,6 +943,13 @@ def rows(scene: SceneRead, lines: Sequence[str], *, positions: frozenset[str] = 
                 if n:
                     children.append(("branch", index, b, depth, n))
                 children.append(("block", b, depth + 1, 0))
+        elif isinstance(node, CheckRoll):                       # F59
+            out.append(Row(index, block, depth, CHECK_SUCCESS, "", None, None))
+            inner = branches(index)
+            if len(inner) == 2:
+                children += [("block", inner[0], depth + 1, 0),
+                             ("failure", index, inner[1], depth),
+                             ("block", inner[1], depth + 1, 0)]
         elif _is_pass(node):
             out.append(Row(index, block, depth, NOTHING, "", None, None))
         elif found is not None:
@@ -971,8 +1001,11 @@ def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
     for n, (choice, block) in enumerate(zip(node.choices, _choice_blocks(scene, stmt))):
         goes, in_text = _goes(scene, scene.blocks[block].members)
         condition = "" if choice.condition is None else choice.condition.source
+        check = "" if choice.check is None else f"{choice.check.meter} {choice.check.written}"
+        if check:                                               # F59: kept as written
+            goes, in_text = None, True
         items.append(ChoiceItem(choice.text, condition, goes, in_text, n,
-                                timeout=choice.timeout))
+                                timeout=choice.timeout, check=check, had_check=bool(check)))
     question = node.question
     time = node.time_text if node.time is not None else ""
     if question is None:
@@ -984,8 +1017,15 @@ def read_choice(scene: SceneRead, stmt: int) -> ChoiceValues | None:
 def choice_summary(item: ChoiceItem) -> str:
     """Where a choice goes, as the form shows it."""
     if item.in_text:
-        return IN_TEXT
+        return CHECK_LINES if item.had_check else IN_TEXT
     return CONTINUES if item.goes is None else item.goes
+
+
+def check_ok(check: str) -> bool:
+    """F59: whether ``check`` is ``<meter> <difficulty>`` the script takes."""
+    parts = check.split()
+    return (len(parts) == 2 and parts[0].isidentifier() and not parts[0].startswith("_")
+            and parse_difficulty(parts[1]) is not None)
 
 
 # --- F51: the time limit (01 §7.1) ---------------------------------------------------------------
@@ -1014,7 +1054,12 @@ def default_timeout(values: ChoiceValues) -> int | None:
 
 def choice_problems(values: ChoiceValues) -> str | None:
     """The form's problem line for the time limit (OK is disabled while one shows), or None.
-    Untimed: none (a ``timeout`` mark is dropped when written)."""
+    Untimed: none (a ``timeout`` mark is dropped when written). F59: a removed or unfinished
+    check."""
+    if any(item.had_check and not item.check for item in values.choices):
+        return CHECK_REMOVE_TEXT
+    if any(item.check and not check_ok(item.check) for item in values.choices):
+        return CHECK_BAD_TEXT
     if not values.time:
         return None
     marked = [item for item in values.choices if item.timeout]
@@ -1034,11 +1079,28 @@ def _menu_code(time: str) -> str:
 def _header_code(item: ChoiceItem, timed: bool = False) -> str:
     condition = f" if {item.condition}" if item.condition else ""
     marker = " timeout" if timed and item.timeout else ""
-    return f"{quote(item.text)}{marker}{condition}:"
+    check = f" {WORD_CHECK} {' '.join(item.check.split())}" if item.check else ""   # F59
+    return f"{quote(item.text)}{marker}{check}{condition}:"
 
 
 def _target_code(goes: str | None) -> str:
     return "$ pass" if goes is None else f"jump {goes}"
+
+
+def _new_block(item: ChoiceItem, indent: str, unit: str) -> list[str]:
+    """A new option's lines at ``indent``: its target, or (F59, checked) ``success:`` with
+    its target and ``failure:`` with ``$ pass``."""
+    if not item.check:
+        return [indent + _target_code(item.goes)]
+    return [indent + "success:", indent + unit + _target_code(item.goes),
+            indent + "failure:", indent + unit + "$ pass"]
+
+
+def _wrapped(body: Sequence[str], indent: str, unit: str) -> list[str]:
+    """F59: an option's lines moved under ``success:``, with ``failure:`` / ``$ pass``."""
+    out = [indent + "success:"]
+    out += [unit + line if line.strip() else line for line in body]
+    return out + [indent + "failure:", indent + unit + "$ pass"]
 
 
 def choice_lines(values: ChoiceValues, indent: str, unit: str) -> list[str]:
@@ -1050,7 +1112,7 @@ def choice_lines(values: ChoiceValues, indent: str, unit: str) -> list[str]:
         out.append(inner + _say_write({"speaker": values.speaker, "look": values.look,
                                        "text": values.question}))
     for item in values.choices:
-        out += [inner + _header_code(item, timed), inner + unit + _target_code(item.goes)]
+        out += [inner + _header_code(item, timed), *_new_block(item, inner + unit, unit)]
     return out
 
 
@@ -1089,6 +1151,9 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
         return CHOICE_LIMIT_TEXT
     if not new.choices:
         return CHOICE_EMPTY_TEXT
+    if any(item.old is not None and 0 <= item.old < len(old.choices)
+           and old.choices[item.old].check and not item.check for item in new.choices):
+        return CHECK_REMOVE_TEXT                          # F59
     read = scene.statements[stmt]
     menu = read.node
     assert isinstance(menu, Menu)
@@ -1096,6 +1161,8 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     heads = [b.head for b in blocks if b.head is not None]
     choice_indent = _indent(lines[heads[0].first - 1]) if heads else read.indent + unit
     block_indent = next((b.indent for b in blocks if b.indent), choice_indent + unit)
+    step = block_indent[len(choice_indent):] if block_indent.startswith(choice_indent) else ""
+    step = step or unit                                   # F59: the file's nesting step
     patches: list[Patch] = []
     timed = bool(new.time)
 
@@ -1128,12 +1195,25 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
         out: list[Patch] = []
         head = block.head
         marked = timed and item.timeout
-        if head is not None and (item.text, item.condition, marked) != (
-                was.text, was.condition, bool(old.time) and was.timeout):
+        if head is not None and (item.text, item.condition, marked, item.check) != (
+                was.text, was.condition, bool(old.time) and was.timeout, was.check):
             _, comment = code_of(lines[head.first - 1:head.last])
             indent = _indent(lines[head.first - 1])
             out.append(Patch(head.first, head.last,
                              (indent + _header_code(item, timed) + comment,)))
+        body = goes_patch(block, was, item)
+        if (item.check and not was.check and head is not None and block.span is not None
+                and head.last < block.span.last):           # F59: wrap under success:
+            first, last = head.last + 1, block.span.last
+            text = _apply(lines[first - 1:last], first, body)
+            indent = block.indent or block_indent
+            out.append(Patch(first, last, tuple(_wrapped(text, indent, step))))
+            return out
+        return out + body
+
+    def goes_patch(block, was: ChoiceItem, item: ChoiceItem) -> list[Patch]:
+        """The patch that makes old choice block ``block`` go where ``item`` goes."""
+        out: list[Patch] = []
         if was.in_text or item.in_text or item.goes == was.goes:
             return out
         members = block.members
@@ -1177,7 +1257,7 @@ def choice_patches(scene: SceneRead, stmt: int, lines: Sequence[str], new: Choic
     for item in new.choices:
         if item.old is None:
             pending += [choice_indent + _header_code(item, timed),
-                        block_indent + _target_code(item.goes)]
+                        *_new_block(item, block_indent, step)]
             continue
         if pending:
             patches.append(Patch(anchor, anchor - 1, tuple(pending)))
@@ -1198,4 +1278,6 @@ __all__ = ["CHOICE", "CHOICE_EMPTY_TEXT", "CHOICE_FORM", "CHOICE_LIMIT_TEXT", "C
            "choice_patches", "choice_summary", "code_of", "form_by_key", "form_for_doc",
            "insert_lines", "missing_forms", "quote", "read_choice", "rows", "shape",
            "TIMEOUT_CONDITION_TEXT", "TIMEOUT_PICK_TEXT", "TIMEOUT_SUMMARY", "TIME_DEFAULT",
-           "TIME_RANGE_TEXT", "choice_problems", "default_timeout", "time_ok", "time_summary"]
+           "TIME_RANGE_TEXT", "choice_problems", "default_timeout", "time_ok", "time_summary",
+           "CHECK_BAD_TEXT", "CHECK_FAILURE", "CHECK_LINES", "CHECK_REMOVE_TEXT",
+           "CHECK_SUCCESS", "check_ok"]

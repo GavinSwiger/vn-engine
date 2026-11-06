@@ -49,6 +49,8 @@ _QUOTE_OR_COMMENT = re.compile(r"[\"#]")
 _PY_STOP = re.compile(r"[\"'#]")
 _TIME = re.compile(r"[ \t]+(time)\b")                     # F51, after a leading ``menu``
 _TIMEOUT = re.compile(r"[ \t]+(timeout)(?=[ \t]*:)")      # F51, between a choice and ":"
+_CHECK = re.compile(r"[ \t]+(check)(?=[ \t]+\w)")          # F59, after a choice's text
+_BRANCH = re.compile(r"(success|failure)[ \t]*:[ \t]*(?:#|$)")   # F59, under a check
 _FIRST_INDENT = re.compile(r"^([ \t]+)[^ \t\r\n#]", re.MULTILINE)
 
 Span = tuple[int, int, str]
@@ -81,6 +83,13 @@ def color_spans(line: str) -> list[Span]:
         if mark is not None:
             spans.append((mark.start(1), mark.end(1), TAG_KEYWORD))
             pos = mark.end(1)
+        check = _CHECK.match(line, pos) if closed else None
+        if check is not None:                       # F59: "text" check logic hard:
+            spans.append((check.start(1), check.end(1), TAG_KEYWORD))
+            pos = check.end(1)
+    elif word is not None and _BRANCH.match(line, start):      # F59: success: / failure:
+        spans.append((word.start(), word.end(), TAG_KEYWORD))
+        pos = word.end()
     elif word is not None and word.group() in STATEMENT_WORDS:
         spans.append((word.start(), word.end(), TAG_KEYWORD))
         pos = word.end()

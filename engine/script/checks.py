@@ -50,6 +50,8 @@ They run once every file is read, on what parsing collected (§7.6.2), in this o
    choices take longer to read than its time limit (``Collected.timed_menus``): ``c`` the
    shown characters of every choice (tags removed, ``{var=x}`` as its name), ``r =
    ceil(c / 15)``; it warns at the menu line when the time is under ``r``.
+   6g. F59 (its SPEC §4): E233 at each choice ``check`` whose meter no ``points`` line
+   declares (``Collected.choice_checks``), with F22's did-you-mean.
 7. W04 (SEC-F02-08 (b), I-9): a label or define name mixing Latin with Greek or Cyrillic
    letters, at the place it is defined; the first ``SCRIPT_W04_LIMIT`` names, then one
    summary line.
@@ -369,6 +371,16 @@ def _iter_meters(sink: DiagnosticSink,
             yield
     if len(table) > METERS_MAX:
         sink.add(Diagnostic("E235", args=(len(table), METERS_MAX)))
+
+
+def _choice_check_meters(sink: DiagnosticSink, collected: Collected) -> None:
+    """F59 step 6g: E233 at a choice ``check`` naming an undeclared meter."""
+    meters = collected.meter_defs
+    for file, check, source in collected.choice_checks:
+        if check.meter not in meters:
+            sink.add(Diagnostic("E233", file, check.line, check.column,
+                                (check.meter, suggest(check.meter, meters)),
+                                source_line=source, stmt=check.line))
 
 
 def _builtin_transition_defines(sink: DiagnosticSink,
@@ -1447,6 +1459,7 @@ def iter_checks(inp: CheckInput) -> Generator[None, None, CheckOutput]:
     yield from _iter_image_duplicates(sink, collected.image_defs)
     yield from _iter_chapters(sink, collected.chapter_defs)          # F18
     yield from _iter_meters(sink, collected.meter_defs)               # F22
+    _choice_check_meters(sink, collected)                             # F59
     _builtin_transition_defines(sink, collected.define_defs)          # F09
     _e119_tags(inp)
     if inp.limit_hit:

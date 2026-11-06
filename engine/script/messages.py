@@ -225,6 +225,9 @@ def _e12(word: str, comments_only: bool) -> str:
     if word == "choice":                                    # F07 (01 §5.3)
         return (f"this choice has no lines under it{note}. Indent what happens when it's "
                 "picked; to just go on, write $ pass.")
+    if word in ("success", "failure"):                      # F59
+        return (f"{word}: has no lines under it{note}. Indent what happens on a {word}; to "
+                "just go on, write $ pass.")
     return f"this {word} has no lines under it{note}. Indent the lines that belong to it."
 
 
@@ -1799,6 +1802,47 @@ def _e369(form: int = 2, count: int = 2) -> str:
     return ("this menu has a time limit but no choice marked timeout, so nothing could "
             "happen when time runs out. Write timeout after one choice's text, e.g. "
             '"Say nothing" timeout:')
+
+
+# F59 checks on choices (SPEC §4): E408 (choicecheck.parse_check, the choice line), E409
+# (choicecheck.parse_check_block, the lines under it). An unknown meter is F22's E233.
+
+_TIER_WORDS = "trivial, easy, medium, hard, heroic, legendary or impossible"
+
+
+def _e408(form: str = "empty", *args: object) -> str:
+    """``empty``; ``meter`` (found); ``missing`` (meter); ``bad`` (found); ``left`` (the
+    check as written, found); ``retry``."""
+    if form == "meter":
+        return (f"check takes a meter name first, then a difficulty, but found "
+                f"{show(str(args[0]))}. Write e.g. check logic medium")
+    if form == "missing":
+        return (f"check {show(str(args[0]))} needs a difficulty after the meter: a number "
+                f"from 1 to 99, or {_TIER_WORDS}.")
+    if form == "bad":
+        return (f"check takes a difficulty from 1 to 99 or a word ({_TIER_WORDS}), but found "
+                f"{show(str(args[0]))}.")
+    if form == "left":
+        return (f"check {show(str(args[0]))} takes nothing else before the : (an if may "
+                f"follow it), but found {show(str(args[1]))}.")
+    if form == "retry":
+        return ("checks can't be retried yet: each check is tried once per playthrough. "
+                "Remove retry.")
+    return ('check needs a meter and a difficulty, e.g. "Pick the lock" check logic medium:')
+
+
+def _e409(form: str = "missing", word: str = "failure") -> str:
+    """``other``: a line that isn't ``success:``/``failure:``; ``twice`` (word); ``order``;
+    ``missing`` (word)."""
+    if form == "other":
+        return ("a choice with a check holds only success: and failure:, each with its own "
+                "lines. Indent this line under one of them.")
+    if form == "twice":
+        return f"this choice already has {word}:. Put all its lines under the first one."
+    if form == "order":
+        return "write success: first, then failure:, under a choice with a check."
+    return (f"this choice has a check but no {word}: under it. Add {word}: with what happens "
+            "then; to just go on, write $ pass under it.")
 
 
 def _w257(seconds: str = "3", chars: int = 112, read: int = 8) -> str:
@@ -4574,6 +4618,9 @@ TEMPLATES: dict[str, Callable[..., str]] = {
     "E370": lambda: ("the timeout choice can't have an if: when time runs out, it must be "
                      "there to pick. Remove the if, or mark a choice without one as timeout."),
     "W257": _w257,
+    # F59 checks on choices (SPEC §4): load E408, E409 (choicecheck.py)
+    "E408": _e408,
+    "E409": _e409,
     # F07 run (engine/runtime/menu.py)
     "E178": lambda locked=False: (
         f"every choice in this menu is {'locked' if locked else 'hidden'}, because all their "

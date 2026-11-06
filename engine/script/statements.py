@@ -203,6 +203,8 @@ class Collected:
     long_glitches: list[tuple[ScriptFile, int, int, int, str]] = field(default_factory=list)
     # F51 W257: each timed menu with no error, in parse order (``script/menu.py`` nodes).
     timed_menus: list = field(default_factory=list)
+    # F59 E233: each choice check as (file, ChoiceCheck, source line), in parse order.
+    choice_checks: list = field(default_factory=list)
     todos: list[tuple[ScriptFile, int, str]] = field(default_factory=list)
     todo_count: int = 0
 

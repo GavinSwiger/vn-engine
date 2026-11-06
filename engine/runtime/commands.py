@@ -227,11 +227,13 @@ class AudioRestore(Command):
 class ShownChoice:
     """One choice of a ``ShowMenu``: its key in the menu, its body resolved when the menu
     was reached (no ``VarMark``, no timing marks), and whether it is locked (shown but never
-    pickable, ``[choice] show_locked``)."""
+    pickable, ``[choice] show_locked``). F59: ``check`` is a checked choice's badge
+    (``[Logic · Medium · 58%]``), drawn before the text; None for a plain choice."""
 
     key: str
     body: TaggedText
     locked: bool
+    check: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

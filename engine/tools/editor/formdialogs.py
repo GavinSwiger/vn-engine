@@ -48,7 +48,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 
 from engine.script.statement_docs import StatementDoc, docs_for
-from engine.tools.editor import dialogs, forms, forms_files_ui, forms_more, formtools
+from engine.tools.editor import checkdialog, dialogs, forms, forms_files_ui, forms_more, formtools
 from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
 from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, scale_of
@@ -78,6 +78,7 @@ OPTIONS = "Options"
 OPTION_TEXT = "Text"
 OPTION_WHEN = "Only show when"
 OPTION_GOES = "Goes to"
+OPTION_CHECK = "Check"                         # F59
 # F51 (01 §7.1): the Choice form's Time limit section.
 TIME_LIMIT = "Time limit"
 GIVE_THE_PLAYER = "Give the player"
@@ -867,7 +868,7 @@ class ChoiceDialog:
         self.table.pack(anchor="w", fill="x", pady=(round(6 * scale), 0))
         self.table.columnconfigure(1, weight=1)
         for column, text, key in ((1, OPTION_TEXT, "text"), (2, OPTION_WHEN, "condition"),
-                                  (3, OPTION_GOES, "goes")):
+                                  (3, OPTION_GOES, "goes"), (4, OPTION_CHECK, "check")):
             label = ttk.Label(self.table, text=text, style="Dialog.Hint.TLabel")
             label.grid(row=0, column=column, sticky="w", padx=(0, gap))
             self.tips[key] = field_tip(label, forms.CHOICE_FORM, key)
@@ -1009,13 +1010,19 @@ class ChoiceDialog:
         else:
             goes_box = ttk.Combobox(self.table, textvariable=goes, width=18,
                                     values=[forms.CONTINUES, *self.scenes])
-        row = {"item": item, "text": text, "when": when, "goes": goes,
-               "widgets": (mark, text_entry, when_entry, goes_box)}
+        check = tk.StringVar(dialog, value=item.check)            # F59
+        check_button = ttk.Button(self.table, text=checkdialog.check_label(item.check),
+                                  width=16, style="Secondary.TButton")
+        check.trace_add("write", lambda *_a: check_button.configure(
+            text=checkdialog.check_label(check.get())))
+        row = {"item": item, "text": text, "when": when, "goes": goes, "check": check,
+               "widgets": (mark, text_entry, when_entry, goes_box, check_button)}
         when_entry.configure(command=lambda: self.edit_when(row))
+        check_button.configure(command=lambda: self.edit_check(row))
         self.items.append(row)
-        for var in (text, when, goes):
+        for var in (text, when, goes, check):
             var.trace_add("write", lambda *_a: self._changed())
-        for widget in (text_entry, when_entry, goes_box):
+        for widget in (text_entry, when_entry, goes_box, check_button):
             widget.bind("<FocusIn>", lambda _e, r=row: self._choose(r), add="+")
         self._grid_rows()
 
@@ -1031,15 +1038,29 @@ class ChoiceDialog:
             row["when"].set(got)
         return got
 
+    def edit_check(self, row: dict) -> str | None:
+        """F59: an option's Check button: the meter and the difficulty in a small dialog."""
+        self._choose(row)
+        got = checkdialog.ask_check(self.dialog, row["check"].get(),
+                                    self.condition_names.get("meter", ()))
+        try:
+            self.dialog.grab_set()          # the nested dialog took the grab
+        except tk.TclError:
+            pass
+        if got is not None:
+            row["check"].set(got)
+        return got
+
     def _grid_rows(self) -> None:
         gap = self.gap
         for n, row in enumerate(self.items):
-            mark, text_entry, when_entry, goes_box = row["widgets"]
+            mark, text_entry, when_entry, goes_box, check_button = row["widgets"]
             pad = (gap if n else 0, 0)
             mark.grid(row=n + 1, column=0, sticky="w", pady=pad)
             text_entry.grid(row=n + 1, column=1, sticky="ew", padx=(0, gap), pady=pad)
             when_entry.grid(row=n + 1, column=2, sticky="ew", padx=(0, gap), pady=pad)
-            goes_box.grid(row=n + 1, column=3, sticky="ew", pady=pad)
+            goes_box.grid(row=n + 1, column=3, sticky="ew", padx=(0, gap), pady=pad)
+            check_button.grid(row=n + 1, column=4, sticky="ew", pady=pad)
         self.chosen = max(0, min(self.chosen, len(self.items) - 1))
         for n, row in enumerate(self.items):
             row["widgets"][0].configure(text="▸" if n == self.chosen else "")
@@ -1063,7 +1084,9 @@ class ChoiceDialog:
                 goes = None if goes_text in ("", forms.CONTINUES) else goes_text
                 in_text = False
             out.append(ChoiceItem(row["text"].get(), row["when"].get().strip(), goes,
-                                  in_text, item.old, timeout=timed and row is timeout_row))
+                                  in_text, item.old, timeout=timed and row is timeout_row,
+                                  check=row["check"].get().strip(),
+                                  had_check=item.had_check))
         return ChoiceValues(self.speaker.get().strip(), self.look.get().strip(),
                             self.question.get(), tuple(out),
                             self._time_value() if timed else "")
@@ -1091,7 +1114,8 @@ class ChoiceDialog:
             self._problem(problem)
         elif self.problem.cget("text") in (forms.TIMEOUT_PICK_TEXT,
                                            forms.TIMEOUT_CONDITION_TEXT,
-                                           forms.TIME_RANGE_TEXT):
+                                           forms.TIME_RANGE_TEXT,
+                                           forms.CHECK_REMOVE_TEXT, forms.CHECK_BAD_TEXT):
             self._problem("")
         self.buttons[0].state(["disabled"] if problem is not None else ["!disabled"])
 

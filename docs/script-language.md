@@ -382,6 +382,56 @@ had picked it:
   the choice marker and the focused fill, so every color scheme styles them), and
   `tick_sound` plays at 3, 2 and 1 seconds left; see `docs/ui-system.md`.
 
+**Checks on choices.** A choice can test one of your meters (see
+[points](#points-character-stats)) with a roll of the dice, the way Disco Elysium does. The
+button shows the odds before the player picks, and the roll decides which lines run:
+
+```
+points logic empathy 0 to 10 start 3
+default met_daichi = True
+
+label accuse:
+    menu:
+        daichi "You were at the shrine. Admit it."
+        "The gate was locked from the inside." check logic hard:
+            success:
+                daichi surprised "...How did you know that?"
+            failure:
+                daichi "Nice story."
+        "You're scared of something." check empathy 7 if met_daichi:
+            success:
+                daichi sad "...Of the river."
+            failure:
+                "He looks away."
+        "Never mind.":
+            $ pass
+```
+
+- **`check <meter> <difficulty>`** goes after the choice's text, before `if` and the `:`.
+  The difficulty is a number from 1 to 99, or a word: `trivial` (6), `easy` (8), `medium`
+  (10), `hard` (12), `heroic` (14), `legendary` (16), `impossible` (18).
+- **The roll**: two six-sided dice plus the meter's value. Reaching the difficulty is a
+  success. Double six always succeeds and double one always fails, so nothing is ever
+  certain (3% to 97%).
+- **Under the choice** go exactly two parts, `success:` first and then `failure:`, each with
+  its own lines. Write the failure as a story, not a dead end: it is the scene most
+  players remember.
+- **The player sees** the odds before the text, in the choice marker's color:
+  `[Logic · Hard · 28%] The gate was locked from the inside.` The name is the meter's,
+  with `_` as a space; the word is the difficulty's (for a number, the word at or below
+  it). The odds use the meter's value when the menu appears.
+- **One try**: once a check has been picked, it's hidden when its menu comes back (locked,
+  with `show_locked = true`), whether it succeeded or not. Keep a choice without a check in
+  every menu that comes back, so the player always has a way on.
+- **Loading and going back never reroll.** The roll uses the story's dice
+  ([Random numbers](#10-random-numbers)), so going back to the menu and picking the same
+  choice gives the same result.
+- In dev runs, the log shows each roll: the dice, the meter, the total and the result.
+- `check`, `success` and `failure` are words only in these places; they stay free as
+  variable names.
+- Not yet: checks the player can retry once the meter rises, bonuses on a check, and a dice
+  animation.
+
 **Settings in `config.toml`.** How menus behave is under `[choice]`; how they look is under
 `[theme.choice]` (colors, text size, width, frame images, the focus marker, the locked
 look, the fade-in, and focus and pick sounds). Every `choice.*` token, with its default and
@@ -435,6 +485,15 @@ file and line:
 | `this menu has 2 choices marked timeout, but time running out picks only one. Remove timeout from all but one.` | Keep one `timeout`. |
 | `the timeout choice can't have an if: when time runs out, it must be there to pick. Remove the if, or mark a choice without one as timeout.` | Remove the `if`, or move `timeout`. |
 | `this menu gives the player 3 seconds, but its choices are 112 characters long, about 8 seconds of reading. Raise the time, e.g. menu time 8:, or shorten the choices.` (warning, dev runs) | Raise the time or shorten the choices. |
+| `check needs a meter and a difficulty, e.g. "Pick the lock" check logic medium:` | Write the meter and the difficulty. |
+| `check logic needs a difficulty after the meter: a number from 1 to 99, or trivial, easy, medium, hard, heroic, legendary or impossible.` | Add the difficulty. |
+| `check takes a difficulty from 1 to 99 or a word (trivial, easy, medium, hard, heroic, legendary or impossible), but found tough.` | Use a number or one of the words. |
+| `check logic 9 takes nothing else before the : (an if may follow it), but found now.` | Remove the extra words. |
+| `checks can't be retried yet: each check is tried once per playthrough. Remove retry.` | Remove `retry`. |
+| `there is no meter named "lgoic". Did you mean "logic"? Declare meters at the top level, e.g. points lgoic 0 to 10.` | Fix the name, or declare the meter. |
+| `this choice has a check but no failure: under it. Add failure: with what happens then; to just go on, write $ pass under it.` | Add the missing part. |
+| `a choice with a check holds only success: and failure:, each with its own lines. Indent this line under one of them.` | Move the line under `success:` or `failure:`. |
+| `write success: first, then failure:, under a choice with a check.` | Swap the two parts. |
 
 One mistake shows only while the story runs (see [Run-time errors](#22-run-time-errors)):
 `every choice in this menu is hidden, because all their conditions are false, so the player can't pick anything. Add a choice without if, such as "That's all":.`

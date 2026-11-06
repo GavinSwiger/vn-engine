@@ -94,6 +94,7 @@ from engine.runtime.limits import IMAGE_SCAN_MAX_DEPTH
 from engine.runtime.transitions import TransitionDef
 from engine.script import LoadOptions, load_story
 from engine.script.audio import PLAYABLE_EXTS, PlayAudio, QueueMusic, StopAudio, Voice
+from engine.script.choicecheck import ChoiceCheck
 from engine.script.codex import CodexLock
 from engine.script.effects import BUILTIN_TRANSITION_NAMES, WithClause
 from engine.script.points import PointsChange
@@ -921,6 +922,8 @@ class _UseWalk:
             self.add("audio_use", obj.audio_file, ref, line)
         elif isinstance(obj, PointsChange):
             self.add("meter_use", obj.name, ref, line)
+        elif isinstance(obj, ChoiceCheck):                   # F59: check <meter> on a choice
+            self.add("meter_use", obj.meter, ref, line)
         elif isinstance(obj, CodexLock):
             self.add("codex_use", obj.name, ref, line)
         elif isinstance(obj, Lock) and obj.kind == "route":

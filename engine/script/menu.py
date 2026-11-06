@@ -13,6 +13,11 @@ Codes: E12 (``menu`` and ``choice`` forms), E172–E174, E176, E177 here; E175 i
 F51 (timed choices, ``04-technical.md`` §7.1): ``menu time N:`` (``Menu.time``) and one
 ``"..." timeout:`` choice (``Choice.timeout``), both outside the identity (SR-F51-05);
 E368 (the header), E369 (the marking), E370 (the timeout choice's ``if``) here.
+
+F59 (checks on choices, its SPEC): ``"..." check <meter> <difficulty> [if ...]:``
+(``Choice.check``, outside the key) with ``success:`` and ``failure:`` under it, read by
+``script/choicecheck.py`` (E408, E409) into one ``CheckRoll``; each check is kept in
+``Collected.choice_checks`` for the whole-game meter check (E233).
 """
 
 import re
@@ -22,6 +27,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from engine.script.audio import Voice
+from engine.script.choicecheck import WORD_CHECK, ChoiceCheck, parse_check, parse_check_block
 from engine.script.diagnostics import Diagnostic
 from engine.script.identity import statement_hash
 from engine.script.lexer import (
@@ -74,6 +80,7 @@ class Choice:
     key: str = ""
     block: tuple[Statement, ...] = ()
     timeout: bool = False        # F51: what time running out picks; not part of the key
+    check: ChoiceCheck | None = None   # F59: a check on a meter; not part of the key
 
 
 @dataclass(slots=True, kw_only=True)
@@ -184,12 +191,25 @@ def parse_choice(raw: RawStatement, ctx: ParseContext) -> Choice | None:
         return None
     condition: PyCode | None = None
     timeout = False
+    check: ChoiceCheck | None = None
     if raw.py is not None:
+        words = raw.tokens[1:-1]                   # F59: check … between the text and if
+        if words:
+            check = parse_check(raw, ctx, words)
+            if check is None:
+                return None
         condition = condition_of(raw, ctx, keyword="if")
         if condition is None:
             return None
     else:
         after = raw.tokens[1:]
+        if after and after[0].kind == NAME and after[0].text == WORD_CHECK:   # F59
+            colon = after[-1] if after[-1].kind == COLON else None
+            check = parse_check(raw, ctx, after[:-1] if colon is not None else after)
+            if check is None:
+                return None
+            if colon is not None:
+                after = after[-1:]
         if len(after) > 1 and after[0].kind == NAME and after[0].text == "timeout":
             if after[1].kind == NAME and after[1].text == "if":
                 ctx.error("E370")                  # still returned, marked: no E369 cascade
@@ -206,8 +226,16 @@ def parse_choice(raw: RawStatement, ctx: ParseContext) -> Choice | None:
     body = line_body(raw, ctx, token, choice=True)
     if body is None:
         return None
+    if check is not None:
+        ctx.collected.choice_checks.append((raw.file, check, raw.texts.get(check.line)))
     return Choice(text=token.text, body=body, condition=condition, line=raw.line,
-                  column=raw.column, timeout=timeout)
+                  column=raw.column, timeout=timeout, check=check)
+
+
+def _checked(line: RawStatement) -> bool:
+    """F59: a choice line with ``check`` right after its text (parsed or not)."""
+    tokens = line.tokens
+    return len(tokens) > 1 and tokens[1].kind == NAME and tokens[1].text == WORD_CHECK
 
 
 def _no_node(raw: RawStatement, ctx: ParseContext) -> None:
@@ -269,7 +297,15 @@ def parse_menu_body(api, raw: RawStatement, menu: Menu, depth: int, own_error: b
             shaped += 1
             phase = _CHOICES
             choice, error = api.parse_line(line, inner, parse_choice)
-            if deeper:
+            check = choice.check if isinstance(choice, Choice) else None
+            if check is not None and depth + 2 <= SCRIPT_MAX_BLOCK_DEPTH:      # F59
+                roll = yield from parse_check_block(
+                    api, line, after, depth + 2,
+                    body_widths + ((after.width,) if deeper else ()), check)
+                choice.block = (roll,) if roll is not None else ()  # type: ignore[union-attr]
+            elif deeper and choice is None and _checked(line):
+                yield from api.skip_deeper(line.width, quiet=True)  # F59: no cascade
+            elif deeper:
                 if depth + 2 > SCRIPT_MAX_BLOCK_DEPTH:
                     after.error("E15", rank=RANK_BLOCK)
                     yield from api.skip_deeper(line.width, quiet=False)

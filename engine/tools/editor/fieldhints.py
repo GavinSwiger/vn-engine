@@ -154,6 +154,9 @@ CHOICE_HINTS: Final[Mapping[str, str]] = MappingProxyType({
              "options. Players who turned on Timing assist get twice as long, or no limit."),
     "timeout": ("The option chosen for the player when time runs out. It's always shown, so "
                 "players without a time limit can still pick it."),
+    # F59 (SPEC §5)
+    "check": ("Test a meter with two dice: the dice plus the meter must reach the "
+              "difficulty. Players see the odds on the button and get one try."),
 })
 
 # Database form → its label → hint (labels as ``database``/``dbmore`` show them). A form is

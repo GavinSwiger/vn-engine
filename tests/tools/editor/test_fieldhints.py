@@ -68,7 +68,7 @@ def test_ac_f47_54_every_field_has_a_plain_hint():
     assert fieldhints.form_hint("no such form", "no such field") == ""
     choice = {f.name for f in dataclasses.fields(forms.ChoiceValues)} \
         | {f.name for f in dataclasses.fields(forms.ChoiceItem)}
-    assert set(fieldhints.CHOICE_HINTS) == choice - {"choices", "in_text", "old"}
+    assert set(fieldhints.CHOICE_HINTS) == choice - {"choices", "in_text", "old", "had_check"}
     assert all(_plain(hint) for hint in fieldhints.CHOICE_HINTS.values())
     assert fieldhints.CHOICE_FORM == forms.CHOICE_FORM
     assert fieldhints.form_hint(forms.CHOICE_FORM, "goes") == fieldhints.CHOICE_HINTS["goes"]
