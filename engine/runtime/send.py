@@ -5,8 +5,11 @@ Why this module exists: a ``send`` line delivers a message to a contact's Inbox 
 the story goes on, and an ``open`` line stops the story at the Inbox. Both are story steps:
 
 - **send** goes through the trigger core (ADR-0011). The kind ``message`` is registered here
-  (``collect``: one trigger per ``send`` line, named by its sid, armed only by its line,
-  ``once``, with the line's ``after`` timing; ``on_fire`` delivers). ``run_send`` arms the
+  (``collect``: one trigger per ``send`` line, named by its contact and message and, for a
+  second line sending the same, its occurrence (``script/inbox.message_name``: never the
+  sid, so an update that edits the line keeps a waiting message), armed only by its line,
+  ``once``, with the line's ``after`` timing; ``on_fire`` delivers; ``adopt`` moves a
+  waiting message saved under an older key to its line's key now). ``run_send`` arms the
   line's trigger and, when it fits (always without ``after``), takes it and delivers at
   once: nothing stays armed, so the save is as before. With ``after 1 day`` / ``after 2
   parts`` / ``after 2 scenes`` it stays armed (saved in ``GameState.triggers``) until a
@@ -42,6 +45,7 @@ the story goes on, and an ``open`` line stops the story at the Inbox. Both are s
 ``clock.py``: below the interpreter, reaching it only through the ``interp`` it is given.
 """
 
+import re
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any, Final
@@ -56,18 +60,20 @@ from engine.runtime.stage import flush_stage
 from engine.runtime.values import Unsaveable, freeze
 from engine.script import nodes
 from engine.script.inbox import (TRIGGER_KIND, WORD_INBOX, ContactDecl, OpenStep, SendStep,
-                                 collect, message_ask, message_lines, message_problem)
+                                 collect, message_ask, message_lines, message_name,
+                                 message_problem)
 from engine.script.inbox import uses_send as _uses_send
 from engine.script.triggers import Trigger
 
 if TYPE_CHECKING:
     from engine.runtime.interpreter import Interpreter, Step
     from engine.runtime.state import GameState
-    from engine.runtime.triggers import Fired
+    from engine.runtime.triggers import Armed, Fired
 
 _log = get_logger("runtime")
 
 _MISSING: Final = object()
+_OCCURRENCE: Final = re.compile(r"[2-9]|[1-9][0-9]+")    # ``message_name``'s ``~n``
 
 
 def _cached(interp: "Interpreter") -> tuple[dict[str, ContactDecl], bool]:
@@ -127,7 +133,9 @@ def run_send(interp: "Interpreter", stmt: SendStep) -> "Step":
     (module docstring): at once, or, with ``after``, when the trigger core fires it. Not a
     checkpoint."""
     from engine.runtime.interpreter import Step         # below the interpreter (docstring)
-    trigger_id = f"{TRIGGER_KIND}:{stmt.sid}"
+    trigger_id = _ids(interp).get(id(stmt))
+    if trigger_id is None:                              # not in the table: never, defensive
+        trigger_id = f"{TRIGGER_KIND}:{message_name(stmt.contact, stmt.message)}"
     triggers_mod.arm(interp, trigger_id)
     trigger = interp.trigger_table.by_id[trigger_id]    # type: ignore[attr-defined]
     found = triggers_mod.fits(interp, trigger)
@@ -147,6 +155,41 @@ def _on_fire(interp: "Interpreter", fired: "Fired") -> None:
 
 def _collect(program: Any) -> "list[Trigger]":
     return list(collect(program))
+
+
+def _ids(interp: "Interpreter") -> dict[int, str]:
+    """Each ``send`` line's trigger id by ``id(line)``, once per trigger table (kept on the
+    interpreter)."""
+    table = interp.trigger_table                        # type: ignore[attr-defined]
+    found = getattr(interp, "_send_ids", None)
+    if found is None or found[0] is not table:
+        found = (table, {id(t.payload): t.id for t in table.triggers
+                         if t.kind == TRIGGER_KIND})
+        interp._send_ids = found                        # type: ignore[attr-defined]
+    return found[1]
+
+
+def _adopt(interp: "Interpreter", armed: "Armed", taken: "set[str]") -> str | None:
+    """The kind's ``adopt`` (``triggers.restored``): the declared message a waiting one
+    saved under a key the script no longer has is now. A development save's key is the
+    ``send`` line's sid: the line with that sid, if any. Else the same contact and message:
+    the first line sending them whose message isn't already waiting (``taken``; an earlier
+    line sending the same was removed, so the occurrence shifted). None when nothing
+    matches: the trigger core keeps it and logs it."""
+    name = armed.id.partition(":")[2]
+    table = interp.trigger_table                        # type: ignore[attr-defined]
+    sends = [t for t in table.triggers if t.kind == TRIGGER_KIND]
+    for trigger in sends:
+        if getattr(trigger.payload, "sid", None) == name:
+            return trigger.id
+    head, _, tail = name.rpartition("~")
+    pair = head if head and _OCCURRENCE.fullmatch(tail) else name
+    for trigger in sends:
+        stmt = trigger.payload
+        if (isinstance(stmt, SendStep) and message_name(stmt.contact, stmt.message) == pair
+                and trigger.id not in taken):
+            return trigger.id
+    return None
 
 
 def run_open(interp: "Interpreter", stmt: OpenStep) -> "Step":
@@ -351,7 +394,7 @@ def uses_send(program: Any) -> bool:
     return _uses_send(program)
 
 
-triggers_mod.register_kind(TRIGGER_KIND, collect=_collect, on_fire=_on_fire)
+triggers_mod.register_kind(TRIGGER_KIND, collect=_collect, on_fire=_on_fire, adopt=_adopt)
 
 
 __all__ = ["InboxView", "ReplyMessage", "bind_view", "can_reply", "deliver", "find_delivery",

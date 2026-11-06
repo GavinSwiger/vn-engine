@@ -33,9 +33,10 @@ with no quoted text is E448 / E449, which names the other reading when the game 
 character of that name. ``from``, ``on`` and ``inbox`` are words only in these places.
 
 **Through the trigger core** (ADR-0011): each ``send`` line is one trigger of kind
-``message`` (``collect``: name its sid, ``live=False``, ``once``, payload the line), armed by
-the line and fired at once, or, with round 3's ``after 1 day``, when its timing comes
-(``send_trigger``).
+``message`` (``collect``: named by ``message_names``, ``live=False``, ``once``, payload the
+line), armed by the line and fired at once, or, with round 3's ``after 1 day``, when its
+timing comes (``send_trigger``). The name is the contact and the message, not the line's sid,
+so a message waiting in a save still arrives after an update edits its ``send`` line.
 
 **Checks.** Parse: E448 (``send``), E449 (``open``), E450 (``lock contact``; at most
 ``CONTACTS_MAX``, names unique, in ``check_story``). Whole game (``check_story``): E451 (a
@@ -784,7 +785,8 @@ def _check_round3(nodes: list[Node], steps: list[Statement],
             warnings.append(ScriptWarning(
                 format_message("W312", (stmt.message, *clocked)), code="W312",
                 file=stmt.file.ref, line=stmt.line))
-    timed = [send_trigger(s) for s in sends
+    names = message_names(sends)
+    timed = [send_trigger(s, names[id(s)]) for s in sends
              if s.after_days is not None or s.after_parts is not None]
     if timed and config is not None and clock_lines and "clock" not in values:
         calendar, _problems = calendar_of(config)
@@ -865,20 +867,53 @@ def _check_reads(nodes: list[Node], replies: dict[str, set[str] | None]
 
 # --- The trigger core's "message" kind (ADR-0011) -------------------------------------------------
 
-def send_trigger(stmt: SendStep) -> Trigger:
-    """``stmt`` as a trigger of kind ``message``: named by its sid, armed by the line
-    (``live=False``), ``once``, the line as its payload, and round 3's ``after`` timing."""
+MESSAGE_NAME_CUT: Final = 80             # a longer contact/message pair is cut and hashed
+
+
+def message_name(contact: str, message: str, n: int = 1) -> str:
+    """The trigger name (the saved key, ``message:<name>``) of the ``n``-th ``send`` line, in
+    reading order, that sends ``message`` from ``contact``: ``hana/invite``, then
+    ``hana/invite~2``, ``hana/invite~3``. Not the line's sid: editing the line (its look,
+    delay or replies), moving it, or renaming its label keeps the key, so a message waiting
+    in a save still arrives after the update. A pair over ``MESSAGE_NAME_CUT`` code points is
+    cut, with a hash of the whole pair, to keep within the trigger core's 100."""
+    base = f"{contact}/{message}"
+    if len(base) > MESSAGE_NAME_CUT:
+        import hashlib
+        digest = hashlib.blake2s(base.encode("utf-8", "surrogatepass"), digest_size=8)
+        base = base[:MESSAGE_NAME_CUT - 17] + "#" + digest.hexdigest()
+    return base if n == 1 else f"{base}~{n}"
+
+
+def message_names(sends: Iterable[SendStep]) -> dict[int, str]:
+    """Each ``send`` line's ``message_name`` by ``id(line)``, ``sends`` in reading order."""
+    seen: dict[tuple[str, str], int] = {}
+    out: dict[int, str] = {}
+    for stmt in sends:
+        pair = (stmt.contact, stmt.message)
+        n = seen[pair] = seen.get(pair, 0) + 1
+        out[id(stmt)] = message_name(stmt.contact, stmt.message, n)
+    return out
+
+
+def send_trigger(stmt: SendStep, name: str | None = None) -> Trigger:
+    """``stmt`` as a trigger of kind ``message``: named ``name`` (``message_names``; None:
+    the first of its pair), armed by the line (``live=False``), ``once``, the line as its
+    payload, and round 3's ``after`` timing."""
     timing = Timing(after_days=stmt.after_days, after_scenes=stmt.after_scenes,
                     after_parts=stmt.after_parts)
-    return Trigger(TRIGGER_KIND, stmt.sid or f"{stmt.file.ref}:{stmt.line}", stmt, once=True,
-                   live=False, timing=timing, payload=stmt)
+    if name is None:
+        name = message_name(stmt.contact, stmt.message)
+    return Trigger(TRIGGER_KIND, name, stmt, once=True, live=False, timing=timing,
+                   payload=stmt)
 
 
 def collect(program: Any) -> Iterator[Trigger]:
-    """Each ``send`` line as its trigger (``send_trigger``)."""
-    for stmt in program.iter_statements():
-        if isinstance(stmt, SendStep):
-            yield send_trigger(stmt)
+    """Each ``send`` line as its trigger (``send_trigger``), named by ``message_names``."""
+    sends = [stmt for stmt in program.iter_statements() if isinstance(stmt, SendStep)]
+    names = message_names(sends)
+    for stmt in sends:
+        yield send_trigger(stmt, names[id(stmt)])
 
 
 def uses_send(program: Any) -> bool:

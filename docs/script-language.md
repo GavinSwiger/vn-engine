@@ -1749,7 +1749,12 @@ again. Then it arrives as if sent there: the arrival
 notice shows, the date is the day it arrived, and the message's text is read then. While
 it waits, a save keeps it on its way, going back before the `send` line takes it back,
 and going forward brings it again without a second notice. Running the same `send` line
-again before the message arrives starts its wait again. In a dev run, F3 lists the
+again before the message arrives starts its wait again. A save knows a message on its way
+by its contact and message (and, for a second line sending the same, which one), not by
+the line, so an update may change the line's `on`, `after` or `ask`, move it, or rename its
+scene, and the message still arrives at its saved time. If the update removes every line
+sending that message from that contact, the save keeps it waiting but it never arrives (a
+dev run's log says so). In a dev run, F3 lists the
 messages still on their way ("message invite from hana: day 3", "message late from ren: day
 2, Afternoon").
 

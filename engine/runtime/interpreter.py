@@ -1355,6 +1355,9 @@ class Interpreter:
                 try:
                     cmd = PRESENTERS[type(pos)](self, pos, state)
                     ui, w205 = ui_mod.restored_ui(state.ui, program)    # F32 (04 §5.2)
+                    # F65: a waiting trigger saved under a key the script no longer has
+                    # moves to the one it is now (a send line's older key), else is kept.
+                    triggers = triggers_mod.restored(self, state.triggers)
                     snapshot = self._snapshot(pos, call_stack, stage=state.stage,
                                               audio=state.audio, choices=choices,
                                               history=state.history, chapter=state.chapter,
@@ -1368,7 +1371,7 @@ class Interpreter:
                                                   program, state),       # F30 (04 §6.1)
                                               ui=ui,                     # F32
                                               clock=clock,               # F63
-                                              triggers=state.triggers)   # F65
+                                              triggers=triggers)         # F65
                     if w205 is not None:                # logged only if the restore commits
                         self.note_restore_warning(ScriptWarning(w205, code="W205"))
                 except StoryError as e:
@@ -1415,7 +1418,7 @@ class Interpreter:
         self.rollback_state = state.rollback                # F14 (04 §10): at the commit only
         self.nvl = state.nvl                                # F17 (04 §7.1): at the commit only
         self.flow = state.flow                              # F20 (07 §3.2): at the commit only
-        self.triggers = state.triggers                      # F65: at the commit only
+        self.triggers = snapshot.triggers                   # F65: at the commit only
         if landing:                                         # F14 (04 §7.3): a back landing
             self.timeline.land(state, snapshot)
         else:                                               # F14 G12 (TR-F14-03)

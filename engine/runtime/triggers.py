@@ -24,6 +24,13 @@ kinds in registration order): the declarations, never saved. **The state**
 hidden item), so an older save loads; a save from before the trigger core has neither key
 (``EMPTY_TRIGGERS``) and writes nothing new (``triggers_json``).
 
+**After an update** (``restored``, restore's step for this state): an armed id the script no
+longer declares is offered to its kind's ``adopt(interp, armed)``, which may name the
+declared trigger it is now (a message saved under an older key, or its ``send`` line's
+occurrence shifted), given the ids already armed. The instance moves to that id with its timing and data, so it still
+fires; one no kind adopts stays armed (never dropped: a later update may declare it again)
+and is logged once as a WARNING.
+
 **When a trigger fits** (``due``): it is armed (and its ``after`` days, parts and scenes
 have come), or it is ``live`` with no ``after`` timing and not retired; the clock is on or
 after ``timing.day`` and, with ``timing.part``, in that part of the day; and its ``when`` is
@@ -75,6 +82,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
+from engine.core.logsetup import get_logger
 from engine.core.storyclock import DAY_MAX
 from engine.runtime import clock as clock_mod
 from engine.runtime.errors import AuthorRefusal, StoryError, timeout_error
@@ -91,6 +99,7 @@ DATA_MEMBERS_MAX: Final = 100           # list and dict members in one armed ``d
 DATA_DEPTH_MAX: Final = 4
 DATA_TEXT_MAX: Final = 1_000
 _INT_MAX: Final = 2**53
+_log = get_logger("runtime")
 _ID_RE: Final = re.compile(r"[a-z][a-z_]{0,19}:[^\x00-\x1f\x7f\ud800-\udfff]{1,100}")
 
 
@@ -256,6 +265,7 @@ class Fired:
 OnFire = Callable[["Interpreter", Fired], None]
 Pick = Callable[[Iterator[Fired]], "Fired | None"]
 Collect = Callable[[Program], Iterable[Trigger]]
+Adopt = Callable[["Interpreter", Armed, set[str]], "str | None"]
 
 
 def first_fit(fitting: Iterator[Fired]) -> Fired | None:
@@ -270,17 +280,18 @@ class Kind:
     collect: Collect
     on_fire: OnFire | None
     pick: Pick
+    adopt: Adopt | None = None
 
 
 _KINDS: dict[str, Kind] = {}
 
 
 def register_kind(word: str, *, collect: Collect, on_fire: OnFire | None = None,
-                  pick: Pick = first_fit) -> None:
+                  pick: Pick = first_fit, adopt: Adopt | None = None) -> None:
     """Declare a kind of trigger (module docstring, "Kinds"). Registering ``word`` again
     replaces it (an import that runs twice is harmless). Interpreters built afterwards see
-    it."""
-    _KINDS[word] = Kind(word, collect, on_fire, pick)
+    it. ``adopt``: module docstring, "After an update"."""
+    _KINDS[word] = Kind(word, collect, on_fire, pick, adopt)
 
 
 def unregister_kind(word: str) -> None:
@@ -321,6 +332,58 @@ def install(interp: "Interpreter") -> TriggerTable:
 def _table(interp: "Interpreter") -> TriggerTable:
     table = getattr(interp, "trigger_table", None)
     return table if table is not None else install(interp)
+
+
+def restored(interp: "Interpreter", state: TriggerState) -> TriggerState:
+    """Restore's step for a saved ``TriggerState`` (load, going back; module docstring,
+    "After an update"): ``state`` itself when every armed id is declared, else a copy where
+    each armed instance its kind adopts has moved to the declared id it names (one not
+    declared, or already armed, is not taken). The rest stay as they are; their ids are
+    logged once per interpreter as a WARNING. Never raises for an adopt that fails."""
+    by_id = _table(interp).by_id
+    if all(a.id in by_id for a in state.armed):
+        return state
+    taken = {a.id for a in state.armed}
+    out: list[Armed] = []
+    kept: list[str] = []
+    for armed in state.armed:
+        if armed.id in by_id:
+            out.append(armed)
+            continue
+        kind = _KINDS.get(armed.id.partition(":")[0])
+        new = None
+        if kind is not None and kind.adopt is not None:
+            try:
+                new = kind.adopt(interp, armed, taken)
+            except Exception:               # noqa: BLE001 (a saved id is untrusted)
+                new = None
+        if type(new) is str and new in by_id and new not in taken:
+            taken.add(new)
+            out.append(Armed(new, armed.day, armed.scenes, armed.data, armed.part))
+        else:
+            out.append(armed)
+            kept.append(armed.id)
+    _warn_kept(interp, kept)
+    return TriggerState(tuple(out), state.retired)
+
+
+def _warn_kept(interp: "Interpreter", ids: list[str]) -> None:
+    """The WARNING for armed ids no declaration takes, once per id and interpreter."""
+    logged: set[str] | None = getattr(interp, "_kept_triggers_logged", None)
+    if logged is None:
+        logged = set()
+        try:
+            interp._kept_triggers_logged = logged       # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+    fresh = [i for i in ids if i not in logged]
+    if not fresh:
+        return
+    logged.update(fresh)
+    log = getattr(interp, "log", None) or _log
+    log.warning("The save holds %d waiting trigger%s the script no longer has (%s); kept, "
+                "but it won't fire unless the script declares it again.", len(fresh),
+                "" if len(fresh) == 1 else "s", ", ".join(sorted(fresh)[:5]))
 
 
 def _declared(interp: "Interpreter", trigger_id: str) -> Trigger:
@@ -520,4 +583,4 @@ clock_mod.listen(_on_clock)
 __all__ = ["ARMED_MAX", "Armed", "EMPTY_TRIGGERS", "Fired", "Kind", "RETIRED_MAX",
            "TriggerState", "TriggerTable", "arm", "data_problem", "disarm", "due", "evaluate",
            "first_fit", "fits", "install", "is_armed", "is_retired", "pick", "register_kind",
-           "retire", "scene_entered", "take", "triggers_json", "unregister_kind"]
+           "restored", "retire", "scene_entered", "take", "triggers_json", "unregister_kind"]
