@@ -47,8 +47,9 @@ class FrameLimiter:
     def wait(self) -> float:
         """Block until the next frame slot; return the frame start (``clock()``).
 
-        Sleeps until 2 ms before the deadline, then spins. If the frame is more than one
-        period late, the schedule restarts from now instead of bursting to catch up.
+        Sleeps until ``LIMITER_SPIN_S`` (0.5 ms) before the deadline, then spins. If the
+        frame is more than one period late, the schedule restarts from now instead of
+        bursting to catch up.
         """
         self._next_deadline += self.period
         remaining = self._next_deadline - self._clock()

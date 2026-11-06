@@ -10,7 +10,7 @@ import re
 
 import pytest
 
-from engine.core.constants import MAX_FRAME_DT
+from engine.core.constants import LIMITER_SPIN_S, MAX_FRAME_DT
 from engine.core.timing import BenchRecorder, FrameLimiter, GameTime, RecentFrames
 
 
@@ -65,7 +65,7 @@ def test_limiter_period_follows_the_fps():
     assert limiter.period == pytest.approx(1 / 30)
 
 
-def test_limiter_sleeps_then_spins_the_last_2_ms():
+def test_limiter_sleeps_then_spins_the_last_half_ms():
     clock = FakeClock(tick=0.0)
     calls = {"n": 0}
 
@@ -77,7 +77,8 @@ def test_limiter_sleeps_then_spins_the_last_2_ms():
     limiter = FrameLimiter(60, clock=ticking_clock, sleep=clock.sleep)
     limiter.wait()
     assert len(clock.sleeps) == 1
-    assert clock.sleeps[0] == pytest.approx(1 / 60 - 0.002, abs=1e-4)
+    assert clock.sleeps[0] == pytest.approx(1 / 60 - LIMITER_SPIN_S, abs=1e-4)
+    assert LIMITER_SPIN_S == 0.0005
 
 
 # --- AC-F01-85: no catch-up burst ------------------------------------------------------------

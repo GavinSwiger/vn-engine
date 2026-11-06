@@ -77,7 +77,7 @@ FONT_OBJECT_COST = 256 * KIB
 MAX_FRAME_DT = 0.1
 RESIZE_SETTLE_S = 0.2
 BENCH_WARMUP_S = 5.0
-LIMITER_SPIN_S = 0.002               # the frame limiter spins for the last 2 ms (§7.9)
+LIMITER_SPIN_S = 0.0005              # the frame limiter spins for the last 0.5 ms (§7.9)
 RECENT_FRAMES = 120                  # frames kept for the dev overlay (RecentFrames)
 
 # --- ADR-0005 bench pass rule ------------------------------------------------------------
