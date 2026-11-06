@@ -54,8 +54,15 @@ CHECK_SLOW_S = 5                        # auto-checks pause while the last one t
 # framing above: ``ready`` once, then ``png``, ``played``, ``stopped`` or ``failed``.
 HELPER_OPS = ("still", "thumb", "play", "stop")
 HELPER_EVENTS = ("ready", "png", "played", "stopped", "failed")
-HELPER_STILL_KINDS = ("textbox", "title")
-HELPER_REQUEST_MAX = 4_096              # one request line, newline not included
+HELPER_STILL_KINDS = ("textbox", "title", "stage")
+HELPER_REQUEST_MAX = 8_192              # one request line, newline not included
+# A ``stage`` still (Stage stills, Studio UX 2.5 and 3.1) carries a ``stage`` object:
+# ``{"bg", "images": {name: ref | "#rrggbb"}, "sprites": [[tag, image, at, zoom, flip], ...],
+# "who", "color", "text"}``; Studio resolves the names, so the child runs no author code.
+HELPER_STAGE_MAX_IMAGES = 16            # names in ``images``
+HELPER_STAGE_MAX_SPRITES = 12           # sprites drawn
+HELPER_STAGE_NAME_MAX = 256             # an image name, ref, tag, position or speaker
+HELPER_STAGE_TEXT_MAX = 600             # the text box's line, in characters
 HELPER_STILL_MAX_WIDTH = 640            # stills are 16:9, at most 640 px wide
 HELPER_THUMB_MAX = 384                  # a thumbnail's longer side (96 px at up to 400 %)
 HELPER_REPLY_TIMEOUT_S = 10             # no answer after this: Studio restarts the child

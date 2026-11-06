@@ -8,8 +8,9 @@ child does all three, and the 0.5 s preview target holds once it is warm.
 
 - **Requests** (stdin, one ASCII JSON line each, at most ``HELPER_REQUEST_MAX`` bytes):
   ``{"v": 1, "op", "serial", ...}`` with ``op`` one of
-  ``still`` (``kind`` ``textbox``/``title``, ``width`` ≤ 640, ``overlay`` bool: when true the
-  line is followed by ``checker.encode_overlay``'s bytes for ``config.toml`` only),
+  ``still`` (``kind`` ``textbox``/``title``/``stage``, ``width`` ≤ 640, ``overlay`` bool: when
+  true the line is followed by ``checker.encode_overlay``'s bytes for ``config.toml`` only;
+  a ``stage`` still adds ``stage``, checked by ``parse_stage``),
   ``thumb`` (``ref`` an image ref, ``size`` ≤ ``HELPER_THUMB_MAX``),
   ``play`` (``ref`` under ``audio/``), ``stop``. A line that breaks the shape, or an overlay
   that does, ends the child with exit 2 (the stream can't be trusted after it); Studio
@@ -22,7 +23,11 @@ child does all three, and the 0.5 s preview target holds once it is warm.
   drawn by the real code onto a ``width`` × 9/16 surface (the canvas scales to it, as at any
   window size): ``render.textbox.TextboxView`` with a sample line over the title gradient,
   or ``ui.builtin.title_screen.TitleScreen`` on a ``ui.shell.GameShell`` whose ports are
-  stand-ins (no story, no audio; the title shows New Game, Load, Settings, Quit).
+  stand-ins (no story, no audio; the title shows New Game, Load, Settings, Quit), or a
+  ``stage`` (Stage stills): ``render.stage.StageView`` showing the background and sprites
+  Studio sent, by names Studio resolved to refs or colours (an ``ImageIndex`` of only
+  those), and over it the ``TextboxView`` with the line and the speaker's name in their
+  colour (narration: no name; no text: no box).
 - **Thumbnails**: ``AssetManager.read_image_bytes`` (``GamePaths`` and the engine's header
   size check), decoded from memory, shrunk to fit ``size`` keeping the aspect. Never cached
   here: Studio's ``ThumbCache`` keys them by size and modification time.
@@ -55,6 +60,10 @@ from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES, MB
 from engine.core.editorreport import (
     HELPER_OPS,
     HELPER_REQUEST_MAX,
+    HELPER_STAGE_MAX_IMAGES,
+    HELPER_STAGE_MAX_SPRITES,
+    HELPER_STAGE_NAME_MAX,
+    HELPER_STAGE_TEXT_MAX,
     HELPER_STILL_KINDS,
     HELPER_STILL_MAX_WIDTH,
     HELPER_THUMB_MAX,
@@ -143,12 +152,76 @@ def parse_request(line: bytes) -> dict:
                 or not _int(data.get("width"), 16, HELPER_STILL_MAX_WIDTH) \
                 or type(data.get("overlay", False)) is not bool:
             raise BadRequest("a still request is malformed")
+        if data["kind"] == "stage":
+            data["stage"] = parse_stage(data.get("stage"))
     elif op in ("thumb", "play"):
         if not isinstance(data.get("ref"), str) or not data["ref"]:
             raise BadRequest("a request has no ref")
         if op == "thumb" and not _int(data.get("size"), 8, HELPER_THUMB_MAX):
             raise BadRequest("a thumb request is malformed")
     return data
+
+
+@dataclass(frozen=True)
+class StageRequest:
+    """A ``stage`` still's checked ``stage`` object (``parse_stage``)."""
+
+    bg: str | None = None
+    images: tuple[tuple[str, str], ...] = ()        # (name, ref or "#rrggbb")
+    sprites: tuple[tuple[str, str, object, float, bool], ...] = ()  # tag, image, at, zoom, flip
+    who: str | None = None
+    color: str | None = None
+    text: str | None = None
+
+
+_STAGE_KEYS = frozenset(("bg", "images", "sprites", "who", "color", "text"))
+
+
+def _hex(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 7 and value[0] == "#" \
+        and all(c in "0123456789abcdefABCDEF" for c in value[1:])
+
+
+def _short(value: object, most: int = HELPER_STAGE_NAME_MAX) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= most
+
+
+def _number(value: object) -> bool:
+    return type(value) in (int, float) and -1e6 <= value <= 1e6
+
+
+def parse_stage(obj: object) -> StageRequest:
+    """A ``stage`` still's ``stage`` object → ``StageRequest``: only known keys, at most
+    ``HELPER_STAGE_MAX_IMAGES`` names and ``HELPER_STAGE_MAX_SPRITES`` sprites, every string
+    within its cap, a colour as ``#rrggbb``, ``at`` a position name or one or two numbers,
+    ``zoom`` in 0.01–100. Raises ``BadRequest``."""
+    if not isinstance(obj, dict) or not set(obj) <= _STAGE_KEYS:
+        raise BadRequest("a stage still has no stage")
+    bg, images, sprites = obj.get("bg"), obj.get("images", {}), obj.get("sprites", [])
+    who, color, text = obj.get("who"), obj.get("color"), obj.get("text")
+    if bg is not None and not _short(bg):
+        raise BadRequest("a stage's background is malformed")
+    if not isinstance(images, dict) or len(images) > HELPER_STAGE_MAX_IMAGES \
+            or not all(_short(k) and _short(v) for k, v in images.items()):
+        raise BadRequest("a stage's images are malformed")
+    if not isinstance(sprites, list) or len(sprites) > HELPER_STAGE_MAX_SPRITES:
+        raise BadRequest("a stage's sprites are malformed")
+    out = []
+    for item in sprites:
+        if not isinstance(item, list) or len(item) != 5:
+            raise BadRequest("a stage sprite is malformed")
+        tag, image, at, zoom, flip = item
+        place = at if _short(at) else (tuple(at) if isinstance(at, list) and 1 <= len(at) <= 2
+                                       and all(_number(v) for v in at) else None)
+        if not _short(tag) or not _short(image) or place is None \
+                or not (_number(zoom) and 0.01 <= zoom <= 100) or type(flip) is not bool:
+            raise BadRequest("a stage sprite is malformed")
+        out.append((tag, image, place, float(zoom), flip))
+    if (who is not None and not _short(who)) or (color is not None and not _hex(color)) \
+            or (text is not None and not (isinstance(text, str)
+                                          and len(text) <= HELPER_STAGE_TEXT_MAX)):
+        raise BadRequest("a stage's line is malformed")
+    return StageRequest(bg, tuple(sorted(images.items())), tuple(out), who, color, text)
 
 
 def read_config_overlay(stream: BinaryIO) -> bytes | None:
@@ -221,7 +294,7 @@ class Helper:
         first real request's to report."""
         for kind in HELPER_STILL_KINDS:
             try:
-                self.still(kind, 64, None)
+                self.still(kind, 64, None, StageRequest(text="") if kind == "stage" else None)
             except Exception:
                 pass
 
@@ -234,7 +307,7 @@ class Helper:
         try:
             if op == "still":
                 return self._png(serial, op, self.still(request["kind"], request["width"],
-                                                        overlay))
+                                                        overlay, request.get("stage")))
             if op == "thumb":
                 return self._png(serial, op, self.thumb(request["ref"], request["size"]))
             if op == "play":
@@ -269,8 +342,10 @@ class Helper:
                             scale_filter=config.window.scale_filter, time=GameTime(),
                             format_source=lambda: self.screen)
 
-    def still(self, kind: str, width: int, overlay: bytes | None):
-        """One frame of ``kind`` drawn by the real code at ``width`` × 9/16 px."""
+    def still(self, kind: str, width: int, overlay: bytes | None,
+              stage: "StageRequest | None" = None):
+        """One frame of ``kind`` drawn by the real code at ``width`` × 9/16 px (``stage``:
+        a ``stage`` still's checked request)."""
         import pygame
 
         from engine.core.config import load_config
@@ -293,6 +368,8 @@ class Helper:
                     RenderQuality.FINAL)
         if kind == "textbox":
             draw_textbox_still(canvas, config, assets)
+        elif kind == "stage":
+            draw_stage_still(canvas, config, assets, stage or StageRequest())
         else:
             draw_title_still(canvas, config, assets)
         return frame
@@ -400,11 +477,46 @@ def _image_ref(assets, ref: str | None) -> str | None:
 def draw_textbox_still(canvas, config, assets) -> None:
     """The ADV box as ``TextboxScreen._draw_box`` draws it, with the whole sample line shown
     and the line indicator, over the title's gradient."""
+    from engine.ui.builtin.title_screen import draw_title_gradient
+
+    draw_title_gradient(canvas, config.theme.title)
+    _draw_line_box(canvas, config, assets, SAMPLE_NAME, None, SAMPLE_LINE)
+
+
+def draw_stage_still(canvas, config, assets, stage: StageRequest) -> None:
+    """Stage stills: the stage as ``render.stage.StageView`` composes it in the game (the
+    ``[stage]`` positions and ``art_height``, the empty colour), then the text box with
+    ``stage.text`` (None: no box) and ``stage.who`` in ``stage.color`` (the name tab's colour
+    when None, as ``TextboxScreen`` does)."""
+    from engine.render.stage import StageView
+    from engine.runtime.commands import ShowStage
+    from engine.runtime.images import ImageFile, ImageIndex, SolidColor
+    from engine.runtime.stage import SpriteState, StageState
+
+    images = {name: (SolidColor(_rgb(value)) if _hex(value) else ImageFile(value))
+              for name, value in stage.images}
+    view = StageView(assets, ImageIndex(images), art_height=config.stage.art_height,
+                     positions=config.stage.positions,
+                     empty_color=config.theme.stage.empty_color)
+    sprites = tuple(SpriteState(tag, image, at, 0, zoom, flip)
+                    for tag, image, at, zoom, flip in stage.sprites)
+    view.show(ShowStage(StageState(stage.bg, sprites)))
+    view.draw(canvas)
+    if stage.text is not None:
+        _draw_line_box(canvas, config, assets, stage.who, stage.color, stage.text)
+
+
+def _rgb(value: str) -> tuple[int, int, int]:
+    return int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16)
+
+
+def _draw_line_box(canvas, config, assets, who: str | None, color: str | None,
+                   text: str) -> None:
+    """The ADV box with ``text`` whole and the line indicator; ``who``'s tab in ``color``."""
     from engine.render.text import Face
     from engine.render.textbox import TextboxView, box_geometry, rgb_hex
     from engine.render.textlayout import FaceSource, LayoutContext, LineLayout
     from engine.script.texttags import parse
-    from engine.ui.builtin.title_screen import draw_title_gradient
 
     theme = config.theme.textbox
     faces = _textbox_faces(config, assets)
@@ -417,11 +529,12 @@ def draw_textbox_still(canvas, config, assets) -> None:
                        tab_frame=_image_ref(assets, theme.name_tab.frame_image),
                        line_image=_image_ref(assets, theme.indicator.line_image),
                        page_image=_image_ref(assets, theme.indicator.page_image))
-    draw_title_gradient(canvas, config.theme.title)
     geometry = box_geometry(theme, theme.text_size)
     view.draw_box(canvas, geometry)
-    view.draw_tab(canvas, view.name_tab(SAMPLE_NAME, geometry), theme.name_tab.text_color)
-    body = parse(SAMPLE_LINE, lambda offset: (1, offset + 1), lambda problem: None)
+    if who:
+        view.draw_tab(canvas, view.name_tab(who, geometry),
+                      _rgb(color) if color is not None else theme.name_tab.text_color)
+    body = parse(text, lambda offset: (1, offset + 1), lambda problem: None)
     ctx = LayoutContext(assets, faces, geometry.text_size, rgb_hex(theme.text_color),
                         geometry.area[2], geometry.area[3])
     page = LineLayout(body, ctx).page(0)
@@ -531,6 +644,6 @@ def helper_command(game_dir: Path) -> int:
             pass
 
 
-__all__ = ["BadRequest", "ConfigOverlayPaths", "Helper", "draw_textbox_still",
-           "draw_title_still", "encode_reply", "helper_command", "parse_request",
-           "read_config_overlay"]
+__all__ = ["BadRequest", "ConfigOverlayPaths", "Helper", "StageRequest", "draw_stage_still",
+           "draw_textbox_still", "draw_title_still", "encode_reply", "helper_command",
+           "parse_request", "parse_stage", "read_config_overlay"]

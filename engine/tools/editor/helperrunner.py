@@ -16,7 +16,9 @@ by ``checker.encode_overlay``'s bytes); replies come back in F44's framing
   exits, or a request has no answer after ``HELPER_REPLY_TIMEOUT_S`` (then it is killed),
   every request in flight fails with a reason, and the next request starts a new child.
   Stills waiting behind a dead one and queued thumbnails go to the new child.
-- **Newest wins per kind.** Each still kind (``textbox``, ``title``) is one lane: while one
+- **Newest wins per kind.** Each still kind (``textbox``, ``title``, ``stage``) is one
+  lane (``stage`` stills carry their ``stage`` object; ``stagestills`` sends one at a time
+  so nothing it asks for is dropped): while one
   still is in flight a newer one waits, replacing any older waiting one, and only the newest
   serial's reply is reported. ``play`` and ``stop_sound`` share the sound lane likewise.
 - **Thumbnails** are cached in ``ThumbCache`` by (ref, size, file stamp), LRU 512, failures
@@ -50,6 +52,7 @@ from engine.core.constants import CONFIG_FILENAME
 from engine.core.editorreport import (
     HELPER_EVENTS,
     HELPER_REPLY_TIMEOUT_S,
+    HELPER_REQUEST_MAX,
     HELPER_STILL_KINDS,
     HELPER_STILL_MAX_WIDTH,
     HELPER_THUMB_MAX,
@@ -76,6 +79,7 @@ HELPER_STOPPED = "the helper stopped unexpectedly"
 HELPER_TOO_SLOW = "the helper took too long"
 COULDNT_START = "the helper couldn't start: {reason}"
 CONFIG_TOO_LARGE = "config.toml is too large to preview"
+STAGE_TOO_LARGE = "the stage is too large to preview"
 
 
 # --- Argv and requests (04 §7.3) -------------------------------------------------------------
@@ -218,7 +222,8 @@ class ThumbCache:
 class HelperRunnerLike(Protocol):
     """What Settings, the Database and the form pickers need; Tk tests pass a fake."""
 
-    def still(self, kind: str, width: int, config: bytes | None) -> int: ...
+    def still(self, kind: str, width: int, config: bytes | None,
+              stage: dict | None = None) -> int: ...
 
     def thumb(self, ref: str, size: int, stamp: Hashable = None) -> HelperReply | None: ...
 
@@ -338,18 +343,25 @@ class HelperRunner:
         self._serial += 1
         return self._serial
 
-    def still(self, kind: str, width: int, config: bytes | None) -> int:
+    def still(self, kind: str, width: int, config: bytes | None,
+              stage: dict | None = None) -> int:
         """Ask for a ``kind`` still ``width`` px wide (≤ 640) from ``config`` (the unsaved
-        ``config.toml`` bytes; None: the saved file). Returns its serial; only the newest
-        serial of ``kind`` is ever reported."""
-        if kind not in HELPER_STILL_KINDS:
+        ``config.toml`` bytes; None: the saved file). A ``stage`` still needs ``stage``
+        (``tools/helper.parse_stage``'s shape). Returns its serial; only the newest serial
+        of ``kind`` is ever reported."""
+        if kind not in HELPER_STILL_KINDS or (kind == "stage") != (stage is not None):
             raise ValueError(f"unknown still kind {kind!r}")
         serial = self._next()
         lane = "still:" + kind
         self._latest[lane] = serial
         width = max(16, min(HELPER_STILL_MAX_WIDTH, int(width)))
+        extra = {} if stage is None else {"stage": stage}
         data = request_line("still", serial, kind=kind, width=width,
-                            overlay=config is not None)
+                            overlay=config is not None, **extra)
+        if len(data) - 1 > HELPER_REQUEST_MAX:
+            self._events.append(HelperReply("still", serial, False, kind=kind,
+                                            reason=STAGE_TOO_LARGE))
+            return serial
         if config is not None:
             overlay = encode_overlay([(CONFIG_FILENAME, config)])
             if overlay is None:
