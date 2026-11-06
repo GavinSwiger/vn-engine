@@ -47,13 +47,20 @@ opaque in-game screen (a running minigame). Shown in ADV and NVL. Showing and hi
 whole layer is a cut, as the say window's hide is.
 
 **Motion.** An added item fades in and a removed one fades out over ``corner.fade_ms``
-(linear); under reduced motion both are cuts. Restacking is a cut.
+(linear); under reduced motion both are cuts. Restacking is a cut. ``set_item`` and
+``remove_item`` take ``fade=False`` for a cut (an owner refilling after a load). F62:
+``pulse(key)`` rings the item's panel once in the accent color for ``PULSE_S`` (a meter's
+rank changed); none under reduced motion.
+
+**Sources** (F62): ``add_source(fn)``: ``fn()`` runs at the start of every ``update``, so an
+owner can bring its items in line with the game state each frame (``app/meters.py``).
 
 Colors follow the text box (``CORNER_FOLLOWS``) when unset, so every F49 scheme, imported
 palette, and ``[theme.scheme]`` styles it; W67 checks ``corner.text_color`` and
 ``corner.accent_color`` on the fill (``app/ui_contrast.PAIRS``).
 """
 
+import math
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Final, Protocol
@@ -81,6 +88,8 @@ MIDDLE_Y: Final = CANVAS_H / 2            # a top stack ends by here
 INDICATOR_TOPLEFT: Final = (24, 24)
 INDICATOR_ROW_W: Final = 320
 INDICATOR_ROW_H: Final = 32               # used when there is no quick menu to measure
+PULSE_S: Final = 0.6                      # F62: one rank-change pulse, in seconds
+PULSE_RING: Final = 3                     # its ring, outside the panel, canvas units
 
 # ``[theme.corner]`` tokens that follow another token when unset (W67 resolves them too).
 CORNER_FOLLOWS: Final[Mapping[str, str]] = {
@@ -267,7 +276,7 @@ def reserved_areas(textbox: object, quick_menu: object | None) -> list[Box]:
 # --- The layer -----------------------------------------------------------------------------
 
 class _Entry:
-    __slots__ = ("key", "place", "item", "phase", "t")
+    __slots__ = ("key", "place", "item", "phase", "t", "pulse")
 
     def __init__(self, key: Hashable, place: str, item: CornerItem) -> None:
         self.key = key
@@ -275,6 +284,7 @@ class _Entry:
         self.item = item
         self.phase = "in"           # "in", "shown", "out"
         self.t = 0.0                # seconds into "in" or "out"
+        self.pulse = 0.0            # F62: seconds of pulse left
 
 
 @dataclass(frozen=True)
@@ -285,6 +295,7 @@ class CornerView:
     place: str
     box: Box | None             # None: it doesn't fit
     opacity: float
+    pulse: float = 0.0          # F62: the ring's strength now, 0 to 1
 
 
 class StatusCorner:
@@ -303,6 +314,7 @@ class StatusCorner:
         self._reduce_motion = reduce_motion
         self._entries: list[_Entry] = []
         self._sizes: dict[Hashable, tuple[tuple, tuple[float, float]]] = {}
+        self._sources: list[Callable[[], None]] = []
 
     # -- settings --
 
@@ -328,17 +340,18 @@ class StatusCorner:
 
     # -- API --
 
-    def set_item(self, key: Hashable, place: str, item: CornerItem) -> None:
+    def set_item(self, key: Hashable, place: str, item: CornerItem, *,
+                 fade: bool = True) -> None:
         """Show ``item`` under ``key`` at ``place`` (one of ``CORNER_PLACES``): a new key
-        fades in at the end of that stack; a known key keeps its slot (a new place: the end
-        of that stack) and, if it was fading out, comes back."""
+        fades in at the end of that stack (``fade=False``: at once); a known key keeps its
+        slot (a new place: the end of that stack) and, if it was fading out, comes back."""
         if place not in CORNER_PLACES:
             raise ValueError(f"corner place must be one of {', '.join(CORNER_PLACES)}, "
                              f"not {place!r}")
         found = self._find(key)
         if found is None:
             entry = _Entry(key, place, item)
-            if self._fade_s(self.style) <= 0:
+            if not fade or self._fade_s(self.style) <= 0:
                 entry.phase = "shown"
             self._entries.append(entry)
             return
@@ -350,22 +363,34 @@ class StatusCorner:
             found.item = item
             self._sizes.pop(key, None)
         if found.phase == "out":
-            fade = self._fade_s(self.style)
-            opacity = 1.0 - found.t / fade if fade > 0 else 1.0
-            found.phase, found.t = "in", fade * opacity
+            seconds = self._fade_s(self.style) if fade else 0.0
+            opacity = 1.0 - found.t / seconds if seconds > 0 else 1.0
+            found.phase, found.t = ("in", seconds * opacity) if seconds > 0 else ("shown", 0.0)
 
-    def remove_item(self, key: Hashable) -> None:
-        """Fade the item under ``key`` out (a cut under reduced motion); nothing for an
-        unknown key."""
+    def remove_item(self, key: Hashable, *, fade: bool = True) -> None:
+        """Fade the item under ``key`` out (a cut under reduced motion or with
+        ``fade=False``); nothing for an unknown key."""
         found = self._find(key)
-        if found is None or found.phase == "out":
+        if found is None or (found.phase == "out" and fade):
             return
-        fade = self._fade_s(self.style)
-        if fade <= 0:
+        seconds = self._fade_s(self.style) if fade else 0.0
+        if seconds <= 0:
             self._drop(found)
             return
-        opacity = found.t / fade if found.phase == "in" else 1.0
-        found.phase, found.t = "out", fade * (1.0 - min(1.0, opacity))
+        opacity = found.t / seconds if found.phase == "in" else 1.0
+        found.phase, found.t = "out", seconds * (1.0 - min(1.0, opacity))
+
+    def pulse(self, key: Hashable) -> None:
+        """F62: ring the item under ``key`` once (module docstring, "Motion"); nothing
+        under reduced motion or for an unknown key."""
+        found = self._find(key)
+        if found is None or (self._reduce_motion is not None and self._reduce_motion()):
+            return
+        found.pulse = PULSE_S
+
+    def add_source(self, fn: Callable[[], None]) -> None:
+        """F62: ``fn()`` runs at the start of every ``update`` (module docstring)."""
+        self._sources.append(fn)
 
     def clear(self) -> None:
         """Drop every item at once (the owner's reset)."""
@@ -390,10 +415,15 @@ class StatusCorner:
     # -- per frame --
 
     def update(self, dt: float) -> None:
-        """Advance the fades by ``dt`` seconds; an item faded out leaves its stack."""
+        """Run the sources, then advance the fades and pulses by ``dt`` seconds; an item
+        faded out leaves its stack."""
+        for source in self._sources:
+            source()
         fade = self._fade_s(self.style)
         dt = max(0.0, float(dt))
         for entry in list(self._entries):
+            if entry.pulse > 0:
+                entry.pulse = max(0.0, entry.pulse - dt)
             if entry.phase == "in":
                 entry.t += dt
                 if fade <= 0 or entry.t >= fade - _EPSILON:
@@ -402,6 +432,13 @@ class StatusCorner:
                 entry.t += dt
                 if fade <= 0 or entry.t >= fade - _EPSILON:
                     self._drop(entry)
+
+    @staticmethod
+    def _pulse(entry: _Entry) -> float:
+        """The pulse ring's strength: one smooth rise and fall over ``PULSE_S``."""
+        if entry.pulse <= 0:
+            return 0.0
+        return math.sin(math.pi * (1.0 - entry.pulse / PULSE_S))
 
     def _opacity(self, entry: _Entry, fade: float) -> float:
         if entry.phase == "in":
@@ -439,8 +476,8 @@ class StatusCorner:
         """Every item in stack order with its box and opacity."""
         boxes = self.layout(reserved)
         fade = self._fade_s(self.style)
-        return tuple(CornerView(e.key, e.place, boxes.get(e.key), self._opacity(e, fade))
-                     for e in self._entries)
+        return tuple(CornerView(e.key, e.place, boxes.get(e.key), self._opacity(e, fade),
+                                self._pulse(e)) for e in self._entries)
 
     def overflow(self, reserved: Iterable[Box] = ()) -> tuple[Hashable, ...]:
         """The keys that don't fit their corner now (not drawn)."""
@@ -465,6 +502,14 @@ class StatusCorner:
             if box is None or opacity <= 0.0:
                 continue
             painter.shape(box, style.frame, alpha=opacity)
+            pulse = self._pulse(entry)
+            if pulse > 0.0:                                     # F62: a rank changed
+                frame = style.frame
+                ring = FrameSpec(frame.fill_color, 0.0, style.accent_color, PULSE_RING,
+                                 frame.corner_radius + PULSE_RING)
+                painter.shape(Box(box.x - PULSE_RING, box.y - PULSE_RING,
+                                  box.w + 2 * PULSE_RING, box.h + 2 * PULSE_RING), ring,
+                              alpha=opacity * pulse)
             inner = Box(box.x + style.side_padding, box.y + style.top_padding,
                         box.w - 2 * style.side_padding, box.h - 2 * style.top_padding)
             entry.item.draw(canvas, inner, self._context(style, entry.place, opacity))

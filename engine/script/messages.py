@@ -2921,10 +2921,12 @@ def _e418(form: str = "twice", word: str = "show", arg: object = "hana") -> str:
 
 
 def _w291(name: str = "hanna", suggestion: str | None = "hana") -> str:
-    text = f"[meter.{show_name(name)}] is set up, but no points line declares a meter named "            f"{show_name(name)}, so it is never used."
+    text = (f"[meter.{show_name(name)}] is set up, but no points line declares a meter "
+            f"named {show_name(name)}, so it is never used.")
     if suggestion is not None:
         text += " " + _did_you_mean(suggestion, name)
-    return text
+    return text + (" Rename the table in config.toml to the meter's name, or delete it if "
+                   "the meter is gone.")
 
 
 def _w292(name: str = "hana", look: str = "hearts") -> str:

@@ -109,6 +109,19 @@ ROWS: tuple[StatementDoc, ...] = (
         "hide", "Hide a sprite", "Stage", "hide <tag> [with <transition>]",
         "Removes the sprite with that tag.",
         "hide hana", "hide", "F04", fields=("hana",)),
+    # F62 round 2: positional forms of show and hide (``showmeter.py``), in Logic beside
+    # points; after the sprite rows so a plain show/hide line's help stays the sprite's.
+    StatementDoc(
+        "show", "Show a meter", "Logic", "show meter <name>…",
+        "Puts meters on screen in a corner, as config.toml or the kit says they look. They "
+        "stay, and saves keep them, until hide meter.",
+        "show meter friendship", "show meter, hide meter", "F62", fields=("friendship",),
+        names=("meter",)),
+    StatementDoc(
+        "hide", "Hide a meter", "Logic", "hide meter <name>…",
+        "Takes meters off the screen. They keep their values.",
+        "hide meter friendship", "show meter, hide meter", "F62", fields=("friendship",),
+        names=("meter",)),
     StatementDoc(
         "at", "Position", "Stage", "at <position> | at <x> [<y>]",
         "Where a shown sprite stands: left, center, right, a named position, or numbers.",

@@ -1659,6 +1659,68 @@ label bridge:
 | `points.rank needs a meter with ranks, but hana has none. Add ranks to its points line, e.g. points hana 0 to 10 ranks "Stranger" 0 "Friend" 4 "Close" 8` | Add ranks to that meter, or read `points.hana` instead. (Also while playing, when the name is computed.) |
 | `hana has no rank named "Closee". Did you mean "Close"? Its ranks are "Stranger", "Friend", "Close".` (warning) | Fix the label in the condition. |
 
+### show meter, hide meter
+
+Meters are hidden from the player until the story shows them. `show meter` puts one or more
+in a corner of the screen; `hide meter` takes them away.
+
+```
+points hana 0 to 10 ranks "Stranger" 0 "Friend" 4 "Close" 8
+points sanity 0 to 100 start 100
+
+label bridge:
+    show meter hana sanity
+    points hana += 1 "Hana will remember that."
+    hide meter sanity
+```
+
+- Name one or more meters, separated by spaces. They stack in the order shown.
+- A shown meter stays on screen, across scenes, until `hide meter`. Saves keep which meters
+  are shown, going back restores it, and New Game starts with none.
+- The value updates as `points` lines run. A meter with ranks shows its rank under it,
+  and the panel gives a short pulse when the rank changes (none with Reduce motion).
+- The corner hides with the text box, under menus, and during minigames. In full-screen
+  text (`nvl on`) meters sit beside the text, one row each for the name, the meter and the
+  rank, so keep names short.
+- `meter` is a word here only right after `show` or `hide` with meter names after it.
+  `show meter` alone, or with `at`, `as`, `with` or a number, still shows a picture tagged
+  `meter`, and `meter` stays a valid name for anything.
+
+#### How a shown meter looks: [meter.<name>]
+
+Each meter can have its own table in `config.toml`. Every key is optional:
+
+```toml
+[meter.hana]
+look = "hearts"        # bar, number, hearts, pips, or dial
+place = "top_right"    # top_left, top_right, bottom_left, or bottom_right
+label = "Hana"         # the name shown beside it, up to 30 characters
+
+[meter.sanity]
+look = "dial"
+```
+
+- What a table leaves out comes from the game's kit (`[theme] kit`), then the defaults: a
+  bar at the top left, labelled with the meter's name (`hana_love` shows as "Hana love").
+- **bar**: an outlined bar filled by the meter's share of its range. **number**: the
+  value. **hearts** and **pips**: one mark per point when the range spans 10 or fewer,
+  otherwise 5 to 10 marks that each stand for an equal part. **dial**: an arc with the
+  value beside it.
+- Every look but `number` needs a range on the `points` line; a meter without one is shown
+  as a number.
+- Colors come from `[theme.corner]`, so color schemes and kits style meters too: text in
+  `text_color`, marks in `accent_color`.
+
+| Message | Fix |
+|---|---|
+| `show meter takes meter names separated by spaces, but found "hana,". Write e.g. show meter hana sanity` | Remove commas and quotes: `show meter hana sanity`. |
+| `hide meter takes only meter names, but found "with". A meter comes and goes on its own; write e.g. hide meter hana sanity` | Remove `with …`. |
+| `show meter names hana twice; name each meter once.` / `show meter can name at most 8 meters on one line. Split it over two lines.` | Name each meter once, at most 8 per line. |
+| `there is no meter named "hanna". Did you mean "hana"? …` | Fix the spelling, or declare the meter with a `points` line. |
+| `[meter.hanna] is set up, but no points line declares a meter named hanna, so it is never used. Did you mean "hana"? …` (warning) | Rename the table to the meter's name, or delete it if the meter is gone (renaming or deleting a meter leaves its table behind). |
+| `hana is shown as hearts, which needs a range, but its points line has none, so it is shown as a number. …` (warning) | Give the meter a range, e.g. `points hana 0 to 10`, or set `look = "number"`. |
+| `this shows the picture "meter hana", not the meter. A meter takes no at, as or with: write show meter hana` (warning) | Remove `at`, `as` or `with`. |
+
 ---
 
 ## 10. Random numbers
@@ -3321,9 +3383,9 @@ The 40 words above are the last ones reserved. Every word the language adds from
 a **positional word**: it means something only in its own place, and everywhere else it is
 an ordinary name. So a game written today never breaks when a later version adds a word.
 
-- **A word inside a statement** (like `tip`, `item`, `gallery`, `ranks`) is that word only
-  right where the statement expects it, and usually only when what it needs follows (for
-  `ranks`, a quoted label). Anywhere else it is a name: `points ranks 0 to 10` declares a
+- **A word inside a statement** (like `tip`, `item`, `gallery`, `ranks`, `meter`) is that
+  word only right where the statement expects it, and usually only when what it needs
+  follows (for `ranks`, a quoted label; for `meter`, meter names after `show` or `hide`). Anywhere else it is a name: `points ranks 0 to 10` declares a
   meter called `ranks`.
 - **A new statement word** is that statement only at the start of its own line. A line
   that starts with the word and then a quote, like `event "Wait for me!"`, stays dialogue

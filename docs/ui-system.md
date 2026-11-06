@@ -1142,6 +1142,32 @@ Full spec: specs/F61-status-corner/SPEC.md. Module: `engine/ui/statuscorner.py`.
 - **Contrast.** W67 checks `corner.text_color` (4.5:1) and `corner.accent_color` (3:1) on the
   fill at `corner.fill_opacity`, over black and white, once the author sets a corner color
   or the opacity; every built-in scheme meets both at the default 0.90.
+- **Pulse (F62).** `pulse(key)` rings an item's panel once in `corner.accent_color`, 3 units
+  outside it, rising and falling over 0.6 s; none under reduced motion.
+
+### Shown meters (F62)
+
+Spec: specs/F62-visible-meters/SPEC.md "Round 2". Modules: `engine/ui/meteritem.py` (the
+item), `engine/app/meters.py` (keeps the corner in line with the story's shown list),
+`engine/render/meter_marks.py` (hearts, pips, arcs).
+
+- **Rows.** First row: the label, then the gauge, centered in a row as tall as a text line
+  or the gauge. A meter with ranks adds a row with its rank, kept (empty) below the first
+  rank so the panel never jumps. In NVL (`nvl on`) the item takes a column as wide as the
+  space beside the NVL text (132 units at the defaults): label, gauge, rank on their own
+  rows, a bar or row of marks shrunk to fit.
+- **Looks** (`s` = corner text size after the player's scale). `bar`: 6`s` × 0.7`s`, a
+  `s`/12 outline and a fill inset by two outlines. `number`: the value (thousands
+  separated). `hearts`: 0.9`s` marks, 1.05`s` apart; `pips`: 0.6`s` circles, 0.85`s` apart;
+  one per point up to a range of 10, else 5–10 marks of equal worth, the one in progress
+  partly filled from the left; empty marks are `s`/12 outlines. `dial`: a 2`s` circle, a
+  270° arc from bottom left, a thin track and a thick fill, the value beside it. A meter
+  with no range is drawn as a number.
+- **Colors.** Text in `corner.text_color`; every mark, outline and fill in
+  `corner.accent_color`. No separate track color: empty parts are accent outlines, so the
+  corner's two W67 pairs cover meters in every scheme.
+- **Motion.** Shown and hidden meters fade with the corner; values change at once; a rank
+  change pulses the panel. After a load or New Game the meters reappear at once (a cut).
 
 ## Changelog
 
@@ -1282,3 +1308,5 @@ Full spec: specs/F61-status-corner/SPEC.md. Module: `engine/ui/statuscorner.py`.
   kit sets, and the meter look order (`[meter.<name>]` > kit > defaults).
 - 2026-11-06: F61 (builder): the status corner: its region, `corner.*` tokens, and §9
   "Status corner" (layout, layer, visibility, motion, W67).
+- 2026-11-06: F62 round 2 (builder): §9 "Shown meters" (rows, the five looks, the NVL
+  column, colors, motion) and the corner's rank-change pulse.

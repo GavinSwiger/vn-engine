@@ -119,6 +119,7 @@ from engine.app.looks import install_looks
 from engine.app.menus import install_ui
 from engine.app.minigames import install_minigames
 from engine.app.musicroom import install_music_room
+from engine.app.meters import install_meters
 from engine.app.points import install_points
 from engine.app.replays import install_replays
 from engine.app.rollback import install_rollback
@@ -496,6 +497,7 @@ def install_story(app: "App", interp: Interpreter, *, fixed_seed: int | None,
     install_rollback(app)                                    # F14 (A6): after F11, before F15
     install_skip_auto(app)                                   # F15: App.skip_auto
     install_nvl(app)                                         # F17 (I-7): reset after F15's
+    install_meters(app, interp)                              # F62: shown meters, corner
     install_fourthwall(app)                                  # F30: title bar, fake crash
     install_codex(app, interp, images)                       # F21 (I-11): notices, Codex
     install_minigames(app, interp, images)                   # F23 s4: after F21, before F16
