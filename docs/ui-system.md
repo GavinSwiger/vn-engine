@@ -1287,11 +1287,16 @@ Plan: specs/skins-contract.md "Phases 2-4" and proposal I-09 "Chats you can rere
   | Look | Drawn as |
   |---|---|
   | phone | Bubbles (radius 14, 12 padding, at most 76 % of the width): the contact's on the left in `button.focused.fill_color` with `button.text_color`; the player's on the right in the accent (`button.marker.fill_color`) with the panel's fill as text. The line above and dividers centred. |
-  | letters | A paper card (the panel's fill moved toward parchment, radius 6, `panel.border_color`, a 3-unit shadow); the line above centred over a 96-unit rule with a dot in the accent; the signature right-aligned. |
-  | pigeon | A smaller kraft note (30 in from each side), a twine line down its right side and a wax seal (26) in the accent with ribbon tails. |
+  | letters | A paper card (the panel's fill moved toward parchment, radius 6, `panel.border_color`, a 3-unit shadow); the line above centred over a 96-unit rule with a dot in the accent; the signature right-aligned. The line above and the signature in the bundled Noto Serif Italic. |
+  | pigeon | A smaller kraft note (30 in from each side), a twine line down its right side and a wax seal (26) in the accent with ribbon tails. The line above and the signature in Noto Serif Italic, as for letters. |
   | radio | No card: "[signal]" right of the line above, a rule of static (2-unit ticks every 4, heights 1 to 7) under it, a 2-unit margin line beside the messages. |
-  | terminal | A dark screen (the darker of panel text and fill, halved toward black; 2-unit border), green text (the lighter one mixed toward phosphor green) in fixed cells 0.58 × the text size, a block cursor after the last line that blinks every 0.55 s. |
-  | mind | No frame: the words in italics, centred under the line above, in five nested hazes of the accent (5 % to 3.5 %) that breathe slowly. |
+  | terminal | A dark screen (the darker of panel text and fill, halved toward black; 2-unit border), green text (the lighter one mixed toward phosphor green) in the bundled Noto Sans Mono, in fixed cells 0.6 × the text size (its advance), a block cursor after the last line that blinks every 0.55 s. |
+  | mind | No frame: the words in italics, centred under the line above, in five nested hazes of the accent (5 % to 3.5 %) that breathe slowly. Its arrival notice's text is in italics too. |
+
+  The serif and mono faces (`Face.SERIF`, `SERIF_ITALIC`, `MONO`; `engine/data/fonts`,
+  OFL) stand in only for the bundled Noto Sans: with an author `text_font` the looks use
+  the game's faces, so its characters still show (a mind notice's italics are then
+  slanted by pygame).
 
 - **Colors and motion.** Every look's colors come from the theme tokens above
   (`core/devicelooks.device_palette`), so the scheme dresses them all. Each text color is

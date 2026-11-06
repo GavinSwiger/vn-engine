@@ -109,7 +109,8 @@ class FaceSet:
         return self.faces[face_for(bold, italic)]
 
 
-BUNDLED_FACES: Final = FaceSet({face: FaceSource(None, face) for face in Face})
+BUNDLED_FACES: Final = FaceSet({face: FaceSource(None, face) for face in (
+    Face.REGULAR, Face.BOLD, Face.ITALIC, Face.BOLD_ITALIC)})
 
 
 # --- Context and output -------------------------------------------------------------------------

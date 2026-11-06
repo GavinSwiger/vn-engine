@@ -78,12 +78,18 @@ BUNDLED_NAMES: dict[Face, str] = {
     Face.BOLD: "<default-bold>",
     Face.ITALIC: "<default-italic>",
     Face.BOLD_ITALIC: "<default-bold-italic>",
+    Face.MONO: "<default-mono>",                   # F65 round 3: the device looks' faces
+    Face.SERIF: "<default-serif>",
+    Face.SERIF_ITALIC: "<default-serif-italic>",
 }
 BUNDLED_FILES: dict[Face, str] = {
     Face.REGULAR: DEFAULT_FONT_FILE,
     Face.BOLD: "fonts/NotoSans-Bold.ttf",
     Face.ITALIC: "fonts/NotoSans-Italic.ttf",
     Face.BOLD_ITALIC: "fonts/NotoSans-BoldItalic.ttf",
+    Face.MONO: "fonts/NotoSansMono-Regular.ttf",
+    Face.SERIF: "fonts/NotoSerif-Regular.ttf",
+    Face.SERIF_ITALIC: "fonts/NotoSerif-Italic.ttf",
 }
 _BUNDLED_BY_NAME: dict[str, Face] = {name: face for face, name in BUNDLED_NAMES.items()}
 

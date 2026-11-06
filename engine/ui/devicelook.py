@@ -13,8 +13,8 @@ scheme dresses every look and its text stays readable; the shapes are drawn here
 - ``notice_skin(cfg, look)``: the arrival notice's ``notice.NoticeSkin``: the same panel,
   layout and text as any notice, in the look's colors, with its marks: a phone's bubble and
   tail, a letter's stamp, a pigeon's ribbon and wax seal, a radio's static rule, a
-  terminal's screen and cursor block, a thought's soft glow and no border. Nothing in a
-  notice moves.
+  terminal's screen and cursor block, a thought's soft glow and no border (and its text in
+  italics, ``italic``). Nothing in a notice moves.
 - ``static_rule``, ``seal`` and ``cursor``: the marks, shared with the Inbox
   (``builtin/inbox_view``). ``static_rule``'s ``frame`` picks the noise; under reduced
   motion the callers pass 0, so it holds still.
@@ -124,6 +124,11 @@ class DeviceNoticeSkin:
     @property
     def text_color(self) -> RGB:
         return rgb(self.colors.text)
+
+    @property
+    def italic(self) -> bool:
+        """A thought's notice reads in italics, as it does in the Inbox."""
+        return self.look == "mind"
 
     def frame(self, base: FrameSpec) -> FrameSpec:
         c, look = self.colors, self.look

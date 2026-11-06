@@ -20,11 +20,16 @@ ELLIPSIS = "…"
 
 class Face(Enum):
     """A bundled Noto Sans face (ADR-0004 and its F05 amendment). Defined here so
-    ``FontSpec`` can name one; ``engine.render.assets`` re-exports it."""
+    ``FontSpec`` can name one; ``engine.render.assets`` re-exports it. F65 round 3 adds the
+    device looks' own faces: Noto Sans Mono (the terminal) and Noto Serif Regular and
+    Italic (letter and pigeon headings and signatures); text styles never pick them."""
     REGULAR = "regular"
     BOLD = "bold"
     ITALIC = "italic"
     BOLD_ITALIC = "bold-italic"
+    MONO = "mono"
+    SERIF = "serif"
+    SERIF_ITALIC = "serif-italic"
 
 
 class Synth(Enum):

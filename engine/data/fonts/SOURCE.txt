@@ -20,5 +20,29 @@ File: NotoSans-BoldItalic.ttf
 SHA-256: 1b602a9d6353be42c91df097a4857b69fa2696f26703d7a33b54a15d87c2622c
 
 OFL.txt is the OFL.txt file from the same release archive, unchanged.
+
+Family: Noto Sans Mono (static, hinted TrueType): Regular (F65: the terminal device look)
+License: SIL Open Font License 1.1 (the release's OFL.txt is identical to OFL.txt here)
+Release version: NotoSansMono-v2.014 (notofonts/latin-greek-cyrillic, published 2023-09-30)
+Source URL: https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSansMono-v2.014/NotoSansMono-v2.014.zip
+Release archive SHA-256: 090cf6c5e03f337a755630ca888b1fef463e64ae7b33ee134e9309c05f978732
+Path in the release archive: NotoSansMono/hinted/ttf/<file name below>
+
+File: NotoSansMono-Regular.ttf
+SHA-256: 65b5e2b2c4a1fba9ae8be1f026cb35b03dcb8886d9b2a4147054fde12f7e767d
+
+Family: Noto Serif (static, hinted TrueType): Regular, Italic (F65: letter and pigeon headings
+and signatures)
+License: SIL Open Font License 1.1 (the release's OFL.txt is identical to OFL.txt here)
+Release version: NotoSerif-v2.015 (notofonts/latin-greek-cyrillic, published 2024-11-20)
+Source URL: https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSerif-v2.015/NotoSerif-v2.015.zip
+Release archive SHA-256: 0e9a43c8a4b94ac76f55069ed1d7385bbcaf6b99527a94deb5619e032b7e76c1
+Path in the release archive: NotoSerif/hinted/ttf/<file name below>
+
+File: NotoSerif-Regular.ttf
+SHA-256: 19e72cd8d595fae5bd74a5206f5d938512e1183d4fed7abb1ec1be1d7efa5f88
+
+File: NotoSerif-Italic.ttf
+SHA-256: 749e80e313ef711f9373c6cce17c72297ef05490b3dcda7967d1d5d90bf1183f
 tests/test_supply_chain.py checks that the SHA-256 of each file equals the "SHA-256:" line
 after its "File:" line, and fails if a font file in this folder has no "File:" entry.

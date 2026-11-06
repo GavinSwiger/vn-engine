@@ -16,9 +16,14 @@ reader and a test read the same words); this view only places and dresses it:
 - **radio**: a transcript with no card: the heading line, "[signal]" at the right, a rule
   of static under them, and a margin line beside the messages.
 - **terminal**: a dark screen per delivery in the scheme's darkest text-or-fill color,
-  green text drawn in fixed-width cells, and a block cursor after the last line.
+  green text drawn in fixed-width cells in the bundled Noto Sans Mono, and a block cursor
+  after the last line.
 - **mind**: no frame. The text in italics (the port sets the style), centred in a soft
   glow.
+
+A letter's and a pigeon note's heading line and signature are set in the bundled Noto Serif
+(Italic). Both bundled faces stand in only for the bundled Noto Sans: a game with its own
+text font keeps it everywhere (``_own_font``), so its characters still show.
 
 The colors come from ``ui/devicelook.palette`` (``core/devicelooks``), checked for every
 scheme. Under reduced motion (``ui.reduce_motion``) the static and the cursor hold still.
@@ -36,7 +41,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
 from engine.render.frames import FrameSpec
-from engine.render.textlayout import LayoutContext, LineLayout
+from engine.render.text import Face, FontSpec
+from engine.render.textlayout import FaceSet, FaceSource, LayoutContext, LineLayout
 from engine.ui.builtin.codex_page import (
     BODY_LAYOUT_CACHE,
     LAZY_ESTIMATE,
@@ -49,7 +55,7 @@ from engine.ui.devicelook import cursor, palette, rgb, seal, static_rule
 from engine.ui.focus import Box
 from engine.ui.layouts import pitch, scaled
 from engine.ui.widgets import clipped
-from engine.ui.theme import font_spec
+from engine.ui.theme import font_spec, measure_with
 
 if TYPE_CHECKING:
     from engine.core.devicelooks import DevicePalette
@@ -59,7 +65,13 @@ if TYPE_CHECKING:
 GAP_IN: Final = 8                     # between paragraphs of one delivery
 GAP_OUT: Final = 28                   # after a delivery's last paragraph
 SIGNAL: Final = "[signal]"
-CELL: Final = 0.58                    # a terminal cell, × the text size
+CELL: Final = 0.6                     # a terminal cell, × the text size (Noto Sans Mono's)
+SERIF_FACES: Final = FaceSet({Face.REGULAR: FaceSource(None, Face.SERIF),
+                              Face.BOLD: FaceSource(None, Face.SERIF),
+                              Face.ITALIC: FaceSource(None, Face.SERIF_ITALIC),
+                              Face.BOLD_ITALIC: FaceSource(None, Face.SERIF_ITALIC)})
+SERIF_LOOKS: Final = ("letters", "pigeon")
+SERIF_ROLES: Final = ("via", "sign")
 BLINK_S: Final = 0.55
 CARD_INSET: Final = {"letters": 14.0, "pigeon": 30.0, "terminal": 12.0, "mind": 26.0}
 
@@ -107,7 +119,7 @@ class _InboxBody(_Body):
 
     specs: tuple[_Spec, ...] = ()
     looks: tuple[ParaLook, ...] = ()
-    contexts: dict[float, Any] = field(default_factory=dict)
+    contexts: dict[tuple[float, bool], Any] = field(default_factory=dict)
 
     def gap(self, index: int) -> int:
         base = round(self.specs[index].gap) if index < len(self.pages) - 1 else 0
@@ -172,6 +184,21 @@ class InboxView(CodexView):
         self.clock += dt
         super().update(dt)
 
+    def _own_font(self) -> bool:
+        """The game sets its own text font (the device looks keep it then)."""
+        faces = getattr(self.ui.theme, "faces", None)
+        return faces is not None and any(src.ref is not None
+                                         for src in faces.faces.values())
+
+    def _serif(self, look: ParaLook) -> bool:
+        return (look.look in SERIF_LOOKS and look.role in SERIF_ROLES
+                and not self._own_font())
+
+    def _mono_font(self, size: int, bold: bool = False) -> FontSpec:
+        if self._own_font():
+            return self.ui.theme.font(size, bold=bold)
+        return FontSpec(None, size, Face.MONO)
+
     # -- layout --
 
     def _looks(self, entry: "CodexEntry") -> tuple[ParaLook, ...] | None:
@@ -208,11 +235,12 @@ class InboxView(CodexView):
                 del layouts[next(iter(layouts))]
         return found
 
-    def _context(self, body: _InboxBody, width: float) -> Any:
-        found = body.contexts.get(width)
+    def _context(self, body: _InboxBody, width: float, serif: bool = False) -> Any:
+        found = body.contexts.get((width, serif))
         if found is None:
             ctx = body.ctx
-            found = body.contexts[width] = dataclasses.replace(ctx, width=width)
+            found = body.contexts[(width, serif)] = dataclasses.replace(
+                ctx, width=width, **({"faces": SERIF_FACES} if serif else {}))
         return found
 
     def _mono(self, body: _InboxBody, index: int, width: float) -> _MonoPage:
@@ -243,7 +271,9 @@ class InboxView(CodexView):
         if spec.mono:
             page: Any = self._mono(body, index, width)
         else:
-            page = LineLayout(body.paragraphs[index], self._context(body, width)).page(0)
+            page = LineLayout(body.paragraphs[index],
+                              self._context(body, width, self._serif(body.looks[index]))
+                              ).page(0)
         self.layouts_made += 1
         scroll = self.body
         first = scroll.visible_range().start if self.body_rows else 0
@@ -319,8 +349,9 @@ class InboxView(CodexView):
                    size: int, look: ParaLook, c: "DevicePalette") -> None:
         canvas = p.canvas
         cell = CELL * size
-        regular = self.ui.theme.font(size)
-        bold = self.ui.theme.font(size, bold=True)
+        regular = self._mono_font(size)
+        bold = self._mono_font(size, bold=True)
+        measure = measure_with(self.ui.assets, regular)
         if look.role in ("via", "time"):
             color = rgb(c.heading)
         y = y0
@@ -329,7 +360,7 @@ class InboxView(CodexView):
             for i, (ch, strong) in enumerate(line.cells):
                 if ch != " ":
                     font = bold if strong else regular
-                    w = self._measure(ch, size)
+                    w = measure(ch, size)
                     canvas.draw_text(ch, font, color, (x0 + i * cell + (cell - w) / 2,
                                                        y + (line.pitch - size * 1.36) / 2))
             end = (x0 + len(line.cells) * cell, y)

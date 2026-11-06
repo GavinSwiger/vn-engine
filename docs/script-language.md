@@ -1696,14 +1696,18 @@ can come in any order after the contact. The player sees:
 (every color scheme keeps the text readable):
 
 - **phone**: chat bubbles, the contact's on the left and the player's on the right.
-- **letters**: a paper card, the line above it centred, signed at the bottom right.
-- **pigeon**: a smaller note tied with twine, with a wax seal.
+- **letters**: a paper card, the line above it centred, signed at the bottom right; the
+  line above and the signature are in a serif italic.
+- **pigeon**: a smaller note tied with twine, with a wax seal, headed and signed like a
+  letter.
 - **radio**: a transcript with "[signal]" and a line of static under the heading.
-- **terminal**: green text on a dark screen, in even columns, with a block cursor.
+- **terminal**: green text on a dark screen, in a monospaced font, with a block cursor.
 - **mind**: no frame, the words in italics in a soft glow.
 
 The arrival notice wears the same look (a phone's bubble, a letter's stamp, a pigeon's
-seal, static, a green screen, a glow). With **Reduce motion** on, the static, the cursor
+seal, static, a green screen, a glow, a thought's words in italics). The serif and
+monospaced fonts come with the engine (Noto Serif, Noto Sans Mono); a game that sets its
+own `[theme.textbox] text_font` keeps that font in every look instead. With **Reduce motion** on, the static, the cursor
 and the glow stay still.
 
 `[device.<look>]` in config.toml changes how a look words and sounds a message. Every key

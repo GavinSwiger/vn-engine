@@ -99,7 +99,8 @@ W45_BOLD = ("config.toml: [theme.textbox] text_font is set but bold_font isn't, 
             "is made by thickening your font. Add bold_font for a real bold face.")
 W45_ITALIC = ("config.toml: [theme.textbox] text_font is set but italic_font isn't, so italic "
               "text is made by slanting your font. Add italic_font for a real italic face.")
-BUNDLED = {f: FaceSource(None, f) for f in Face}
+BUNDLED = {f: FaceSource(None, f)
+           for f in (Face.REGULAR, Face.BOLD, Face.ITALIC, Face.BOLD_ITALIC)}
 
 
 @pytest.mark.parametrize("config, warnings, faces", [

@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Final, Literal, Protocol
 
 from engine.core.graphemes import graphemes
 from engine.render.frames import FrameSpec
-from engine.render.text import FontSpec
+from engine.render.text import Face, FontSpec, Synth
 from engine.render.textlayout import REPLACEMENT, render_safe
 from engine.ui.focus import Box
 from engine.ui.layouts import Measure, fit_message, pitch, scaled
@@ -236,7 +236,9 @@ class NoticeView:
 
 
 class NoticeSkin(Protocol):
-    """F65 round 3: a look for one notice (module docstring)."""
+    """F65 round 3: a look for one notice (module docstring). A skin may also have
+    ``italic`` (True: the text in italics: the bundled Italic face, or the game's own font
+    slanted)."""
 
     text_color: RGB
 
@@ -537,6 +539,9 @@ class NoticeLayer:
                 else:
                     draw_fitted(canvas, notice.icon, icon, opacity)
             font = replace(style.font, size=panel.size)
+            if getattr(skin, "italic", False):
+                font = (replace(font, bundled=Face.ITALIC) if font.ref is None
+                        else replace(font, synth=Synth.ITALIC))
             top = box.y + panel.text_y
             for index, line in enumerate(panel.lines):
                 if line:
