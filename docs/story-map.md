@@ -50,7 +50,15 @@ The basics of the map (box marks, arrow styles, the Outline) are in
 Click a box to open the scene beside the map. Above it, **OPENING SHOT** sketches what the
 player sees first: the background and the characters on their positions, before the first
 line of text. A scene with no `scene` line shows the background it carries on with, and
-names the scene that set it. The side pane has two tabs, **Events** and **Script** (the text
+names the scene that set it.
+
+Choose an Events row, or put the Script cursor on a line, and the picture becomes **AT LINE
+42**: the stage at that moment, with the text box showing the line in the speaker's colour.
+Up and Down flip through the scene like a storyboard. Studio draws it at once and labels it
+*sketch*; after a moment at rest the game's own picture replaces it. Above a choice or `if`,
+Studio follows the first way that reaches the line, and says so under the picture.
+
+The side pane has two tabs, **Events** and **Script** (the text
 itself); Ctrl+E switches between them. Events lists what happens in the
 scene, one row per line: *Say*, *Show character*, *Background*, *Choice* and so on. A line
 Studio has no form for shows as a **Script** row with its text; `$ pass` shows as `(nothing)`.
