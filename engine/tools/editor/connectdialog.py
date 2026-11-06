@@ -41,6 +41,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 from typing import Any
 
+from engine.core.childcmd import server_prefix
 from engine.core.paths import engine_root, slugify
 from engine.tools.editor import dialogs
 from engine.tools.editor.theme import THEME, dark_title_bar, scale_of
@@ -81,6 +82,7 @@ SETUP_TIMEOUT_S = 60
 CLOSE = "Close"
 SERVER_PREFIX = "vn-"
 READ_ONLY = "--read-only"
+SERVER_FLAGS = ("-P",)                 # the dev server's interpreter flag (no unsafe path)
 
 # --- Look (px at 100 %) -----------------------------------------------------------------------
 
@@ -120,7 +122,7 @@ def quoted(text: str, *, windows: bool | None = None) -> str:
 
 def server_args(game: Path, *, write: bool = True) -> list[str]:
     """The server's arguments after the interpreter."""
-    args = ["-P", "-m", "engine", "assist-mcp", str(game)]
+    args = [*server_prefix(SERVER_FLAGS), "assist-mcp", str(game)]
     return args if write else [*args, READ_ONLY]
 
 
@@ -149,16 +151,17 @@ def snippets(python: Path | str, engine: Path | str, game: Path | str, *,
     python, engine, game = str(python), str(engine), Path(game)
     name = server_name(game)
     flag = "" if write else f" {READ_ONLY}"
+    prefix = " ".join(server_prefix(SERVER_FLAGS))
     # PowerShell drops a bare -- before claude sees it, and claude then reads -P as its own
     # option; a quoted "--" reaches claude from PowerShell and cmd alike.
     dashes = quoted("--", windows=True) if (os.name == "nt" if windows is None else windows) \
         else "--"
     claude_code = (f"claude mcp add --scope user {name} -e PYTHONPATH={quoted(engine, windows=windows)} "
-                   f"{dashes} {quoted(python, windows=windows)} -P -m engine assist-mcp "
+                   f"{dashes} {quoted(python, windows=windows)} {prefix} assist-mcp "
                    f"{quoted(str(game), windows=windows)}{flag}")
     desktop = desktop_config(name, python, server_args(game, write=write), engine)
     other = (f"Command: {python}\n"
-             f"Arguments: -P -m engine assist-mcp {quoted(str(game), windows=windows)}{flag}\n"
+             f"Arguments: {prefix} assist-mcp {quoted(str(game), windows=windows)}{flag}\n"
              f"Environment: PYTHONPATH={engine}")
     return Snippets(name, claude_code, desktop, other)
 

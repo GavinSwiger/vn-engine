@@ -9,6 +9,8 @@ players can run (F42, dev runs only); ``engine.tools.build`` is imported only in
 thing in a game (F41, dev runs only).
 ``python -m engine assist-mcp [GAME_DIR] [--read-only] [--no-launch]``: the assistant's MCP
 server for AI apps, over stdin and stdout (F48, dev runs only).
+``vn-engine Studio.exe`` (the Studio app, ``studio.py``) runs ``studio_app_main``: its
+``--child COMMAND …`` is ``python -m engine COMMAND …`` for an app with no Python installed.
 ``run`` in a dev run gets the developer console (F40): ``engine.tools.console`` is imported
 only inside ``_console``, which the bootstrap calls once with the App.
 
@@ -77,9 +79,35 @@ def _console(app):
     return install_console(app)
 
 
+def main(argv):
+    """``python -m engine …`` with every handler: what ``python -m engine`` runs, and what
+    the Studio app runs for ``--child``."""
+    from engine.app import cli
+    return cli.main(argv, editor=_edit, checker=_check,
+                    helper=_helper, builder=_build, linter=_lint,
+                    console=_console, assist_mcp=_assist_mcp)
+
+
+# The Studio app's hidden child mode; equals ``engine.core.childcmd.CHILD_SWITCH``.
+CHILD_SWITCH = "--child"
+
+
+def studio_app_main(argv):
+    """``vn-engine Studio.exe`` (``studio.py``, the Studio app's entry): ``--child COMMAND
+    …`` is ``python -m engine COMMAND …`` (Studio's own children: Play, the check job, the
+    helper, Build game, a new Studio window); anything else opens Studio on a game folder
+    (the one given, else the last game or Paper Lanterns in Documents/vn-engine). Only the
+    Studio app (an editor build) gets past ``cli.editor_prelude``: a built game, or this
+    function in a dev run, exits 2."""
+    from engine.app import cli
+    if not cli.editor_prelude():
+        return 2
+    if argv[:1] == [CHILD_SWITCH]:
+        return main(argv[1:])
+    from engine.tools.editor.gamesfolder import studio_app_start
+    return studio_app_start(argv, edit=_edit)
+
+
 if __name__ == "__main__":
     _bootcheck.check_python()
-    from engine.app import cli
-    sys.exit(cli.main(sys.argv[1:], editor=_edit, checker=_check,
-                      helper=_helper, builder=_build, linter=_lint,
-                      console=_console, assist_mcp=_assist_mcp))
+    sys.exit(main(sys.argv[1:]))

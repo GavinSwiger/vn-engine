@@ -39,7 +39,6 @@ import math
 import os
 import queue
 import subprocess
-import sys
 import threading
 import time
 from collections import OrderedDict, deque
@@ -48,6 +47,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from engine.core.childcmd import engine_argv
 from engine.core.constants import CONFIG_FILENAME
 from engine.core.editorreport import (
     HELPER_EVENTS,
@@ -86,7 +86,7 @@ STAGE_TOO_LARGE = "the stage is too large to preview"
 
 def helper_argv(game_dir: Path) -> list[str]:
     """The helper child's command line."""
-    return [sys.executable, "-B", "-m", "engine", "helper", str(game_dir)]
+    return engine_argv("helper", str(game_dir), python_flags=("-B",))
 
 
 def request_line(op: str, serial: int, **fields: object) -> bytes:

@@ -31,13 +31,13 @@ package.
 """
 
 import os
-import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from engine.core.childcmd import engine_argv
 from engine.core.constants import CONFIG_FILENAME
 from engine.core.errors import EngineError
 from engine.core.imageheader import image_dimensions
@@ -237,9 +237,9 @@ def config_plan(text: str, fields: BuildFields) -> ConfigPlan | Refuse | None:
 
 def build_argv(game_root: Path, save_to: Path, *, zip: bool, replace: bool) -> list[str]:
     """The build child's command line (``procs.spawn`` starts it)."""
-    return [sys.executable, "-E", "-B", "-m", "engine", "build", str(game_root),
-            "--out", str(save_to), *(["--zip"] if zip else []),
-            *(["--replace"] if replace else []), "--report-to-editor"]
+    return engine_argv("build", str(game_root), "--out", str(save_to),
+                       *(["--zip"] if zip else []), *(["--replace"] if replace else []),
+                       "--report-to-editor", python_flags=("-E", "-B"))
 
 
 def replace_question(save_to: Path, folder: str, *, with_zip: bool) -> str | None:

@@ -36,7 +36,6 @@ import os
 import queue
 import re
 import subprocess
-import sys
 import threading
 import time
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -45,6 +44,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, Protocol
 
+from engine.core.childcmd import engine_argv
 from engine.core.constants import CONFIG_FILENAME, CONFIG_MAX_BYTES
 from engine.core.editorreport import (
     CHECK_CODE_MAX_CHARS,
@@ -151,8 +151,9 @@ class ReachRow:
 def check_argv(game_dir: Path, *, overlay: bool = True, launch: bool = True) -> list[str]:
     """The check child's command line. ``--stdin-overlay`` only when an overlay is sent
     (stdin is a pipe), ``--no-launch`` until the window is armed (07 I-1, I-2)."""
-    return [sys.executable, "-B", "-m", "engine", "check", str(game_dir), "--report-to-editor",
-            *(["--stdin-overlay"] if overlay else []), *([] if launch else ["--no-launch"])]
+    return engine_argv("check", str(game_dir), "--report-to-editor",
+                       *(["--stdin-overlay"] if overlay else []),
+                       *([] if launch else ["--no-launch"]), python_flags=("-B",))
 
 
 def encode_overlay(files: Sequence[tuple[str, bytes]],

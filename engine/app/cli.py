@@ -95,7 +95,7 @@ from pathlib import Path
 from engine import _bootcheck
 from engine.core import safefile
 from engine.core.constants import PLAYTHROUGH_MAX
-from engine.core.paths import engine_root, is_frozen, launcher_game_dir
+from engine.core.paths import engine_root, is_editor_build, is_frozen, launcher_game_dir
 from engine.core.startvalues import StartOptions, parse_set_list
 
 LOG_LEVELS = ("debug", "info", "warning", "error")
@@ -236,12 +236,7 @@ def _frozen_prelude() -> int | None:
     folder, ``game/`` or the CWD. (3) No ``__pycache__`` is written. (4) A missing
     ``<exe folder>/game`` shows ``GAME_FOLDER_MISSING`` in the native error box; the answer
     is then 1 (else None)."""
-    for name in ("stdout", "stderr"):
-        if getattr(sys, name) is None:
-            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))   # noqa: SIM115
-    bundle = os.path.normcase(os.path.abspath(getattr(sys, "_MEIPASS", "") or os.sep))
-    sys.path[:] = [entry for entry in sys.path if _under(entry, bundle)]
-    sys.dont_write_bytecode = True
+    _bundle_only()
     if safefile.ensure_real_dir(launcher_game_dir(), release=True, create=False):
         return None
     exe = Path(sys.executable)
@@ -250,6 +245,31 @@ def _frozen_prelude() -> int | None:
 
     bootstrap.show_native_error(exe.stem, GAME_FOLDER_MISSING.format(exe=exe.name))
     return 1
+
+
+def _bundle_only() -> None:
+    """Steps (1)-(3) of ``_frozen_prelude``, which the Studio app's exe runs too
+    (``editor_prelude``)."""
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))   # noqa: SIM115
+    bundle = os.path.normcase(os.path.abspath(getattr(sys, "_MEIPASS", "") or os.sep))
+    sys.path[:] = [entry for entry in sys.path if _under(entry, bundle)]
+    sys.dont_write_bytecode = True
+
+
+def editor_prelude() -> bool:
+    """The Studio app's first steps (``engine.__main__.studio_app_main``), before Studio or a
+    ``--child`` command runs: whether this is the Studio app (``paths.is_editor_build``).
+    When it is, the frozen prelude's steps (1)-(3) run (no missing stdout or stderr, only
+    ``sys.path`` entries under ``_MEIPASS``, no ``__pycache__``); a built game's exe never
+    gets here, and anything else is refused (False)."""
+    if not is_editor_build():
+        return False
+    _bundle_only()
+    if sys.stdin is None:              # started with no handles (not by Studio, which pipes)
+        sys.stdin = open(os.devnull, encoding="utf-8")                    # noqa: SIM115
+    return True
 
 
 def _under(entry: object, bundle: str) -> bool:
@@ -279,7 +299,9 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
     once. ``build``'s ``--out`` defaults to ``builds`` beside the game folder (F42 I-6).
     F39's dev-only ``run`` options belong under ``dev_tools`` too, never in
     ``launcher_main`` (a frozen build defines none of them)."""
-    dev_tools = not is_frozen()                         # I-15: none of F44 when frozen
+    # I-15: none of F44 in a built game. The Studio app (an editor build, never a player
+    # build) is frozen too, and its children are dev runs, as from ``python -m engine``.
+    dev_tools = not is_frozen() or is_editor_build()
     parser = argparse.ArgumentParser(prog="python -m engine")
     commands = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
     run = commands.add_parser("run", help="run a game folder",
@@ -575,9 +597,10 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
     try:
         prepare_environment()
         pygame_warning = _bootcheck.check_pygame()
-        # Nothing but a frozen build or --release makes a run a release run; nothing else
-        # (no environment variable, no config key) affects dev mode (SEC-F01-20).
-        release = is_frozen() or args.release
+        # Nothing but a frozen player build or --release makes a run a release run; nothing
+        # else (no environment variable, no config key) affects dev mode (SEC-F01-20). The
+        # Studio app's game child is a dev run, as Studio's ``python -m engine run`` is.
+        release = (is_frozen() and not is_editor_build()) or args.release
         return _launch(game_dir, release=release, bench_seconds=args.bench,
                        log_level_override=args.log_level, pygame_warning=pygame_warning,
                        start=getattr(args, "start_options", None),

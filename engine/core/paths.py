@@ -354,6 +354,117 @@ def is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
 
 
+# --- The Studio app (editor build) -------------------------------------------------------
+# ``scripts/build_studio.py`` writes the module ``EDITOR_BUILD_MODULE`` into its own staging
+# folder and bundles it into the Studio app's archive only. It exists nowhere in the
+# repository, so no player build (``engine.tools.build``, whose modules come from the
+# ``engine`` package) can ever contain it, and a dev run never imports it (I-15).
+EDITOR_BUILD_MODULE = "vn_studio_build"
+EDITOR_BUILD_VALUE = "vn-engine Studio"
+PLAYER_RUNTIME_DIRNAME = "player"
+GAMES_DIRNAME = "vn-engine"
+
+
+def is_editor_build() -> bool:
+    """Whether this process is the frozen Studio app (``vn-engine Studio.exe``): frozen and
+    the bundled marker module is in the app's archive with ``EDITOR_BUILD_VALUE``. False in
+    a dev run and in every built game. A loose ``.py`` file of that name (beside the exe or
+    in ``_internal``) doesn't count: the marker must come from the frozen archive, never
+    from a file loader."""
+    if not is_frozen():
+        return False
+    import importlib
+    import importlib.machinery
+    import importlib.util
+
+    try:
+        spec = importlib.util.find_spec(EDITOR_BUILD_MODULE)
+    except (ImportError, ValueError):
+        return False
+    file_loaders = (importlib.machinery.SourceFileLoader,
+                    importlib.machinery.SourcelessFileLoader,
+                    importlib.machinery.ExtensionFileLoader)
+    if spec is None or isinstance(spec.loader, file_loaders):
+        return False
+    try:
+        marker = importlib.import_module(EDITOR_BUILD_MODULE)
+    except ImportError:
+        return False
+    return getattr(marker, "EDITOR_BUILD", None) == EDITOR_BUILD_VALUE
+
+
+def player_runtime_dir() -> Path | None:
+    """The prebuilt player (``<Studio app folder>/player``) Build game copies, when this is
+    the Studio app and the folder is there; else None (a dev run builds with PyInstaller)."""
+    folder = exe_dir()
+    if folder is None or not is_editor_build():
+        return None
+    runtime = folder / PLAYER_RUNTIME_DIRNAME
+    return runtime if runtime.is_dir() else None
+
+
+_FOLDERID_DOCUMENTS = "{FDD39AD0-238F-46AF-ADB4-6C85480369C7}"
+
+
+def documents_dir() -> Path | None:
+    """The user's Documents folder: on Windows the known folder (it may be moved or
+    redirected, e.g. to OneDrive), elsewhere ``~/Documents`` when it exists, else the home
+    folder. None when none is absolute. Never raises."""
+    if sys.platform == "win32":
+        found = _windows_known_folder(_FOLDERID_DOCUMENTS)
+        if found is not None:
+            return found
+    home = home_dir()
+    if home is None:
+        return None
+    documents = home / "Documents"
+    return documents if documents.is_dir() else home
+
+
+def _windows_known_folder(folder_id: str) -> Path | None:
+    """``SHGetKnownFolderPath`` for ``folder_id``; None when it fails."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _Guid(ctypes.Structure):
+            _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD),
+                        ("Data3", wintypes.WORD), ("Data4", ctypes.c_ubyte * 8)]
+
+        guid = _Guid()
+        ctypes.oledll.ole32.CLSIDFromString(ctypes.c_wchar_p(folder_id), ctypes.byref(guid))
+        out = ctypes.c_wchar_p()
+        shell32 = ctypes.windll.shell32
+        shell32.SHGetKnownFolderPath.argtypes = [ctypes.POINTER(_Guid), wintypes.DWORD,
+                                                 wintypes.HANDLE,
+                                                 ctypes.POINTER(ctypes.c_wchar_p)]
+        shell32.SHGetKnownFolderPath.restype = ctypes.HRESULT
+        try:
+            shell32.SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(out))
+            value = out.value or ""
+        finally:
+            ctypes.windll.ole32.CoTaskMemFree(out)
+    except (OSError, AttributeError, ValueError):
+        return None
+    return Path(value) if value and _is_windows_absolute(value) else None
+
+
+def games_dir() -> Path | None:
+    """Where the Studio app keeps games: ``<Documents>/vn-engine``. Not created here. None
+    when there's no Documents or home folder."""
+    documents = documents_dir()
+    return None if documents is None else documents / GAMES_DIRNAME
+
+
+def default_games_dir() -> Path | None:
+    """The folder New game and Open game start in: ``games_dir()`` in the Studio app (when it
+    exists), else None (the OS dialog's own default, as in a dev run)."""
+    if not is_editor_build():
+        return None
+    folder = games_dir()
+    return folder if folder is not None and folder.is_dir() else None
+
+
 # --- The contained reader (invariant 9 (a); §7.7) ----------------------------------------
 
 _GAME_FOLDER_HINT = "Check that the folder exists, or run: python -m engine run <folder>"

@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
+from engine.core.childcmd import engine_argv
 from engine.core.editorreport import (
     AT_EVENT,
     CONSOLE_EVENT,
@@ -474,10 +475,10 @@ def preview_argv(game_dir: Path, label: str | None, set_args: list[str], *,
     ``fresh`` (F47 Play options, "Play as a new player") adds ``--no-persistent``; ``extra``
     (F32's ``("--playthrough", "2")``) goes last; ``replay`` (F36's ▶ Play replay) is the
     scene ``--replay`` plays."""
-    return [sys.executable, "-m", "engine", "run", str(game_dir), "--report-to-editor",
-            *(["--no-persistent"] if fresh else []),
-            *(["--start", label] if label else []), *set_args, *extra,
-            *(["--replay", replay] if replay else [])]
+    return engine_argv("run", str(game_dir), "--report-to-editor",
+                       *(["--no-persistent"] if fresh else []),
+                       *(["--start", label] if label else []), *set_args, *extra,
+                       *(["--replay", replay] if replay else []))
 
 
 # --- The runner (04 §7.5) -------------------------------------------------------------------

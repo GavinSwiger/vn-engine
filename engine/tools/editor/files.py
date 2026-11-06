@@ -30,7 +30,6 @@ import json
 import os
 import stat
 import string
-import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -38,6 +37,7 @@ from typing import Literal
 
 from engine.core import safefile
 from engine.core.audiosniff import FORMAT_NAMES, matches, refused_signature
+from engine.core.childcmd import engine_argv
 from engine.core.constants import IMAGE_MAX_PIXELS, IMAGE_MAX_SIDE
 from engine.core.errors import AssetMissing, AssetRefError
 from engine.core.imageheader import image_dimensions
@@ -1255,7 +1255,7 @@ def new_game(folder: Path | str, template: str = TEMPLATE_SAMPLE) -> Path | Refu
 
 def studio_argv(folder: Path) -> list[str]:
     """The command that opens Studio on ``folder`` in a new process."""
-    return [sys.executable, "-m", "engine", "edit", str(folder)]
+    return engine_argv("edit", str(folder))
 
 
 __all__ = ["AddOutcome", "AddPlan", "GAME_GONE", "MAIN_FIXED", "ProjectTree", "Refusal",

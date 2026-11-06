@@ -24,6 +24,7 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from tkinter import font as tkfont
 
+from engine.core.paths import default_games_dir
 from engine.tools.editor import icons
 from engine.tools.editor.theme import THEME, TYPE_SCALE, dark_title_bar, font_families, scale_of
 
@@ -75,15 +76,24 @@ def ask_open_files(parent: tk.Misc) -> list[Path]:
     return [Path(name) for name in parent.tk.splitlist(picked)] if picked else []
 
 
+def _games_folder() -> dict[str, str]:
+    """``initialdir`` for New game and Open game: the Studio app's games folder
+    (``paths.default_games_dir``), else nothing (the OS dialog's own default)."""
+    folder = default_games_dir()
+    return {} if folder is None else {"initialdir": str(folder)}
+
+
 def ask_directory(parent: tk.Misc) -> Path | None:
     """New game…: the OS folder dialog (a new folder name may be typed). None if cancelled."""
-    picked = filedialog.askdirectory(parent=parent, title="New game folder", mustexist=False)
+    picked = filedialog.askdirectory(parent=parent, title="New game folder", mustexist=False,
+                                     **_games_folder())
     return Path(picked) if picked else None
 
 
 def ask_game_folder(parent: tk.Misc) -> Path | None:
     """Open game…: the OS folder dialog for an existing game folder. None if cancelled."""
-    picked = filedialog.askdirectory(parent=parent, title="Open game folder", mustexist=True)
+    picked = filedialog.askdirectory(parent=parent, title="Open game folder", mustexist=True,
+                                     **_games_folder())
     return Path(picked) if picked else None
 
 

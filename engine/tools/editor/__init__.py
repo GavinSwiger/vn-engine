@@ -57,6 +57,9 @@ def edit_command(game_dir: Path | str) -> int:
     if problem is not None:
         print(problem, file=sys.stderr)
         return 1
+    from engine.tools.editor.gamesfolder import remember_game
+
+    remember_game(Path(game_dir))               # the Studio app only: its next start opens it
     return run_editor(game_dir)
 
 

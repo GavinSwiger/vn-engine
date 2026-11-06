@@ -17,11 +17,11 @@ Imports the standard library and its own package; never pygame or tkinter.
 """
 
 import re
-import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from engine.core.childcmd import engine_argv
 from engine.tools.editor import stageat
 from engine.tools.editor.preview import PreviewEvent, PreviewRunner, PreviewState, Report
 
@@ -35,8 +35,7 @@ Problem = Callable[[str], None]
 
 def try_argv(game_dir: Path) -> list[str]:
     """The try child's command line (04 §7.5)."""
-    return [sys.executable, "-m", "engine", "run", str(game_dir), "--report-to-editor",
-            "--try-stdin"]
+    return engine_argv("run", str(game_dir), "--report-to-editor", "--try-stdin")
 
 
 def try_bytes(lines: Sequence[str]) -> bytes:
