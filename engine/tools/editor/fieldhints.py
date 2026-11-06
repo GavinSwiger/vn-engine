@@ -177,6 +177,9 @@ CHOICE_HINTS: Final[Mapping[str, str]] = MappingProxyType({
     "check": ("Test a meter with two dice: the dice plus the meter must reach the "
               "difficulty. Players see the odds on the button and get one try, or another "
               "once the meter changes if you tick Can retry."),
+    # F64 (SPEC-present)
+    "present": ("Adds a Show an item… button: the player picks anything they hold. Give the "
+                "items that matter a reaction; any other item gets the last one."),
 })
 
 # Database form → its label → hint (labels as ``database``/``dbmore`` show them). A form is

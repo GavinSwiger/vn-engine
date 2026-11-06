@@ -49,6 +49,7 @@ from tkinter import ttk
 
 from engine.script.statement_docs import StatementDoc, docs_for
 from engine.tools.editor import checkdialog, dialogs, forms, forms_files_ui, forms_more, formtools
+from engine.tools.editor import presentdialog
 from engine.tools.editor.fieldwidgets import PLAY, STOP, THUMB_PX, color_dot
 from engine.tools.editor.forms import ChoiceItem, ChoiceValues, CommandForm, Field
 from engine.tools.editor.theme import ROLES, THEME, TYPE_SCALE, font_families, scale_of
@@ -887,6 +888,10 @@ class ChoiceDialog:
             button.pack(side="left", padx=(0, gap))
             self.tool_buttons[label] = button
         self._time_section(body, values)
+        self.accept = presentdialog.AcceptItemSection(                   # F64
+            body, dialog, values.present, items=self.condition_names.get("item", ()),
+            scenes=self.scenes, condition_names=self.condition_names, strong=_strong(dialog),
+            scale=scale, on_change=self._changed)
         self.problem = ttk.Label(body, text="", style="Dialog.TLabel")
         self.lines_caption = ttk.Label(body, text=LINES_CAPTION, style="Dialog.Hint.TLabel")
         self.lines_caption.pack(anchor="w", pady=(round(16 * scale), round(4 * scale)))
@@ -1089,9 +1094,11 @@ class ChoiceDialog:
                                   in_text, item.old, timeout=timed and row is timeout_row,
                                   check=row["check"].get().strip(),
                                   had_check=item.had_check))
+        accept = getattr(self, "accept", None)                    # F64
         return ChoiceValues(self.speaker.get().strip(), self.look.get().strip(),
                             self.question.get(), tuple(out),
-                            self._time_value() if timed else "")
+                            self._time_value() if timed else "",
+                            accept.values() if accept is not None else None)
 
     def preview(self) -> str:
         try:
@@ -1105,7 +1112,7 @@ class ChoiceDialog:
         if len(lines) > PREVIEW_ROWS:
             text = "\n".join(lines[:PREVIEW_ROWS - 1] + ["…"])
         _set_card(self.card, text, rows=PREVIEW_ROWS)
-        full = len(self.items) >= forms.MENU_MAX_CHOICES
+        full = self._options() >= forms.MENU_MAX_CHOICES
         self.tool_buttons[ADD].state(["disabled"] if full else ["!disabled"])
         self.tool_buttons[REMOVE].state(["!disabled"] if self.items else ["disabled"])
         self._sync_time()
@@ -1117,12 +1124,18 @@ class ChoiceDialog:
         elif self.problem.cget("text") in (forms.TIMEOUT_PICK_TEXT,
                                            forms.TIMEOUT_CONDITION_TEXT,
                                            forms.TIME_RANGE_TEXT,
-                                           forms.CHECK_REMOVE_TEXT, forms.CHECK_BAD_TEXT):
+                                           forms.CHECK_REMOVE_TEXT, forms.CHECK_BAD_TEXT,
+                                           *presentdialog.PROBLEMS):
             self._problem("")
         self.buttons[0].state(["disabled"] if problem is not None else ["!disabled"])
 
+    def _options(self) -> int:
+        """The options counting toward six (F64: Accept an item is one)."""
+        accept = getattr(self, "accept", None)
+        return len(self.items) + (accept is not None and bool(accept.on.get()))
+
     def add(self) -> None:
-        if len(self.items) >= forms.MENU_MAX_CHOICES:
+        if self._options() >= forms.MENU_MAX_CHOICES:
             self._problem(forms.CHOICE_LIMIT_TEXT)
             return
         self._problem("")
