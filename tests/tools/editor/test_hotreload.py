@@ -208,7 +208,7 @@ def test_ac_f39_01_update_carries_the_place_to_a_new_child(rig):
     """``reload`` written; the ``state`` header and body read; the old child exits; the new
     argv drops ``--start``/``--set`` and adds ``--resume-from-editor`` and ``--window-at``;
     the frame body is byte-identical; with 0 states the argv is F5's plus
-    ``--resume-from-editor``."""
+    ``--resume-from-editor`` and the window's spot."""
     rig.runner.start(BASE)
     assert rig.kwargs[0]["stdin"] is subprocess.PIPE
     rig.started()
@@ -248,7 +248,7 @@ def test_ac_f39_01_update_carries_the_place_to_a_new_child(rig):
     new.say(game.state_event([], [5, 5]))
     new.exit(0)
     rig.until_children(3)
-    assert rig.child.argv == [*BASE, "--resume-from-editor"]
+    assert rig.child.argv == [*BASE, "--resume-from-editor", "--window-at=5,5"]   # its spot
     zero = b'{"v":1,"msg":"resume","bytes":0,"states":0,"lost":false}\n'
     assert rig.stdin_of(rig.child, len(zero)) == zero
 
@@ -384,3 +384,18 @@ def test_ac_f39_03_the_gate_and_its_texts(rig):
     rig.tick()
     assert rig.runner.state is S.UPDATING and rig.hot.problems_suffix() == ""
     assert rig.hot_events[-1] == HotReloadEvent(UPDATING_TEXT, "")
+
+
+def test_resume_keeps_plays_beside_studio_spot_without_a_new_one():
+    """Proposal 2.3: Play's ``--window-at``/``--window-size`` (the game beside Studio) stay
+    when the old window had no spot (fullscreen, no answer); a spot it had replaces them."""
+    from engine.tools.editor.hotreload import resume_argv
+    from engine.tools.editor.preview import StateFrame
+
+    base = [*BASE[:6], "--window-at=1300,40", "--window-size=960,540", *BASE[6:]]
+    for frame in (None, StateFrame(b"", 0, None), StateFrame(b"x\n", 1, None)):
+        argv = resume_argv(base, frame)
+        assert "--window-at=1300,40" in argv and "--window-size=960,540" in argv
+    argv = resume_argv(base, StateFrame(b"x\n", 1, (-40, 300)))
+    assert "--window-at=1300,40" not in argv and argv[-1] == "--window-at=-40,300"
+    assert "--window-size=960,540" in argv

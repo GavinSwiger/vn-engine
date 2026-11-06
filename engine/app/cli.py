@@ -43,7 +43,9 @@ F39 (``SPEC.md`` §5.4): ``run`` also gains the hidden ``--resume-from-editor`` 
 dev-runs-only rule (refused with ``--release``, not defined in a frozen build, not
 ``main.py``'s). ``--resume-from-editor`` needs ``--report-to-editor`` (the frame arrives on
 stdin, which is read only then); ``--window-at`` takes two whole numbers, each at most
-100,000 from 0.
+100,000 from 0. Studio's "game beside Studio" adds the hidden ``--window-size=W,H`` too (the
+window's size in screen pixels, each 1 to 100,000, never below the engine's minimum), under
+the same rule.
 
 F42 (``04`` §3.3, §7.5; architect decisions 1, 8): ``main(argv, builder=…)`` adds the dev-only
 ``build [GAME_DIR] [--out FOLDER] [--zip] [--replace]`` (and the hidden
@@ -115,6 +117,7 @@ PLAYTHROUGH_NEEDS_NUMBER = "--playthrough needs a whole number from 0 to 99, lik
 # F39 (SPEC §5.4): the window spot of an updated preview.
 WINDOW_AT_MAX = 100_000
 WINDOW_AT_NEEDS_NUMBERS = "--window-at needs two whole numbers, like 120,80"
+WINDOW_SIZE_NEEDS_NUMBERS = "--window-size needs two whole numbers above 0, like 960,540"
 RESUME_NEEDS_REPORT = "--resume-from-editor needs --report-to-editor"
 # F34 (04 §7.3): run --extras [PAGE]. The pages are ``ui/menus.DEFAULT_ORDER["extras"]``,
 # written out here because this module imports nothing of ``engine.ui`` (Studio imports it).
@@ -414,6 +417,7 @@ def main(argv: list[str], *, editor: EditorHandler | None = None,
             args.start = trystory.TRY_LABEL
         args.start_options = _start_options(run, args)
         args.window_position = _window_position(run, args.window_at)
+        args.window_pixels = _window_pixels(run, args.window_size)
         if args.resume_from_editor and not args.report_to_editor:
             run.error(RESUME_NEEDS_REPORT)
         if args.try_stdin:
@@ -446,6 +450,7 @@ def _add_start_options(run: argparse.ArgumentParser) -> None:
     # negative X isn't read as an option.
     run.add_argument("--resume-from-editor", action="store_true", help=argparse.SUPPRESS)
     run.add_argument("--window-at", metavar="X,Y", default=None, help=argparse.SUPPRESS)
+    run.add_argument("--window-size", metavar="W,H", default=None, help=argparse.SUPPRESS)
     # F47 P2-F: Studio's Try it.
     run.add_argument("--try-stdin", action="store_true",
                      help="play the script lines read from stdin in a small window, then "
@@ -490,6 +495,7 @@ def _refuse_dev_options(run: argparse.ArgumentParser, args: argparse.Namespace) 
                           ("--playthrough", args.playthrough is not None),
                           ("--resume-from-editor", args.resume_from_editor),
                           ("--window-at", args.window_at is not None),
+                          ("--window-size", args.window_size is not None),
                           ("--try-stdin", args.try_stdin),
                           ("--extras", args.extras is not None),
                           ("--replay", args.replay is not None)):
@@ -516,6 +522,21 @@ def _window_position(run: argparse.ArgumentParser,
             run.error(WINDOW_AT_NEEDS_NUMBERS)
         values.append(value)
     return values[0], values[1]
+
+
+def _window_pixels(run: argparse.ArgumentParser,
+                   text: str | None) -> tuple[int, int] | None:
+    """Studio's ``--window-size W,H``: two ASCII whole numbers, each 1 to ``WINDOW_AT_MAX``;
+    anything else is ``WINDOW_SIZE_NEEDS_NUMBERS``."""
+    if text is None:
+        return None
+    parts = text.split(",")
+    if len(parts) != 2 or not all(p.isascii() and p.isdigit() and len(p) <= 6 for p in parts):
+        run.error(WINDOW_SIZE_NEEDS_NUMBERS)
+    width, height = int(parts[0]), int(parts[1])
+    if not (0 < width <= WINDOW_AT_MAX and 0 < height <= WINDOW_AT_MAX):
+        run.error(WINDOW_SIZE_NEEDS_NUMBERS)
+    return width, height
 
 
 def _start_options(run: argparse.ArgumentParser,
@@ -564,6 +585,7 @@ def _start(game_dir: Path, args: argparse.Namespace) -> int:
                        playthrough=getattr(args, "playthrough", None),
                        resume=getattr(args, "resume_from_editor", False),
                        window_at=getattr(args, "window_position", None),
+                       window_size=getattr(args, "window_pixels", None),
                        try_lines=getattr(args, "try_lines", None),
                        extras=getattr(args, "extras", None),
                        replay=getattr(args, "replay", None),
@@ -577,6 +599,7 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
             start: StartOptions | None = None, editor_report: bool = False,
             seed: int | None = None, no_persistent: bool = False, resume: bool = False,
             window_at: tuple[int, int] | None = None,
+            window_size: tuple[int, int] | None = None,
             try_lines: tuple[str, ...] | None = None,
             playthrough: int | None = None, extras: str | None = None,
             replay: str | None = None, console: ConsoleFactory | None = None) -> int:
@@ -588,6 +611,7 @@ def _launch(game_dir: Path, *, release: bool, bench_seconds: float | None,
                             pygame_warning=pygame_warning, start=start,
                             editor_report=editor_report, seed=seed,
                             no_persistent=no_persistent, resume=resume,
-                            window_at=window_at, try_lines=try_lines,
+                            window_at=window_at, window_size=window_size,
+                            try_lines=try_lines,
                             playthrough=playthrough, extras=extras, replay=replay,
                             console=console)

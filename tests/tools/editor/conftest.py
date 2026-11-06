@@ -56,6 +56,14 @@ R_SCRIPTS: dict[str, str] = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _game_opens_where_it_always_did(monkeypatch):
+    """Play in tests adds no "beside Studio" spot and never moves Studio (proposal 2.3);
+    ``test_studio_gamebeside`` turns it back on."""
+    from engine.tools.editor import gamebeside
+    monkeypatch.setattr(gamebeside, "PLACES", False)
+
+
 @pytest.fixture
 def route_game(tmp_path) -> Path:
     """Game R: ``<tmp>/my_game`` with its four scripts (UTF-8, LF, no BOM)."""

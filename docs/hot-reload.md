@@ -32,4 +32,17 @@ Good to know:
 - **Run ▸ Play**, **Play this scene** and **Stop** work as before: they start the
   game again, or end it.
 
+## Where the game opens
+
+**▶ Play** opens the game beside Studio when the screen has room, right of Studio first,
+then left, at its own size or smaller. If Studio fills the screen, tick **Game beside
+Studio** (in the **▾** next to **▶ Play**, or the **Run** menu): Studio then leaves
+maximized and takes the left part of the screen, and the game the right. When the game
+closes, Studio goes back as it was, unless you moved or resized it. Studio remembers the
+tick for every game.
+
+Limits: on Windows, Studio uses the monitor it is on, less the taskbar. On macOS and Linux
+it sees one screen and no dock. A game you made fullscreen (F11) stays fullscreen. Moving
+Studio later doesn't move the game.
+
 Back to [Studio](scene-editor.md).

@@ -6,7 +6,10 @@ button (▶ Play, ■ Stop while the game runs, and a ▾ menu) and the Run menu
 the game. Play (Shift+F5) plays from the game's ``start``; Play this scene (F5) plays from
 the selected story-map box while the Story map shows, else from the label above the
 editor's cursor; Play from this scene (a box's or an Events row's context menu) plays from
-that scene; Stop (Ctrl+F2) ends the game child. Every Play saves every unsaved file, checks the start values (kept for the session in
+that scene; Stop (Ctrl+F2) ends the game child. Every game Play starts opens beside
+Studio when there is room, and Studio makes room when **Game beside Studio** is ticked
+(``gamebeside``: ``--window-at`` and ``--window-size``; Studio goes back as it was when the
+game ends). Every Play saves every unsaved file, checks the start values (kept for the session in
 Play options, with "Play as a new player"), and hands argv to ``preview.PreviewRunner``. The
 first Play that reaches the game window marks ``played`` in ``studiostate`` (the Guide's
 step 7). One poll loop (every ``POLL_INTERVAL_MS``) polls the game runner, the check runner,
@@ -36,7 +39,7 @@ import tkinter as tk
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from engine.tools.editor import consoleclient, studiostate
+from engine.tools.editor import consoleclient, gamebeside, studiostate
 from engine.tools.editor import uiprefs
 from engine.tools.editor.dialogs import ask, ask_text, show_info
 from engine.tools.editor.hotreload import HotReload, HotReloadEvent
@@ -154,6 +157,78 @@ class RunWiring:
         elif state.link:                    # a link: never write there (studiostate)
             self._state_writable = False
         self.play_bar.set_guide(self.guide_shown)
+        # Proposal 2.3: Studio makes room for the game (remembered for this person).
+        self.game_beside = tk.BooleanVar(master=self.root,
+                                         value=uiprefs.value("game_beside") is True)
+        self.play_bar.add_check(gamebeside.MENU, self.game_beside, self.toggle_game_beside)
+        self._room_before: tuple[str, str] | None = None
+
+    def toggle_game_beside(self) -> None:
+        """Run ▸ Game beside Studio (and the ▶ Play ▾ menu's): kept for every game."""
+        self.save_studio_state(game_beside=bool(self.game_beside.get()))
+
+    def _game_spot(self) -> list[str]:
+        """``--window-at`` and ``--window-size`` beside Studio, or nothing (``gamebeside``).
+        Studio makes room here when it must and may; a hidden or minimized Studio places
+        nothing."""
+        root = self.root
+        if not gamebeside.PLACES:
+            return []
+        try:
+            if not root.winfo_viewable() or str(root.state()) == "iconic":
+                return []
+            caption = gamebeside.caption_of(root, self.scale)
+            spot = gamebeside.place_game(
+                gamebeside.studio_rect(root, caption), gamebeside.work_area(root),
+                self._game_size(), caption=caption, gap=round(gamebeside.GAP * self.scale),
+                share=bool(self.game_beside.get()))
+            if spot is None:
+                return []
+            if spot.studio is not None:
+                before = gamebeside.make_room(root, spot.studio)
+                root.update_idletasks()
+                if self._room_before is None:
+                    self._room_before = (before, str(root.geometry()))
+        except tk.TclError:
+            return []
+        return spot.argv()
+
+    def _game_size(self) -> tuple[int, int]:
+        """The game's own window size in screen pixels (``config.toml``'s ``[window]``)."""
+        from engine.core.config import load_config
+        from engine.core.config_schema import WindowConfig
+        from engine.core.paths import GamePaths
+
+        window = WindowConfig()
+        try:
+            loaded = load_config(GamePaths.for_game(self.paths.root))
+            if loaded.config is not None:
+                window = loaded.config.window
+        except Exception:  # noqa: BLE001  (a config that can't load: the default size)
+            pass
+        return round(window.width * self.scale), round(window.height * self.scale)
+
+    def _give_back_room(self) -> None:
+        """The game ended: Studio as it was before it made room, unless it was moved or
+        resized since."""
+        saved, self._room_before = self.__dict__.get("_room_before"), None
+        if saved is None:
+            return
+        before, made = saved
+        try:
+            if str(self.root.geometry()) == made:
+                gamebeside.give_back(self.root, before)
+        except tk.TclError:
+            pass
+
+    def _start_game(self, argv: list[str]) -> None:
+        """Start the game child with ``argv`` placed beside Studio (``_game_spot``)."""
+        spot = self._game_spot()
+        if spot and "--report-to-editor" in argv:
+            at = argv.index("--report-to-editor") + 1
+            argv = [*argv[:at], *spot, *argv[at:]]
+        self.runner.start(argv)
+        self.apply_events(self.runner.poll())
 
     def save_studio_state(self, **changes: object) -> None:
         """Change ``.studio/studio.json``; after a link is found, nothing more is written
@@ -298,8 +373,7 @@ class RunWiring:
             return
         self._saved_refs = []               # a restart, not an update
         self.hot.stop()
-        self.runner.start(preview_argv(self.paths.root, label, args, fresh=self.play_fresh))
-        self.apply_events(self.runner.poll())
+        self._start_game(preview_argv(self.paths.root, label, args, fresh=self.play_fresh))
 
     def stop_game(self) -> None:
         """■ Stop and Ctrl+F2: end the game child (only while it runs)."""
@@ -335,9 +409,8 @@ class RunWiring:
             return
         self._saved_refs = []               # a restart, not an update
         self.hot.stop()
-        self.runner.start(preview_argv(self.paths.root, None, [],
-                                       extra=("--playthrough", str(numbers[picked]))))
-        self.apply_events(self.runner.poll())
+        self._start_game(preview_argv(self.paths.root, None, [],
+                                      extra=("--playthrough", str(numbers[picked]))))
 
     def play_extras(self, page: str = "gallery") -> None:
         """F34 Database ▸ Gallery's ▶ Preview the gallery: saves like ▶ Play, then runs the
@@ -348,8 +421,7 @@ class RunWiring:
             return
         self._saved_refs = []               # a restart, not an update
         self.hot.stop()
-        self.runner.start(preview_argv(self.paths.root, None, [], extra=("--extras", page)))
-        self.apply_events(self.runner.poll())
+        self._start_game(preview_argv(self.paths.root, None, [], extra=("--extras", page)))
 
     def play_replay(self, label: str) -> None:
         """F36 Database ▸ Scene replays' and ending rows' ▶ Play replay: saves like ▶ Play,
@@ -360,8 +432,7 @@ class RunWiring:
             return
         self._saved_refs = []               # a restart, not an update
         self.hot.stop()
-        self.runner.start(preview_argv(self.paths.root, None, [], replay=label))
-        self.apply_events(self.runner.poll())
+        self._start_game(preview_argv(self.paths.root, None, [], replay=label))
 
     def play_options(self) -> None:
         """Play options…: the start values and "Play as a new player", for this session."""
@@ -422,6 +493,8 @@ class RunWiring:
         self.status_label.configure(text=status_text(event) if text is None
                                     else text.removeprefix(PREVIEW_GLYPH))
         self.play_bar.set_running(event.state in LIVE)
+        if event.state not in UPDATABLE:        # the game is gone: Studio as it was
+            self._give_back_room()
         set_entry_enabled(self.run_menu, UPDATE_MENU, event.state in UPDATABLE)
         self._sync_hot_suffix()
         self._console_state_changed()

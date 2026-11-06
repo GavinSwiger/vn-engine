@@ -9,7 +9,8 @@ module decides whether and how; ``preview.PreviewRunner`` does the process work.
   only), or failed (timeout or crash: S4). Warnings and info never hold.
 - **Restart** (§5.1 step 4): ``resume_argv`` is the preview's F5 argv plus
   ``--resume-from-editor``; with one or more states it also drops ``--start L`` and every
-  ``--set n=v`` and adds ``--window-at=X,Y`` unless the old window was fullscreen.
+  ``--set n=v``; it adds ``--window-at=X,Y`` unless the old window was fullscreen (then
+  Play's own ``--window-at``, if any, stays).
   ``resume_frame`` is the ``resume`` header line and the ``state`` body, byte for byte; no
   answer gives the ``lost`` frame (0 states, ``lost`` true: the new child starts normally
   and shows N4).
@@ -100,15 +101,18 @@ def _without(argv: Sequence[str], options: Sequence[str]) -> list[str]:
 def resume_argv(base: Sequence[str], frame: StateFrame | None) -> list[str]:
     """The next child's argv: ``base`` (the preview's F5 argv) plus ``--resume-from-editor``.
     With 1 or more states, also without ``--start``/``--set`` (restore ignores them, so a
-    renamed start label can't stop it) and with ``--window-at=X,Y`` when the old window
-    wasn't fullscreen (one argv item, so a negative ``X`` isn't read as an option)."""
-    argv = [arg for arg in _without(base, (WINDOW_OPTION,)) if arg != RESUME_OPTION]
-    if frame is None or frame.states == 0:
-        return [*argv, RESUME_OPTION]
-    argv = _without(argv, _DROPPED_WITH_STATES)
+    renamed start label can't stop it). With ``--window-at=X,Y`` when the old window wasn't
+    fullscreen (one argv item, so a negative ``X`` isn't read as an option), on the title
+    too; without that spot, ``base``'s own ``--window-at`` (Play's "beside Studio" spot)
+    stays, so the game reopens where it was. ``--window-size`` always stays."""
+    window = None if frame is None else frame.window
+    kept = base if window is None else _without(base, (WINDOW_OPTION,))
+    argv = [arg for arg in kept if arg != RESUME_OPTION]
+    if frame is not None and frame.states > 0:
+        argv = _without(argv, _DROPPED_WITH_STATES)
     argv.append(RESUME_OPTION)
-    if frame.window is not None:
-        x, y = frame.window
+    if window is not None:
+        x, y = window
         argv.append(f"{WINDOW_OPTION}={x},{y}")
     return argv
 

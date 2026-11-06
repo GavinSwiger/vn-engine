@@ -22,7 +22,8 @@ from engine.core.paths import studio_user_dir
 LOOK_NAME: Final = "studio-look.json"
 LOOK_MAX_BYTES: Final = 64 * 1024
 # Keys kept here, with the type each must have (dict values: None means "the default").
-LOOK_KEYS: Final = {"tabs": dict, "panes": dict, "show_warnings": bool, "reduce_motion": bool}
+LOOK_KEYS: Final = {"tabs": dict, "panes": dict, "show_warnings": bool, "reduce_motion": bool,
+                     "game_beside": bool}           # Run ▸ Game beside Studio (2026-11-06)
 
 # Tests point this at a temporary folder (``tests/conftest.py``) so nothing reaches the real
 # profile; None: ``studio_user_dir()``.

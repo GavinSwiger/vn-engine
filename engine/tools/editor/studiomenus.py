@@ -24,6 +24,7 @@ from engine.tools.editor.views import MenuBar, menu_command, set_entry_enabled
 from engine.tools.editor.studiolook import FONT_STEP_PX
 from engine.tools.editor.fileactions import ADD_BUTTON
 from engine.tools.editor.playbar import PLAY_OPTIONS
+from engine.tools.editor.gamebeside import MENU as BESIDE_MENU
 from engine.tools.editor.runwiring import (
     CONSOLE_MENU,
     JUMP_MENU,
@@ -140,6 +141,7 @@ class StudioMenus:
                 Item(PLAY_SCENE_MENU, "F5", self.play_scene),
                 Item(STOP_MENU, f"{key}+F2", self.stop_game),
                 Item(PLAY_OPTIONS, command=self.play_options),
+                Check(BESIDE_MENU, self.game_beside, self.toggle_game_beside),  # 2.3
                 Item(CONSOLE_MENU, "F12", self.open_console),               # F40
                 Item(JUMP_MENU, NO_GAME, self.jump_game_to_scene),          # F40: dimmed
                 Item(PLAYTHROUGH_MENU, command=self.preview_playthrough),   # F32

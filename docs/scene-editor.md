@@ -80,7 +80,8 @@ If a change stops the script loading, the map keeps its last drawing, marked "ou
 
 **▶ Play**, after the menus, saves and starts at `label start` (**Run ▸ Play**, Shift+F5).
 While the game runs it is **■ Stop** (**Run ▸ Stop**, Ctrl+F2). Its **▾** holds **Run ▸
-Play this scene** (F5): the label above the cursor or the selected map box.
+Play this scene** (F5): the label above the cursor or the selected map box. The game
+opens [beside Studio](hot-reload.md#where-the-game-opens).
 
 A scene that is only reached by `call` ends the preview at its `return`.
 

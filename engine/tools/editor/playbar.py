@@ -158,7 +158,7 @@ class PlayBar:
         for name in ("Split.TButton", "Split.Secondary.TButton"):     # ▶ Play, ■ Stop
             style.configure(name, padding=(px(12), px(3)))
         for name in ("More.Split.TButton", "More.Split.Secondary.TButton"):     # the ▾
-            style.configure(name, padding=(px(5), px(3)))
+            style.configure(name, padding=(px(6), px(3)))
 
         def button(text: str, style: str, command: Callable[[], object], tip: str,
                    side: str = "left", pad: tuple[int, int] = (0, gap)) -> ttk.Button:
@@ -196,6 +196,7 @@ class PlayBar:
                                    width=-max(len(PLAY), len(STOP)))
         self.play_button.pack_configure(padx=(inset, 1))   # a 1 px seam, then the ▾
         self.more_button = button(MORE, "More.Split.TButton", self.open_menu, TIP_MORE)
+        self.more_button.configure(width=1)         # the theme's -9 would make it wide
         self.more_button.pack_configure(after=self.play_button)
         self.menu = tk.Menu(self.frame, tearoff=0)
         self.menu.add_command(label=PLAY_MENU_ROW, accelerator="Shift+F5", command=on_play)
