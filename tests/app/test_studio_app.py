@@ -295,3 +295,52 @@ def test_games_folder_is_documents_vn_engine(monkeypatch, tmp_path):
 def test_documents_dir_is_absolute():
     found = paths.documents_dir()
     assert found is None or found.is_absolute()
+
+
+# --- scripts/build_studio.py: what the app folder holds for a first-time user ---------------
+
+def _build_studio():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_build_studio", REPO / "scripts" / "build_studio.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_start_here_and_pdfs(tmp_path):
+    bs = _build_studio()
+    docs, app = tmp_path / "docs", tmp_path / "vn-engine Studio"
+    docs.mkdir()
+    app.mkdir()
+    assert bs.add_pdfs(app, docs) == []                 # none in this copy: skipped quietly
+    (docs / "first-game-guide.pdf").write_bytes(b"%PDF-guide")
+    assert bs.add_pdfs(app, docs) == ["Beginner's guide.pdf"]
+    assert (app / "Beginner's guide.pdf").read_bytes() == b"%PDF-guide"
+    text = bs.write_start_here(app, ["Beginner's guide.pdf"]).read_bytes().decode("utf-8-sig")
+    assert "\r\n" in text and "\n" not in text.replace("\r\n", "")
+    for words in ("Desktop", "vn-engine Studio.exe", "Windows protected your PC", "More info",
+                  "Run anyway", "Documents\\vn-engine", "Help ▸ Guide checklist",
+                  "Help ▸ Guides ▸ Beginner's guide", "File ▸ Build game…",
+                  "Beginner's guide.pdf"):
+        assert words in text, words
+    assert "Feature overview.pdf" not in text
+    assert not any(dash in text for dash in ("–", "—", " - "))
+
+
+def test_zip_holds_the_app_folder_at_its_top(tmp_path):
+    import zipfile
+
+    bs = _build_studio()
+    app = tmp_path / bs.APP_NAME
+    (app / "_internal").mkdir(parents=True)
+    (app / "_internal" / "a.txt").write_text("a", encoding="utf-8")
+    (app / "Start here.txt").write_text("hi", encoding="utf-8")
+    archive = bs.write_zip(app)
+    assert archive == tmp_path / f"{bs.APP_NAME}.zip"
+    with zipfile.ZipFile(archive) as zf:
+        names = set(zf.namelist())
+    assert {f"{bs.APP_NAME}/Start here.txt", f"{bs.APP_NAME}/_internal/a.txt"} <= names
+    assert all(name.startswith(f"{bs.APP_NAME}/") for name in names)
+    assert [p.name for p in tmp_path.iterdir() if p.name.endswith(".partial")] == []

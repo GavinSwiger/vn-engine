@@ -3,6 +3,7 @@
 Usage (from the repository, with the build tool installed: see requirements-build.txt)::
 
     .venv/Scripts/python.exe scripts/build_studio.py --out <folder> [--replace] [--no-player]
+                                                     [--zip]
 
 The result is ``<folder>/vn-engine Studio/``: a PyInstaller one-folder app (windowed, the
 engine's icon) whose exe opens Studio (``studio.py`` → ``engine.__main__.studio_app_main``)
@@ -17,7 +18,14 @@ pygame-ce, ``engine/data`` (fonts, New game's sample and starter), the guides
   contain it): ``paths.is_editor_build()`` is true only in this app (I-15);
 - ``licenses/``: the notices a built game ships (``engine.tools.build.licenses``) and Tcl/Tk's;
 - ``player/``: the prebuilt player runtime Build game copies, from
-  ``engine.tools.build.runtime.build_player_runtime`` (``paths.player_runtime_dir``).
+  ``engine.tools.build.runtime.build_player_runtime`` (``paths.player_runtime_dir``);
+- ``Start here.txt`` (``START_HERE_TEXT``) for someone who just unzipped the app, and the
+  PDFs ``docs/first-game-guide.pdf`` and ``docs/vn-engine-features.pdf`` as
+  ``Beginner's guide.pdf`` and ``Feature overview.pdf`` when this copy of the repository has
+  them (they aren't committed; a build without them leaves them out quietly).
+
+``--zip`` also writes ``<folder>/vn-engine Studio.zip`` with the app folder at its top level,
+the file to hand someone.
 
 Dev only: this script isn't part of the app. It never writes in the repository; staging is
 a folder beside the output, removed at the end.
@@ -43,6 +51,67 @@ ENTRY_SCRIPT = "studio.py"
 CONTENTS_DIR = "_internal"
 LICENSES_DIR = "licenses"
 PLAYER_DIR = "player"
+START_HERE = "Start here.txt"
+# (file in docs/, name in the app folder): copied when present.
+PDFS = (("first-game-guide.pdf", "Beginner's guide.pdf"),
+        ("vn-engine-features.pdf", "Feature overview.pdf"))
+# For someone with no Python who just unzipped the app: plain words, for Notepad
+# (CRLF, UTF-8 with a BOM).
+START_HERE_TEXT = """vn-engine Studio: start here
+
+vn-engine Studio lets you make your own visual novel games. You don't need to install
+anything else: everything it needs is in this folder.
+
+
+1. Unzip it to a normal folder
+
+If you are looking at this inside the zip file, the app can't run from here yet. Close
+this, right click "vn-engine Studio.zip" and choose Extract All. Pick your Desktop or your
+Documents folder, then open the "vn-engine Studio" folder it made.
+
+
+2. Start the app
+
+Double click "vn-engine Studio.exe".
+
+The first time, Windows may show a blue box that says "Windows protected your PC". That
+happens because the app isn't signed yet; nothing is wrong. Click More info, then click
+Run anyway. You only do this once.
+
+
+3. Where your games are saved
+
+Your games are saved in your Documents folder, in a folder called vn-engine
+(Documents\\vn-engine). Each game is its own folder in there. The first time, Studio
+opens an example game called Paper Lanterns that you can play and change.
+
+
+4. Learn as you go
+
+Help ▸ Guide checklist shows the steps of making your first game, one at a time, and
+ticks each one as you do it.
+
+Help ▸ Guides ▸ Beginner's guide opens the whole guide inside Studio. The other
+guides are in Help ▸ Guides too.
+{pdfs}
+
+5. Share your game
+
+File ▸ Build game… makes your game into a zip file. Send that zip to your players.
+They unzip it and double click the game; they don't need vn-engine Studio or Python. The
+first time, they may see the same "Windows protected your PC" box: More info, then Run
+anyway.
+
+
+6. Updating vn-engine Studio
+
+To update, delete this "vn-engine Studio" folder and unzip the new one in its place. Your
+games stay safe, because they are in Documents\\vn-engine, not in this folder.
+"""
+PDF_LINES = {"Beginner's guide.pdf": ("\"Beginner's guide.pdf\" in this folder is the same "
+                                      "guide, to print or read on its own."),
+             "Feature overview.pdf": ('"Feature overview.pdf" in this folder shows what '
+                                      "vn-engine can do.")}
 # Guides that aren't for game makers (the architecture hub links into the private specs).
 DOCS_SKIPPED = frozenset({"architecture.md"})
 # Third-party packages in a dev environment that the app must never carry.
@@ -241,6 +310,52 @@ def add_player(app: Path, staging: Path) -> bool:
     return True
 
 
+def add_pdfs(app: Path, docs: Path = REPO / "docs") -> list[str]:
+    """The PDFs in ``PDFS`` that ``docs`` has, copied into ``app`` under their app names;
+    the names copied (a missing one is skipped quietly)."""
+    copied: list[str] = []
+    for source_name, app_name in PDFS:
+        source = docs / source_name
+        if source.is_file() and not source.is_symlink():
+            shutil.copyfile(source, app / app_name)
+            copied.append(app_name)
+    return copied
+
+
+def start_here_text(pdfs: list[str]) -> str:
+    lines = "".join(f"\n{PDF_LINES[name]}\n" for name in pdfs)
+    return START_HERE_TEXT.format(pdfs=lines)
+
+
+def write_start_here(app: Path, pdfs: list[str]) -> Path:
+    path = app / START_HERE
+    path.write_bytes(start_here_text(pdfs).replace("\n", "\r\n").encode("utf-8-sig"))
+    return path
+
+
+def write_zip(target: Path) -> Path:
+    """``<target's folder>/<APP_NAME>.zip``: the app folder ``target`` at its top level,
+    written beside it under a temporary name first (an earlier zip is replaced)."""
+    import zipfile
+
+    archive = target.parent / f"{APP_NAME}.zip"
+    partial = target.parent / f".{APP_NAME}.zip.partial"
+    try:
+        with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+            for path in sorted(target.rglob("*")):
+                if path.is_symlink():
+                    continue
+                name = path.relative_to(target.parent).as_posix()
+                if path.is_dir():
+                    zf.write(path, name + "/")
+                elif path.is_file():
+                    zf.write(path, name)
+        os.replace(partial, archive)
+    finally:
+        partial.unlink(missing_ok=True)
+    return archive
+
+
 def folder_size(folder: Path) -> int:
     return sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
 
@@ -256,6 +371,8 @@ def main(argv: list[str]) -> int:
                         help=f"replace an earlier '{APP_NAME}' folder there")
     parser.add_argument("--no-player", action="store_true",
                         help="leave out the prebuilt player (faster; Build game won't work)")
+    parser.add_argument("--zip", action="store_true",
+                        help=f"also write '{APP_NAME}.zip' next to the folder")
     args = parser.parse_args(argv)
     out = Path(args.out).absolute()
     target = out / APP_NAME
@@ -284,12 +401,17 @@ def main(argv: list[str]) -> int:
         write_licenses(app)
         if not args.no_player:
             add_player(app, staging)
+        write_start_here(app, add_pdfs(app))
         if target.exists():
             shutil.rmtree(target)
         shutil.move(str(app), str(target))
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     size = folder_size(target)
+    if args.zip:
+        say("writing the zip")
+        archive = write_zip(target)
+        say(f"zip: {archive} ({archive.stat().st_size / 1e6:.1f} MB)")
     say(f"done in {time.monotonic() - started:.0f} s: {target} ({size / 1e6:.1f} MB)")
     return 0
 
