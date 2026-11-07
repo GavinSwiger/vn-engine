@@ -234,3 +234,40 @@ def test_ac10_indicator_pill_words_and_cache():
         assert painter.builds == builds + 2                     # ... and one for Auto
         tb.hidden = True
         assert draw() == []
+
+
+# --- F15 07 I-7's fallback (v1 perf review): skip waits briefly on the prefetch ----------------
+
+class PrefetchStage(UnitStage):
+    prefetch_pending = False
+
+    def drop_effects(self) -> None:
+        pass
+
+
+def test_skip_holds_its_press_while_the_prefetch_decodes_at_most_a_quarter_second():
+    from engine.ui.builtin.skip_auto import PREFETCH_HOLD_MAX_S, SKIP_INTERVAL_S
+    textbox, stage = UnitTextbox(), PrefetchStage()
+    sa = SkipAuto(textbox, stage, store=None, audio=None, skip_all=True)
+    textbox.sa = stage.sa = sa
+
+    def line(sid: str) -> None:
+        sa.on_say(say(sid))
+        sa.completed(False)
+        sa.draw(None, box_shown=True)
+
+    line("s/1")
+    assert sa.start_skip()
+    tick(sa, 0.02)
+    assert textbox.presses == [0.01]                 # nothing pending: pressed at once
+    line("s/2")
+    stage.prefetch_pending = True
+    tick(sa, SKIP_INTERVAL_S + 0.1)
+    assert textbox.presses == [0.01]                 # held while the decode goes on
+    stage.prefetch_pending = False
+    tick(sa, 0.01)
+    assert textbox.presses == [0.01, 0.18]           # done: pressed the next frame
+    line("s/3")
+    stage.prefetch_pending = True                    # a decode that never finishes
+    tick(sa, 0.5)
+    assert textbox.presses[2] == pytest.approx(0.18 + SKIP_INTERVAL_S + PREFETCH_HOLD_MAX_S)

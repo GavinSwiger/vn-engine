@@ -173,6 +173,12 @@ class StageScreen(Screen):
         return "click" if wait.seconds is None else "timed"
 
     @property
+    def prefetch_pending(self) -> bool:
+        """F15 I-7: the view's prefetcher still has files queued or a decode in flight; skip
+        holds its press on it, briefly. Read only."""
+        return self.view.prefetch_pending
+
+    @property
     def wait_id(self) -> int | None:
         """F30 (``04`` §4.3): the id of the wait the story holds at, or None. A fake crash
         shows only while this is still its own wait (a press, restore, or New Game ends

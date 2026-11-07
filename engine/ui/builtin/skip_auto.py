@@ -62,6 +62,10 @@ if TYPE_CHECKING:
 
 SKIP_INTERVAL_S: Final = 0.05          # TR-F15-01: skip's Advances at least 50 ms apart
 REDUCED_GAP_S: Final = 1 / 3           # TR-F15-01, I-2: ≤ 3 stage changes a second
+# F15 07 I-7's fallback (v1 perf review): skip holds a line's press while the prefetcher is
+# still decoding, at most this long per line, so the pictures ahead come from the cache
+# instead of a decode inside a frame; a dropped prefetch can't stall skip.
+PREFETCH_HOLD_MAX_S: Final = 0.25
 AUTO_SCALE_RANGE: Final = (0.25, 4.0)  # PR-F15-07
 DELAY_DEFAULT: Final = 1.0             # [auto] delay (I-5)
 PER_CHAR_DEFAULT: Final = 0.04         # [auto] per_char (I-5)
@@ -121,6 +125,9 @@ class SkipStage(Protocol):
     def finish_now(self) -> None: ...
 
     def drop_effects(self) -> None: ...
+
+    # ``prefetch_pending`` (optional, read with getattr): the prefetcher still has files
+    # queued or a decode in flight (``StageView.prefetch_pending``, I-7).
 
 
 class SeenStore(Protocol):
@@ -310,6 +317,7 @@ class SkipAuto:
         self._complete = False           # the line's completed event came
         self._line_drawn = False         # ... and the complete line was drawn since
         self._pressed = False            # skip pressed this line once
+        self._held_since: float | None = None   # I-7: skip waits on the prefetch since
         self._shown_at_wait = 0
         self._line_timer: tuple[float, int] | None = None   # (start, graphemes)
 
@@ -450,6 +458,12 @@ class SkipAuto:
                 or textbox.menu_waiting or not stage_ok \
                 or now - self.last_skip_advance < SKIP_INTERVAL_S - _EPS:
             return
+        if getattr(stage, "prefetch_pending", False):            # I-7 (v1 perf review)
+            held = self._held_since
+            if held is None:
+                self._held_since = held = now
+            if now - held < PREFETCH_HOLD_MAX_S - _EPS:
+                return
         self._pressed = True
         self.last_skip_advance = now
         textbox.press()
@@ -514,6 +528,7 @@ def register_skip_auto(shell: "GameShell", skip_auto: SkipAuto) -> None:
                                        on=lambda: skip_auto.auto))
 
 
-__all__ = ["AUTO_SCALE_RANGE", "REDUCED_GAP_S", "SKIP_INTERVAL_S", "SeenStore", "SkipAudio",
+__all__ = ["AUTO_SCALE_RANGE", "PREFETCH_HOLD_MAX_S", "REDUCED_GAP_S", "SKIP_INTERVAL_S",
+           "SeenStore", "SkipAudio",
            "SkipAuto", "SkipAutoSettings", "SkipIndicator", "SkipStage", "SkipTextbox",
            "register_skip_auto"]
