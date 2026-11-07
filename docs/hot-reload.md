@@ -5,7 +5,8 @@ script file or `config.toml` (Ctrl+S) and the game updates: it closes, opens aga
 same spot on screen, and carries on from the same place with your new story. It says
 "Story updated." Back (the mouse wheel) still reaches the lines you saw before.
 
-Studio checks your saved files first. The status bar shows **▶ Updating…**, then
+Studio checks your saved files first (Ctrl+R skips the check when nothing changed since
+the last clean one). The status bar shows **▶ Updating…**, then
 **▶ Running. Updated at 14:32.**
 
 - **A mistake holds the update.** If the check finds an error, the game keeps running the

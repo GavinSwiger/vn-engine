@@ -383,7 +383,8 @@ class RunWiring:
         self._saved_refs: list[str] = []
         self._hot_suffix_shown = ""
         self.hot = HotReload(self.runner, start_check=self.request_saved_check,
-                             check_running=self._check_under_way)
+                             check_running=self._check_under_way,
+                             checked=self.check_covers_saved)
         self.join_runner(self.hot, self._on_hot_events)
 
     def _check_under_way(self) -> bool:

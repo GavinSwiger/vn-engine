@@ -19,7 +19,8 @@ module decides whether and how; ``preview.PreviewRunner`` does the process work.
 - **Texts**: S1-S4 and the Problems suffix, verbatim (§4.2).
 - ``HotReload``: the coordinator Studio's window drives (W2). One update at a time; a save
   during an update queues exactly one more; while a check is under way, a new save is
-  covered by the check the save itself starts.
+  covered by the check the save itself starts; with nothing changed since the newest clean
+  check of the saved files (``checked``), the update needs no new check.
 
 Pure Python, no Tk; imports ``engine.core`` and Studio's ``preview`` and ``checker`` only.
 """
@@ -204,14 +205,19 @@ class HotReload:
       ``problems_suffix()`` to the Problems summary.
 
     ``check_running()`` says whether a check is under way (its event will come);
-    ``start_check()`` asks for a check of the saved files only (no overlay, armed)."""
+    ``start_check()`` asks for a check of the saved files only (no overlay, armed).
+    ``checked()`` says whether the newest finished check already passes the gate: clean,
+    of the saved files with no unsaved text, and nothing edited or changed on disk since;
+    then an update skips the check and restarts at once (v1 review, finding 2)."""
 
     def __init__(self, runner: PreviewRunner, *, start_check: Callable[[], None],
                  check_running: Callable[[], bool] = lambda: False,
+                 checked: Callable[[], bool] = lambda: False,
                  clock_text: Callable[[], str] = lambda: time.strftime("%H:%M")) -> None:
         self.runner = runner
         self._start_check = start_check
         self._check_running = check_running
+        self._checked = checked
         self._clock_text = clock_text
         self.update_on_save = True          # D2: on by default, per window, not remembered
         self.phase = Phase.IDLE
@@ -336,8 +342,14 @@ class HotReload:
         self.again = False
         self.phase = Phase.CHECKING
         self._say(UPDATING_TEXT)
-        if not self._check_running():
-            self._start_check()
+        if self._check_running():
+            return                                  # that check's end is the gate
+        if self._checked():                         # the last clean check still holds
+            self.held = None
+            self.phase = Phase.READY
+            self._try_update()
+            return
+        self._start_check()
 
     def _next(self) -> None:
         """After an update ended without a new child: run the queued one, if any."""

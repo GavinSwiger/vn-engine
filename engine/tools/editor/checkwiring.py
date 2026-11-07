@@ -15,12 +15,14 @@ text; ``request_saved_check`` is the gate's check of the saved files only.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+import os
 import tkinter as tk
 from collections.abc import Sequence
 from dataclasses import dataclass
 from tkinter import ttk
 
 from engine.core.editorreport import CHECK_DEBOUNCE_MS, CHECK_SLOW_S, CHECK_TIMEOUT_S
+from engine.script.assetgroups import ASSET_GROUPS, CONFIG_REF
 from engine.script.messages import show
 from engine.tools.editor import icons
 from engine.tools.editor.checker import CheckItem, CheckResult, CheckState, encode_overlay
@@ -71,6 +73,42 @@ CHECK_TIMEOUT_TEXT = (f"The check took longer than {CHECK_TIMEOUT_S} seconds and
                       "Press F7 to try again.")
 CHECK_CRASHED_TEXT = "The check stopped unexpectedly. Press F7 to try again."
 SEVERITY_WORDS = {"error": "Error", "warning": "Warning", "info": "Info"}
+
+
+FINGERPRINT_DEPTH = 8                   # folders below a group, as the project tree lists
+
+
+def saved_fingerprint(root: os.PathLike | str) -> int:
+    """What a check of the saved files read, cheaply: the name, size and modified time of
+    ``config.toml`` and of every file in ``script/`` and the asset folders (a few ms on a
+    300-scene game). Equal fingerprints mean a new check would read the same files (F39's
+    gate skip, v1 review finding 2)."""
+    entries: list[tuple[str, int, int]] = []
+    try:
+        st = os.stat(os.path.join(root, CONFIG_REF))
+        entries.append((CONFIG_REF, st.st_size, st.st_mtime_ns))
+    except OSError:
+        entries.append((CONFIG_REF, -1, -1))
+    for group in ASSET_GROUPS:
+        stack = [(os.path.join(root, group.folder), group.folder, 0)]
+        while stack:
+            path, ref, depth = stack.pop()
+            try:
+                with os.scandir(path) as listing:
+                    for entry in listing:
+                        name = f"{ref}/{entry.name}"
+                        try:
+                            if entry.is_dir(follow_symlinks=False):
+                                if depth < FINGERPRINT_DEPTH:
+                                    stack.append((entry.path, name, depth + 1))
+                                continue
+                            st = entry.stat(follow_symlinks=False)
+                            entries.append((name, st.st_size, st.st_mtime_ns))
+                        except OSError:
+                            entries.append((name, -1, -1))
+            except OSError:
+                entries.append((ref, -1, -1))
+    return hash(tuple(sorted(entries)))
 
 
 def check_location(item: CheckItem) -> str:
@@ -219,6 +257,7 @@ class CheckWiring:
         self._check_serial = self.edit_serial
         self.check_running = True
         self._check_failure = None
+        self._note_request(overlay is not None or unsaved, launch=self.armed)
         self.check_runner.request(overlay, self.edit_serial, launch=self.armed)
         self._update_check_status()
 
@@ -237,8 +276,33 @@ class CheckWiring:
         self._check_serial = self.edit_serial
         self.check_running = True
         self._check_failure = None
+        self._note_request(False, launch=True)
         self.check_runner.request(None, self.edit_serial, launch=True)
         self._update_check_status()
+
+    def _note_request(self, unsaved: bool, *, launch: bool) -> None:
+        """What the newest request checks, for ``check_covers_saved``: its serial, whether
+        unsaved text was in it or left out, whether it was a full (armed) check, and the
+        saved files' fingerprint."""
+        self._request_note = (self.edit_serial, unsaved, launch,
+                              saved_fingerprint(self.paths.root))
+
+    def check_covers_saved(self) -> bool:
+        """F39's gate already passed: the newest finished check was a full check of the
+        saved files only, clean (it loaded, no errors), and since it was asked for nothing
+        was edited, no file is unsaved, and no saved file changed on disk."""
+        note = getattr(self, "_done_note", None)
+        result = self.check_result
+        if note is None or result is None or self.check_running or                 self._check_failure is not None:
+            return False
+        serial, unsaved, launch, fingerprint = note
+        if unsaved or not launch or serial != self.edit_serial or result.serial != serial:
+            return False
+        if not result.loaded or any(item.severity == "error" for item in result.problems):
+            return False
+        if self.dirty_files():
+            return False
+        return fingerprint == saved_fingerprint(self.paths.root)
 
     def _overlay(self) -> tuple[bytes | None, bool]:
         """(overlay, whether unsaved text is left out): ``encode(doc, text)`` of each dirty
@@ -294,14 +358,17 @@ class CheckWiring:
             state = getattr(event, "state", None)
             if state not in (CheckState.DONE, CheckState.TIMEOUT, CheckState.CRASHED):
                 continue                        # STARTED: still Checking…
-            if getattr(event, "serial", -1) >= self._check_serial:
+            newest = getattr(event, "serial", -1) >= self._check_serial
+            if newest:
                 self.check_running = False
             if state is CheckState.DONE:
                 result = getattr(event, "result", None)
                 if result is not None:
+                    self._done_note = getattr(self, "_request_note", None) if newest else None
                     self._apply_result(result)
                     self._check_failure = None
             else:
+                self._done_note = None
                 self._check_failure = (CHECK_TIMEOUT_TEXT if state is CheckState.TIMEOUT
                                        else CHECK_CRASHED_TEXT)
             changed = True

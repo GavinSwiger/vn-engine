@@ -260,3 +260,52 @@ def test_ac_f39_14_saving_the_line_on_screen_updates_the_game_in_place(
         assert needed in flat, needed
     assert "(hot-reload.md)" in (REPO / "docs" / "scene-editor.md").read_text(encoding="utf-8")
     assert len((REPO / "docs" / "scene-editor.md").read_text(encoding="utf-8").split()) <= 1000
+
+
+def test_update_with_nothing_changed_needs_no_check(studio, studio_game, games):
+    """v1 finding 2: Ctrl+R right after a clean, full check of the saved files restarts the
+    game with no new check. An edit, unsaved text, a changed file on disk, an error, or a
+    check that left unsaved text out each bring the gate's check back."""
+    import os
+    from dataclasses import replace
+
+    ed = studio(studio_game, mapped=True)
+    win = ed.win
+    game = games(win)
+    old = run_game(ed, game)
+    win.update_on_save.set(False)                           # only Ctrl+R updates here
+    win.toggle_update_on_save()
+    win.open_file("script/ch2.vns")
+    edit_and_save(ed)
+
+    def clean_check(*severities: str) -> None:
+        win.apply_check_events([CheckEvent(CheckState.DONE, win._check_serial, replace(
+            result(*severities), serial=win._check_serial))])
+
+    clean_check()
+    asked = len(ed.checks.requests)
+    assert win.check_covers_saved()
+    ed.press(ed.text, "<Control-r>")
+    assert len(ed.checks.requests) == asked                 # no check: straight to restart
+    old = answer_reload(ed, game, old)
+
+    ed.text.insert("1.0", "# unsaved\n")                    # an edit, not saved
+    assert not win.check_covers_saved()
+    ed.press(ed.text, "<Control-s>")
+    clean_check()
+    assert win.check_covers_saved()
+    image = studio_game / "images" / "hana" / "happy.png"
+    stamp = image.stat().st_mtime_ns
+    os.utime(image, ns=(stamp + 10**9, stamp + 10**9))      # changed on disk since
+    assert not win.check_covers_saved()
+    ed.press(ed.text, "<Control-r>")
+    assert ed.checks.requests[-1] == (None, win.edit_serial, True)
+    clean_check()
+    old = answer_reload(ed, game, old)
+
+    win.request_check()
+    clean_check("error")                                    # errors: the gate decides
+    assert not win.check_covers_saved()
+    win.check_now()
+    clean_check("warning")
+    assert win.check_covers_saved()

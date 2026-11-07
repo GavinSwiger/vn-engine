@@ -26,6 +26,7 @@ from engine.tools.editor.hotreload import (
     UPDATING_TEXT,
     HotReload,
     HotReloadEvent,
+    Phase,
     held_text,
     updated_text,
 )
@@ -384,6 +385,45 @@ def test_ac_f39_03_the_gate_and_its_texts(rig):
     rig.tick()
     assert rig.runner.state is S.UPDATING and rig.hot.problems_suffix() == ""
     assert rig.hot_events[-1] == HotReloadEvent(UPDATING_TEXT, "")
+
+
+def test_an_update_with_nothing_changed_skips_the_check(rig):
+    """v1 finding 2: when ``checked()`` says the newest clean check still covers the saved
+    files, Update restarts at once with no check; while a check runs, its end is the gate;
+    otherwise the gate's check runs as before."""
+    covered = [True]
+    running = [False]
+    rig.hot = HotReload(rig.runner, start_check=rig._check, checked=lambda: covered[0],
+                        check_running=lambda: running[0], clock_text=lambda: "14:32")
+
+    def restarted(n: int) -> None:
+        old = rig.child
+        rig.reload_sent(old)
+        old.exit(0)                                         # no state: a lost frame
+        rig.until_children(n)
+        rig.started()
+
+    rig.runner.start(BASE)
+    rig.started()
+    rig.hot.held = 2
+    assert rig.hot.request() is True
+    rig.tick()
+    assert rig.checks == 0 and rig.runner.state is S.UPDATING
+    assert rig.hot.problems_suffix() == ""                  # a clean check ends the hold
+    restarted(2)
+    assert rig.hot.status == updated_text("14:32")
+
+    running[0] = True                                       # a check under way: wait for it
+    rig.hot.request()
+    assert rig.checks == 0 and rig.hot.phase is Phase.CHECKING
+    rig.done("warning")
+    rig.tick()
+    assert rig.runner.state is S.UPDATING
+    restarted(3)
+
+    running[0], covered[0] = False, False                   # changed: the gate's check
+    rig.hot.request()
+    assert rig.checks == 1 and rig.hot.phase is Phase.CHECKING and rig.runner.state is S.RUNNING
 
 
 def test_resume_keeps_plays_beside_studio_spot_without_a_new_one():
