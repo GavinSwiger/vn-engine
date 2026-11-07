@@ -414,3 +414,20 @@ def test_switching_files_registers_no_new_tcl_commands(studio, studio_game):
     ed.root.update()
     win.vbar.tk.call(str(win.vbar.cget("command")), "moveto", "1.0")
     assert shown.yview()[1] == 1.0
+
+
+def test_the_app_icon_is_drawn_once_and_kept(monkeypatch):
+    """v1 finding 6: the icon PNGs are kept in Studio's per-user folder (a fresh one per
+    test) by a digest of the drawing code and colours; the next launch reads them."""
+    from engine.tools.editor import appicon
+
+    drawn: list[int] = []
+    draw = appicon.icon_png.__wrapped__
+    monkeypatch.setattr(appicon, "icon_png", lambda size: (drawn.append(size), draw(size))[1])
+    first = [appicon.cached_png(size) for size in appicon.ICON_SIZES]
+    assert drawn == list(appicon.ICON_SIZES)
+    assert [appicon.cached_png(size) for size in appicon.ICON_SIZES] == first
+    assert drawn == list(appicon.ICON_SIZES)                # read back, not drawn again
+    monkeypatch.setitem(appicon.THEME, "icon.background", "#123456")
+    appicon.cached_png(16)
+    assert drawn[-1] == 16 and len(drawn) == len(appicon.ICON_SIZES) + 1

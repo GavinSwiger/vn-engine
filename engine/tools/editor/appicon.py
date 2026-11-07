@@ -5,11 +5,14 @@ speech bubble, drawn in code at 16, 32, 48 and 256 px, so there is no image file
 its distance to the pixel's centre); ``set_app_icon(root)`` hands every size to Tk's
 ``wm iconphoto -default``, so the window and every dialog opened after it share the icon.
 Colors come from ``theme.THEME``. Imports only the standard library and ``theme``; ``tkinter``
-only inside ``set_app_icon``.
+and ``uiprefs`` only inside ``set_app_icon``. Drawing every size takes about 0.2 s, so the
+PNGs are kept in Studio's per-user folder (``icons/``), named by a digest of this file and
+the colours: a changed icon or theme draws them again (v1 review finding 6).
 """
 
 import base64
 import functools
+import hashlib
 import math
 import struct
 import zlib
@@ -79,6 +82,49 @@ def icon_png(size: int) -> bytes:
             + chunk(b"IDAT", zlib.compress(bytes(rows), 9)) + chunk(b"IEND", b""))
 
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def _cache_key() -> str | None:
+    """A digest of this file's source and the icon colours, or None (no source to read,
+    as in a frozen build: draw every time)."""
+    try:
+        with open(__file__, "rb") as handle:
+            source = handle.read()
+    except (OSError, TypeError, NameError):
+        return None
+    colors = f"{THEME['icon.background']}|{THEME['icon.foreground']}".encode()
+    return hashlib.sha256(source + b"\0" + colors).hexdigest()[:16]
+
+
+def cached_png(size: int) -> bytes:
+    """``icon_png(size)``, read from Studio's per-user folder when drawn before with this
+    code and these colours, else drawn and kept there (a failure to keep it is ignored)."""
+    from engine.tools.editor import uiprefs
+
+    key = _cache_key()
+    folder = uiprefs._folder()
+    if key is None or folder is None:
+        return icon_png(size)
+    path = folder / "icons" / f"app-{size}-{key}.png"
+    try:
+        with open(path, "rb") as handle:
+            data = handle.read(1 << 20)
+        if data.startswith(PNG_SIGNATURE):
+            return data
+    except OSError:
+        pass
+    data = icon_png(size)
+    try:
+        from engine.core.safefile import write_atomic
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(path, [data])
+    except (OSError, ValueError):
+        pass
+    return data
+
+
 def set_app_icon(root: object) -> list[object]:
     """Give ``root`` and every later toplevel (the dialogs) Studio's icon instead of Tk's
     feather. Returns the images: keep them, or Tk deletes them. Nothing on failure."""
@@ -86,7 +132,7 @@ def set_app_icon(root: object) -> list[object]:
 
     try:
         images = [tk.PhotoImage(master=root, format="png",  # type: ignore[arg-type]
-                                data=base64.b64encode(icon_png(size)).decode("ascii"))
+                                data=base64.b64encode(cached_png(size)).decode("ascii"))
                   for size in ICON_SIZES]
         root.iconphoto(True, *images)  # type: ignore[attr-defined]
     except (tk.TclError, OSError):
@@ -94,4 +140,4 @@ def set_app_icon(root: object) -> list[object]:
     return images
 
 
-__all__ = ["ICON_SIZES", "icon_png", "set_app_icon"]
+__all__ = ["ICON_SIZES", "cached_png", "icon_png", "set_app_icon"]
