@@ -461,6 +461,7 @@ class ScrollFrame:
         self.inner = ttk.Frame(self.canvas)
         self._window = self.canvas.create_window(0, 0, window=self.inner, anchor="nw")
         self.canvas.configure(yscrollcommand=self._set_bar)
+        self.on_view: Callable[[], object] | None = None   # the view moved or resized
         self.inner.bind("<Configure>", lambda _e: self._fit(), add="+")
         self.canvas.bind("<Configure>", lambda e: (self.canvas.itemconfigure(
             self._window, width=e.width), self._fit()), add="+")
@@ -476,6 +477,14 @@ class ScrollFrame:
         else:
             self.bar.grid(row=0, column=1, sticky="ns")
         self.bar.set(first, last)
+        if self.on_view is not None:
+            self.on_view()
+
+    def bottom_in_view(self) -> int:
+        """How far below the view's bottom the content ends, in px (negative: it ends
+        inside the view)."""
+        view = self.canvas.winfo_height()
+        return self.inner.winfo_reqheight() - (round(self.canvas.canvasy(0)) + view)
 
     def _scroll(self, units: int) -> bool:
         """A wheel turn (``wheel``): False when the form fits or is at that end."""

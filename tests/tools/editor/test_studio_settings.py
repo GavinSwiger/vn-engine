@@ -207,3 +207,22 @@ def test_ac_f47_20_previews_come_from_the_look_child_with_unsaved_text(studio, t
     pane = open_settings(ed, "title")
     assert wait(ed, lambda: pane.status.startswith("Preview not available: "))
     assert "[game] version" in pane.status and pane.preview_image() is None
+
+
+def test_a_long_page_builds_its_sections_as_they_scroll_into_view(studio, tmp_path):
+    """v1 finding 4: Words (160 fields) builds the sections near the view first, more as
+    the form scrolls, and every one with ``finish_building``."""
+    ed = studio(sample_game(tmp_path), mapped=True)
+    pane = open_settings(ed, "words")
+    total = sum(len(s.fields) for s in settingsmodel.page("words").sections)
+    assert total > settingsview.LAZY_FIELDS
+    first = len(pane.shown_fields)
+    assert 0 < first < total and pane._pending
+    for _ in range(40):                                 # scroll to the end, step by step
+        pane.scroll.canvas.yview_moveto(1.0)
+        ed.root.update()
+        if not pane._pending:
+            break
+    assert len(pane.shown_fields) > first
+    pane.finish_building()
+    assert len(pane.shown_fields) == total and not pane._pending

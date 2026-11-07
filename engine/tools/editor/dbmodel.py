@@ -430,7 +430,11 @@ MAIN_SCRIPT: Final = "script/main.vns"
 def include_order(texts: Mapping[str, str]) -> tuple[str, ...]:
     """The script refs in the order the engine reads them: ``main.vns``, then each file's
     includes in line order, breadth first (``script/loader.py``); refs no include reaches
-    come last, sorted."""
+    come last, sorted. Read once per set of texts (``declarations.memo_texts``)."""
+    return dec.memo_texts("include_order", texts, lambda: _include_order(texts))
+
+
+def _include_order(texts: Mapping[str, str]) -> tuple[str, ...]:
     order: list[str] = []
     queue = [MAIN_SCRIPT] if MAIN_SCRIPT in texts else []
     while queue:

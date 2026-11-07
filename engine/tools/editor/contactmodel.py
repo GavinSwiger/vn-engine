@@ -118,7 +118,12 @@ class SendLine:
 
 def send_lines(texts: Mapping[str, str]) -> tuple[SendLine, ...]:
     """Every send line in a scene (indented under a ``label``), in story order (include
-    order, then line). Read from the text, so it works before the check has run."""
+    order, then line). Read from the text, so it works before the check has run; once per
+    set of texts (``declarations.memo_texts``)."""
+    return dec.memo_texts("send_lines", texts, lambda: _send_lines(texts))
+
+
+def _send_lines(texts: Mapping[str, str]) -> tuple[SendLine, ...]:
     out: list[SendLine] = []
     for ref in db.include_order(texts):
         scene: str | None = None
@@ -191,7 +196,12 @@ class Message:
 
 
 def _defines(texts: Mapping[str, str]) -> dict[str, tuple[str, int, bool, object]]:
-    """Top-level define/default name → (ref, line, plain, value); the first one wins."""
+    """Top-level define/default name → (ref, line, plain, value); the first one wins. Read
+    once per set of texts (``declarations.memo_texts``); callers don't change it."""
+    return dec.memo_texts("contact_defines", texts, lambda: _read_defines(texts))
+
+
+def _read_defines(texts: Mapping[str, str]) -> dict[str, tuple[str, int, bool, object]]:
     out: dict[str, tuple[str, int, bool, object]] = {}
     for ref in db.include_order(texts):
         for first, _last, lines in dec.statements(texts[ref]):

@@ -201,3 +201,30 @@ def test_ac14_variables(line, values):
     assert dec.scan(after)[0].values == flipped
     with pytest.raises(ValueError):
         dec.line_for(dec.VARIABLE, "x", {"kind": dec.YES_NO, "value": 1})
+
+
+def test_one_scan_per_script_text(monkeypatch):
+    """v1 finding 4: a long script's statements and declarations are read once per text
+    (by digest) and shared; a changed text is read again; each caller gets its own lists;
+    ``memo_texts`` answers once per set of texts."""
+    from engine.tools.editor import contactmodel, dbmodel
+
+    body = "".join(f'define m{i} = ["Hi {i}."]\n' for i in range(200))
+    text = 'define hana = Character("Hana")\n' + body
+    assert len(text) >= dec.SCAN_CACHE_MIN_CHARS
+    calls: list[int] = []
+    real = dec._statements
+    monkeypatch.setattr(dec, "_statements", lambda t: (calls.append(1), real(t))[1])
+    texts = {"script/main.vns": text}
+    first = dec.scan(texts)
+    assert dec.scan(dict(texts)) == first and len(calls) == 1
+    lines = next(iter(dec.statements(text)))[2]
+    lines.append("changed by a caller")
+    assert next(iter(dec.statements(text)))[2] == ['define hana = Character("Hana")']
+    assert len(calls) == 1
+    changed = {"script/main.vns": text.replace("Hana", "Hanako")}
+    assert dec.find(dec.scan(changed), dec.CHARACTER, "hana").values[dec.NAME] == "Hanako"
+    assert len(calls) == 2
+    assert dbmodel.include_order(texts) is dbmodel.include_order(dict(texts))
+    assert contactmodel._defines(texts) is contactmodel._defines(dict(texts))
+    assert contactmodel._defines(changed) is not contactmodel._defines(texts)

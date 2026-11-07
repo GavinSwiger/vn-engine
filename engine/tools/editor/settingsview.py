@@ -139,7 +139,10 @@ PREVIEW_SHARE = 0.4
 PREVIEW_DELAY_MS = 500          # PR-F47-16: after typing stops
 PREVIEW_MAX = 640               # the helper's widest still
 THUMB_SIDE = 48
-SECTIONS_PER_STEP = 4           # All settings builds this many sections per idle step
+SECTIONS_PER_STEP = 2           # a long page builds this many sections per idle step
+# v1 review finding 4: All settings (500+ fields) and a page with more than LAZY_FIELDS fields
+# (Words) build their sections as they scroll into view, half a screen ahead, not all at once.
+LAZY_FIELDS = 60
 SEARCH_DELAY_MS = 200
 TEXT_WIDTH = 36
 LABEL_WIDTH = 170
@@ -315,6 +318,7 @@ class SettingsPane:
             not self.search_var.get()), add="+")
         self.search_var.trace_add("write", lambda *_a: self._on_search())
         self.scroll = ScrollFrame(self.form_frame)
+        self.scroll.on_view = self._view_moved
         self.scroll.frame.grid(row=2, column=0, sticky="nsew")
         self.grid: ttk.Frame | None = None     # the form's body (one FormGrid a section)
 
@@ -635,6 +639,10 @@ class SettingsPane:
         if self.page.key == sm.DEVICES:                                 # F65 round 3
             self.devices_page = DevicesPage(self, body)
             return
+        if sum(len(section.fields) for section in self.page.sections) > LAZY_FIELDS:
+            self._pending = list(self.page.sections)
+            self._build_more()
+            return
         for section in self.page.sections:
             self._build_section(body, section)
         if not self.page.sections:
@@ -874,8 +882,10 @@ class SettingsPane:
                            field)
 
     def _build_more(self) -> None:
-        """All settings: the next few sections, then the rest on later idle steps (each
-        section is its own grid, so adding one doesn't lay the others out again)."""
+        """All settings (and a long page): the next few sections, then more on later idle
+        steps while the built form ends less than half a screen below the view; scrolling
+        builds the rest (``_view_moved``). Each section is its own grid, so adding one
+        doesn't lay the others out again."""
         self._build_id = None
         body = self.grid
         if body is None or not body.winfo_exists():
@@ -885,7 +895,21 @@ class SettingsPane:
                 return
             self._build_section(body, self._pending.pop(0))
         if self._pending:
-            self._build_id = self.root.after(1, self._build_more)
+            self._build_id = self.root.after_idle(self._build_if_near)
+
+    def _build_if_near(self) -> None:
+        """The next step, once the form's height is known, if its end is near the view."""
+        self._build_id = None
+        if not self._pending or self.grid is None or not self.grid.winfo_exists():
+            return
+        self.scroll.inner.update_idletasks()
+        if self.scroll.bottom_in_view() < max(self.scroll.canvas.winfo_height() // 2, 1):
+            self._build_more()
+
+    def _view_moved(self) -> None:
+        """The form scrolled or resized: build on if sections wait and its end is near."""
+        if self._pending and self._build_id is None and not self.win.closed:
+            self._build_id = self.root.after_idle(self._build_if_near)
 
     def finish_building(self) -> None:
         """Build every section still waiting (tests, search jumps)."""

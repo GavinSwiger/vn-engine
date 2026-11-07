@@ -401,16 +401,38 @@ def _complex(index: _Index, path: Path_, ref: str) -> Refuse | None:
     return None
 
 
+_last_read: tuple[str, tuple[tuple[str, ...], _Index] | Refuse] | None = None
+
+
+def _read(text: str) -> tuple[list[str], _Index] | Refuse:
+    """``text``'s lines and index, or why it can't be written; the last text's are kept,
+    so a page asking about each of its fields reads the file once (v1 review finding 4)."""
+    global _last_read
+    last = _last_read
+    if last is not None and last[0] == text:
+        found = last[1]
+    else:
+        refused = _broken(text)
+        if refused is not None:
+            found = refused
+        else:
+            lines = text.split("\n")
+            try:
+                found = (tuple(lines), _index(lines))
+            except ValueError:
+                found = Refuse(UNSAFE)
+        _last_read = (text, found)
+    if isinstance(found, Refuse):
+        return found
+    return list(found[0]), found[1]
+
+
 def _prepare(text: str, section: str, key: str, ref: str
              ) -> tuple[list[str], _Index, Path_] | Refuse:
-    refused = _broken(text)
-    if refused is not None:
-        return refused
-    lines = text.split("\n")
-    try:
-        index = _index(lines)
-    except ValueError:
-        return Refuse(UNSAFE)
+    read = _read(text)
+    if isinstance(read, Refuse):
+        return read
+    lines, index = read
     path = (*section.split("."), key)
     refused = _complex(index, path, ref)
     return refused if refused is not None else (lines, index, path)

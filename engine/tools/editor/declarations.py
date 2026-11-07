@@ -51,14 +51,16 @@ read-only with **Edit as script**. Pure: no Tk, no file access, never runs autho
 """
 
 import ast
+import hashlib
 import keyword
 import math
 import re
 import tomllib
-from collections.abc import Collection, Iterable, Mapping
+from collections import OrderedDict
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Final
+from typing import Final, TypeVar
 
 from engine.core.config_schema import Position, PositionName, ValueProblem
 from engine.core.constants import (
@@ -295,10 +297,67 @@ def _block_end(lines: list[str], head: int) -> int:
     return last
 
 
+# v1 review finding 4: the Database, Contacts and the Guide each scan every script for its
+# declarations, several times per page; one shared cache per script text (keyed by a digest,
+# never holding the text) makes every scan after the first a lookup.
+T = TypeVar("T")
+SCAN_CACHE_MAX: Final = 256             # script texts remembered (a 300-scene game has ~30)
+SCAN_CACHE_MIN_CHARS: Final = 2_000     # a shorter text is scanned again: it costs little
+_statements_cache: OrderedDict[bytes, tuple[tuple[int, int, tuple[str, ...]], ...]] = \
+    OrderedDict()
+_scan_cache: OrderedDict[tuple[str, bytes], tuple["Decl", ...]] = OrderedDict()
+
+
+def text_digest(text: str) -> bytes:
+    """A script text's digest for the scan caches."""
+    return hashlib.blake2b(text.encode("utf-8", "surrogatepass"), digest_size=16).digest()
+
+
+def _remember(cache: OrderedDict, key: object, value: object) -> None:
+    cache[key] = value
+    if len(cache) > SCAN_CACHE_MAX:
+        cache.popitem(last=False)
+
+
+TEXTS_MEMO_MAX: Final = 16              # whole-game answers remembered (per name and texts)
+_texts_memo: OrderedDict[tuple[str, tuple[tuple[str, bytes], ...]], object] = OrderedDict()
+
+
+def memo_texts(name: str, texts: Mapping[str, str], compute: Callable[[], T]) -> T:
+    """``compute()``, an answer read from all of ``texts`` (ref → text), once per set of
+    texts: kept by ``name`` and each script's ref and digest. The answer must be treated as
+    read-only by every caller."""
+    key = (name, tuple((ref, text_digest(texts[ref])) for ref in sorted(texts)))
+    if key in _texts_memo:
+        _texts_memo.move_to_end(key)
+        return _texts_memo[key]                         # type: ignore[return-value]
+    value = compute()
+    _texts_memo[key] = value
+    if len(_texts_memo) > TEXTS_MEMO_MAX:
+        _texts_memo.popitem(last=False)
+    return value
+
+
 def statements(text: str) -> Iterable[tuple[int, int, list[str]]]:
     """``(first, last, lines)`` of each top-level ``define``/``default``/``image``/``points``/
     ``lock`` statement in ``text`` (lines without endings), continuation lines and a ``lock
-    tip|item …:`` block included."""
+    tip|item …:`` block included. A long text's statements are found once (by digest);
+    each caller gets its own ``lines`` lists."""
+    if len(text) < SCAN_CACHE_MIN_CHARS:
+        yield from _statements(text)
+        return
+    key = text_digest(text)
+    found = _statements_cache.get(key)
+    if found is None:
+        found = tuple((first, last, tuple(lines)) for first, last, lines in _statements(text))
+        _remember(_statements_cache, key, found)
+    else:
+        _statements_cache.move_to_end(key)
+    for first, last, lines in found:
+        yield first, last, list(lines)
+
+
+def _statements(text: str) -> Iterable[tuple[int, int, list[str]]]:
     lines = text.split("\n")
     depth = 0
     i = 0
@@ -1496,11 +1555,24 @@ def read(ref: str, first: int, last: int, lines: list[str]) -> Decl | None:
 
 
 def scan(texts: Mapping[str, str]) -> tuple[Decl, ...]:
-    """Every declaration of ``texts`` (ref → text), in ref order, then line order."""
+    """Every declaration of ``texts`` (ref → text), in ref order, then line order. Each
+    script's declarations are read once per text (the shared cache, by ref and digest)."""
     found: list[Decl] = []
     for ref in sorted(texts):
-        for first, last, lines in statements(texts[ref]):
-            found.extend(read_all(ref, first, last, lines))
+        text = texts[ref]
+        if len(text) < SCAN_CACHE_MIN_CHARS:
+            for first, last, lines in statements(text):
+                found.extend(read_all(ref, first, last, lines))
+            continue
+        key = (ref, text_digest(text))
+        decls = _scan_cache.get(key)
+        if decls is None:
+            decls = tuple(decl for first, last, lines in statements(text)
+                          for decl in read_all(ref, first, last, lines))
+            _remember(_scan_cache, key, decls)
+        else:
+            _scan_cache.move_to_end(key)
+        found.extend(decls)
     return tuple(found)
 
 

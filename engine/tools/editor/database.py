@@ -638,9 +638,13 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         elif not self.new_button.winfo_ismapped():
             self.new_button.pack(side="right", padx=(0, self._px(4)))
         if changed:
-            self.set_search("")
-            self._search_placeholder(self.root.focus_get() is not self.search)
             self.form = None
+            self._quiet_search = True       # one list and form below, not one per change
+            try:
+                self.set_search("")
+                self._search_placeholder(self.root.focus_get() is not self.search)
+            finally:
+                self._quiet_search = False
         self._fill_list()
 
     def _on_resize(self, _event: tk.Event | None = None) -> None:
@@ -764,8 +768,11 @@ class DatabasePane(MoreCategories, GalleryCategory, MusicRoomCategory, ReplaysCa
         self.chosen[self.category] = iid
         self._fill_list()
 
+    _quiet_search = False
+
     def _on_search(self) -> None:
-        if not self._search_live and getattr(self, "_placeholder", False):
+        if self._quiet_search or (not self._search_live and getattr(self, "_placeholder",
+                                                                       False)):
             return
         self._fill_list()
 
