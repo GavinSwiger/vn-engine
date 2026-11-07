@@ -670,9 +670,13 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
         self.gutter.grid(row=0, column=0, sticky="ns")
         wheel.register(self.gutter, lambda units: self.text.yview_scroll(units, "units")
                        if getattr(self, "text", None) is not None else False)
-        self.vbar = ttk.Scrollbar(frame, orient="vertical")
+        # One command each, registered once, that scrolls the text on screen (v1 review
+        # finding 8: a command per file switch was a Tcl command never deleted).
+        self.vbar = ttk.Scrollbar(frame, orient="vertical",
+                                  command=lambda *a: self._scroll_shown("yview", a))
         self._vbar_set = autohide(self.vbar, row=0, column=2, sticky="ns")
-        self.hbar = ttk.Scrollbar(frame, orient="horizontal")
+        self.hbar = ttk.Scrollbar(frame, orient="horizontal",
+                                  command=lambda *a: self._scroll_shown("xview", a))
         self._hbar_set = autohide(self.hbar, row=1, column=1, sticky="ew")
 
     # --- Tabs ---------------------------------------------------------------------------------
@@ -848,6 +852,15 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
             widgets.append(self._empty_widget)
         return widgets
 
+    def _scroll_shown(self, view: str, args: tuple) -> None:
+        """A scrollbar's command: scroll the text on screen (``yview`` or ``xview``)."""
+        shown = self._shown
+        if shown is not None and not self.closed:
+            try:
+                getattr(shown, view)(*args)
+            except tk.TclError:
+                pass
+
     def _show(self, widget: tk.Text) -> None:
         if widget is not self._shown:
             self.close_completion()
@@ -862,8 +875,6 @@ class EditorWindow(StudioMenus, EditorKeys, EditorMenu, FileActions, CheckWiring
                 self.editor_empty.show(self.editor_frame)
             else:
                 self.editor_empty.hide()
-            self.vbar.configure(command=widget.yview)
-            self.hbar.configure(command=widget.xview)
             self._vbar_set(*widget.yview())
             self._hbar_set(*widget.xview())
             if had_focus:

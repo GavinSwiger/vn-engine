@@ -389,3 +389,28 @@ def test_right_click_in_the_editor_goes_to_definition(studio, studio_game, monke
     x, y, _w, _h = text.bbox("6.5")
     text.event_generate(f"<{win.mod}-Button-1>", x=x + 1, y=y + 1)
     assert win.text.index("insert") == "2.0"
+
+
+def test_switching_files_registers_no_new_tcl_commands(studio, studio_game):
+    """v1 finding 8: the editor's scrollbars keep one command each, which scrolls the
+    text on screen; switching files no longer leaves a Tcl command behind per switch."""
+    ed = studio(studio_game, mapped=True)
+    win = ed.win
+    win.open_file("script/ch2.vns")
+    win.open_file("script/main.vns")
+    ed.root.update()
+
+    def scrolls() -> int:                       # Python callbacks named after yview/xview
+        return sum(1 for name in ed.root.tk.splitlist(ed.root.tk.call("info", "commands"))
+                   if name[:1].isdigit() and name.endswith(("yview", "xview")))
+
+    count = scrolls()
+    for i in range(20):
+        win.open_file(("script/ch2.vns", "script/main.vns")[i % 2])
+    assert scrolls() == count
+    win.open_file("script/ch2.vns")
+    shown = win._shown
+    shown.insert("end", "\n" * 200)
+    ed.root.update()
+    win.vbar.tk.call(str(win.vbar.cget("command")), "moveto", "1.0")
+    assert shown.yview()[1] == 1.0
