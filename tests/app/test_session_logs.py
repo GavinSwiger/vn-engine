@@ -95,7 +95,7 @@ def test_example_game_files():
     assert len(id_lines) == 1 and "set a unique id before you release" in id_lines[0]
     defaults = ["width = 1280", "height = 720", "fullscreen = false", "resizable = true",
                 'letterbox_color = "#000000"', 'scale_filter = "smooth"',
-                "integer_scale = false", "fps = 60", "cache_mb = 512", 'log_level = "info"']
+                "integer_scale = false", "fps = 60", "cache_mb = 256", 'log_level = "info"']
     commented = [line.lstrip("# ").split("   #")[0].strip() for line in text.splitlines()
                  if line.startswith("#")]
     for default in defaults:

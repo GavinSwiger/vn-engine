@@ -33,7 +33,7 @@ version = "0.1.0"
 
 [engine]
 # fps = 60
-# cache_mb = 512
+# cache_mb = 256
 # log_level = "info"
 
 [stage]
