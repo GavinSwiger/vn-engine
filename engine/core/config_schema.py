@@ -2394,8 +2394,8 @@ class Config:
     auto: AutoConfig = field(default_factory=AutoConfig)                # F15
     chapter: ChapterConfig = field(default_factory=ChapterConfig)       # F18
     rollback: RollbackConfig = field(default_factory=RollbackConfig)    # F14
-    hotbar: HotbarConfig = field(default_factory=HotbarConfig)          # F64 round 2
     codex: CodexConfig = field(default_factory=CodexConfig)             # F21
+    hotbar: HotbarConfig = field(default_factory=HotbarConfig)          # F64 round 2
     flowchart: FlowchartConfig = field(default_factory=FlowchartConfig) # F20
     gallery: GalleryConfig = field(default_factory=GalleryConfig)       # F34
     endings: EndingsConfig = field(default_factory=EndingsConfig)       # F36
@@ -2442,8 +2442,8 @@ SECTIONS: dict[str, type] = {
     "auto": AutoConfig,
     "chapter": ChapterConfig,
     "rollback": RollbackConfig,
-    "hotbar": HotbarConfig,                                             # F64 round 2
     "codex": CodexConfig,
+    "hotbar": HotbarConfig,                                             # F64 round 2
     "flowchart": FlowchartConfig,
     "gallery": GalleryConfig,
     "endings": EndingsConfig,
@@ -2478,8 +2478,8 @@ SECTION_DOCS: Mapping[str, str] = MappingProxyType({
     "auto": "how long auto-advance waits",
     "chapter": "chapter auto-saves and save names",
     "rollback": "going back through the story",
-    "hotbar": "the quick slots for usable items that show hotbar puts on screen",
     "codex": "the codex of tips and items",
+    "hotbar": "the quick slots for usable items that show hotbar puts on screen",
     "flowchart": "the Flowchart page",
     "gallery": "the gallery of special pictures players have seen, on the Extras screen",
     "endings": "the page of endings players have reached, on the Extras screen",

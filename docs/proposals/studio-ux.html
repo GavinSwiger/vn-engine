@@ -1,0 +1,1977 @@
+<title>Studio Fun Proposals</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a Studio-like window. A "Project" tree on the left is the table of contents;
+   the right is a reading column of inspector panels (one per idea). Studio blue is the
+   accent; a paper-lantern amber (from the sample game) marks "live" and "fun" moments. */
+:root {
+  --bg: #eef0f3;
+  --panel: #ffffff;
+  --panel-2: #f6f7f9;
+  --ink: #1a1e26;
+  --ink-2: #555e6d;
+  --line: #d6dbe2;
+  --accent: #005fa8;
+  --accent-soft: #e3eef8;
+  --on-accent: #ffffff;
+  --lantern: #a3520c;
+  --lantern-soft: #fbeedf;
+  --have: #23704a;
+  --have-soft: #e2f2e9;
+  --ext: #005fa8;
+  --ext-soft: #e3eef8;
+  --new: #8a3f9a;
+  --new-soft: #f4e8f6;
+  --focus: #0078d4;
+  --kbd-bg: #ffffff;
+  --kbd-edge: #b9c0cb;
+  --code-bg: #eceff3;
+
+  /* Mockup tokens: Studio is dark-only, so the mockups stay dark in both themes. */
+  --mk-chrome: #181818;
+  --mk-surface: #1e1e1e;
+  --mk-raised: #2b2b2b;
+  --mk-input: #313131;
+  --mk-border: #3c3c3c;
+  --mk-text: #cccccc;
+  --mk-strong: #e7e7e7;
+  --mk-muted: #9d9d9d;
+  --mk-accent: #0078d4;
+  --mk-select: #04395e;
+  --mk-live: #e8a33d;
+  --mk-live-ink: #1b1305;
+  --mk-good: #89d185;
+  --mk-ending: #c586c0;
+  --mk-mini: #4ec9b0;
+  --mk-link: #808080;
+  --mk-night: #27234a;
+  --mk-night-2: #3b3466;
+  --mk-dusk: #c9785a;
+  --mk-dusk-2: #e7b07a;
+  --mk-river: #2f5f80;
+  --mk-grass: #48653a;
+  --mk-shed: #5e4331;
+  --mk-ground: #17152a;
+  --mk-hana: #b03070;
+  --mk-daichi: #3a6aa8;
+  --mk-thought: #1e4a9c;
+  --mk-paper: #f3ece0;
+  --mk-ink: #222222;
+  --mk-pinkbox: #fde6ef;
+  --mk-romance: #e889a8;
+  --mk-sepia: #b08a5a;
+  --mk-bw: #f2f2f2;
+  --mk-black: #0d0d0d;
+
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --f-mock: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --step--1: 0.84rem;
+  --step-0: 1rem;
+  --step-1: 1.18rem;
+  --step-2: 1.45rem;
+  --step-3: 2rem;
+  --step-4: 2.6rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161a;
+    --panel: #1c1f24;
+    --panel-2: #22262c;
+    --ink: #e4e7ec;
+    --ink-2: #a2abb8;
+    --line: #30353d;
+    --accent: #59b0ff;
+    --accent-soft: #15283a;
+    --on-accent: #08121c;
+    --lantern: #f0a24e;
+    --lantern-soft: #33240f;
+    --have: #7fd3a0;
+    --have-soft: #15291e;
+    --ext: #59b0ff;
+    --ext-soft: #15283a;
+    --new: #e0a2ec;
+    --new-soft: #2e1b33;
+    --focus: #59b0ff;
+    --kbd-bg: #262a31;
+    --kbd-edge: #464c56;
+    --code-bg: #262a31;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161a;
+  --panel: #1c1f24;
+  --panel-2: #22262c;
+  --ink: #e4e7ec;
+  --ink-2: #a2abb8;
+  --line: #30353d;
+  --accent: #59b0ff;
+  --accent-soft: #15283a;
+  --on-accent: #08121c;
+  --lantern: #f0a24e;
+  --lantern-soft: #33240f;
+  --have: #7fd3a0;
+  --have-soft: #15291e;
+  --ext: #59b0ff;
+  --ext-soft: #15283a;
+  --new: #e0a2ec;
+  --new-soft: #2e1b33;
+  --focus: #59b0ff;
+  --kbd-bg: #262a31;
+  --kbd-edge: #464c56;
+  --code-bg: #262a31;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--step-0);
+  line-height: 1.6;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+h1, h2, h3, h4 { font-family: var(--f-display); line-height: 1.2; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+code { font-family: var(--f-mono); font-size: 0.86em; background: var(--code-bg); padding: 0.08em 0.35em; border-radius: 3px; }
+kbd {
+  font-family: var(--f-mono); font-size: 0.78em; font-weight: 600;
+  display: inline-block; padding: 0.05em 0.45em; line-height: 1.5;
+  background: var(--kbd-bg); color: var(--ink);
+  border: 1px solid var(--kbd-edge); border-bottom-width: 2px; border-radius: 4px;
+  white-space: nowrap;
+}
+
+.wrap {
+  max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 72px;
+}
+
+/* Window caption strip */
+.caption {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center;
+  font-family: var(--f-mono); font-size: var(--step--1); color: var(--ink-2);
+  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+}
+.caption b { color: var(--ink); font-weight: 600; }
+.caption .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lantern); display: inline-block; margin-right: 6px; vertical-align: 0; }
+
+.hero { display: grid; gap: 14px; padding-block: 28px 30px; max-width: 70ch; }
+.hero .eyebrow { font-family: var(--f-mono); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--lantern); }
+.hero h1 { font-size: clamp(2rem, 1.4rem + 2.6vw, var(--step-4)); font-weight: 700; letter-spacing: -0.01em; }
+.hero p { font-size: var(--step-1); color: var(--ink-2); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: var(--step--1); color: var(--ink-2); }
+
+.layout { display: block; }
+@media (min-width: 1020px) {
+  .layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 44px; align-items: start; }
+}
+
+/* Project tree TOC */
+.tree {
+  font-size: 0.93rem; border: 1px solid var(--line); background: var(--panel);
+  border-radius: 4px; padding: 10px 0; margin-bottom: 28px;
+}
+@media (min-width: 1020px) {
+  .tree { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow: auto; margin-bottom: 0; }
+}
+.tree .cap { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); padding: 0 14px 6px; }
+.tree ul { list-style: none; margin: 0; padding: 0; }
+.tree li a { display: block; padding: 3px 14px; color: var(--ink); text-decoration: none; }
+.tree li a:hover { background: var(--panel-2); }
+.tree li ul a { padding-left: 30px; color: var(--ink-2); font-size: 0.88rem; }
+.tree li a::before { content: "\25B8"; color: var(--ink-2); margin-right: 7px; font-size: 0.8em; }
+.tree li ul a::before { content: "\2022"; }
+
+main { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px; }
+section { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 6px; border-top: 2px solid var(--ink); padding-top: 12px; }
+.sec-head .tag { font-family: var(--f-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.sec-head h2 { font-size: var(--step-3); font-weight: 700; }
+.prose { max-width: 68ch; display: grid; gap: 14px; }
+.prose ul, .prose ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+
+.rules { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); max-width: 68rem; }
+.rule { border: 1px solid var(--line); background: var(--panel); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.rule .n { font-family: var(--f-mono); font-size: 0.78rem; color: var(--lantern); }
+.rule h3 { font-size: var(--step-1); }
+.rule p { color: var(--ink-2); font-size: 0.95rem; }
+
+/* Observations list (inspector rows) */
+.obs { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; max-width: 68rem; }
+.obs > div { display: grid; grid-template-columns: 1fr; gap: 4px 18px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.obs > div:first-child { border-top: 0; }
+@media (min-width: 720px) { .obs > div { grid-template-columns: 210px minmax(0, 1fr); } }
+.obs .k { font-weight: 700; }
+.obs .v { color: var(--ink-2); min-width: 0; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); max-width: 68rem; }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.93rem; }
+th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-2); background: var(--panel-2); }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+
+/* Chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--f-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+}
+.chip.have { color: var(--have); background: var(--have-soft); }
+.chip.ext { color: var(--ext); background: var(--ext-soft); }
+.chip.new { color: var(--new); background: var(--new-soft); }
+.chip.size { color: var(--ink-2); border-color: var(--line); background: var(--panel); }
+.chip.grp { color: var(--ink-2); background: var(--panel-2); }
+
+/* Top 10 */
+.top10 { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; max-width: 68rem; counter-reset: rank; }
+.top10 li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 14px; padding: 12px 16px 12px 10px; border-top: 1px solid var(--line); counter-increment: rank; }
+.top10 li:first-child { border-top: 0; }
+.top10 li::before { content: counter(rank); grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 1.55rem; color: var(--lantern); text-align: right; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.top10 .t { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.top10 .t a { font-weight: 700; font-size: 1.05rem; color: var(--ink); }
+.top10 .why { color: var(--ink-2); font-size: 0.95rem; }
+
+/* Mockups */
+.mock { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; max-width: 68rem; }
+.mock .mh { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.mock .mh .lbl { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lantern); }
+.mock .mh h3 { font-size: var(--step-1); }
+.mock .scroll { overflow-x: auto; background: var(--mk-chrome); }
+.mock svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.mock .cap-list { padding: 12px 16px 14px; display: grid; gap: 6px; font-size: 0.93rem; color: var(--ink-2); max-width: 72ch; }
+.mock .cap-list ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+
+/* SVG mockup classes */
+.m-chrome { fill: var(--mk-chrome); }
+.m-surface { fill: var(--mk-surface); }
+.m-raised { fill: var(--mk-raised); }
+.m-input { fill: var(--mk-input); }
+.m-border { fill: none; stroke: var(--mk-border); stroke-width: 1; }
+.m-borderf { fill: var(--mk-border); }
+.m-select { fill: var(--mk-select); }
+.m-accent { fill: var(--mk-accent); }
+.m-live { fill: var(--mk-live); }
+.m-live-s { fill: none; stroke: var(--mk-live); stroke-width: 2; }
+.m-live-glow { fill: none; stroke: var(--mk-live); stroke-width: 6; opacity: 0.25; }
+.m-accent-s { fill: none; stroke: var(--mk-accent); stroke-width: 2; }
+.m-ending-s { fill: none; stroke: var(--mk-ending); stroke-width: 1.5; }
+.m-mini-s { fill: none; stroke: var(--mk-mini); stroke-width: 1.2; }
+.m-link { fill: none; stroke: var(--mk-link); stroke-width: 1.4; }
+.m-link-d { fill: none; stroke: var(--mk-link); stroke-width: 1.4; stroke-dasharray: 2 4; }
+.m-link-lit { fill: none; stroke: var(--mk-live); stroke-width: 2; }
+.m-arrowhead { fill: var(--mk-link); }
+.m-arrowhead-lit { fill: var(--mk-live); }
+.m-good { fill: var(--mk-good); }
+.m-night { fill: var(--mk-night); }
+.m-night2 { fill: var(--mk-night-2); }
+.m-dusk { fill: var(--mk-dusk); }
+.m-dusk2 { fill: var(--mk-dusk-2); }
+.m-river { fill: var(--mk-river); }
+.m-grass { fill: var(--mk-grass); }
+.m-shed { fill: var(--mk-shed); }
+.m-ground { fill: var(--mk-ground); }
+.m-hana { fill: var(--mk-hana); }
+.m-daichi { fill: var(--mk-daichi); }
+.m-thought { fill: var(--mk-thought); }
+.m-paper { fill: var(--mk-paper); }
+.m-pinkbox { fill: var(--mk-pinkbox); }
+.m-romance { fill: var(--mk-romance); }
+.m-sepia { fill: var(--mk-sepia); }
+.m-bw { fill: var(--mk-bw); }
+.m-black { fill: var(--mk-black); }
+.m-dim { opacity: 0.42; }
+.m-t { font-family: var(--f-mock); fill: var(--mk-text); font-size: 12px; }
+.m-t.s { font-size: 10.5px; }
+.m-t.l { font-size: 14px; }
+.m-t.xl { font-size: 18px; font-weight: 600; }
+.m-t.b { font-weight: 600; fill: var(--mk-strong); }
+.m-t.mu { fill: var(--mk-muted); }
+.m-t.mono { font-family: var(--f-mono); font-size: 11.5px; }
+.m-t.live { fill: var(--mk-live); }
+.m-t.on-live { fill: var(--mk-live-ink); font-weight: 600; }
+.m-t.acc { fill: var(--mk-accent); }
+.m-t.hana { fill: var(--mk-hana); font-weight: 600; }
+.m-t.daichi { fill: var(--mk-daichi); font-weight: 600; }
+.m-t.ink { fill: var(--mk-ink); }
+.m-t.good { fill: var(--mk-good); }
+.m-t.end { fill: var(--mk-ending); }
+.m-t.mini { fill: var(--mk-mini); }
+.m-t.white { fill: var(--mk-strong); }
+
+/* Storyboard */
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); max-width: 68rem; min-width: 0; }
+.frame { min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 12px 14px 14px; display: grid; gap: 8px; align-content: start; }
+.frame .tc { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.frame .time { font-family: var(--f-mono); font-weight: 600; font-size: 0.82rem; color: var(--on-accent); background: var(--accent); padding: 1px 7px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.frame .refs { font-family: var(--f-mono); font-size: 0.72rem; color: var(--ink-2); text-align: right; }
+.frame h3 { font-size: 1.05rem; }
+.frame p { font-size: 0.93rem; color: var(--ink-2); }
+.frame .today { font-size: 0.85rem; color: var(--ink-2); border-top: 1px dashed var(--line); padding-top: 6px; }
+.frame .today b { color: var(--lantern); font-weight: 700; }
+
+/* Filters */
+.filters { display: grid; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 12px 14px; max-width: 68rem; }
+.frow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.frow .fl { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-2); min-width: 60px; }
+.fbtn {
+  font: inherit; font-size: 0.86rem; cursor: pointer;
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink);
+}
+.fbtn:hover { border-color: var(--ink-2); }
+.fbtn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.fcount { font-size: 0.86rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.noresults { color: var(--ink-2); font-style: italic; }
+
+/* Groups and idea panels */
+.group { display: grid; gap: 14px; scroll-margin-top: 16px; }
+.group > h3 { font-size: var(--step-2); font-weight: 700; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.group > h3 .gn { font-family: var(--f-mono); font-size: 0.85rem; color: var(--lantern); font-weight: 600; }
+.group > p { color: var(--ink-2); max-width: 68ch; }
+.idea { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; max-width: 68rem; scroll-margin-top: 16px; }
+.idea > header { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.idea .idno { font-family: var(--f-mono); font-size: 0.8rem; color: var(--ink-2); }
+.idea h4 { font-size: var(--step-1); font-weight: 700; flex: 1 1 240px; min-width: 0; }
+.idea .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.insp { margin: 0; display: grid; grid-template-columns: 1fr; }
+.insp > div { display: grid; grid-template-columns: 1fr; gap: 2px 18px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.insp > div:first-child { border-top: 0; }
+@media (min-width: 760px) { .insp > div { grid-template-columns: 150px minmax(0, 1fr); } }
+.insp dt { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-2); padding-top: 4px; }
+.insp dd { margin: 0; min-width: 0; max-width: 70ch; }
+.insp dd ol, .insp dd ul { margin: 0; padding-left: 1.25em; display: grid; gap: 3px; }
+.insp .challenge { border-left: 3px solid var(--lantern); padding-left: 10px; }
+
+.nope { display: grid; gap: 10px; max-width: 68rem; }
+.nope > div { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 12px 16px; display: grid; gap: 4px; }
+.nope h3 { font-size: 1.05rem; }
+.nope p { color: var(--ink-2); font-size: 0.95rem; max-width: 72ch; }
+
+.sources ol { margin: 0; padding-left: 1.6em; display: grid; gap: 4px; font-size: 0.93rem; max-width: 80ch; }
+.sources li { overflow-wrap: anywhere; }
+.sources .note { color: var(--ink-2); }
+
+footer { font-size: var(--step--1); color: var(--ink-2); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 40px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .fbtn { transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
+}
+</style>
+<style data-plan>
+/* plan: build progress, slices and usage (added 2026-11-06) */
+.plan-x{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.plan-x summary{cursor:pointer;font-family:var(--f-mono);font-size:.82rem;color:var(--ink-2)}
+.plan-x summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.plan-x ol{margin:10px 0 0;padding-left:1.4em;display:grid;gap:8px}
+.plan-x li{min-width:0}
+.plan-x .sl-name{font-weight:700}
+.plan-x .sl-meta{display:block;font-family:var(--f-mono);font-size:.74rem;color:var(--ink-2)}
+.plan-x .sl-note{margin:8px 0 0;font-size:.9rem;color:var(--ink-2)}
+.plan-size{display:inline-block;font-family:var(--f-mono);font-size:.72rem;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-left:6px;color:var(--ink-2)}
+.built-chip{display:inline-block;font-family:var(--f-mono);font-size:.74rem;font-weight:600;color:var(--have);border:1px solid var(--have);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap}
+.is-built h4,.is-built-li a{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--have)}
+.plan-sec{display:grid;gap:16px}
+.plan-sec h3{font-family:var(--f-display);font-size:1.15rem;margin:8px 0 0}
+.plan-sec p{max-width:68ch;margin:0}
+.plan-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.plan-tab{border-collapse:collapse;width:100%;font-size:.9rem}
+.plan-tab th,.plan-tab td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+.plan-tab th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:600;white-space:nowrap}
+.plan-tab td,.plan-tab td:first-child{white-space:normal}
+.plan-tab td:first-child{min-width:24ch}
+.plan-tab td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.plan-tab tr:last-child td{border-bottom:0}
+.plan-done{color:var(--have);font-weight:700}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="wrap">
+  <div class="caption" aria-hidden="true">
+    <span><span class="dot"></span><b>studio-ux</b> &mdash; vn-engine Studio</span>
+    <span>docs/proposals/studio-ux.html</span>
+    <span>Ln 1, Col 1</span>
+  </div>
+
+  <header class="hero">
+    <div class="eyebrow">Proposal &middot; Studio usability &middot; 5 Nov 2026</div>
+    <h1>Make Studio fun to watch</h1>
+    <p>41 ideas, ranked and sized, for an editor where someone watching over your shoulder says &ldquo;that looks like fun.&rdquo; Built from screenshots of Studio today, the code in <code>engine/tools/editor/</code>, and what makes RPG Maker, Unity, VS Code and friends loved.</p>
+    <div class="meta">
+      <span>For: the owner</span>
+      <span>Status: draft for review</span>
+      <span>Scope: Studio only (no new script syntax)</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="tree" aria-label="Contents">
+      <div class="cap">Project</div>
+      <ul>
+        <li><a href="#thesis">Thesis</a></li>
+        <li><a href="#today">Studio today</a></li>
+        <li><a href="#top10">Top 10 to build first</a></li><!--plan:toc--><li><a href="#build-plan">Build plan</a></li><!--/plan:toc-->
+        <li><a href="#mockups">Mockups</a></li>
+        <li><a href="#first10">First 10 minutes</a></li>
+        <li><a href="#ideas">All ideas</a>
+          <ul>
+            <li><a href="#g-onboard">First five minutes</a></li>
+            <li><a href="#g-play">Instant play</a></li>
+            <li><a href="#g-map">Visual story building</a></li>
+            <li><a href="#g-juice">Juice and feel</a></li>
+            <li><a href="#g-keys">Keyboard flow</a></li>
+            <li><a href="#g-art">Assets and art</a></li>
+            <li><a href="#g-share">Sharing</a></li>
+            <li><a href="#g-stream">Streaming and devlogs</a></li>
+            <li><a href="#g-a11y">Accessibility</a></li>
+          </ul>
+        </li>
+        <li><a href="#nope">Ideas I'd skip</a></li>
+        <li><a href="#sources">Sources</a></li>
+      </ul>
+    </nav>
+
+    <main>
+
+      <!-- THESIS -->
+      <section id="thesis">
+        <div class="sec-head"><span class="tag">Thesis</span><h2>What &ldquo;that looks like fun&rdquo; means here</h2></div>
+        <div class="prose">
+          <p>A watcher thinks a tool looks fun when they can see cause and effect. The author does one thing and the screen answers at once: a box appears, a character steps onto the stage, the game jumps to the new line. Bret Victor calls this an immediate connection between the maker and the thing made (<a href="https://jamesclear.com/great-speeches/inventing-on-principle-by-bret-victor">Inventing on Principle</a>).</p>
+          <p>Studio already does most of the hard work. It checks as you type, reloads the running game on save, lights up the story map when scripts change, and draws a scene's opening shot. Almost none of that is visible to someone watching. The game plays in a floating window on top of Studio. Play is in a menu. Map boxes show names and file paths. Events rows are grey text. So the main job of this proposal is to put pictures and motion where the work already happens.</p>
+          <p>Three rules shaped every idea below:</p>
+        </div>
+        <div class="rules">
+          <div class="rule"><span class="n">Rule 1</span><h3>Answer within a quarter second</h3><p>Every action gets a visible answer on the same screen, fast. If the real result takes longer (a game launch, a check), show a sketch first.</p></div>
+          <div class="rule"><span class="n">Rule 2</span><h3>Pictures first, text second, code last</h3><p>A VN is pictures and words. Show the stage before the script and the script before the code.</p></div>
+          <div class="rule"><span class="n">Rule 3</span><h3>Juice is a reward</h3><p>Motion and sound mark real progress or show what changed. They are short, rare, and off with Reduce motion.</p></div>
+        </div>
+      </section>
+
+      <!-- TODAY -->
+      <section id="today">
+        <div class="sec-head"><span class="tag">Starting point</span><h2>Studio today</h2></div>
+        <div class="prose">
+          <p>I opened a scratch copy of the example game (<em>Paper Lanterns</em>) in Studio on 5 Nov and took screenshots of each tab, the Guide, and a Play. Here is what a new user, or a viewer, sees.</p>
+        </div>
+        <div class="obs">
+          <div><span class="k">First screen</span><span class="v">Studio opens on <code>main.vns</code>: 50 lines of comments, <code>define</code> and <code>default</code>. The first impression is code.</span></div>
+          <div><span class="k">Play</span><span class="v">No Play button on screen. Since commit <code>0d30d5a</code> Play lives in the Run menu (<kbd>F5</kbd>, <kbd>Shift+F5</kbd>). The menu row keeps only AI Assistant and ? Guide.</span></div>
+          <div><span class="k">The game window</span><span class="v">Play opens a 1280&times;720 floating window over the middle of Studio. On a fresh copy the first thing it shows is the user-name question (F30).</span></div>
+          <div><span class="k">Story map</span><span class="v">Clean and readable. Boxes show a name, <code>script/chapter1.vns:55</code> and marks. The opening shot exists but appears only after a click.</span></div>
+          <div><span class="k">Events</span><span class="v">The right idea (an RPG Maker style list), drawn as two columns of grey text. No faces, no colours, no thumbnails.</span></div>
+          <div><span class="k">Game settings</span><span class="v">The Color scheme grid is the most colourful screen in Studio. Its text box preview sits on a blank pink field, not on a game picture.</span></div>
+          <div><span class="k">Hot reload</span><span class="v">Works. Per <code>docs/hot-reload.md</code> the game closes and reopens in the same spot about 2 s after a save.</span></div>
+          <div><span class="k">Install</span><span class="v">The README asks for Python 3.12, <code>pip install pygame-ce</code> and a terminal command before anything opens.</span></div>
+        </div>
+
+        <div class="prose"><p>What Studio already has that the ideas build on. Status tags below use these: <span class="chip have">Already have</span> <span class="chip ext">Extends</span> <span class="chip new">New</span>.</p></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Feature</th><th>What it gives us</th><th>Where</th></tr></thead>
+            <tbody>
+              <tr><td>Checks as you type</td><td>Problems 1.5 s after typing, gutter marks, status counts</td><td class="num">F45</td></tr>
+              <tr><td>Story map editing</td><td>Drag boxes, drag arrows to make jumps and choices, Events list with forms, Insert&hellip;</td><td class="num">F46</td></tr>
+              <tr><td>Live story map</td><td>Outside edits within 500 ms, a 2 s glow on what changed, Reduce motion</td><td class="num">F58</td></tr>
+              <tr><td>Opening shot</td><td>Background and characters at a scene's start, drawn in Tk</td><td class="num">215cb7e</td></tr>
+              <tr><td>Play bar, Database, Game settings, Guide, Try it</td><td>Forms for every statement, helper child for stills, thumbnails and sound</td><td class="num">F47</td></tr>
+              <tr><td>Hot reload</td><td>Save, and the game resumes at the same place with the new story</td><td class="num">F39</td></tr>
+              <tr><td>Developer console</td><td>Jump the game to a scene, see and change variables</td><td class="num">F40</td></tr>
+              <tr><td>Clean up, reach</td><td>Unused things, scenes no playthrough can reach</td><td class="num">F41, 028f54e</td></tr>
+              <tr><td>Color schemes</td><td>28 schemes, Import palette</td><td class="num">F49, 489012c</td></tr>
+              <tr><td>AI Assistant</td><td>Pane and MCP; changes as cards you apply</td><td class="num">F48</td></tr>
+              <tr><td>Build game</td><td>Windows folder and zip</td><td class="num">F42</td></tr>
+              <tr><td>Go to definition</td><td>Right-click and Ctrl+click in the script</td><td class="num">651b79e</td></tr>
+              <tr><td>Tabs and panes</td><td>Hide tabs, drag panes to edges, kept for every game</td><td class="num">b27121b, 3ece6cc</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TOP 10 -->
+      <section id="top10">
+        <div class="sec-head"><span class="tag">Ranked</span><h2>Top 10 to build first</h2></div>
+        <div class="prose"><p>Ranked by how much they change what a viewer sees, weighed against size. The first four together turn Studio into &ldquo;script on the left, live game on the right, story as pictures.&rdquo;</p></div>
+        <ol class="top10">
+          <li class="is-built-li"><div class="t"><a href="#i-2-1">A Play button you can see</a><span class="chip ext">Extends F47</span><span class="chip size">S</span></div><p class="why">The most watched action in any engine is hidden in a menu. One split button brings it back.</p></li>
+          <li class="is-built-li"><div class="t"><a href="#i-3-1">Picture boxes on the map</a><span class="chip ext">Extends F46, F58</span><span class="chip size">M</span></div><p class="why">Each scene box shows its opening shot. The map becomes a storyboard wall.</p></li>
+          <li class="is-built-li"><div class="t"><a href="#i-2-5">Stage preview at any line</a><span class="chip ext">Extends opening shot</span><span class="chip size">M</span></div><p class="why">Arrow down the Events rows and the stage flips like a comic, with no game running.</p></li>
+          <li class="is-built-li"><div class="t"><a href="#i-2-3">Dock the game beside Studio</a><span class="chip ext">Extends F39</span><span class="chip size">M</span></div><p class="why">Edit on the left, see it on the right. The classic devlog frame, and it stops the game window covering your work.</p></li>
+          <li><div class="t"><a href="#i-1-2">Start page that plays the sample</a><span class="chip ext">Extends F47</span><span class="chip size">M</span></div><p class="why">A working VN on screen within ten seconds of the first launch.</p></li>
+          <li><div class="t"><a href="#i-3-2">Event rows with faces</a><span class="chip ext">Extends F46</span><span class="chip size">S&ndash;M</span></div><p class="why">Scenes read like a comic script: faces, name colours, thumbnails.</p></li>
+          <li><div class="t"><a href="#i-2-4">Follow the game</a><span class="chip new">New</span><span class="chip size">M</span></div><p class="why">The running game's line glows in the script and on the map as the player clicks.</p></li>
+          <li><div class="t"><a href="#i-2-10">Path explorer</a><span class="chip ext">Extends F41</span><span class="chip size">M</span></div><p class="why">A robot plays every branch and the map lights up. Finds dead ends and lost endings.</p></li>
+          <li class="is-built-li"><div class="t"><a href="#i-4-1">A motion budget, with milestone celebrations</a><span class="chip ext">Extends F58</span><span class="chip size">S&ndash;M</span></div><p class="why">Small motions that show what changed, plus five rare celebrations. Replaces &ldquo;nothing animates.&rdquo;</p></li>
+          <li><div class="t"><a href="#i-1-1">Double-click Studio</a><span class="chip new">New</span><span class="chip size">L</span></div><p class="why">No Python, no pip, no terminal. Nothing else here matters to people who never get Studio open.</p></li>
+        </ol>
+        <div class="prose"><p>Next five: <a href="#i-5-1">Command palette</a>, <a href="#i-1-5">Stand-in art</a>, <a href="#i-2-9">Read-through pane</a>, <a href="#i-3-3">Drag from the Database</a>, <a href="#i-2-2">Play mode tint</a>.</p></div>
+      </section>
+
+      <!-- MOCKUPS -->
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sec--><section id="build-plan" class="plan-sec">
+<div class="sec-head"><span class="tag">Progress · updated 6 Nov 2026: Clock, Items and Inbox phases done, 2.5 and 3.1 done; weekly at 24% before Inbox round 3</span><h2>Build plan</h2></div>
+<p>Built from this page: 7. Built from the other page: 19. </p>
+<p>Each idea below has its own build plan: slices that ship on their own, in order. Estimates are the peak working context for one slice. <strong>Tokens read</strong> adds up every step, because each step re-reads the whole context, mostly from cache. <strong>Counted</strong> uses the Assistant's own rule: cache reads count a tenth. Usage limits follow tokens read and counted, not the peak.</p>
+<h3>Measured so far</h3>
+<div class="plan-wrap"><table class="plan-tab"><thead><tr><th>Item</th><th>Commit</th><th>Steps</th><th>Peak context</th><th>Tokens read</th><th>Counted</th><th>% of weekly</th><th>Time</th></tr></thead><tbody><tr><td><span class="plan-done">✓</span> 2.1 Play button (one agent built 2.1 and 2.3; usage covers both) <span class="plan-size">S + S</span></td><td class="n">e2cc97a … 63fa224</td><td class="n">107</td><td class="n">229k</td><td class="n">16.6M</td><td class="n">1.93M</td><td class="n">≈0.18%</td><td class="n">31 min</td></tr><tr><td><span class="plan-done">✓</span> 2.3 Game beside Studio (snap) <span class="plan-size">S</span></td><td class="n">970ef7e … 57038e1</td><td class="n">above</td><td class="n">abovek</td><td class="n">aboveM</td><td class="n">aboveM</td><td class="n">—</td><td class="n">above min</td></tr><tr><td><span class="plan-done">✓</span> 4.1 Motion budget + 4.2 celebrations <span class="plan-size">S–M</span></td><td class="n">a9fcd64 … 6257a0d</td><td class="n">123</td><td class="n">251k</td><td class="n">21.4M</td><td class="n">2.44M</td><td class="n">≈0.22%</td><td class="n">26 min</td></tr><tr><td><span class="plan-done">✓</span> I-05 Checks on choices (F59) <span class="plan-size">M</span></td><td class="n">08a207c … 4dcb7e6</td><td class="n">148</td><td class="n">310k</td><td class="n">30.6M</td><td class="n">3.44M</td><td class="n">≈0.32%</td><td class="n">33 min</td></tr><tr><td><span class="plan-done">✓</span> F60 Genre kits + Kit page (foundation) <span class="plan-size">M</span></td><td class="n">c660c4d, 91de260, 678c1e5</td><td class="n">79</td><td class="n">185k</td><td class="n">10.5M</td><td class="n">1.28M</td><td class="n">≈0.12%</td><td class="n">14 min</td></tr><tr><td><span class="plan-done">✓</span> F61 Status corner (foundation) <span class="plan-size">M</span></td><td class="n">9f164f0, e65d867</td><td class="n">75</td><td class="n">211k</td><td class="n">11.2M</td><td class="n">1.37M</td><td class="n">≈0.13%</td><td class="n">18 min</td></tr><tr><td><span class="plan-done">✓</span> F62 round 1: word rule, ranks, notices <span class="plan-size">S + S + S</span></td><td class="n">084d918 … 3ec6d86</td><td class="n">161</td><td class="n">300k</td><td class="n">32.6M</td><td class="n">3.62M</td><td class="n">≈0.33%</td><td class="n">25 min</td></tr><tr><td><span class="plan-done">✓</span> F62 round 2 engine: [meter.x], show/hide meter, five looks <span class="plan-size">M</span></td><td class="n">6a25892, 0e5bd3f, cb913f9, 221cd67</td><td class="n">151</td><td class="n">331k</td><td class="n">31.6M</td><td class="n">3.53M</td><td class="n">≈0.32%</td><td class="n">28 min</td></tr><tr><td><span class="plan-done">✓</span> F62 round 2 Studio: + Meter from the kit, look fields, live preview <span class="plan-size">M</span></td><td class="n">e6bdbea, 74125e1</td><td class="n">112</td><td class="n">223k</td><td class="n">17.6M</td><td class="n">2.01M</td><td class="n">≈0.18%</td><td class="n">23 min</td></tr><tr><td><span class="plan-done">✓</span> Finish 2.1 + 2.3: scene on Play, Update, game follows Studio, borderless, pin; line reports <span class="plan-size">S + S</span></td><td class="n">f0d447b, 63fa224, 57038e1</td><td class="n">124</td><td class="n">272k</td><td class="n">22.3M</td><td class="n">2.55M</td><td class="n">≈0.23%</td><td class="n">28 min</td></tr><tr><td><span class="plan-done">✓</span> Finish 4.1 + 4.2: five carded motions, lanterns, first ending reached <span class="plan-size">S</span></td><td class="n">6257a0d</td><td class="n">101</td><td class="n">217k</td><td class="n">15.5M</td><td class="n">1.82M</td><td class="n">≈0.17%</td><td class="n">24 min</td></tr><tr><td><span class="plan-done">✓</span> Finish I-05 + I-01: retry checks, dice roll, History line, rank pulse <span class="plan-size">M</span></td><td class="n">0857c86 … 4dcb7e6</td><td class="n">142</td><td class="n">311k</td><td class="n">29.3M</td><td class="n">3.3M</td><td class="n">≈0.30%</td><td class="n">28 min</td></tr><tr><td><span class="plan-done">✓</span> F63 Story clock round 1: [calendar], clock statements, countdowns, kit clock <span class="plan-size">M</span></td><td class="n">604b730 … 0669357</td><td class="n">192</td><td class="n">391k</td><td class="n">49.6M</td><td class="n">5.44M</td><td class="n">≈0.51%</td><td class="n">35 min</td></tr><tr><td><span class="plan-done">✓</span> F63 round 2: day card, clock in the corner, Calendar page <span class="plan-size">M</span></td><td class="n">9d7e473, 451df33, 0669357</td><td class="n">181</td><td class="n">372k</td><td class="n">42.5M</td><td class="n">4.69M</td><td class="n">≈0.44%</td><td class="n">29 min</td></tr><tr><td><span class="plan-done">✓</span> F64 item counts, purse, kit items <span class="plan-size">M</span></td><td class="n">7b5da38 … 0a18f41</td><td class="n">194</td><td class="n">369k</td><td class="n">47.0M</td><td class="n">5.16M</td><td class="n">≈0.48%</td><td class="n">37 min</td></tr><tr><td><span class="plan-done">✓</span> F64 present at any menu + Accept an item <span class="plan-size">M</span></td><td class="n">404ec1c … 2b24028</td><td class="n">209</td><td class="n">439k</td><td class="n">58.9M</td><td class="n">6.43M</td><td class="n">≈0.60%</td><td class="n">41 min</td></tr><tr><td><span class="plan-done">✓</span> F64 Use button + hotbar <span class="plan-size">M</span></td><td class="n">5ce7a0b, feebe17, 2b24028</td><td class="n">192</td><td class="n">413k</td><td class="n">50.6M</td><td class="n">5.54M</td><td class="n">≈0.52%</td><td class="n">35 min</td></tr><tr><td><span class="plan-done">✓</span> F64 table panel, shop, price, minigame API 1.5 <span class="plan-size">M</span></td><td class="n">3f6ff1a … 0a18f41</td><td class="n">194</td><td class="n">420k</td><td class="n">53.1M</td><td class="n">5.8M</td><td class="n">≈0.54%</td><td class="n">33 min</td></tr><tr><td><span class="plan-done">✓</span> 2.5 Stage preview at any line + Stage stills foundation <span class="plan-size">M</span></td><td class="n">3017524, 01644ac, 96c2251</td><td class="n">135</td><td class="n">298k</td><td class="n">28.2M</td><td class="n">3.18M</td><td class="n">≈0.30%</td><td class="n">39 min</td></tr><tr><td><span class="plan-done">✓</span> 3.1 Picture boxes on the map <span class="plan-size">M</span></td><td class="n">00345fe, 880a26e</td><td class="n">139</td><td class="n">341k</td><td class="n">33.7M</td><td class="n">3.77M</td><td class="n">≈0.35%</td><td class="n">35 min</td></tr><tr><td><span class="plan-done">✓</span> F65 Inbox: trigger core <span class="plan-size">S</span></td><td class="n">f61fccf</td><td class="n">78</td><td class="n">243k</td><td class="n">13.1M</td><td class="n">1.59M</td><td class="n">≈0.15%</td><td class="n">19 min</td></tr><tr><td><span class="plan-done">✓</span> F65 Inbox: codex kinds + chats you can reread <span class="plan-size">M</span></td><td class="n">aea5792, f56518f</td><td class="n">150</td><td class="n">304k</td><td class="n">30.7M</td><td class="n">3.42M</td><td class="n">≈0.32%</td><td class="n">24 min</td></tr><tr><td><span class="plan-done">✓</span> F65 Inbox round 2: contacts, send, open on cue <span class="plan-size">M</span></td><td class="n">66bc6f4, ff7058d</td><td class="n">225</td><td class="n">468k</td><td class="n">67.9M</td><td class="n">7.37M</td><td class="n">≈0.69%</td><td class="n">42 min</td></tr><tr><td><span class="plan-done">✓</span> F65 round 3: replies as choices + delays <span class="plan-size">M</span></td><td class="n">aea104c, 08fbf3b, 9090f94, 566b636</td><td class="n">175</td><td class="n">378k</td><td class="n">43.4M</td><td class="n">4.78M</td><td class="n">≈0.44%</td><td class="n">35 min</td></tr><tr><td><span class="plan-done">✓</span> F65 round 3: six device looks + Studio Devices <span class="plan-size">M</span></td><td class="n">24b7857, 2f5cce3, e642789, 513750b</td><td class="n">176</td><td class="n">378k</td><td class="n">40.2M</td><td class="n">4.47M</td><td class="n">≈0.42%</td><td class="n">35 min</td></tr><tr><td><span class="plan-done">✓</span> F65 round 3: Studio Database ▸ Contacts <span class="plan-size">M</span></td><td class="n">90baf6a … 08e583e</td><td class="n">124</td><td class="n">338k</td><td class="n">30.1M</td><td class="n">3.39M</td><td class="n">≈0.32%</td><td class="n">24 min</td></tr></tbody></table></div>
+<p>Measured against the owner's weekly /usage: 16% → 17% → 18% → 22% for 64.4M counted tokens in all, so 1% of weekly ≈ 10.7M counted (≈0.093% per million; range about 9–13M). Early S items cost about 2M counted (≈0.2%) and M items about 3.5M (≈0.3%). M features that touch saves, the codex, menus and Studio forms at once, built with six agents in parallel, cost 5–6.4M each (≈0.5–0.6%). Parallel agents are now capped at three or four. Slice estimates multiply peak context by 9.9, the measured counted-per-peak ratio; for M features touching many systems, expect up to 1.5× that.</p>
+<h3>Next slices to build</h3>
+<ol><li>3.2 Faces and name colours (S): Events rows read like a comic script.</li><li>2.4 Line outline (S): the game&#x27;s current line glows; the line reports channel is built.</li><li>1.2 Start page that plays the sample (M): now uses the stage stills cache for thumbnails.</li><li>5.1 Command palette (M).</li></ol>
+<h3>Shared foundations</h3>
+<p>Groundwork several ideas need. Build each once, before the first idea that uses it. Every idea card below has its own build plan under it.</p>
+<div class="plan-wrap"><table class="plan-tab"><thead><tr><th>Foundation</th><th>Used by</th><th>Estimate</th></tr></thead><tbody><tr><td><strong>Stage stills</strong><span class="plan-size">M</span><br>The helper child only draws textbox and title stills (HELPER_STILL_KINDS). Add a stage still kind (background, sprites, text box at a row) and a per-digest cache that asks only for visible items. The stage preview, picture boxes, drag on the stage, the asset shelf and Start page thumbnails all use it.</td><td>2.5, 3.1, 3.5, 1.2, 6.1, 4.4, 5.3</td><td class="n">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly<br>4–6 h</td></tr><tr><td><strong>Line reports</strong><span class="plan-size">S</span><br>The game already reports to Studio over editor_link.py. Add a dev-only at event (file, line, label, coalesced to about 10 a second) plus an ending event, and Studio&#x27;s parser for them. Follow the game, the play tint text, milestones and the playtest recorder read the same events. Coordinate with the dock work now changing this channel.</td><td>2.4, 2.2, 4.2, I-38</td><td class="n">~50–100k context · ≈0.5–1.0M counted · ≈0.05–0.09% of weekly<br>2–3 h</td></tr><tr><td><strong>Headless play child</strong><span class="plan-size">M</span><br>run_headless already takes advance, choose N, back, finish and a seed. Run it in a child like the check child, with scripted inputs, minigame stand-ins from outcome_for, and streamed reached and taken lines. The path explorer, the read-through pane, play from a line and starter tests all drive it.</td><td>2.10, 2.9, 2.6, I-35, 7.2</td><td class="n">~200–320k context · ≈2.0–3.2M counted · ≈0.18–0.29% of weekly<br>5–8 h</td></tr><tr><td><strong>Starter templates</strong><span class="plan-size">M</span><br>files.TEMPLATES has only sample and empty. Make a template a folder with a small manifest (title, cover, scheme, guide baseline) that New game lists as cards, plus a test that every template passes the check and reaches an ending headless.</td><td>I-35, 1.4, 1.2, 7.2, I-39</td><td class="n">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly<br>3–5 h</td></tr><tr><td><strong>In-Studio drag</strong><span class="plan-size">S</span><br>Several Studio ideas drag things onto rows, boxes and the stage. One small kit (drag ghost, drop line via winfo_containing, Esc cancels, a Ctrl+C then Place here key path, the write as one scriptedit plan) keeps them alike and accessible.</td><td>3.3, 3.5, 6.1, 3.4</td><td class="n">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly<br>2–4 h</td></tr></tbody></table></div>
+</section><!--/plan:sec-->
+
+<section id="mockups">
+        <div class="sec-head"><span class="tag">Mockups</span><h2>Five sketches of the best ideas</h2></div>
+        <div class="prose"><p>These are mockups, drawn in SVG over Studio's real tokens (dark chrome, Windows blue). Studio is dark-only, so they stay dark in both page themes. Names and lines come from <em>Paper Lanterns</em>.</p></div>
+
+        <!-- Mockup 1 -->
+        <figure class="mock" style="margin:0">
+          <div class="mh"><span class="lbl">Mockup 1</span><h3>Play you can see, play mode tint, follow the game, docked window</h3></div>
+          <div class="scroll">
+            <svg viewBox="0 0 960 340" role="img" aria-labelledby="m1t">
+              <title id="m1t">Studio while the game runs: an amber top line, a Stop button with the scene name, the script with the current line outlined in amber, the game docked at the right, and an amber status bar.</title>
+              <rect class="m-surface" x="0" y="0" width="960" height="340"/>
+              <rect class="m-live" x="0" y="0" width="960" height="3"/>
+              <rect class="m-chrome" x="0" y="3" width="960" height="34"/>
+              <text class="m-t" x="14" y="25">File</text><text class="m-t" x="48" y="25">Edit</text><text class="m-t" x="84" y="25">Insert</text><text class="m-t" x="132" y="25">Story</text><text class="m-t" x="176" y="25">View</text><text class="m-t" x="218" y="25">Run</text><text class="m-t" x="252" y="25">Help</text>
+              <rect class="m-live" x="300" y="9" width="78" height="22" rx="3"/>
+              <text class="m-t on-live" x="312" y="24">&#9632; Stop</text>
+              <text class="m-t mu" x="388" y="24">playing</text><text class="m-t b" x="436" y="24">bridge</text>
+              <rect class="m-raised" x="486" y="9" width="104" height="22" rx="3"/>
+              <text class="m-t" x="496" y="24">&#10227; Update</text>
+              <rect class="m-input" x="546" y="13" width="40" height="14" rx="2"/><text class="m-t s mu" x="550" y="24">Ctrl+R</text>
+              <text class="m-t" x="770" y="25">AI Assistant</text><text class="m-t" x="872" y="25">? Guide</text>
+              <rect class="m-chrome" x="0" y="37" width="960" height="30"/>
+              <text class="m-t b" x="14" y="57">Editor</text><rect class="m-accent" x="8" y="64" width="54" height="3"/>
+              <text class="m-t mu" x="84" y="57">Story map</text><text class="m-t mu" x="162" y="57">Database</text><text class="m-t mu" x="234" y="57">Game settings</text>
+              <!-- editor -->
+              <g>
+                <text class="m-t mono mu" x="18" y="92">12</text><text class="m-t mono" x="52" y="92">"The old footbridge creaked under the crowd."</text>
+                <text class="m-t mono mu" x="18" y="114">13</text><text class="m-t mono" x="52" y="114">show daichi smile at right with dissolve</text>
+                <rect class="m-live-s" x="44" y="122" width="532" height="22" rx="2"/>
+                <text class="m-t mono live" x="8" y="138">&#9654;</text><text class="m-t mono mu" x="18" y="138">14</text><text class="m-t mono" x="52" y="138">daichi "There you are. Hana's been looking..."</text>
+                <text class="m-t mono mu" x="18" y="162">15</text><text class="m-t mono" x="52" y="162">show hana pout at left with cut</text>
+                <text class="m-t mono mu" x="18" y="184">16</text><text class="m-t mono" x="52" y="184">hana "I have been looking for a good spot..."</text>
+                <text class="m-t mono mu" x="18" y="206">17</text><text class="m-t mono" x="52" y="206">menu:</text>
+                <text class="m-t mono mu" x="18" y="228">18</text><text class="m-t mono" x="72" y="228">"Ask about Hana":</text>
+                <text class="m-t mono mu" x="18" y="250">19</text><text class="m-t mono" x="92" y="250">jump bridge_talk</text>
+                <text class="m-t s live" x="52" y="282">The game is on line 14. Follow the game keeps it in view.</text>
+              </g>
+              <!-- docked game -->
+              <rect class="m-chrome" x="596" y="72" width="356" height="228"/>
+              <text class="m-t s mu" x="604" y="86">Game (docked) &middot; 960&times;540</text>
+              <rect class="m-night" x="604" y="92" width="340" height="191"/>
+              <rect class="m-night2" x="604" y="92" width="340" height="80"/>
+              <circle class="m-dusk2" cx="910" cy="112" r="9"/>
+              <rect class="m-ground" x="604" y="214" width="340" height="69"/>
+              <rect class="m-hana" x="640" y="150" width="34" height="80" rx="14"/>
+              <rect class="m-daichi" x="872" y="146" width="36" height="84" rx="14"/>
+              <rect class="m-pinkbox" x="614" y="232" width="320" height="44" rx="4"/>
+              <text class="m-t s daichi" x="624" y="246">Daichi</text>
+              <text class="m-t s ink" x="624" y="263">There you are. Hana's been looking for you</text>
+              <!-- status -->
+              <rect class="m-live" x="0" y="312" width="960" height="28"/>
+              <text class="m-t on-live" x="14" y="330">&#9679; Playing bridge, line 14 &middot; Updated 14:32</text>
+              <text class="m-t on-live" x="360" y="330">&#10003; Follow the game</text>
+              <text class="m-t on-live" x="520" y="330">&#8689; Docked</text>
+              <text class="m-t on-live" x="860" y="330">Ln 14, Col 1</text>
+            </svg>
+          </div>
+          <figcaption class="cap-list">
+            <ol>
+              <li>The menu row's split button reads <strong>&#9654; Play &#9662;</strong> at rest and <strong>&#9632; Stop</strong> while the game runs, with the scene name beside it (idea 2.1).</li>
+              <li>An amber line on top and an amber status bar say &ldquo;live&rdquo; (2.2). Editor colours never change.</li>
+              <li>The line the game shows has an amber outline and a &#9654; in the gutter (2.4).</li>
+              <li>The game sits at the right, inside Studio's frame (2.3). Hot reload reopens it in the same place.</li>
+            </ol>
+          </figcaption>
+        </figure>
+
+        <!-- Mockup 2 -->
+        <figure class="mock" style="margin:0">
+          <div class="mh"><span class="lbl">Mockup 2</span><h3>Picture boxes on the story map, with the path explorer</h3></div>
+          <div class="scroll">
+            <svg viewBox="0 0 960 380" role="img" aria-labelledby="m2t">
+              <title id="m2t">Story map where each scene box shows a small picture of its opening shot. Arrows taken by the path explorer are amber. One ending box is dimmed as never reached. A panel at the bottom right counts paths and endings.</title>
+              <defs>
+                <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="m-arrowhead" d="M0,0 L8,4 L0,8 z"/></marker>
+                <marker id="ahl" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="m-arrowhead-lit" d="M0,0 L8,4 L0,8 z"/></marker>
+              </defs>
+              <rect class="m-surface" x="0" y="0" width="960" height="380"/>
+              <rect class="m-chrome" x="0" y="0" width="960" height="34"/>
+              <text class="m-t" x="14" y="22">+ New scene</text><text class="m-t" x="110" y="22">Tidy up</text>
+              <rect class="m-select" x="182" y="8" width="128" height="20" rx="3"/><text class="m-t" x="192" y="22">&#9635; Pictures</text><text class="m-t mu" x="262" y="22">Compact</text>
+              <text class="m-t live" x="340" y="22">&#9881; Explore every path</text>
+              <!-- arrows -->
+              <path class="m-link-lit" d="M200,104 C226,104 230,92 254,92" marker-end="url(#ahl)"/>
+              <path class="m-link-lit" d="M434,92 C460,92 462,70 486,70" marker-end="url(#ahl)"/>
+              <path class="m-link-d" d="M434,100 C462,120 462,196 486,200" marker-end="url(#ah)"/>
+              <path class="m-link-lit" d="M344,150 C344,180 344,198 344,214" marker-end="url(#ahl)"/>
+              <path class="m-link-lit" d="M434,268 C470,268 690,180 716,172" marker-end="url(#ahl)"/>
+              <path class="m-link-d" d="M434,280 C480,300 680,300 716,296" marker-end="url(#ah)"/>
+              <!-- box helper: start -->
+              <g>
+                <rect class="m-raised" x="20" y="50" width="180" height="108" rx="3"/>
+                <rect class="m-accent" x="20" y="50" width="3" height="108"/>
+                <rect class="m-dusk" x="24" y="54" width="172" height="62"/><rect class="m-dusk2" x="24" y="54" width="172" height="26"/><rect class="m-river" x="24" y="98" width="172" height="18"/>
+                <circle class="m-hana" cx="70" cy="96" r="7"/>
+                <text class="m-t b" x="30" y="136">start</text><text class="m-t s mu" x="152" y="136">start</text>
+                <text class="m-t s mu" x="30" y="150">Prologue &middot; 24 lines</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="254" y="38" width="180" height="108" rx="3"/>
+                <rect class="m-dusk" x="258" y="42" width="172" height="62"/><rect class="m-river" x="258" y="80" width="172" height="24"/>
+                <circle class="m-hana" cx="300" cy="84" r="7"/><circle class="m-daichi" cx="390" cy="84" r="7"/>
+                <text class="m-t b" x="264" y="124">riverbank</text><text class="m-t s mu" x="264" y="138">Chapter 1 &middot; 62 lines</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="486" y="18" width="180" height="108" rx="3"/>
+                <rect class="m-night" x="490" y="22" width="172" height="62"/><rect class="m-shed" x="490" y="60" width="172" height="24"/>
+                <circle class="m-hana" cx="576" cy="64" r="7"/>
+                <text class="m-t b" x="496" y="104">lantern_stall</text><text class="m-t s mu" x="496" y="118">40 lines &middot; &#9654; lantern_memory</text>
+              </g>
+              <g class="m-dim">
+                <rect class="m-raised" x="486" y="146" width="180" height="108" rx="3"/>
+                <rect class="m-night" x="490" y="150" width="172" height="62"/><rect class="m-grass" x="490" y="188" width="172" height="24"/>
+                <text class="m-t b" x="496" y="232">draw_fortune</text><text class="m-t s mu" x="496" y="246">not reached by any path</text>
+              </g>
+              <g>
+                <rect class="m-live-glow" x="254" y="214" width="180" height="108" rx="4"/>
+                <rect class="m-raised" x="254" y="214" width="180" height="108" rx="3"/>
+                <rect class="m-live-s" x="254" y="214" width="180" height="108" rx="3"/>
+                <rect class="m-night" x="258" y="218" width="172" height="62"/><rect class="m-night2" x="258" y="218" width="172" height="26"/><rect class="m-ground" x="258" y="258" width="172" height="22"/>
+                <circle class="m-hana" cx="296" cy="260" r="7"/><circle class="m-daichi" cx="394" cy="260" r="7"/>
+                <text class="m-t b" x="264" y="300">bridge</text><text class="m-t s live" x="380" y="300">&#9654; playing</text>
+                <text class="m-t s mu" x="264" y="314">Chapter 2 &middot; replay</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="716" y="120" width="180" height="108" rx="3"/>
+                <rect class="m-ending-s" x="712" y="116" width="188" height="116" rx="4"/><rect class="m-ending-s" x="716" y="120" width="180" height="108" rx="3"/>
+                <rect class="m-night" x="720" y="124" width="172" height="62"/><rect class="m-river" x="720" y="162" width="172" height="24"/>
+                <circle class="m-hana" cx="806" cy="166" r="7"/>
+                <text class="m-t b" x="726" y="206">river_end</text><text class="m-t s end" x="812" y="206">ending</text>
+                <text class="m-t s good" x="726" y="220">&#10003; reached by 7 paths</text>
+              </g>
+              <g class="m-dim">
+                <rect class="m-ending-s" x="712" y="246" width="188" height="116" rx="4"/><rect class="m-raised" x="716" y="250" width="180" height="108" rx="3"/>
+                <rect class="m-night" x="720" y="254" width="172" height="62"/>
+                <text class="m-t b" x="726" y="336">promise</text><text class="m-t s end" x="812" y="336">ending</text>
+                <text class="m-t s mu" x="726" y="350">never reached</text>
+              </g>
+              <!-- explorer panel -->
+              <rect class="m-chrome" x="20" y="334" width="220" height="38" rx="3"/>
+              <rect class="m-border" x="20" y="334" width="220" height="38" rx="3"/>
+              <text class="m-t s b" x="30" y="350">Explored 18 paths in 0.9 s</text>
+              <text class="m-t s mu" x="30" y="365">2 of 3 endings &middot; 0 errors &middot; 1 dim scene</text>
+            </svg>
+          </div>
+          <figcaption class="cap-list">
+            <ol>
+              <li>Each box is its opening shot as a 172&times;62 thumbnail, with character dots in their name colours (3.1). The file and line move to the tooltip.</li>
+              <li>The playing scene glows amber (2.4). The F58 glow already does this for changed boxes.</li>
+              <li>After <strong>Explore every path</strong>, arrows the robot took are amber and boxes it never reached are dim (2.10).</li>
+            </ol>
+          </figcaption>
+        </figure>
+
+        <!-- Mockup 3 -->
+        <figure class="mock" style="margin:0">
+          <div class="mh"><span class="lbl">Mockup 3</span><h3>Stage preview at the selected row, and Events rows with faces</h3></div>
+          <div class="scroll">
+            <svg viewBox="0 0 960 400" role="img" aria-labelledby="m3t">
+              <title id="m3t">Side pane with a stage preview on the left showing the bridge at night, Hana and Daichi, and a text box with Daichi's line. On the right, Events rows with small faces, coloured names and picture thumbnails; the Say row for Daichi is selected.</title>
+              <rect class="m-surface" x="0" y="0" width="960" height="400"/>
+              <rect class="m-chrome" x="0" y="0" width="960" height="32"/>
+              <text class="m-t b" x="14" y="21">bridge</text><text class="m-t s mu" x="64" y="21">script/routes/daichi.vns</text>
+              <text class="m-t" x="520" y="21">Events</text><rect class="m-accent" x="514" y="29" width="52" height="3"/><text class="m-t mu" x="582" y="21">Script</text><text class="m-t mu" x="640" y="21">Read</text>
+              <!-- stage -->
+              <text class="m-t s mu" x="14" y="52">STAGE AT ROW 6</text>
+              <rect class="m-night" x="14" y="60" width="464" height="261"/>
+              <rect class="m-night2" x="14" y="60" width="464" height="110"/>
+              <circle class="m-dusk2" cx="430" cy="92" r="13"/>
+              <rect class="m-ground" x="14" y="236" width="464" height="85"/>
+              <rect class="m-shed" x="14" y="226" width="464" height="10"/>
+              <rect class="m-hana" x="66" y="138" width="54" height="128" rx="22"/>
+              <circle class="m-hana" cx="93" cy="128" r="22"/>
+              <rect class="m-daichi" x="368" y="130" width="58" height="136" rx="22"/>
+              <circle class="m-daichi" cx="397" cy="120" r="23"/>
+              <rect class="m-accent-s" x="362" y="94" width="70" height="164" rx="3"/>
+              <text class="m-t s" x="364" y="86">drag to move</text>
+              <rect class="m-pinkbox" x="30" y="262" width="432" height="52" rx="5"/>
+              <text class="m-t daichi" x="44" y="280">Daichi</text>
+              <text class="m-t ink" x="44" y="300">There you are. Hana's been looking for you all evening.</text>
+              <rect class="m-raised" x="14" y="330" width="464" height="28" rx="3"/>
+              <text class="m-t" x="24" y="349">&#9664;  &#9654;   row 6 of 24</text>
+              <rect class="m-accent" x="372" y="334" width="100" height="20" rx="3"/><text class="m-t white" x="386" y="348">&#9654; Try it</text>
+              <text class="m-t s mu" x="14" y="378">Sketch while moving, the game's own still after 300 ms at rest.</text>
+              <!-- events -->
+              <g>
+                <rect class="m-raised" x="498" y="44" width="70" height="20" rx="3"/><text class="m-t s" x="506" y="58">Insert&hellip;</text>
+                <text class="m-t s mu" x="508" y="88">Background</text><rect class="m-night" x="600" y="76" width="30" height="17" rx="2"/><text class="m-t" x="638" y="89">bg bridge_night</text>
+                <text class="m-t s mu" x="508" y="116">Music</text><text class="m-t" x="604" y="117">&#9835; bridge_night.wav</text><text class="m-t acc" x="760" y="117">&#9654;</text>
+                <text class="m-t s mu" x="508" y="144">Chapter</text><text class="m-t" x="604" y="145">Chapter 2: The Old Footbridge</text>
+                <text class="m-t s mu" x="508" y="172">Narration</text><text class="m-t" x="604" y="173">The old footbridge creaked under the crowd&hellip;</text>
+                <text class="m-t s mu" x="508" y="200">Show</text><circle class="m-daichi" cx="612" cy="196" r="9"/><text class="m-t" x="628" y="201">daichi &middot; smile &middot; right</text>
+                <rect class="m-select" x="498" y="212" width="452" height="30" rx="2"/>
+                <rect class="m-daichi" x="498" y="212" width="3" height="30"/>
+                <text class="m-t s mu" x="508" y="231">Say</text><circle class="m-daichi" cx="612" cy="227" r="10"/><text class="m-t daichi" x="628" y="232">Daichi</text><text class="m-t" x="676" y="232">There you are. Hana's been looking&hellip;</text>
+                <text class="m-t s mu" x="508" y="262">Show</text><circle class="m-hana" cx="612" cy="258" r="9"/><text class="m-t" x="628" y="263">hana &middot; pout &middot; left</text>
+                <rect class="m-hana" x="498" y="276" width="3" height="28"/>
+                <text class="m-t s mu" x="508" y="294">Say</text><circle class="m-hana" cx="612" cy="290" r="10"/><text class="m-t hana" x="628" y="295">Hana</text><text class="m-t" x="666" y="295">I have been looking for a good spot&hellip;</text>
+                <text class="m-t s mu" x="508" y="324">Say</text><circle class="m-thought" cx="612" cy="320" r="10"/><text class="m-t mu" x="628" y="325">(thought) That wasn't what Daichi had said&hellip;</text>
+                <text class="m-t s mu" x="508" y="354">Choice</text><text class="m-t" x="604" y="355">&#9670; 2 options</text><text class="m-t s mu" x="680" y="355">Ask about Hana &middot; Wait at the bridge</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption class="cap-list">
+            <ol>
+              <li>The stage shows the scene at the selected row, text box included (2.5). Arrow keys flip through it like a storyboard.</li>
+              <li>Drag Daichi to move him; the <code>at</code> on his Show line changes (3.5).</li>
+              <li>Say rows start with the speaker's face and coloured name; a stripe groups a speaker's run of lines (3.2).</li>
+            </ol>
+          </figcaption>
+        </figure>
+
+        <!-- Mockup 4 -->
+        <figure class="mock" style="margin:0">
+          <div class="mh"><span class="lbl">Mockup 4</span><h3>Start page</h3></div>
+          <div class="scroll">
+            <svg viewBox="0 0 960 400" role="img" aria-labelledby="m4t">
+              <title id="m4t">Start page with recent games on the left, a large card to play the sample story in the middle, and five starter cards along the bottom: Sample story, Romance, Mystery, Psychological horror and Kinetic novel.</title>
+              <rect class="m-surface" x="0" y="0" width="960" height="400"/>
+              <rect class="m-chrome" x="0" y="0" width="210" height="400"/>
+              <text class="m-t s mu" x="16" y="30">RECENT</text>
+              <rect class="m-night" x="16" y="42" width="44" height="25" rx="2"/><text class="m-t" x="68" y="54">Paper Lanterns</text><text class="m-t s mu" x="68" y="67">yesterday</text>
+              <rect class="m-black" x="16" y="80" width="44" height="25" rx="2"/><text class="m-t" x="68" y="92">club_poem</text><text class="m-t s mu" x="68" y="105">3 days ago</text>
+              <text class="m-t" x="16" y="140">Open game&hellip;</text>
+              <text class="m-t s mu" x="16" y="330">LEARN</text>
+              <text class="m-t acc" x="16" y="350">Guide: Your first game</text>
+              <text class="m-t acc" x="16" y="370">Script language</text>
+              <text class="m-t acc" x="16" y="390">Connect an AI app</text>
+              <!-- hero card -->
+              <text class="m-t xl" x="236" y="38">Welcome to vn-engine Studio</text>
+              <rect class="m-raised" x="236" y="54" width="700" height="170" rx="4"/>
+              <rect class="m-night" x="240" y="58" width="300" height="162"/>
+              <rect class="m-night2" x="240" y="58" width="300" height="60"/>
+              <circle class="m-dusk2" cx="500" cy="82" r="10"/>
+              <rect class="m-ground" x="240" y="170" width="300" height="50"/>
+              <rect class="m-hana" x="300" y="120" width="30" height="70" rx="12"/>
+              <rect class="m-daichi" x="450" y="116" width="32" height="74" rx="12"/>
+              <text class="m-t l b" x="562" y="88">Paper Lanterns</text>
+              <text class="m-t mu" x="562" y="110">The sample story. Two routes, three endings,</text>
+              <text class="m-t mu" x="562" y="128">a minigame and a glitch. 6 minutes.</text>
+              <rect class="m-accent" x="562" y="150" width="156" height="34" rx="4"/>
+              <text class="m-t l white" x="582" y="172">&#9654; Play it now</text>
+              <text class="m-t acc" x="736" y="172">Open and change it</text>
+              <!-- starters -->
+              <text class="m-t s mu" x="236" y="256">START A NEW GAME</text>
+              <g>
+                <rect class="m-raised" x="236" y="266" width="128" height="120" rx="4"/>
+                <rect class="m-dusk" x="240" y="270" width="120" height="62"/><rect class="m-river" x="240" y="312" width="120" height="20"/>
+                <text class="m-t b" x="246" y="352">Sample story</text><text class="m-t s mu" x="246" y="370">recommended</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="378" y="266" width="128" height="120" rx="4"/>
+                <rect class="m-pinkbox" x="382" y="270" width="120" height="62"/><circle class="m-romance" cx="440" cy="300" r="16"/>
+                <text class="m-t b" x="388" y="352">Romance</text><text class="m-t s mu" x="388" y="370">meters, gifts</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="520" y="266" width="128" height="120" rx="4"/>
+                <rect class="m-sepia" x="524" y="270" width="120" height="62"/><rect class="m-paper" x="560" y="284" width="48" height="34" rx="2"/>
+                <text class="m-t b" x="530" y="352">Mystery</text><text class="m-t s mu" x="530" y="370">codex, evidence</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="662" y="266" width="128" height="120" rx="4"/>
+                <rect class="m-black" x="666" y="270" width="120" height="62"/><rect class="m-bw" x="666" y="290" width="120" height="3"/><rect class="m-bw" x="700" y="304" width="86" height="2"/><rect class="m-hana" x="666" y="314" width="60" height="2"/>
+                <text class="m-t b" x="672" y="352">Horror</text><text class="m-t s mu" x="672" y="370">glitches, fake crash</text>
+              </g>
+              <g>
+                <rect class="m-raised" x="804" y="266" width="132" height="120" rx="4"/>
+                <rect class="m-paper" x="808" y="270" width="124" height="62"/>
+                <rect class="m-black" x="820" y="284" width="90" height="3"/><rect class="m-black" x="820" y="294" width="100" height="3"/><rect class="m-black" x="820" y="304" width="70" height="3"/>
+                <text class="m-t b" x="814" y="352">Kinetic novel</text><text class="m-t s mu" x="814" y="370">full-screen text</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption class="cap-list">
+            <ol>
+              <li>One primary action: play the sample, docked (1.2, 2.3).</li>
+              <li>Starter cards show their colour scheme and signature feature (1.4).</li>
+              <li>Recent games carry a title-screen thumbnail from the helper's <code>title</code> still.</li>
+            </ol>
+          </figcaption>
+        </figure>
+
+        <!-- Mockup 5 -->
+        <figure class="mock" style="margin:0">
+          <div class="mh"><span class="lbl">Mockup 5</span><h3>Command palette</h3></div>
+          <div class="scroll">
+            <svg viewBox="0 0 960 300" role="img" aria-labelledby="m5t">
+              <title id="m5t">A command palette over a dimmed Studio. The search box contains "play". Results list Play this scene with F5, Play from the start with Shift+F5, Play options, Play replay festival from Endings, and What-if bought_lantern.</title>
+              <rect class="m-surface" x="0" y="0" width="960" height="300"/>
+              <g class="m-dim">
+                <rect class="m-chrome" x="0" y="0" width="960" height="34"/>
+                <rect class="m-raised" x="40" y="70" width="180" height="60" rx="3"/><rect class="m-raised" x="280" y="70" width="180" height="60" rx="3"/><rect class="m-raised" x="40" y="180" width="180" height="60" rx="3"/>
+              </g>
+              <rect class="m-chrome" x="200" y="20" width="560" height="262" rx="5"/>
+              <rect class="m-border" x="200" y="20" width="560" height="262" rx="5"/>
+              <rect class="m-input" x="212" y="32" width="536" height="32" rx="3"/>
+              <rect class="m-accent-s" x="212" y="32" width="536" height="32" rx="3"/>
+              <text class="m-t l" x="224" y="53">&gt; play</text>
+              <rect class="m-select" x="206" y="74" width="548" height="36" rx="3"/>
+              <text class="m-t b" x="222" y="97">Play this scene</text><text class="m-t s mu" x="350" y="97">Run &middot; bridge</text>
+              <rect class="m-input" x="712" y="82" width="28" height="20" rx="3"/><text class="m-t s" x="719" y="96">F5</text>
+              <text class="m-t" x="222" y="133">Play from the start</text><text class="m-t s mu" x="362" y="133">Run</text>
+              <rect class="m-input" x="664" y="120" width="76" height="20" rx="3"/><text class="m-t s" x="672" y="134">Shift+F5</text>
+              <text class="m-t" x="222" y="169">Play options&hellip;</text><text class="m-t s mu" x="330" y="169">Run</text>
+              <text class="m-t" x="222" y="205">Play replay: festival</text><text class="m-t s mu" x="372" y="205">Database &#9656; Endings &amp; routes</text>
+              <text class="m-t" x="222" y="241">What-if: bought_lantern</text><text class="m-t s mu" x="384" y="241">Play &#9662; switches</text>
+              <text class="m-t s mu" x="222" y="270">Enter runs &middot; recently used first &middot; every menu row, Database category and settings page</text>
+            </svg>
+          </div>
+          <figcaption class="cap-list">
+            <ol>
+              <li>Every row says where the command also lives and its key, so the palette teaches the menus (5.1).</li>
+              <li>The same box with no &gt; is Quick open: scenes, characters, pictures, variables (5.2).</li>
+            </ol>
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- FIRST 10 MINUTES -->
+      <section id="first10">
+        <div class="sec-head"><span class="tag">Storyboard</span><h2>The first 10 minutes</h2></div>
+        <div class="prose"><p>A brand-new author, Mia, from download to her own playable scene, with the Top 10 built. The line under each frame says what happens today.</p></div>
+        <ol class="board">
+          <li class="frame"><div class="tc"><span class="time">0:00</span><span class="refs">1.1</span></div><h3>Download and double-click</h3><p>She unzips <em>vn-engine Studio</em> and double-clicks it. No Python, no terminal.</p><p class="today"><b>Today:</b> install Python 3.12, <code>pip install pygame-ce</code>, run <code>python -m engine edit</code>.</p></li>
+          <li class="frame"><div class="tc"><span class="time">0:20</span><span class="refs">1.2</span></div><h3>The Start page</h3><p>A big night-bridge picture and one button: <strong>&#9654; Play it now</strong>. Below, five starter covers.</p><p class="today"><b>Today:</b> Studio opens on the last game's script, or on <code>game/</code>.</p></li>
+          <li class="frame"><div class="tc"><span class="time">0:30</span><span class="refs">2.3, 2.4, 2.2</span></div><h3>The sample plays, docked</h3><p>The game appears at the right. Studio's edge turns amber. On the left the map shows <code>riverbank</code> glowing as she clicks through lines.</p><p class="today"><b>Today:</b> Run &#9656; Play opens a floating window over Studio and asks for her user name.</p></li>
+          <li class="frame"><div class="tc"><span class="time">2:00</span><span class="refs">1.4, 3.1</span></div><h3>&ldquo;I want to make a mystery&rdquo;</h3><p>Stop, then <strong>New game &#9656; Mystery</strong>. The map opens with four picture boxes in sepia: an office, an alley, a witness, two endings.</p><p class="today"><b>Today:</b> sample or empty; opens on code.</p></li>
+          <li class="frame"><div class="tc"><span class="time">3:00</span><span class="refs">1.6, 1.5</span></div><h3>Her detective</h3><p>The Guide's first quest: <em>Name your detective</em>. Database &#9656; + New, &ldquo;Mara&rdquo;, teal. <strong>Make stand-in looks</strong> gives four teal silhouettes. A tick slides in.</p><p class="today"><b>Today:</b> she needs art files before a character can show.</p></li>
+          <li class="frame"><div class="tc"><span class="time">4:30</span><span class="refs">2.5, 3.2, 3.3</span></div><h3>Writing the first lines</h3><p>She drags Mara from the Database onto the office scene's Events. The stage preview shows Mara at left. She adds a Say row; her face and teal name lead it. <strong>Try it</strong> plays the line with blips.</p><p class="today"><b>Today:</b> Insert&hellip; and forms work; the rows are grey text and the stage shows only the opening shot.</p></li>
+          <li class="frame"><div class="tc"><span class="time">6:00</span><span class="refs">F46, 4.1</span></div><h3>A choice by dragging</h3><p>She drags an arrow from <em>office</em> to <em>alley</em>, then to <em>witness</em>. Studio asks &ldquo;Make a choice?&rdquo;. The arrows draw from tail to head and the option text opens.</p><p class="today"><b>Today:</b> works (F46), with no motion.</p></li>
+          <li class="frame"><div class="tc"><span class="time">7:00</span><span class="refs">2.1, F39</span></div><h3>Play this scene, then edit live</h3><p>She presses the visible <strong>&#9654; Play</strong>. While it runs she fixes a typo and saves. The docked game blinks, &ldquo;Story updated&rdquo;, same line.</p><p class="today"><b>Today:</b> hot reload works, from a menu key she has to discover.</p></li>
+          <li class="frame"><div class="tc"><span class="time">8:30</span><span class="refs">2.10</span></div><h3>Did every path work?</h3><p><strong>Explore every path</strong>: the map lights up in 0.6 s. &ldquo;6 paths, 2 of 2 endings, 0 errors.&rdquo;</p><p class="today"><b>Today:</b> she plays each branch by hand.</p></li>
+          <li class="frame"><div class="tc"><span class="time">9:30</span><span class="refs">4.2, 7.1</span></div><h3>The lanterns go up</h3><p>Her first run reaches an ending. Paper lanterns rise across the map for two seconds: &ldquo;First ending reached.&rdquo; The Guide offers <em>Build</em> and <em>Upload to itch.io</em>.</p><p class="today"><b>Today:</b> the Guide says &ldquo;Well done!&rdquo; in text.</p></li>
+        </ol>
+      </section>
+
+      <!-- IDEAS -->
+      <section id="ideas">
+        <div class="sec-head"><span class="tag">Catalogue</span><h2>All 41 ideas</h2></div>
+        <div class="prose"><p>Each idea is an inspector panel: what you see and do, why it's fun to watch, where it comes from, how it fits Studio and Tk, and what it needs. Sizes follow <code>specs/FEATURES.md</code> (S, M, L).</p></div>
+
+        <div class="filters" id="filters">
+          <div class="frow" data-dim="group" role="group" aria-label="Filter by group">
+            <span class="fl">Group</span>
+            <button class="fbtn" type="button" id="fg-all" data-val="all" aria-pressed="true">All</button>
+            <button class="fbtn" type="button" id="fg-onboard" data-val="onboard" aria-pressed="false">First minutes</button>
+            <button class="fbtn" type="button" id="fg-play" data-val="play" aria-pressed="false">Instant play</button>
+            <button class="fbtn" type="button" id="fg-map" data-val="map" aria-pressed="false">Story building</button>
+            <button class="fbtn" type="button" id="fg-juice" data-val="juice" aria-pressed="false">Juice</button>
+            <button class="fbtn" type="button" id="fg-keys" data-val="keys" aria-pressed="false">Keyboard</button>
+            <button class="fbtn" type="button" id="fg-art" data-val="art" aria-pressed="false">Art</button>
+            <button class="fbtn" type="button" id="fg-share" data-val="share" aria-pressed="false">Sharing</button>
+            <button class="fbtn" type="button" id="fg-stream" data-val="stream" aria-pressed="false">Streaming</button>
+            <button class="fbtn" type="button" id="fg-a11y" data-val="a11y" aria-pressed="false">Accessibility</button>
+          </div>
+          <div class="frow" data-dim="size" role="group" aria-label="Filter by size">
+            <span class="fl">Size</span>
+            <button class="fbtn" type="button" id="fs-all" data-val="all" aria-pressed="true">All</button>
+            <button class="fbtn" type="button" id="fs-s" data-val="S" aria-pressed="false">S</button>
+            <button class="fbtn" type="button" id="fs-m" data-val="M" aria-pressed="false">M</button>
+            <button class="fbtn" type="button" id="fs-l" data-val="L" aria-pressed="false">L</button>
+          </div>
+          <div class="frow" data-dim="status" role="group" aria-label="Filter by status">
+            <span class="fl">Status</span>
+            <button class="fbtn" type="button" id="ft-all" data-val="all" aria-pressed="true">All</button>
+            <button class="fbtn" type="button" id="ft-ext" data-val="ext" aria-pressed="false">Extends</button>
+            <button class="fbtn" type="button" id="ft-new" data-val="new" aria-pressed="false">New</button>
+          </div>
+          <div class="frow"><span class="fcount" id="fcount" aria-live="polite">Showing 41 of 41 ideas</span></div>
+        </div>
+
+        <!-- GROUP 1 -->
+        <div class="group" id="g-onboard" data-groupblock="onboard">
+          <h3><span class="gn">Group 1</span>First five minutes</h3>
+          <p>Time to first fun decides whether people stay. Unity's first-time tips say the first thing players touch should be the most engaging part, not setup (<a href="https://unity.com/how-to/10-first-time-user-experience-tips-games">Unity</a>); Roblox notes new players decide within minutes (<a href="https://create.roblox.com/docs/production/game-design/onboarding">Roblox</a>). For Studio the &ldquo;most engaging part&rdquo; is a VN playing.</p>
+
+          <article class="idea" id="i-1-1" data-group="onboard" data-size="L" data-status="new">
+            <header><span class="idno">1.1</span><h4>Double-click Studio</h4><div class="chips"><span class="chip new">New</span><span class="chip size">L</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><ol><li>Download <code>vn-engine-studio.zip</code> from itch.io or GitHub.</li><li>Unzip, double-click <strong>vn-engine Studio</strong>.</li><li>The Start page opens (1.2). No Python, pip or terminal.</li></ol></dd></div>
+              <div><dt>Why it's fun</dt><dd>Not watchable itself, but it decides whether there is anything to watch. Every step before the first window is a place to quit.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Construct 3 runs in the browser with nothing to install (<a href="https://www.construct.net/en/tutorials/beginners-guide-construct-1">Construct guide</a>). Today our README asks for Python, pip and a command.</dd></div>
+              <div><dt>Fits Studio</dt><dd>F42 already freezes games with PyInstaller (<code>launcher_main</code>, pinned and hashed deps). Studio starts children with <code>python -m engine check/helper/run/build</code>; a frozen Studio needs those as subcommands of its own exe. Tk is part of CPython on Windows and freezes well.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Unsigned PyInstaller exes trip antivirus; signing costs money. Windows first. Keep the pip path for developers. The build tool (F42) inside a frozen Studio needs its own Python, which is the hardest part.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~760–1110k context · ≈7.5–11.0M counted · ≈0.70–1.02% of weekly</summary><p class="sl-note">Top 10 and L. The build tool inside a frozen Studio needing its own Python is the hard part; ship write-and-play first and keep Build on the developer install until then.</p><ol><li><span class="sl-name">Studio.exe that plays</span><span class="plan-size">M</span> A Windows zip runs Studio with Play, Check and the helper from its own exe, with no Python installed; Build says it needs the developer install.<span class="sl-meta">~300–400k context · ≈3.0–4.0M counted · ≈0.28–0.37% of weekly · 8–12 h · no dependencies</span></li><li><span class="sl-name">Release zip from CI</span><span class="plan-size">S</span> A tagged release builds the Studio zip with hashes, and the docs explain the SmartScreen warning.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 1.1 Studio.exe that plays</span></li><li><span class="sl-name">Build from the exe</span><span class="plan-size">L</span> Build game works in the frozen Studio by fetching a pinned Python and PyInstaller on first use.<span class="sl-meta">~400–600k context · ≈4.0–5.9M counted · ≈0.37–0.55% of weekly · 12–20 h · after 1.1 Studio.exe that plays</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-1-2" data-group="onboard" data-size="M" data-status="ext">
+            <header><span class="idno">1.2</span><h4>Start page that plays the sample</h4><div class="chips"><span class="chip ext">Extends F47 New game</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><ol><li>Studio opens on a Start page when no game is open (and on File &#9656; Start page).</li><li>Left: recent games with title-screen thumbnails.</li><li>Centre: <em>Paper Lanterns</em> with <strong>&#9654; Play it now</strong>, which plays it docked (2.3).</li><li>Below: starter cards (1.4). Right: Guide, Script language, Connect an AI app.</li></ol>See <a href="#mockups">Mockup 4</a>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The first click makes a game appear. A viewer sees a working VN within ten seconds of launch.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Construct 3's Start Page lets you preview example projects without opening them (<a href="https://www.construct.net/en/tutorials/beginners-guide-construct-1">Construct guide</a>). GDevelop points beginners at a Get Started page with guided tutorials and templates (<a href="https://wiki.gdevelop.io/gdevelop5/getting_started/">GDevelop wiki</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>A frame in <code>window.py</code> shown when no game is open. Cards on a Tk canvas. Thumbnails from the helper's <code>title</code> still. The sample lives in <code>engine/data/sample</code>; play it from a temp copy so nothing writes into the engine folder.</dd></div>
+              <div><dt>Needs, risks</dt><dd>One more screen for returning users: after a game has been played once, reopen it directly, as today.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 4 slices · ~290–520k context · ≈2.9–5.1M counted · ≈0.27–0.48% of weekly</summary><p class="sl-note">Top 5. A frame in window.py when no game is open. Playing the sample docked waits for 2.3.</p><ol><li><span class="sl-name">Start page</span><span class="plan-size">M</span> With no game open Studio shows recent games, Open, New game and learn links, also from File &gt; Start page.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Play it now</span><span class="plan-size">S</span> One button copies the sample to a temp folder and plays it, docked once docking ships.<span class="sl-meta">~50–100k context · ≈0.5–1.0M counted · ≈0.05–0.09% of weekly · 2–3 h · after 1.2 Start page</span></li><li><span class="sl-name">Recent game pictures</span><span class="plan-size">S</span> Recent games show their title screen from the helper&#x27;s title still.<span class="sl-meta">~50–90k context · ≈0.5–0.9M counted · ≈0.05–0.08% of weekly · 1.5–3 h · after 1.2 Start page</span></li><li><span class="sl-name">Starter cards</span><span class="plan-size">S</span> The Start page shows the starter covers.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 1.2 Start page, Starter templates</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-1-3" data-group="onboard" data-size="S" data-status="ext">
+            <header><span class="idno">1.3</span><h4>Open new games on the map, not the code</h4><div class="chips"><span class="chip ext">Extends F46</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>A game opened for the first time lands on the Story map with <code>start</code> selected and its opening shot showing. Later opens keep the last tab.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Pictures and arrows read at a glance. Fifty lines of comments do not.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Twine's main screen is the story map of passage cards (<a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine docs</a>). GB Studio's default view is the Game World where you combine scenes (<a href="https://www.gbstudio.dev/docs/project-editor/">GB Studio docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>One rule on first open when <code>.studio/studio.json</code> has no last tab.</dd></div>
+              <div><dt>Needs, risks</dt><dd>None worth naming. Text-first authors press <kbd>Ctrl+1</kbd> once.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-1-4" data-group="onboard" data-size="M" data-status="ext">
+            <header><span class="idno">1.4</span><h4>Genre starters</h4><div class="chips"><span class="chip ext">Extends F47, F49</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>New game shows cover cards:<ul><li><strong>Romance:</strong> Sakura scheme, meters (F22), gift giving (F54).</li><li><strong>Mystery:</strong> Old Photograph scheme, codex tips (F21), present evidence (F25).</li><li><strong>Psychological horror:</strong> Black and White, glitches (F28), fake crash (F30), meta files (F31).</li><li><strong>Kinetic novel:</strong> Ink on Paper, full-screen text (F17), no choices.</li></ul>Each is 3 to 5 short scenes in stand-in art (1.5), and shows off its trick in the first minute.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The horror starter glitches on its second line. Viewers meet the engine's features as story moments.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Ren'Py's launcher asks for a colour theme when you create a project (<a href="https://www.renpy.org/doc/html/gui.html">Ren'Py GUI docs</a>). Scratch's design aims at a low floor and lets people remix existing projects (<a href="https://web.media.mit.edu/~mres/papers/Scratch-CACM-final.pdf">Scratch, CACM</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>files.TEMPLATES</code> already has sample and empty. Each starter is a folder like <code>engine/data/sample</code>, with its own Guide baseline (<code>SAMPLE_BASELINE</code>).</dd></div>
+              <div><dt>Needs, risks</dt><dd>More writing than code. Keep each starter small: a seed to grow. Stand-in art avoids licensing questions.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><div class="plan-x"><p class="sl-note">The same work as engine I-35; build it once there. The Studio side is the starter templates foundation.</p></div><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-1-5" data-group="onboard" data-size="M" data-status="new">
+            <header><span class="idno">1.5</span><h4>Stand-in art</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><ol><li>Database &#9656; Characters &#9656; + New: &ldquo;Rin&rdquo;, pink.</li><li><strong>Make stand-in looks</strong>: neutral, happy, sad, angry as flat silhouettes in Rin's colour, the look name printed small.</li><li>Pictures &#9656; <strong>+ Stand-in background</strong>: type &ldquo;classroom, evening&rdquo;, get a two-tone card with the name on it.</li><li>Later, add real files with the same names; every line keeps working.</li></ol></dd></div>
+              <div><dt>Why it's fun</dt><dd>The stage fills before any art exists. A whole scene plays in minute three.</dd></div>
+              <div><dt>Borrowed from</dt><dd>First-VN devlogs name art as a wall: early AI art results &ldquo;were hilariously bad&rdquo; (<a href="https://itch.io/devlog/440668/things-i-learned-from-making-my-first-vn.amp">itch.io devlog</a>). Your own <code>docs/art-generation-sop.md</code> shows how much work real art is.</dd></div>
+              <div><dt>Fits Studio</dt><dd>Draw the PNGs in the helper child (it has pygame; Studio stays pygame-free per ADR-0008). Mark stand-ins in <code>.studio/</code> so Studio knows which are which.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Must look plain on purpose. Build warns &ldquo;3 pictures are stand-ins&rdquo;.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~230–400k context · ≈2.3–4.0M counted · ≈0.21–0.37% of weekly</summary><p class="sl-note">Next five. Drawn in the helper child, since Studio stays pygame-free.</p><ol><li><span class="sl-name">Stand-in looks</span><span class="plan-size">M</span> Make stand-in looks draws neutral, happy, sad and angry silhouettes in the character&#x27;s colour.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Stand-in backgrounds</span><span class="plan-size">S</span> Pictures &gt; Stand-in background makes a two-tone card with its name.<span class="sl-meta">~50–90k context · ≈0.5–0.9M counted · ≈0.05–0.08% of weekly · 1.5–3 h · after 1.5 Stand-in looks</span></li><li><span class="sl-name">Build warns about stand-ins</span><span class="plan-size">S</span> Build says how many pictures are still stand-ins.<span class="sl-meta">~30–60k context · ≈0.3–0.6M counted · ≈0.03–0.06% of weekly · 1–2 h · after 1.5 Stand-in looks</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-1-6" data-group="onboard" data-size="S" data-status="ext">
+            <header><span class="idno">1.6</span><h4>The Guide as a quest log</h4><div class="chips"><span class="chip ext">Extends F47 Guide</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>The seven steps stay, under a progress ring. A finished step slides its tick in and the next step's <strong>Show me</strong> pulses once. Three later quests teach the fun parts: <em>Play from a scene</em>, <em>Change a line while the game runs</em>, <em>Make a choice by dragging an arrow</em>. Finishing them all plays a celebration (4.2).</dd></div>
+              <div><dt>Why it's fun</dt><dd>Progress you can see. Each tick is a small win on stream.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Construct 3 added a Guided Tour for beginners (<a href="https://editor.construct.net/r197/">release r197</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>guide.py</code> is pure; new steps read new <code>studiostate</code> facts (played a scene, reloaded, dragged an arrow). The ring is a Tk canvas arc.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Never a lock: every step stays skippable and &#10005; hides the Guide.</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <!-- GROUP 2 -->
+        <div class="group" id="g-play" data-groupblock="play">
+          <h3><span class="gn">Group 2</span>Instant play and preview</h3>
+          <p>The loop is edit, see, edit. Shorten the see.</p>
+
+          <article data-plan-built="1" class="idea is-built" id="i-2-1" data-group="play" data-size="S" data-status="ext">
+            <header><span class="idno">2.1</span><h4>A Play button you can see</h4><!--plan:chip--><span class="built-chip">✓ Built · e2cc97a … 63fa224</span><!--/plan:chip--><div class="chips"><span class="chip ext">Extends F47 Play bar</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><ol><li>In the menu row, after Help: one split button <strong>&#9654; Play &#9662;</strong> with &ldquo;from bridge&rdquo; beside it.</li><li>Click plays this scene (<kbd>F5</kbd>). The &#9662; holds Play from the start, Play options, What-if (2.8).</li><li>While the game runs it reads <strong>&#9632; Stop</strong> and an <strong>Update</strong> (<kbd>Ctrl+R</kbd>) appears.</li></ol>See <a href="#mockups">Mockup 1</a>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Play is the most watched action in any engine. A button shows a viewer where the game comes from.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Mario Maker 2's clapperboard switches between building and test play in one press (<a href="https://www.mariowiki.com/Course_Maker">Mario Wiki</a>). GDevelop's preview button turns into an Update button while a preview runs (<a href="https://wiki.gdevelop.io/gdevelop5/interface/preview/">GDevelop wiki</a>). AGS saves and runs on <kbd>F5</kbd> (<a href="https://adventuregamestudio.github.io/ags-manual/acintro2.html">AGS manual</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>playbar.py</code> still has the buttons and <code>merge_into</code>. One compact control replaces the old five-button bar.</dd></div>
+              <div><dt>Challenge</dt><dd class="challenge">Commit <code>0d30d5a</code> moved Play to the Run menu, likely to cut clutter. Keys-only hides the main action from new users and from anyone watching. One split button costs about 140 px.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Keep the Run rows and keys as they are.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-2-2" data-group="play" data-size="S" data-status="new">
+            <header><span class="idno">2.2</span><h4>Play mode tint</h4><div class="chips"><span class="chip new">New</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>While the game runs, a 3 px amber line runs along Studio's top and the status bar turns amber: &ldquo;&#9679; Playing bridge, line 14 &middot; Updated 14:32&rdquo;. Stop, and it returns to grey.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Viewers always know whether the game is live. The colour change is a clear &ldquo;go&rdquo; moment.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Unity's Playmode tint is applied to the whole Editor &ldquo;to help you identify Play mode at a glance&rdquo; (<a href="https://docs.unity.com/en-us/engine/current/manual/unity-editor/editor-settings-reference/preferences/colors">Unity docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Tint only chrome strips. The 08 visual refresh freezes editor colours, and this keeps that rule. Add a <code>live</code> token and its text pair to <code>CONTRAST_PAIRS</code>. <code>runwiring</code> knows the PreviewState.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Unity tints everything, which people find heavy; a strip is enough.</dd></div>
+            </dl>
+          </article>
+
+          <article data-plan-built="1" class="idea is-built" id="i-2-3" data-group="play" data-size="M" data-status="ext">
+            <header><span class="idno">2.3</span><h4>Dock the game beside Studio</h4><!--plan:chip--><span class="built-chip">✓ Built · 970ef7e … 57038e1</span><!--/plan:chip--><div class="chips"><span class="chip ext">Extends F39</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><ol><li>Play opens the game at the right of Studio's window, at 960&times;540 or whatever fits, and Studio's right pane makes room.</li><li>A pin in the status bar toggles Docked and Floating.</li><li>Moving or resizing Studio moves the game with it. Hot reload reopens it in place (it already does).</li></ol></dd></div>
+              <div><dt>Why it's fun</dt><dd>Script left, game right: the classic devlog frame. Each edit and its result share one screen, which is what a stream capture needs.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Godot runs the game in a separate process, as a floating window or inside the editor's main window, with a Game bar (<a href="https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html">Godot docs</a>). Inky's play pane sits beside the script (<a href="https://github.com/inkle/inky">Inky</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>--window-at=X,Y</code> exists (F39 W1). Add <code>--window-size</code> and a dev-only borderless flag. Studio computes the rectangle from its own geometry and sends a move when it moves. True embedding with <code>SDL_WINDOWID</code> into a Tk frame works in single-process examples (<a href="https://stackoverflow.com/questions/23319059/embedding-a-pygame-window-into-a-tkinter-or-wxpython-frame">Stack Overflow</a>), but Studio and the game are separate processes and Studio never imports pygame. Place side by side first.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Multi-monitor and DPI. The F01 letterbox handles small sizes. Clicking the game gives it the keys, as expected.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-2-4" data-group="play" data-size="M" data-status="new">
+            <header><span class="idno">2.4</span><h4>Follow the game</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>While the game runs, the line it shows has an amber outline in the editor, its map box glows, and its Events row has a &#9654;. <strong>Follow the game</strong> (status bar toggle) keeps the editor scrolled to it. <kbd>Ctrl+L</kbd> jumps to the game's line once.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Script and game move together. Viewers watch the cursor walk the story as the player clicks.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Naninovel's editor outlines the currently played line green or yellow and has a button to open it (<a href="https://naninovel.com/guide/editor">Naninovel docs</a>). Inky fast-forwards to &ldquo;the last point you were at&rdquo; (<a href="https://github.com/inkle/inky">Inky</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>The game already writes report lines (<code>core/editorreport.py</code>). Add a dev-only <code>at</code> event {file, line}. Studio maps it with the scene indexes; the glow is F58's <code>GlowSet</code>.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Protocol change on both sides. Skip mode moves at 50 ms a line, so coalesce to about 10 events a second.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~180–310k context · ≈1.8–3.1M counted · ≈0.17–0.29% of weekly</summary><p class="sl-note">Top 7. Needs the at event on the report channel; build it right after the dock work settles that channel.</p><ol><li><span class="sl-name">Line outline</span><span class="plan-size">S</span> While the game runs, its current line has an amber outline and a play mark in the gutter, and Ctrl+L jumps to it.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–4 h · after Line reports</span></li><li><span class="sl-name">Follow toggle</span><span class="plan-size">S</span> A status bar switch keeps the editor scrolled to the game&#x27;s line, opening its file.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 2.4 Line outline</span></li><li><span class="sl-name">Map glow and Events mark</span><span class="plan-size">S</span> The playing scene&#x27;s map box glows and its Events row shows a play mark.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 2.4 Line outline</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article data-plan-built="1" class="idea is-built" id="i-2-5" data-group="play" data-size="M" data-status="ext">
+            <header><span class="idno">2.5</span><h4>Stage preview at any line</h4><!--plan:chip--><span class="built-chip">✓ Built · 3017524, 01644ac, 96c2251</span><!--/plan:chip--><div class="chips"><span class="chip ext">Extends opening shot</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Select any Events row, or put the cursor on any line: the preview above the side pane shows the stage at that moment, with the background, characters on their positions in their looks, and the text box with that line in the speaker's colour. Arrow keys through the rows flip the scene like a storyboard. See <a href="#mockups">Mockup 3</a>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Scrubbing a scene with the arrow keys looks like flipping a comic, with no game running.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Visual Novel Maker's Live Preview shows the scene at the selected command (<a href="https://moegamer.net/2017/11/06/visual-novel-maker-first-look/">MoeGamer first look</a>). Ren'Py's Interactive Director edits scene, show and hide with a live preview (<a href="https://www.renpy.org/doc/html/director.html">Ren'Py docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>scenepreview.py</code> draws the opening shot from <code>stageat.stage_at</code>, which already reads a scene's lines above any row. Draw the text box in Tk while moving; when the selection rests 300 ms, ask the helper for a real still (a new <code>stage</code> entry in <code>HELPER_STILL_KINDS</code>).</dd></div>
+              <div><dt>Needs, risks</dt><dd>Branches are read as written (<code>stageat</code> calls this close enough). Label the picture as a sketch while it is one.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~210–330k context · ≈2.1–3.3M counted · ≈0.19–0.30% of weekly</summary><p class="sl-note">Top 3. stageat.stage_at already rebuilds the stage above any row; the preview only follows the selection today at the opening shot.</p><ol><li><span class="sl-name">Sketch at the cursor</span><span class="plan-size">M</span> Selecting an Events row or a script line shows the stage at that moment with the text box and the speaker&#x27;s colour, and arrow keys flip it like a storyboard.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Real still at rest</span><span class="plan-size">S</span> After 300 ms at rest the sketch becomes the game&#x27;s own still, labelled until then.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 2.5 Sketch at the cursor, Stage stills</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-2-6" data-group="play" data-size="L" data-status="new">
+            <header><span class="idno">2.6</span><h4>Play from this line</h4><div class="chips"><span class="chip new">New</span><span class="chip size">L</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Right-click any line or Events row &#9656; <strong>Play from here</strong>. The game opens with the stage as it is at that line and starts on it.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Fix line 140 and see it in two seconds without clicking through 139 lines.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Twine's <em>Test From Here</em> (<a href="https://twinery.org/reference/en/publishing/testing.html">Twine docs</a>). VN Maker plays from a command clicked in its preview (<a href="https://moegamer.net/2017/11/06/visual-novel-maker-first-look/">MoeGamer</a>). F47's design lists it as a future idea because the engine starts only at labels.</dd></div>
+              <div><dt>Fits Studio</dt><dd>Engine side: <code>run --start label --at N</code> runs the label's lines up to N with no waits and no text, then hands over.</dd></div>
+              <div><dt>Needs, risks</dt><dd>State-lane files. Lines inside a menu or an <code>if</code> start from the enclosing block. Say what was assumed: &ldquo;Started at line 140; earlier scenes' variables use their start values.&rdquo;</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~450–680k context · ≈4.5–6.7M counted · ≈0.41–0.63% of weekly</summary><p class="sl-note">L. The engine fast-runs a label up to line N; realistic earlier values need the headless child.</p><ol><li><span class="sl-name">Play from here</span><span class="plan-size">M</span> Right-click a line &gt; Play from here starts the game on that line with the scene&#x27;s stage and music, and says what it assumed.<span class="sl-meta">~250–380k context · ≈2.5–3.8M counted · ≈0.23–0.35% of weekly · 6–9 h · no dependencies</span></li><li><span class="sl-name">Values from a real path</span><span class="plan-size">M</span> Play from here can first play a path from the start to that scene, so earlier variables are real.<span class="sl-meta">~200–300k context · ≈2.0–3.0M counted · ≈0.18–0.28% of weekly · 5–8 h · after 2.6 Play from here, Headless play child</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-2-7" data-group="play" data-size="S" data-status="ext">
+            <header><span class="idno">2.7</span><h4>Quiet previews</h4><div class="chips"><span class="chip ext">Extends F30, F33</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Play this scene goes straight to the scene: no user-name question, no title, no content warning. Play from the start still shows them as players see them.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Less waiting between the press and the picture.</dd></div>
+              <div><dt>Borrowed from</dt><dd>RPG Maker's playtest exists to check settings and events quickly (<a href="https://rpgmakerofficial.com/product/MZ_help-en/01_05.html">RPG Maker MZ help</a>). My first Play of the sample opened on the name question.</dd></div>
+              <div><dt>Fits Studio</dt><dd>The content warning already skips in start-option runs (F33). The F30 question can follow the same rule for <code>--start</code> dev runs.</dd></div>
+              <div><dt>Needs, risks</dt><dd>The question still needs testing: keep it on Play from the start.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-2-8" data-group="play" data-size="S" data-status="ext">
+            <header><span class="idno">2.8</span><h4>What-if switches</h4><div class="chips"><span class="chip ext">Extends F44 start values</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>The &#9662; on Play lists yes-no variables and meters as switches: <code>bought_lantern</code> &#9744;, <code>trust</code> 0 &#9650;&#9660;. Flip one and press Play. Set values show as chips beside the button.</dd></div>
+              <div><dt>Why it's fun</dt><dd>One click and the other branch plays.</dd></div>
+              <div><dt>Borrowed from</dt><dd>articy:draft lets you change initial variable values for the current simulation only (<a href="https://www.articy.com/en/articydraft-first-steps-tutorial-series-l18-wrap-up/">articy tutorial</a>). RPG Maker's F9 screen edits switches and variables during playtest (<a href="https://rpgmakerofficial.com/product/MZ_help-en/01_05.html">MZ help</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Play options holds start values as text today. Build the list from Database Variables and Meters; write the same <code>--set</code> arguments. Put the variables the scene's TO GET HERE conditions read first.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Text and list variables stay in Play options.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-2-9" data-group="play" data-size="L" data-status="new">
+            <header><span class="idno">2.9</span><h4>Read-through pane</h4><div class="chips"><span class="chip new">New</span><span class="chip size">L</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>A <strong>Read</strong> tab beside Events and Script plays the story as text inside Studio: coloured names, one line per click or <kbd>Space</kbd>, choices as buttons, <kbd>Backspace</kbd> steps back. Each box lights on the map as you pass it, and arrows taken stay lit. After an edit it fast-forwards to where you were.</dd></div>
+              <div><dt>Why it's fun</dt><dd>A branching story lighting up the map as you read is very streamable, and it needs no art and no game window.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Inky's play pane (<a href="https://github.com/inkle/inky">Inky</a>). articy's presentation mode walks one &ldquo;journey&rdquo; through the flow (<a href="https://www.articy.com/en/articydraft-first-steps-tutorial-series-l07-presentation-mode/">articy tutorial</a>). Yarn Spinner previews dialogue in VS Code with the game's own runtime (<a href="https://yarnspinner.dev/docs/yarn-spinner-editor/">Yarn Spinner docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>runtime/headless.py</code> <code>run_headless</code> already takes <code>advance</code>, <code>choose N</code>, <code>back</code>. Run it in a child like the check child and stream lines back.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Minigames and timed choices need a stand-in (&ldquo;Lock: pick a result&rdquo;; F23's <code>outcome_for</code> helps). In-memory saves and persistent only.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 4 slices · ~430–700k context · ≈4.3–6.9M counted · ≈0.40–0.64% of weekly</summary><p class="sl-note">Next five, L. Rides on the headless child; minigame stand-ins come from outcome_for.</p><ol><li><span class="sl-name">Read tab</span><span class="plan-size">M</span> A Read tab plays the scene as text in Studio with coloured names, Space to go on, choices as buttons and Backspace to step back.<span class="sl-meta">~250–380k context · ≈2.5–3.8M counted · ≈0.23–0.35% of weekly · 6–9 h · after Headless play child</span></li><li><span class="sl-name">Map lights as you read</span><span class="plan-size">S</span> Boxes and arrows you pass light up on the map.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 2.9 Read tab</span></li><li><span class="sl-name">Minigame stand-ins</span><span class="plan-size">S</span> At a minigame the pane offers &quot;pick a result&quot; rows.<span class="sl-meta">~60–100k context · ≈0.6–1.0M counted · ≈0.06–0.09% of weekly · 2–3 h · after 2.9 Read tab</span></li><li><span class="sl-name">Keep my place</span><span class="plan-size">S</span> After an edit the pane replays to where you were.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 2.9 Read tab</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-2-10" data-group="play" data-size="M" data-status="ext">
+            <header><span class="idno">2.10</span><h4>Path explorer</h4><div class="chips"><span class="chip ext">Extends F41, reach</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Story &#9656; <strong>Explore every path</strong>. Boxes light up as a headless runner reaches them, choice by choice. A panel counts: &ldquo;18 paths, 2 of 3 endings, 1 ending never reached, 0 errors&rdquo;. Click a path to replay it in the Read pane. See <a href="#mockups">Mockup 2</a>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>A test run you can watch, and the map filling with light is satisfying.</dd></div>
+              <div><dt>Borrowed from</dt><dd>A first-VN devlog with &ldquo;27 decisions and dice rolls&rdquo; found testing every combination hard (<a href="https://itch.io/devlog/440668/things-i-learned-from-making-my-first-vn.amp">itch.io devlog</a>). Twine draws broken links in red on the map (<a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>run_headless</code> with <code>choose</code> inputs and <code>--seed</code>. The reach rows (028f54e) already find scenes no playthrough reaches; this adds proof by playing.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Branches multiply: explore breadth-first, skip states already seen (scene plus a hash of variables), cap at 500 paths and say so.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 4 slices · ~380–630k context · ≈3.8–6.2M counted · ≈0.35–0.58% of weekly</summary><p class="sl-note">Top 8. The headless child does the playing; this adds the search, the panel and the map light. reach.py already finds unreachable scenes by reasoning; this proves by playing.</p><ol><li><span class="sl-name">Explore every path</span><span class="plan-size">M</span> Story &gt; Explore every path plays the story breadth-first, skipping seen states, capped at 500 paths, and reports paths, endings reached and never reached, and errors.<span class="sl-meta">~200–320k context · ≈2.0–3.2M counted · ≈0.18–0.29% of weekly · 5–8 h · after Headless play child</span></li><li><span class="sl-name">Map lights up</span><span class="plan-size">S</span> Boxes and arrows light amber as they are reached, and never-reached boxes dim.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–4 h · after 2.10 Explore every path</span></li><li><span class="sl-name">Open a path</span><span class="plan-size">S</span> Click a path to play it in the game with those choices, or in the Read pane.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 2.10 Explore every path</span></li><li><span class="sl-name">Dice seeds</span><span class="plan-size">S</span> Explore can try several dice seeds so dice-driven branches are covered.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 2.10 Explore every path</span></li></ol></details><!--/plan:sl-->
+</article>
+        </div>
+
+        <!-- GROUP 3 -->
+        <div class="group" id="g-map" data-groupblock="map">
+          <h3><span class="gn">Group 3</span>Visual story building</h3>
+          <p>The map and the Events list are Studio's best screens. Give them pictures and direct manipulation.</p>
+
+          <article data-plan-built="1" class="idea is-built" id="i-3-1" data-group="map" data-size="M" data-status="ext">
+            <header><span class="idno">3.1</span><h4>Picture boxes on the map</h4><!--plan:chip--><span class="built-chip">✓ Built · 00345fe, 880a26e</span><!--/plan:chip--><div class="chips"><span class="chip ext">Extends F46, F58</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Each box shows its opening shot as a small thumbnail (background plus character dots in name colours) above the name and a short line (&ldquo;Chapter 2 &middot; 62 lines&rdquo;). File and line move to the tooltip. A map toolbar switch: <strong>Pictures</strong> or <strong>Compact</strong>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The map becomes a storyboard wall. A viewer gets the story's shape and mood at a glance.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Twine's map of passage cards (<a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine docs</a>). GB Studio's Game World, where you paint tiles in your scenes on one canvas (<a href="https://www.gbstudio.dev/docs/project-editor/">GB Studio docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>scenepreview</code> computes each opening stage; the helper makes thumbnails (<code>ThumbCache</code>, LRU 512). Draw thumbnails only for boxes in view and cache by scene digest, to keep F58's 16 ms one-scene redraw.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Memory at 1,000 scenes: visible boxes only, and Compact for huge maps. The F58 perf tests gate it.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~280–420k context · ≈2.8–4.2M counted · ≈0.26–0.39% of weekly</summary><p class="sl-note">Top 2. scenepreview.py already computes each opening stage and draws it in Tk, so sketches need no helper. Real stills come later from the shared cache. F58&#x27;s perf tests gate both.</p><ol><li><span class="sl-name">Sketch boxes</span><span class="plan-size">M</span> Each map box shows a small sketch of its opening shot (background, character dots in name colours) and &quot;Chapter 2, 62 lines&quot;, with a Pictures or Compact switch; file and line move to the tooltip.<span class="sl-meta">~200–300k context · ≈2.0–3.0M counted · ≈0.18–0.28% of weekly · 5–7 h · no dependencies</span></li><li><span class="sl-name">Real stills on boxes</span><span class="plan-size">S</span> When the map is idle, visible boxes swap the sketch for the game&#x27;s own still.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–4 h · after 3.1 Sketch boxes, Stage stills</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-3-2" data-group="map" data-size="S" data-status="ext">
+            <header><span class="idno">3.2</span><h4>Event rows with faces</h4><div class="chips"><span class="chip ext">Extends F46 Events</span><span class="chip size">S&ndash;M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Say rows start with a 20 px face of the look and the name in its colour. Background rows show a tiny thumbnail, Music a &#9835; and &#9654;, Choices indent their options. A thin stripe at the left groups one speaker's run of lines. Script rows stay mono.</dd></div>
+              <div><dt>Why it's fun</dt><dd>A scene reads like a comic script. Viewers can follow it without code words.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Dialogic's visual editor shows each event as a block with easy fields (<a href="https://docs.dialogic.pro/getting-started.html">Dialogic docs</a>). RPG Maker's event contents list (<a href="https://rpgmakerofficial.com/product/MZ_help-en/01_09_03.html">MZ help</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>eventsview.py</code> is a read-only <code>tk.Text</code>, which can embed images (<code>image_create</code>) and colour ranges with tags. Faces come from the Database look thumbnails (<code>formassets</code>).</dd></div>
+              <div><dt>Needs, risks</dt><dd>Rows get a little taller; 20 px faces keep the density.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~140–270k context · ≈1.4–2.7M counted · ≈0.13–0.25% of weekly</summary><p class="sl-note">Top 6, sized S to M. eventsview.py is a ttk Treeview, not a tk.Text as the proposal says: rows can take one image and a colour tag, so faces and name colours are cheap and stripes are a tint.</p><ol><li><span class="sl-name">Faces and name colours</span><span class="plan-size">S</span> Say rows start with the speaker&#x27;s 20 px face and the name in its colour.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · no dependencies</span></li><li><span class="sl-name">Thumbs and icons</span><span class="plan-size">S</span> Background rows show a tiny thumbnail, Music rows a note and a play button, and choice options indent.<span class="sl-meta">~50–100k context · ≈0.5–1.0M counted · ≈0.05–0.09% of weekly · 2–3 h · after 3.2 Faces and name colours</span></li><li><span class="sl-name">Speaker runs</span><span class="plan-size">S</span> A speaker&#x27;s run of lines shares a soft tint so scenes read like a comic script.<span class="sl-meta">~30–60k context · ≈0.3–0.6M counted · ≈0.03–0.06% of weekly · 1–2 h · after 3.2 Faces and name colours</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-3-3" data-group="map" data-size="M" data-status="ext">
+            <header><span class="idno">3.3</span><h4>Drag from the Database and Project</h4><div class="chips"><span class="chip ext">Extends F47 P3 plan</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Drag a character (or one of her looks) onto an Events row: a drop line shows where, and a Show character row appears. Drag a background onto a map box: it becomes the scene's background. Drag a music file onto a scene: Play music.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Drag and drop is the most watchable editing gesture. Things land where you drop them.</dd></div>
+              <div><dt>Borrowed from</dt><dd>TyranoBuilder's tutorial: drag the Join Scene component below the text (<a href="https://tyranobuilder.com/tutorials/managing-characters">TyranoBuilder</a>). Naninovel reorders script lines by drag and drop (<a href="https://naninovel.com/guide/editor">Naninovel docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Drags inside one Tk app need no tkdnd: <code>&lt;B1-Motion&gt;</code> plus <code>winfo_containing</code>. Writes go through <code>scriptedit</code> plans, one undo step, like the forms. F47 P3 already lists this.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Keyboard path: <kbd>Ctrl+C</kbd> on a Database entry, then <kbd>Ctrl+Shift+V</kbd> &ldquo;Place here&rdquo; on a row. Esc cancels a drag. Every drag in this proposal needs a key path like this one.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~250–430k context · ≈2.5–4.3M counted · ≈0.23–0.40% of weekly</summary><p class="sl-note">Next five. Each drag target is its own slice on the shared drag kit.</p><ol><li><span class="sl-name">Character onto Events</span><span class="plan-size">M</span> Drag a character or look onto an Events row and a Show character row appears there, as one undo.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · after In-Studio drag</span></li><li><span class="sl-name">Background onto a map box</span><span class="plan-size">S</span> Drop a background on a box and it becomes that scene&#x27;s background.<span class="sl-meta">~60–100k context · ≈0.6–1.0M counted · ≈0.06–0.09% of weekly · 2–3 h · after In-Studio drag</span></li><li><span class="sl-name">Music onto a scene</span><span class="plan-size">S</span> Drop a music file on a scene and it gets a Play music row.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after In-Studio drag</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-3-4" data-group="map" data-size="M" data-status="new">
+            <header><span class="idno">3.4</span><h4>Drop pictures in from Explorer</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Drag five PNGs from File Explorer onto Studio. One question: &ldquo;Backgrounds, or Rin's looks?&rdquo;. They copy in with checked names and appear as thumbnails.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The fastest way art enters a game, and the way people expect every tool to work.</dd></div>
+              <div><dt>Borrowed from</dt><dd>F45's design lists drag and drop as a future idea that needs tkdnd, a new dependency.</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>tkinterdnd2</code> wraps tkdnd for Windows, macOS and Linux. Reuse Add files&hellip; checks and Keep both, Replace, Skip.</dd></div>
+              <div><dt>Needs, risks</dt><dd>A native dependency to ship and freeze (1.1). Keep Add files&hellip; when it's missing.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~210–350k context · ≈2.1–3.5M counted · ≈0.19–0.32% of weekly</summary><p class="sl-note">Needs tkinterdnd2, a native dependency to vet, ship and freeze. Add files stays as the fallback.</p><ol><li><span class="sl-name">Drop files onto Studio</span><span class="plan-size">M</span> Drag PNGs from File Explorer onto Studio and they copy in with the same checks as Add files.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Ask what they are</span><span class="plan-size">S</span> One question (backgrounds, or a character&#x27;s looks) files and names them.<span class="sl-meta">~60–100k context · ≈0.6–1.0M counted · ≈0.06–0.09% of weekly · 2–3 h · after 3.4 Drop files onto Studio</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-3-5" data-group="map" data-size="M" data-status="ext">
+            <header><span class="idno">3.5</span><h4>Drag characters on the stage preview</h4><div class="chips"><span class="chip ext">Extends F47 Positions</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>In the stage preview (2.5) drag Hana from left to centre: her Show line's <code>at</code> changes. Between positions Studio snaps, or offers &ldquo;Save as position <code>center_left</code>?&rdquo;. Scroll over her to change her look.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Direct manipulation: you move the character herself with the mouse.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Ren'Py's Interactive Director edits show statements with a live preview (<a href="https://www.renpy.org/doc/html/director.html">Ren'Py docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>stagecanvas.py</code> already drags markers for Positions. Reuse it on the preview.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Needs 2.5. Snap hard so games don't collect one-off coordinates. Arrow keys move the selected character.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~240–390k context · ≈2.4–3.9M counted · ≈0.22–0.36% of weekly</summary><p class="sl-note">Reuses stagecanvas.py&#x27;s marker drags on the 2.5 preview.</p><ol><li><span class="sl-name">Drag to a position</span><span class="plan-size">M</span> Drag a character on the stage preview and her Show line&#x27;s position changes, snapping to named positions; arrow keys work too.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–6 h · after 2.5 Sketch at the cursor, In-Studio drag</span></li><li><span class="sl-name">Save as a position</span><span class="plan-size">S</span> Dropping between positions offers to save a new named position.<span class="sl-meta">~50–90k context · ≈0.5–0.9M counted · ≈0.05–0.08% of weekly · 1.5–3 h · after 3.5 Drag to a position</span></li><li><span class="sl-name">Scroll to change look</span><span class="plan-size">S</span> Scroll over a character to change her look.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 3.5 Drag to a position</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-3-6" data-group="map" data-size="M" data-status="ext">
+            <header><span class="idno">3.6</span><h4>Notes, colours and lanes on the map</h4><div class="chips"><span class="chip ext">Extends F46 future ideas</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Right-click empty map &#9656; <strong>Add note</strong>: a sticky card (&ldquo;Rewrite after beta&rdquo;). Boxes take a route colour. Story &#9656; <strong>Lanes by chapter</strong> draws soft bands per chapter.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The map looks like a writer's planning board, which is what writers stream.</dd></div>
+              <div><dt>Borrowed from</dt><dd>F46's own future ideas: colours, groups and notes on boxes. Twine's map of cards (<a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Store in <code>.studio/storymap.json</code> next to box places (<code>layoutfile.py</code>). The game never reads it.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Keep the JSON sorted and small for people who use git.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~260–420k context · ≈2.6–4.2M counted · ≈0.24–0.39% of weekly</summary><p class="sl-note">All stored in .studio/storymap.json; lanes touch layout, so they carry the perf gate.</p><ol><li><span class="sl-name">Sticky notes</span><span class="plan-size">S</span> Right-click the map &gt; Add note puts a sticky card on it.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · no dependencies</span></li><li><span class="sl-name">Route colours</span><span class="plan-size">S</span> Boxes can take a route colour.<span class="sl-meta">~50–90k context · ≈0.5–0.9M counted · ≈0.05–0.08% of weekly · 1.5–2.5 h · no dependencies</span></li><li><span class="sl-name">Chapter lanes</span><span class="plan-size">M</span> Story &gt; Lanes by chapter draws soft bands per chapter.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–6 h · no dependencies</span></li></ol></details><!--/plan:sl-->
+</article>
+        </div>
+
+        <!-- GROUP 4 -->
+        <div class="group" id="g-juice" data-groupblock="juice">
+          <h3><span class="gn">Group 4</span>Juice and feel</h3>
+          <p>&ldquo;Juice it or lose it&rdquo; showed a plain breakout game turning delightful with feedback alone (<a href="https://gdcvault.com/play/1016789/Juice-It-or-Lose">GDC Vault</a>). A later talk warned that too much polish costs immersion (<a href="https://gamedeveloper.com/design/video-indies-resist-the-urge-to-juice-it-or-lose-it-">Game Developer</a>). In a tool, juice should explain what changed.</p>
+
+          <article data-plan-built="1" class="idea is-built" id="i-4-1" data-group="juice" data-size="M" data-status="ext">
+            <header><span class="idno">4.1</span><h4>A motion budget</h4><!--plan:chip--><span class="built-chip">✓ Built · a9fcd64 … 6257a0d</span><!--/plan:chip--><div class="chips"><span class="chip ext">Extends F58 glow</span><span class="chip size">S&ndash;M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>A short list of motions, each under 250 ms:<ul><li>a new map box pops in (scale 0.9 to 1);</li><li>a new arrow draws from tail to head;</li><li>a removed row fades;</li><li>the problem count ticks to its new value;</li><li>a clean check turns the status chip green with a tick for one second.</li></ul>Nothing loops and nothing blocks input. Reduce motion turns them off.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Motion shows what changed. Viewers can follow an edit they didn't see typed.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Jonasson and Purho's talk (<a href="https://gdcvault.com/play/1016789/Juice-It-or-Lose">GDC Vault</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Tk canvas steps with <code>after()</code>, as <code>GlowSet</code> does. Text widgets can't animate, so motion lives on canvases: the map, cards, the preview, the status chip.</dd></div>
+              <div><dt>Challenge</dt><dd class="challenge">The F45 visual refresh says &ldquo;Nothing animates&rdquo;. F58 already broke that for the glow, behind Reduce motion. Replace the rule with: motion only answers an action, stays under 250 ms, and Reduce motion turns it off.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Put every motion in one module with one clock, measured by the perf harness.</dd></div>
+            </dl>
+          </article>
+
+          <article data-plan-built="1" class="idea is-built" id="i-4-2" data-group="juice" data-size="S" data-status="new">
+            <header><span class="idno">4.2</span><h4>Milestone celebrations</h4><!--plan:chip--><span class="built-chip">✓ Built · a9fcd64 … 6257a0d</span><!--/plan:chip--><div class="chips"><span class="chip new">New</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Five moments only: first Play, first choice in your own scene, first ending reached, Guide finished, first build. Paper lanterns float up across the map for two seconds with one line: &ldquo;First ending reached: Lantern End.&rdquo; Once per milestone per game.</dd></div>
+              <div><dt>Why it's fun</dt><dd>A clip-worthy beat that marks real progress, in the sample game's own image.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Asana's celebration creatures appear now and then when you finish tasks and can be switched off (<a href="https://blog.asana.com/2016/03/new-celebrations">Asana blog</a>, <a href="https://zapier.com/blog/asana-celebrations/">Zapier</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>A canvas overlay on the map; lanterns are polygons. Facts from <code>studiostate</code> (it already records <code>played</code>).</dd></div>
+              <div><dt>Needs, risks</dt><dd>Reduce motion shows a still banner instead.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-4-3" data-group="juice" data-size="S" data-status="new">
+            <header><span class="idno">4.3</span><h4>Sound on the work, off by default</h4><div class="chips"><span class="chip new">New</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Studio settings &#9656; Sounds. When on: a soft tick when a box or row is placed, a wood block on a drop, a chime on a clean check, a low tone on a new error.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Sound sells the building on stream.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Mario Maker 2 says each placed part's name with a pitch matched to the music (<a href="https://www.mariowiki.com/Course_Maker">Mario Wiki</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Studio has no audio of its own; the helper child plays sounds already (<code>play</code> op). Ship five tiny .ogg files.</dd></div>
+              <div><dt>Challenge</dt><dd class="challenge">Fun on stream, tiring at hour three. Off by default, one switch.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Helper sound latency is about 7 to 19 ms (HANDOFF notes): fine.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-4-4" data-group="juice" data-size="S" data-status="ext">
+            <header><span class="idno">4.4</span><h4>Previews over real pictures</h4><div class="chips"><span class="chip ext">Extends F47, F49</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Game settings' Text box and Color scheme previews draw the box over one of the game's backgrounds with a character (picked from a small list). Picking a scheme types the sample line once.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Clicking through 28 schemes looks like re-skinning your own game, which it is.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Ren'Py's launcher lets you pick and later change the colour theme of a project (<a href="https://www.renpy.org/doc/html/gui.html">Ren'Py docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Add a background ref and a sprite to the helper's <code>textbox</code> still request. For typing, request three stills (30, 70, 100 percent).</dd></div>
+              <div><dt>Needs, risks</dt><dd>Stills cost about 25 to 31 ms each: fine at rest.</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <!-- GROUP 5 -->
+        <div class="group" id="g-keys" data-groupblock="keys">
+          <h3><span class="gn">Group 5</span>Keyboard and power-user flow</h3>
+          <p>Fast hands are fun to watch too. VS Code and Linear show that one search box can replace a lot of menus.</p>
+
+          <article class="idea" id="i-5-1" data-group="keys" data-size="M" data-status="ext">
+            <header><span class="idno">5.1</span><h4>Command palette</h4><div class="chips"><span class="chip ext">Extends 7b6dfc7</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><kbd>Ctrl+Shift+P</kbd> opens a box at the top. Type &ldquo;play&rdquo;, &ldquo;scheme&rdquo;, &ldquo;new char&rdquo;, &ldquo;glitch&rdquo;. Each row names the command, where it lives and its key. Enter runs it; recent first. See <a href="#mockups">Mockup 5</a>.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Power users fly, and viewers learn the key from the row.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code's Command Palette (<a href="https://code.visualstudio.com/docs/editor/editingevolved">VS Code docs</a>). Linear's <kbd>Ctrl+K</kbd> menu acts on what is selected (<a href="https://linear.app/docs/select-issues">Linear docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Commit 7b6dfc7 named every command and menu row; <code>menu_table</code> and <code>story_actions</code> are tables. Add Database categories, Settings pages and Insert entries as rows. A Toplevel with an Entry and a Listbox; fuzzy match in pure Python.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Keep names in sync through the tables, not a hand list.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~140–220k context · ≈1.4–2.2M counted · ≈0.13–0.20% of weekly</summary><p class="sl-note">Next five. menu_table, story_actions and key_table are already tables, so the first slice is mostly a Toplevel and a fuzzy match.</p><ol><li><span class="sl-name">Palette over menus</span><span class="plan-size">S</span> Ctrl+Shift+P finds any menu command by name, with where it lives and its key, recent first.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–4 h · no dependencies</span></li><li><span class="sl-name">Database, settings and Insert rows</span><span class="plan-size">S</span> The palette also opens Database categories, Settings pages and Insert entries.<span class="sl-meta">~60–100k context · ≈0.6–1.0M counted · ≈0.06–0.09% of weekly · 2–3 h · after 5.1 Palette over menus</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-5-2" data-group="keys" data-size="S" data-status="ext">
+            <header><span class="idno">5.2</span><h4>Quick open everything</h4><div class="chips"><span class="chip ext">Extends Find scene</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><kbd>Ctrl+P</kbd>, type &ldquo;ha&rdquo;: Hana (character, with face), <code>hana_file</code> (scene), <code>hana/happy.png</code> (picture), <code>hana_name</code> (variable). Enter opens each in its home: Database row, map box, picture preview.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Answers appear as you type, with pictures.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code Quick Open (<a href="https://code.visualstudio.com/docs/editor/editingevolved">VS Code docs</a>). Twine's Go To finds passages with fuzzy matching (<a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>The check's names index lists every kind. Find scene (<kbd>Ctrl+G</kbd>) becomes its scenes-only filter.</dd></div>
+              <div><dt>Needs, risks</dt><dd>None of note.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-5-3" data-group="keys" data-size="M" data-status="ext">
+            <header><span class="idno">5.3</span><h4>Breadcrumbs and peek cards</h4><div class="chips"><span class="chip ext">Extends Go to definition</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Above the editor: <code>chapter1.vns &#8250; riverbank &#8250; menu &#8250; "Ask about Hana"</code>. Hover <code>hana</code> with Alt held: a card with her face, colour, &ldquo;Used in 35 lines&rdquo; and Open in Database. On a scene name: its thumbnail and arrows in and out.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The code explains itself with pictures.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code breadcrumbs and Peek Definition (<a href="https://code.visualstudio.com/docs/editor/editingevolved">VS Code docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>gotodef.py</code> resolves names; scene indexes know the label at the cursor. The card is a Toplevel like completion.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Hover cards must never steal focus while typing.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~210–320k context · ≈2.1–3.2M counted · ≈0.19–0.29% of weekly</summary><p class="sl-note">Two independent pieces.</p><ol><li><span class="sl-name">Breadcrumbs</span><span class="plan-size">S</span> A path above the editor shows file, scene, menu and choice at the cursor, each clickable.<span class="sl-meta">~60–100k context · ≈0.6–1.0M counted · ≈0.06–0.09% of weekly · 2–3 h · no dependencies</span></li><li><span class="sl-name">Peek cards</span><span class="plan-size">M</span> Alt+hover on a name shows a card with the face, colour, uses and Open in Database; on a scene, its picture and arrows.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–5 h · no dependencies</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-5-4" data-group="keys" data-size="M" data-status="new">
+            <header><span class="idno">5.4</span><h4>Find and replace across the game</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd><kbd>Ctrl+Shift+F</kbd>: search every script, results grouped by scene. Filters: dialogue only, one character's lines. Replace all is one undo step per file.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Less fun, more trust: rename a town everywhere in a second.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code search (<a href="https://code.visualstudio.com/docs/editor/editingevolved">VS Code docs</a>). F45's design left project-wide find and replace out of scope.</dd></div>
+              <div><dt>Fits Studio</dt><dd>Writes go through <code>scriptedit</code> plans like Rename scene; &ldquo;one character's lines&rdquo; uses the Say parse.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Leave <code>$</code> lines alone unless asked, as Rename does.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 3 slices · ~180–310k context · ≈1.8–3.1M counted · ≈0.17–0.29% of weekly</summary><p class="sl-note">Writes go through scriptedit plans like Rename scene.</p><ol><li><span class="sl-name">Find in all scripts</span><span class="plan-size">S</span> Ctrl+Shift+F searches every script with results grouped by scene.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–3 h · no dependencies</span></li><li><span class="sl-name">Replace all</span><span class="plan-size">S</span> Replace all is one undo per file and leaves $ lines alone unless asked.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after 5.4 Find in all scripts</span></li><li><span class="sl-name">Dialogue and speaker filters</span><span class="plan-size">S</span> Filters for dialogue only and one character&#x27;s lines.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 5.4 Find in all scripts</span></li></ol></details><!--/plan:sl-->
+</article>
+        </div>
+
+        <!-- GROUP 6 -->
+        <div class="group" id="g-art" data-groupblock="art">
+          <h3><span class="gn">Group 6</span>Assets and art pipeline</h3>
+          <p>Art is half of a VN's appeal and most of its work. Make art visible and make its arrival a small event.</p>
+
+          <article class="idea" id="i-6-1" data-group="art" data-size="M" data-status="ext">
+            <header><span class="idno">6.1</span><h4>Asset shelf</h4><div class="chips"><span class="chip ext">Extends Project, F47 Pictures</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>A dockable Pictures pane: a thumbnail grid grouped by character and backgrounds, with the look name and &ldquo;used in N lines&rdquo; under each. It is the drag source for 3.3.</dd></div>
+              <div><dt>Why it's fun</dt><dd>An artist streaming sees their whole cast at once.</dd></div>
+              <div><dt>Borrowed from</dt><dd>RPG Maker's Resource Manager in its Tools menu (<a href="https://rpgmakerofficial.com/product/MZ_help-en/01_05.html">MZ help</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Database &#9656; Pictures already renders thumbnails. Make it a pane with <code>docking.py</code> so it can sit under Project.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Thumbnail memory: share the helper's cache.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~190–300k context · ≈1.9–3.0M counted · ≈0.17–0.28% of weekly</summary><p class="sl-note">Database &gt; Pictures already renders thumbnails; this makes them a dockable pane.</p><ol><li><span class="sl-name">Pictures pane</span><span class="plan-size">M</span> A dockable pane shows every picture as a thumbnail grouped by character, with &quot;used in N lines&quot;.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Drag from the shelf</span><span class="plan-size">S</span> Drag from the shelf onto Events rows and map boxes.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 6.1 Pictures pane, 3.3 Character onto Events</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-6-2" data-group="art" data-size="S" data-status="ext">
+            <header><span class="idno">6.2</span><h4>Scheme from your key art</h4><div class="chips"><span class="chip ext">Extends F49 Import palette</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Color scheme &#9656; Import palette&hellip; &#9656; <strong>From a picture</strong>: pick the title background. Studio pulls five colours and shows the text box in them.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The UI matches the art in one click.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Our own Import palette, which already turns hex lists and Lospec or Coolors files into a readable scheme (<code>docs/game-settings.md</code>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>Quantize a thumbnail in the helper; <code>paletteimport.py</code> takes the list and fixes contrast.</dd></div>
+              <div><dt>Needs, risks</dt><dd>None of note.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-6-3" data-group="art" data-size="S" data-status="ext">
+            <header><span class="idno">6.3</span><h4>New art shows up live</h4><div class="chips"><span class="chip ext">Extends F58 watch</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Save <code>images/hana/sad.png</code> from Krita: within a second it appears in Project and the Database looks with a short glow, and lines naming it lose their W12 warning.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Artist and writer on one stream; art lands without a click.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Inky watches files on disk (<a href="https://github.com/inkle/inky">Inky</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>mapwatch.py</code> watches scripts. Widen it to <code>images/</code> and <code>audio/</code> with the same 500 ms debounce, then refresh the tree and check.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Ignore temp files art programs write while saving.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-6-4" data-group="art" data-size="S" data-status="ext">
+            <header><span class="idno">6.4</span><h4>Wanted: the missing art board</h4><div class="chips"><span class="chip ext">Extends W12 check</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Database &#9656; Pictures &#9656; <strong>Wanted</strong> shows every picture the script names with no file as an empty frame: <code>hana sad</code>, &ldquo;named in 3 lines&rdquo;, with <strong>Add file&hellip;</strong> and <strong>Make stand-in</strong>. A filled frame flips to its thumbnail.</dd></div>
+              <div><dt>Why it's fun</dt><dd>A to-do list that turns into a gallery as you work.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Your art SOP ends with a per-character checklist (<code>docs/art-generation-sop.md</code>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>W12 warnings already carry the names. Group them by character.</dd></div>
+              <div><dt>Needs, risks</dt><dd>W12 appears only after the game's code has run once (Studio's safety rule); say so on the board.</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <!-- GROUP 7 -->
+        <div class="group" id="g-share" data-groupblock="share">
+          <h3><span class="gn">Group 7</span>Sharing and community</h3>
+          <p>The finish line is someone else playing. Make that one click from Build.</p>
+
+          <article class="idea" id="i-7-1" data-group="share" data-size="M" data-status="new">
+            <header><span class="idno">7.1</span><h4>Upload to itch.io</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Build game&hellip; &#9656; Finished: <strong>Upload to itch.io</strong>. The first time, log in (opens the browser) and pick the project. A progress bar, then &ldquo;Live at you.itch.io/lanterns&rdquo;.</dd></div>
+              <div><dt>Why it's fun</dt><dd>The moment the game is out in the world.</dd></div>
+              <div><dt>Borrowed from</dt><dd>itch.io's butler: <code>butler push &lt;dir&gt; user/game:channel</code>, uploads only what changed, logs in through the browser (<a href="https://itch.io/docs/butler/pushing">butler docs</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>buildrunner</code> runs a child with progress; offer <strong>Install butler</strong> like Install build tool.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Credentials stay in butler's own config, never the game folder. Builds are Windows-only today.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~240–380k context · ≈2.4–3.8M counted · ≈0.22–0.35% of weekly</summary><p class="sl-note">butler does the upload and keeps its own login. Needs a security review for the child process and credentials.</p><ol><li><span class="sl-name">Upload with butler</span><span class="plan-size">M</span> Build &gt; Upload to itch.io installs butler, logs in through the browser and shows &quot;Live at you.itch.io/game&quot;.<span class="sl-meta">~200–300k context · ≈2.0–3.0M counted · ≈0.18–0.28% of weekly · 5–7 h · no dependencies</span></li><li><span class="sl-name">One channel per build</span><span class="plan-size">S</span> Windows, Mac, Linux and web builds go to their own channels.<span class="sl-meta">~40–80k context · ≈0.4–0.8M counted · ≈0.04–0.07% of weekly · 1–2 h · after 7.1 Upload with butler, I-36 Build for web</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-7-2" data-group="share" data-size="M" data-status="ext">
+            <header><span class="idno">7.2</span><h4>Example shelf</h4><div class="chips"><span class="chip ext">Extends 1.2, 1.4</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Help &#9656; Examples: tiny games, each showing one feature (timed choice, phone chat, puzzle room, glitches, terminal). <strong>&#9654; Preview</strong> plays one; <strong>Open a copy</strong> copies it to a new folder.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Take a working thing and bend it.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Construct 3 previews examples from the Start Page (<a href="https://www.construct.net/en/tutorials/beginners-guide-construct-1">Construct guide</a>). Scratch's remixing (<a href="https://web.media.mit.edu/~mres/papers/Scratch-CACM-final.pdf">CACM</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>The same template machinery as 1.2 and 1.4.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Mostly content; each example also tests its feature.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~210–360k context · ≈2.1–3.6M counted · ≈0.19–0.33% of weekly</summary><p class="sl-note">Mostly content on the template machinery; each example also tests its feature.</p><ol><li><span class="sl-name">Examples dialog</span><span class="plan-size">S</span> Help &gt; Examples lists tiny games with Preview and Open a copy.<span class="sl-meta">~60–110k context · ≈0.6–1.1M counted · ≈0.06–0.10% of weekly · 2–3 h · after Starter templates</span></li><li><span class="sl-name">First five examples</span><span class="plan-size">M</span> Timed choice, phone chat, puzzle room, glitches and terminal examples, each passing the check.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · after 7.2 Examples dialog</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-7-3" data-group="share" data-size="M" data-status="new">
+            <header><span class="idno">7.3</span><h4>Record a clip</h4><div class="chips"><span class="chip new">New</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>While the game runs: Run &#9656; <strong>Record 10 s clip</strong>. The next ten seconds of the game window are saved as a GIF in a <code>clips/</code> folder that builds leave out. A toast: &ldquo;Clip saved&rdquo; with Open folder.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Devlogs and socials run on short clips.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Our own idea; no tool above does this inside the editor.</dd></div>
+              <div><dt>Fits Studio</dt><dd>A dev-only game flag saves frames at 15 fps; a child encodes them after recording.</dd></div>
+              <div><dt>Needs, risks</dt><dd>No GIF encoder in our deps (no Pillow). Write a small one or save a PNG sequence first.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~230–340k context · ≈2.3–3.4M counted · ≈0.21–0.31% of weekly</summary><p class="sl-note">There is no image library in the deps, so a PNG sequence ships first.</p><ol><li><span class="sl-name">Record frames</span><span class="plan-size">S</span> Run &gt; Record 10 s clip saves the game&#x27;s frames to a clips folder that builds leave out.<span class="sl-meta">~80–120k context · ≈0.8–1.2M counted · ≈0.07–0.11% of weekly · 2–3 h · no dependencies</span></li><li><span class="sl-name">Save as GIF</span><span class="plan-size">M</span> The clip is saved as one GIF by a small built-in encoder.<span class="sl-meta">~150–220k context · ≈1.5–2.2M counted · ≈0.14–0.20% of weekly · 4–6 h · after 7.3 Record frames</span></li></ol></details><!--/plan:sl-->
+</article>
+        </div>
+
+        <!-- GROUP 8 -->
+        <div class="group" id="g-stream" data-groupblock="stream">
+          <h3><span class="gn">Group 8</span>Streaming and devlog friendliness</h3>
+          <p>Docking (2.3) and the tint (2.2) do most of the work. These finish the job.</p>
+
+          <article class="idea" id="i-8-1" data-group="stream" data-size="S" data-status="new">
+            <header><span class="idno">8.1</span><h4>Show keys on screen</h4><div class="chips"><span class="chip new">New</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>View &#9656; <strong>Show keys</strong>: a strip at the bottom shows each shortcut as keycaps for two seconds, with its name: <kbd>Ctrl+J</kbd> Add arrow. Shortcuts only, never typing.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Viewers learn the moves.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code's Screencast mode, with an &ldquo;only keyboard shortcuts&rdquo; setting (<a href="https://dzhavat.github.io/2019/09/18/screencast-mode-in-vs-code.html">article</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>editorkeys.key_table</code> knows every binding and its name.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Never show typed text.</dd></div>
+            </dl>
+          </article>
+
+          <article class="idea" id="i-8-2" data-group="stream" data-size="S" data-status="ext">
+            <header><span class="idno">8.2</span><h4>Presenter layout</h4><div class="chips"><span class="chip ext">Extends Tabs and panes</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>View &#9656; <strong>Presenter</strong>: one switch sets the UI to 150 percent, hides file paths on the map, docks the game, turns on Show keys. Switch again to go back.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Readable on a 720p stream without fiddling.</dd></div>
+              <div><dt>Borrowed from</dt><dd>VS Code's screencast settings cover font size and position (<a href="https://dzhavat.github.io/2019/09/18/screencast-mode-in-vs-code.html">article</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd><code>uiprefs</code> plus the UI scale from 9.1.</dd></div>
+              <div><dt>Needs, risks</dt><dd>Needs 9.1 for the scale.</dd></div>
+            </dl>
+          </article>
+
+          
+        </div>
+
+        <!-- GROUP 9 -->
+        <div class="group" id="g-a11y" data-groupblock="a11y">
+          <h3><span class="gn">Group 9</span>Accessibility</h3>
+          <p>Fun for the watcher must not cost the person working. Tk has limited screen-reader support (docs say so), so keyboard paths and calm defaults matter more.</p>
+
+          <article class="idea" id="i-9-1" data-group="a11y" data-size="M" data-status="ext">
+            <header><span class="idno">9.1</span><h4>One size control for all of Studio</h4><div class="chips"><span class="chip ext">Extends theme scale</span><span class="chip size">M</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Studio settings &#9656; <strong>Text size</strong>: 100 to 200 percent for menus, panes, forms, map and editor together.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Readable for tired eyes and for viewers.</dd></div>
+              <div><dt>Borrowed from</dt><dd>F45's visual refresh: all sizes are px at 100 percent times scale. Today <kbd>Ctrl+=</kbd> zooms only text or the map.</dd></div>
+              <div><dt>Fits Studio</dt><dd>Expose the scale; forms reflow.</dd></div>
+              <div><dt>Needs, risks</dt><dd>The F46 150 percent fit check (AC-47) is still open; do it here.</dd></div>
+            </dl>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--plan:sl--><details class="plan-x"><summary>Build plan: 2 slices · ~300–500k context · ≈3.0–5.0M counted · ≈0.28–0.46% of weekly</summary><p class="sl-note">theme.make_fonts already takes a scale; the work is making every form and canvas reflow.</p><ol><li><span class="sl-name">Text size setting</span><span class="plan-size">M</span> Studio settings &gt; Text size scales menus, panes, forms, map and editor from 100 to 200 percent.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · no dependencies</span></li><li><span class="sl-name">Forms fit at 150 percent</span><span class="plan-size">M</span> Every form and dialog fits at 150 percent, closing the open AC-47 check.<span class="sl-meta">~150–250k context · ≈1.5–2.5M counted · ≈0.14–0.23% of weekly · 4–6 h · after 9.1 Text size setting</span></li></ol></details><!--/plan:sl-->
+</article>
+
+          <article class="idea" id="i-9-2" data-group="a11y" data-size="S" data-status="ext">
+            <header><span class="idno">9.2</span><h4>Calm by default</h4><div class="chips"><span class="chip ext">Extends Reduce motion</span><span class="chip size">S</span></div></header>
+            <dl class="insp">
+              <div><dt>You see</dt><dd>Reduce motion follows the OS (F58 reads it). Sounds start off. Celebrations become a still banner. Try it on Flash or Glitch shows a one-line warning first.</dd></div>
+              <div><dt>Why it's fun</dt><dd>Nobody gets a migraine.</dd></div>
+              <div><dt>Borrowed from</dt><dd>Asana makes its celebrations optional (<a href="https://zapier.com/blog/asana-celebrations/">Zapier</a>).</dd></div>
+              <div><dt>Fits Studio</dt><dd>The OS read exists (<code>d935f33</code>).</dd></div>
+              <div><dt>Needs, risks</dt><dd>None of note.</dd></div>
+            </dl>
+          </article>
+
+          
+        </div>
+        <p class="noresults" id="noresults" hidden>No ideas match these filters.</p>
+      </section>
+
+      <!-- NOPE -->
+      <section id="nope">
+        <div class="sec-head"><span class="tag">Challenged</span><h2>Ideas I'd skip, for now</h2></div>
+        <div class="nope">
+          <div><h3>Multiplayer cursors</h3><p>Figma's live cursors and Spotlight are lovely to watch (<a href="https://help.figma.com/hc/en-us/articles/360040322673-Present-to-collaborators-using-spotlight">Figma help</a>), and Roblox Studio has real-time collaborative scripting (<a href="https://create.roblox.com/docs/studio">Roblox docs</a>). Studio is a solo tool on local files, and git already covers teams. Huge cost, little gain.</p></div>
+          <div><h3>Embedding the game inside a Tk frame</h3><p>It's the dream picture, and Godot does it (<a href="https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html">Godot docs</a>). For us it means reparenting another process's SDL window into Tk: Windows-only, fragile with focus and DPI. Docking (2.3) gets 90 percent of the look.</p></div>
+          <div><h3>A web build</h3><p>pygbag runs pygame-ce in the browser and makes an itch.io zip, but needs an asyncio main loop with <code>await asyncio.sleep(0)</code> (<a href="https://github.com/pmp-p/pygbag">pygbag</a>). The engine has decode threads and a fixed loop. A big engine project; revisit after 7.1.</p></div>
+          <div><h3>Block-based scripting</h3><p>Scratch's blocks are perfect for logic (<a href="https://web.media.mit.edu/~mres/papers/Scratch-CACM-final.pdf">CACM</a>). A VN is mostly words; blocks slow writing. The Events list with forms already gives non-programmers a no-code path.</p></div>
+          <div><h3>Editing inside the running game</h3><p>Godot's remote edits are lost when the game stops (<a href="https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html">Godot docs</a>). Our script is the truth, and edit in Studio plus hot reload already persists.</p></div>
+          <div><h3>A timeline editor</h3><p>F45 and F47 left it out. VNs move line by line, and the stage preview's row scrubbing (2.5) covers what a timeline would show.</p></div>
+          <div><h3>Celebrate everything, sound always on</h3><p>Asana keeps its creatures occasional on purpose (<a href="https://zapier.com/blog/asana-celebrations/">Zapier</a>). Juice on every keystroke turns into noise within an hour.</p></div>
+          <div><h3>&ldquo;Generate my whole game&rdquo; on New game</h3><p>The Assistant (F48) already helps. Writing the story is the fun part; a generated game takes it away and leaves a stranger's draft to fix.</p></div>
+        </div>
+      </section>
+
+      <!-- SOURCES -->
+      <section id="sources" class="sources">
+        <div class="sec-head"><span class="tag">References</span><h2>Sources</h2></div>
+        <ol>
+          <li><a href="https://jamesclear.com/great-speeches/inventing-on-principle-by-bret-victor">Bret Victor, Inventing on Principle (transcript)</a></li>
+          <li><a href="https://gdcvault.com/play/1016789/Juice-It-or-Lose">Jonasson and Purho, Juice It or Lose It (GDC Vault)</a></li>
+          <li><a href="https://gamedeveloper.com/design/video-indies-resist-the-urge-to-juice-it-or-lose-it-">Game Developer: indies resist the urge to juice it</a></li>
+          <li><a href="https://www.renpy.org/doc/html/director.html">Ren'Py: Interactive Director</a></li>
+          <li><a href="https://www.renpy.org/doc/html/gui.html">Ren'Py: GUI customization (colour theme on new project)</a></li>
+          <li><a href="https://github.com/inkle/inky">Inky (inkle) README</a></li>
+          <li><a href="https://naninovel.com/guide/editor">Naninovel: Story editor</a></li>
+          <li><a href="https://moegamer.net/2017/11/06/visual-novel-maker-first-look/">MoeGamer: Visual Novel Maker first look</a></li>
+          <li><a href="https://tyranobuilder.com/tutorials/managing-characters">TyranoBuilder: Managing characters</a></li>
+          <li><a href="https://docs.dialogic.pro/getting-started.html">Dialogic: Getting started</a></li>
+          <li><a href="https://rpgmakerofficial.com/product/MZ_help-en/01_05.html">RPG Maker MZ help: Playtest, debug screen, tools</a></li>
+          <li><a href="https://rpgmakerofficial.com/product/MZ_help-en/01_09_03.html">RPG Maker MZ help: Map event settings</a></li>
+          <li><a href="https://docs.unity.com/en-us/engine/current/manual/unity-editor/editor-settings-reference/preferences/colors">Unity: Colors preferences (Playmode tint)</a></li>
+          <li><a href="https://docs.godotengine.org/en/stable/tutorials/editor/game_embedding.html">Godot: Game embedding</a></li>
+          <li><a href="https://wiki.gdevelop.io/gdevelop5/interface/preview/">GDevelop: Preview and live preview</a></li>
+          <li><a href="https://wiki.gdevelop.io/gdevelop5/getting_started/">GDevelop: Getting started</a></li>
+          <li><a href="https://www.construct.net/en/tutorials/beginners-guide-construct-1">Construct 3: Beginner's guide</a></li>
+          <li><a href="https://editor.construct.net/r197/">Construct 3: release r197 (Guided Tour)</a></li>
+          <li><a href="https://web.media.mit.edu/~mres/papers/Scratch-CACM-final.pdf">Resnick et al., Scratch: Programming for All (CACM)</a></li>
+          <li><a href="https://www.mariowiki.com/Course_Maker">Super Mario Wiki: Course Maker</a></li>
+          <li><a href="https://twinery.org/reference/en/editing-stories/navigating.html">Twine: Navigating the story map</a></li>
+          <li><a href="https://twinery.org/reference/en/publishing/testing.html">Twine: Testing (Test From Here)</a></li>
+          <li><a href="https://yarnspinner.dev/docs/yarn-spinner-editor/">Yarn Spinner for VS Code</a></li>
+          <li><a href="https://www.articy.com/en/articydraft-first-steps-tutorial-series-l07-presentation-mode/">articy:draft: Presentation mode</a></li>
+          <li><a href="https://www.articy.com/en/articydraft-first-steps-tutorial-series-l18-wrap-up/">articy:draft: Wrap-up (initial variable values)</a></li>
+          <li><a href="https://code.visualstudio.com/docs/editor/editingevolved">VS Code: Code navigation</a></li>
+          <li><a href="https://dzhavat.github.io/2019/09/18/screencast-mode-in-vs-code.html">Screencast mode in VS Code</a></li>
+          <li><a href="https://linear.app/docs/select-issues">Linear: Select issues (command menu)</a></li>
+          <li><a href="https://help.figma.com/hc/en-us/articles/360040322673-Present-to-collaborators-using-spotlight">Figma: Spotlight</a></li>
+          <li><a href="https://create.roblox.com/docs/studio">Roblox Studio overview</a></li>
+          <li><a href="https://blog.asana.com/2016/03/new-celebrations">Asana: Celebrations revamped</a></li>
+          <li><a href="https://zapier.com/blog/asana-celebrations/">Zapier: Asana celebrations</a></li>
+          <li><a href="https://www.gbstudio.dev/docs/project-editor/">GB Studio: Project editor</a></li>
+          <li><a href="https://adventuregamestudio.github.io/ags-manual/acintro2.html">Adventure Game Studio manual: Getting started, part 2</a></li>
+          <li><a href="https://unity.com/how-to/10-first-time-user-experience-tips-games">Unity: 10 first-time user experience tips</a></li>
+          <li><a href="https://create.roblox.com/docs/production/game-design/onboarding">Roblox: Onboarding</a></li>
+          <li><a href="https://itch.io/devlog/440668/things-i-learned-from-making-my-first-vn.amp">itch.io devlog: Things I learned from making my first VN</a></li>
+          <li><a href="https://itch.io/docs/butler/pushing">itch.io: Pushing builds with butler</a></li>
+          <li><a href="https://github.com/pmp-p/pygbag">pygbag</a></li>
+          <li><a href="https://stackoverflow.com/questions/23319059/embedding-a-pygame-window-into-a-tkinter-or-wxpython-frame">Stack Overflow: Embedding a pygame window into Tkinter</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/PICO-8">PICO-8 (Wikipedia)</a> <span class="note">and</span> <a href="https://pcgamer.com/people-are-making-amazing-tiny-games-with-this-free-tool-and-i-cant-get-enough-of-them">PC Gamer on Bitsy</a> <span class="note">(read for the all-in-one, tiny-constraint mood; no idea depends on them)</span></li>
+          <li><span class="note">In the repo:</span> <code>docs/scene-editor.md</code>, <code>docs/story-map.md</code>, <code>docs/hot-reload.md</code>, <code>docs/game-settings.md</code>, <code>docs/database.md</code>, <code>docs/assistant.md</code>, <code>specs/FEATURES.md</code>, <code>specs/F45-studio/08-visual-refresh.md</code>, <code>specs/F47-studio-workshop/01-design.md</code>, <code>engine/tools/editor/</code>, Studio screenshots of 5 Nov 2026.</li>
+        </ol>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>Written for the vn-engine owner, 5 Nov 2026. Draft: nothing here is approved or scheduled.</footer>
+</div>
+
+<script>
+(function () {
+  var state = { group: "all", size: "all", status: "all" };
+  var ideas = Array.prototype.slice.call(document.querySelectorAll(".idea"));
+  var groups = Array.prototype.slice.call(document.querySelectorAll("[data-groupblock]"));
+  var count = document.getElementById("fcount");
+  var none = document.getElementById("noresults");
+
+  function sizeMatches(el) {
+    if (state.size === "all") return true;
+    var s = el.getAttribute("data-size");
+    // "S-M" style ideas are stored as their larger size; S filter also shows S-M chips.
+    var chip = el.querySelector(".chip.size");
+    var label = chip ? chip.textContent : s;
+    return s === state.size || label.indexOf(state.size) !== -1;
+  }
+
+  function apply() {
+    var shown = 0;
+    ideas.forEach(function (el) {
+      var ok = (state.group === "all" || el.getAttribute("data-group") === state.group) &&
+               sizeMatches(el) &&
+               (state.status === "all" || el.getAttribute("data-status") === state.status);
+      el.hidden = !ok;
+      if (ok) shown += 1;
+    });
+    groups.forEach(function (g) {
+      var any = g.querySelector(".idea:not([hidden])");
+      g.hidden = !any;
+    });
+    count.textContent = "Showing " + shown + " of " + ideas.length + " ideas";
+    none.hidden = shown !== 0;
+  }
+
+  document.querySelectorAll(".frow[data-dim]").forEach(function (row) {
+    var dim = row.getAttribute("data-dim");
+    row.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".fbtn");
+      if (!btn) return;
+      state[dim] = btn.getAttribute("data-val");
+      row.querySelectorAll(".fbtn").forEach(function (b) {
+        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+      });
+      apply();
+    });
+  });
+  apply();
+})();
+</script>

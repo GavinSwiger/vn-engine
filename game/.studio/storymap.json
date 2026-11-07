@@ -2,7 +2,7 @@
   "studio_map": 1,
   "boxes": {
     "bridge": [360, 220],
-    "bridge_talk": [660, 80],
+    "bridge_talk": [880, 60],
     "draw_fortune": [440, 0],
     "festival_end": [840, 380],
     "festival_shed": [440, 120],

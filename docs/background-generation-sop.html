@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background Art SOP</title>
+<style>
+  :root {
+    --bg: #f6f8f4;
+    --surface: #ffffff;
+    --surface-2: #edf1ea;
+    --text: #232822;
+    --muted: #626b60;
+    --border: #dde3d8;
+    --accent: #3f7d5c;
+    --accent-soft: #e2efe6;
+    --code-bg: #232a26;
+    --code-text: #eef3ef;
+    --shared: #3f7d5c;
+    --seraphine: #4f74d6;
+    --amara: #c98a0c;
+    --meilin: #7a5bc4;
+    --wren: #c8562f;
+    --kesh: #6b7f4e;
+    --shadow: 0 1px 2px rgba(30, 50, 30, .06), 0 4px 16px rgba(30, 50, 30, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171b19;
+      --surface: #1f2522;
+      --surface-2: #28302c;
+      --text: #e7ede8;
+      --muted: #9ba79e;
+      --border: #333d37;
+      --accent: #74c79a;
+      --accent-soft: #24372c;
+      --code-bg: #121614;
+      --code-text: #e7ede8;
+      --shared: #74c79a;
+      --seraphine: #7f9cf0;
+      --amara: #e8b143;
+      --meilin: #a98cf0;
+      --wren: #ec8460;
+      --kesh: #a4bd7a;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .layout {
+    max-width: 1180px; margin: 0 auto; padding: 0 16px 80px;
+    display: grid; grid-template-columns: 1fr; gap: 40px;
+  }
+  @media (min-width: 980px) { .layout { grid-template-columns: 220px 1fr; padding: 0 32px 80px; } }
+  header.hero { max-width: 1180px; margin: 0 auto; padding: 48px 16px 24px; }
+  @media (min-width: 980px) { header.hero { padding: 64px 32px 32px; } }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin: 8px 0 12px; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 700px; margin: 0; }
+
+  nav.toc { display: none; }
+  @media (min-width: 980px) { nav.toc { display: block; position: sticky; top: 24px; align-self: start; font-size: 14px; } }
+  nav.toc a { display: block; padding: 6px 12px; border-radius: 8px; color: var(--muted); text-decoration: none; }
+  nav.toc a:hover { background: var(--surface-2); color: var(--text); }
+  nav.toc a.sub { padding-left: 24px; font-size: 13px; }
+  nav.toc .label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 16px 12px 4px; }
+
+  main { min-width: 0; }
+  section { margin-bottom: 56px; scroll-margin-top: 16px; }
+  h2 { font-size: 26px; margin: 0 0 6px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h2 .part { font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 2px 10px; border-radius: 999px; }
+  h3 { font-size: 19px; margin: 32px 0 10px; }
+  p.intro { color: var(--muted); margin-top: 0; }
+
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-size: 13px; font-weight: 600; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+
+  .c-shared { --c: var(--shared); }
+  .c-seraphine { --c: var(--seraphine); }
+  .c-amara { --c: var(--amara); }
+  .c-meilin { --c: var(--meilin); }
+  .c-wren { --c: var(--wren); }
+  .c-kesh { --c: var(--kesh); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; background: var(--c); }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 0 8px; }
+
+  ol.rules { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: r; }
+  @media (min-width: 700px) { ol.rules { grid-template-columns: 1fr 1fr; } }
+  ol.rules li { counter-increment: r; position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px 14px 52px; }
+  ol.rules li::before { content: counter(r); position: absolute; left: 14px; top: 14px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin-bottom: 8px; }
+  ol.steps li::marker { color: var(--accent); font-weight: 700; }
+
+  .frame-demo { display: grid; gap: 16px; align-items: center; }
+  @media (min-width: 700px) { .frame-demo { grid-template-columns: 300px 1fr; } }
+  .frame-demo svg { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+
+  .loc {
+    background: var(--surface); border: 1px solid var(--border); border-top: 4px solid var(--c);
+    border-radius: 14px; padding: 18px 20px 20px; margin-bottom: 18px; box-shadow: var(--shadow);
+  }
+  .loc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 4px; }
+  .loc-head h4 { margin: 0; font-size: 19px; }
+  .loc-head .num { color: var(--muted); font-weight: 600; }
+  .loc p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+  .file { font: 13px ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--muted); }
+
+  .prompt-box { position: relative; }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-text); border-radius: 10px; padding: 16px 18px; overflow-x: auto; font: 13.5px/1.6 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  pre.prompt { white-space: pre-wrap; word-wrap: break-word; padding-top: 44px; }
+  .copy { position: absolute; top: 8px; right: 8px; font: 600 13px system-ui, sans-serif; background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+  .copy:hover { filter: brightness(1.08); }
+  .copy.done { background: #2e6fd1; }
+  .prompt-label { position: absolute; top: 12px; left: 18px; font: 600 11px system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #9fb0a5; }
+  code { font: 0.9em ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+  pre code { background: none; padding: 0; font: inherit; }
+
+  .variants { display: grid; gap: 14px; }
+  @media (min-width: 900px) { .variants { grid-template-columns: 1fr 1fr; } }
+  .variant h4 { margin: 0 0 8px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 18px; height: 18px; border-radius: 5px; display: inline-block; }
+
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; }
+  .callout p { margin: 0; }
+
+  .checklist td, .checklist th { text-align: center; }
+  .checklist td:first-child, .checklist th:first-child { text-align: left; }
+  .checklist input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .reset { margin-top: 10px; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .reset:hover { color: var(--text); }
+  .progress { font-size: 14px; color: var(--muted); margin: 0 0 10px; }
+
+  a { color: var(--accent); }
+  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 16px 48px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="eyebrow">Standard operating procedure</div>
+  <h1>Generating background art</h1>
+  <p class="lede">The step-by-step way to make the game's <strong>backgrounds</strong> (the places scenes happen) with ChatGPT, so they match the character art, leave room for the girls to stand, and drop straight into the game. Twelve places, each in day, evening and night.</p>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <a href="#rules">Rules for every background</a>
+    <a href="#frame">Leaving room for characters</a>
+    <div class="label">Steps</div>
+    <a href="#steps">How to make one</a>
+    <a href="#locations">The 12 places</a>
+    <a class="sub" href="#shared">Shared places</a>
+    <a class="sub" href="#routes">Each girl's places</a>
+    <a href="#variants">Evening and night</a>
+    <a href="#game">Putting them in the game</a>
+    <div class="label">Reference</div>
+    <a href="#problems">Fixing problems</a>
+    <a href="#checklist">Checklist</a>
+  </nav>
+
+  <main>
+
+    <section id="rules">
+      <h2>Rules for every background</h2>
+      <ol class="rules">
+        <li><strong>Match the characters.</strong> Upload one of the character expression sheets in every new chat. The prompts tell ChatGPT to match its style.</li>
+        <li><strong>No people.</strong> The girls stand in front of the background. A crowd painted into it fights with them. Every prompt says "no people".</li>
+        <li><strong>No writing.</strong> Generators make fake letters on signs and books. Every prompt says "no text"; blank signs are fine.</li>
+        <li><strong>Eye level.</strong> The camera is a person standing in the place, not looking down from above. Sprites only look right at eye level.</li>
+        <li><strong>Open middle, soft detail.</strong> Keep the center and lower half uncluttered. That's where the girls stand and where the text box sits.</li>
+        <li><strong>Day first, then variants.</strong> Make the day version, then ask for evening and night <em>in the same chat</em>, so the layout stays the same.</li>
+      </ol>
+    </section>
+
+    <section id="frame">
+      <h2>Leaving room for characters</h2>
+      <div class="frame-demo">
+        <svg viewBox="0 0 320 180" role="img" aria-label="A 16:9 frame: sky and details along the top and sides, open ground in the middle where character silhouettes stand, and the text box across the bottom.">
+          <rect width="320" height="180" fill="#cfe3f0"/>
+          <rect y="95" width="320" height="85" fill="#b9d3a5"/>
+          <rect x="6" y="40" width="58" height="70" fill="#9aa8b8"/>
+          <rect x="256" y="34" width="58" height="76" fill="#9aa8b8"/>
+          <polygon points="6,40 35,18 64,40" fill="#7d8899"/>
+          <polygon points="256,34 285,12 314,34" fill="#7d8899"/>
+          <rect x="70" y="58" width="180" height="122" fill="none" stroke="#3f7d5c" stroke-width="2" stroke-dasharray="6 4"/>
+          <g fill="#3f7d5c" opacity=".55">
+            <circle cx="115" cy="80" r="10"/><rect x="101" y="91" width="28" height="70" rx="10"/>
+            <circle cx="205" cy="84" r="10"/><rect x="191" y="95" width="28" height="66" rx="10"/>
+          </g>
+          <rect x="12" y="140" width="296" height="34" rx="6" fill="#232a26" opacity=".8"/>
+          <text x="160" y="161" fill="#eef3ef" font-size="11" text-anchor="middle" font-family="system-ui, sans-serif">text box</text>
+          <text x="160" y="72" fill="#2c5a41" font-size="10" text-anchor="middle" font-family="system-ui, sans-serif">keep this open</text>
+        </svg>
+        <div>
+          <p style="margin-top:0">Put the interesting things (buildings, trees, the fountain, bookshelves) <strong>along the top and the sides</strong>. Leave the <strong>middle and the ground</strong> plain: a path, a floor, a field. The girls stand there, and the text box covers the bottom strip.</p>
+          <p>The game fills its 16:9 screen with each background. ChatGPT often makes 3:2 images, which are a bit taller, so a strip comes off the top and bottom. Don't put anything important right at those edges.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="steps">
+      <h2><span class="part">Steps</span>How to make one</h2>
+      <ol class="steps">
+        <li><strong>Start a new chat</strong> for each place.</li>
+        <li><strong>Upload one character sheet</strong> (any girl's Sheet A) for the style.</li>
+        <li><strong>Copy that place's prompt</strong> from <a href="#locations">The 12 places</a> and send it. You get the <strong>day</strong> version.</li>
+        <li><strong>Check it:</strong> no people, no writing, eye level, open middle. Fix anything wrong (see <a href="#problems">Fixing problems</a>).</li>
+        <li><strong>In the same chat, send the <a href="#variants">evening prompt</a>, then the night prompt.</strong> Use the indoor versions for indoor places.</li>
+        <li><strong>Download all three</strong> and save them with the names shown (see <a href="#game">Putting them in the game</a>).</li>
+      </ol>
+    </section>
+
+    <section id="locations">
+      <h2>The 12 places</h2>
+      <p class="intro">Each card's prompt is complete; copy it as it is. The tag shows whose story uses the place most.</p>
+      <h3 id="shared">Shared places</h3>
+      <div id="shared-cards"></div>
+      <h3 id="routes">Each girl's places</h3>
+      <div id="route-cards"></div>
+    </section>
+
+    <section id="variants">
+      <h2>Evening and night</h2>
+      <p class="intro">Send these in the same chat, right after the day version. They keep the layout and change only the light, which turns 12 places into 36 backgrounds.</p>
+      <div class="variants">
+        <div class="variant">
+          <h4><span class="swatch" style="background:#f0a35e"></span>Evening (outdoors)</h4>
+          <div class="prompt-box"><pre class="prompt">Make this same image again with exactly the same layout, buildings, objects and camera angle. Only change the time of day to sunset: a warm orange and pink sky, long soft shadows, golden light on everything. Still no people and no text.</pre></div>
+        </div>
+        <div class="variant">
+          <h4><span class="swatch" style="background:#2b3f73"></span>Night (outdoors)</h4>
+          <div class="prompt-box"><pre class="prompt">Make this same image again with exactly the same layout, buildings, objects and camera angle. Only change the time of day to night: a deep blue sky with stars and a moon, lanterns and windows glowing with warm light, cool blue shadows. Still no people and no text.</pre></div>
+        </div>
+        <div class="variant">
+          <h4><span class="swatch" style="background:#d98b45"></span>Evening (indoors)</h4>
+          <div class="prompt-box"><pre class="prompt">Make this same image again with exactly the same room, furniture, objects and camera angle. Only change the light to evening: warm golden sunset light coming through the windows, longer shadows, a cozier mood. Still no people and no text.</pre></div>
+        </div>
+        <div class="variant">
+          <h4><span class="swatch" style="background:#3a2f4a"></span>Night (indoors)</h4>
+          <div class="prompt-box"><pre class="prompt">Make this same image again with exactly the same room, furniture, objects and camera angle. Only change the light to night: dark windows, the room lit only by candles, lanterns and any fire, warm pools of light and deep shadows. Still no people and no text.</pre></div>
+        </div>
+      </div>
+      <div class="callout"><p><strong>Optional extra:</strong> a rainy version for sad or tense scenes. <em>"Make this same image again with exactly the same layout. Only change the weather to a grey rainy day: falling rain, wet shiny ground with puddles and reflections."</em> Save it as <code>_rain</code>.</p></div>
+    </section>
+
+    <section id="game">
+      <h2>Putting them in the game</h2>
+      <ol class="steps">
+        <li>Open your game's background folder. In Studio, right-click <strong>Images ▸ bg</strong> in the Project panel and choose <strong>Open in File Explorer</strong>. For your test game it's <code>C:\Users\Wispl\Desktop\vn-full-test\images\bg</code>.</li>
+        <li>Save each picture there as a PNG, named <strong>place_time</strong>, with lowercase letters and <code>_</code> only:</li>
+      </ol>
+<pre><code>images/bg/town_square_day.png       →  scene bg town_square_day
+images/bg/town_square_evening.png   →  scene bg town_square_evening
+images/bg/town_square_night.png     →  scene bg town_square_night
+images/bg/slum_alley_rain.png       →  scene bg slum_alley_rain</code></pre>
+      <p>Backgrounds fill the screen at any size, so they need no resizing (unlike the sprites).</p>
+      <p>Use one in a scene. <code>with dissolve</code> fades from the last place; <code>with fade</code> goes through black, good for a new day:</p>
+<pre><code>label market_morning:
+    scene bg bazaar_day with fade
+    show amara happy at left with dissolve
+    amara "You're late. The best saffron sells before the bells."</code></pre>
+    </section>
+
+    <section id="problems">
+      <h2>Fixing problems</h2>
+      <p class="intro">Reply in the same chat. Start over only if the chat keeps failing.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:32%">Problem</th><th>What to send</th></tr></thead>
+          <tbody>
+            <tr><td><strong>People in the picture</strong></td><td><code>Remove every person from this image. Keep everything else exactly the same.</code></td></tr>
+            <tr><td><strong>Writing on signs or books</strong></td><td><code>Remove all letters and writing. Leave the signs blank. Keep everything else the same.</code></td></tr>
+            <tr><td><strong>Something big in the middle</strong></td><td><code>Move the [fountain] to the side and leave the middle of the ground open. Keep the same style and light.</code></td></tr>
+            <tr><td><strong>Looking down from above</strong></td><td><code>Redo it from eye level, as if a person is standing in the scene.</code></td></tr>
+            <tr><td><strong>Evening or night changed the layout</strong></td><td><code>Keep the exact layout of the day version. Only change the lighting.</code> If it still drifts, upload the day image again with that sentence.</td></tr>
+            <tr><td><strong>The style doesn't match the girls</strong></td><td>Start a new chat, upload a character sheet, and use the prompt as it is. Its first sentence asks for the matching style.</td></tr>
+            <tr><td><strong>The image is square</strong></td><td><code>Make it a wide 16:9 landscape image with the same content.</code></td></tr>
+            <tr><td><strong>"Image generation failed"</strong></td><td>Click <strong>Try again</strong>. Still failing: a new chat. Still failing: ChatGPT is busy or you've hit your daily image limit, so wait a few hours.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <h2>Checklist</h2>
+      <p class="intro">Tick things off as you go. Your ticks are remembered in this browser.</p>
+      <p class="progress" id="progress"></p>
+      <div class="table-wrap">
+        <table class="checklist">
+          <thead><tr><th>Place</th><th>Day</th><th>Evening</th><th>Night</th><th>In the game</th></tr></thead>
+          <tbody id="checklist-body"></tbody>
+        </table>
+      </div>
+      <button class="reset" id="reset-checklist" type="button">Clear all ticks</button>
+    </section>
+
+  </main>
+</div>
+
+<footer>vn-engine · background art SOP</footer>
+
+<script>
+  var HEAD = 'Visual novel background illustration, wide 16:9 landscape image. Match the art style of the attached image: simple bright anime style, clean outlines, flat colors with soft shading. No people, no characters, no text, no writing on signs.';
+  var FOOT = 'Eye-level view, as if standing in the scene. Keep the center and lower half fairly open and uncluttered so characters can stand in front of it. Background detail slightly soft so characters stand out.';
+
+  var places = [
+    { group: 'shared', who: 'Everyone', c: 'shared', name: 'Crossroads', file: 'crossroads', indoor: false,
+      use: 'The opening: the player arrives at the city.',
+      loc: 'a dirt crossroads outside tall grey stone city walls, a wooden signpost with blank arrows on one side, rolling green hills, the open city gate in the distance, a few trees along the road, bright morning sunlight.' },
+    { group: 'shared', who: 'Everyone', c: 'shared', name: 'Town square', file: 'town_square', indoor: false,
+      use: 'The main hub: characters meet here and events happen.',
+      loc: 'a fantasy town square with cobblestones, a stone fountain off to one side, timber-framed shops with colorful awnings around the edges, flower boxes, warm afternoon sunlight.' },
+    { group: 'shared', who: 'Everyone', c: 'shared', name: 'Inn common room', file: 'inn_tavern', indoor: true,
+      use: 'Evening scenes, gossip and group scenes.',
+      loc: 'the cozy common room of a fantasy inn, heavy wooden beams, a stone hearth with a fire on one side, round tables and benches along the walls, barrels and hanging lanterns, an open wooden floor in the middle, warm afternoon light through small windows.' },
+    { group: 'shared', who: 'Everyone', c: 'shared', name: "Player's room", file: 'inn_room', indoor: true,
+      use: 'Starting and ending each day, quiet thoughts, choices.',
+      loc: 'a small rented room at an inn, a simple wooden bed with a patchwork quilt against one wall, a desk with a candle and a closed book, a round window, a travel pack on the floor by the door, soft morning light.' },
+    { group: 'routes', who: 'Seraphine', c: 'seraphine', name: 'Palace rose garden', file: 'palace_garden', indoor: false,
+      use: 'Where Seraphine escapes the court.',
+      loc: 'a royal rose garden with white marble paths, trimmed hedges, rose arches along the sides, a small marble fountain, a white palace with blue roofs behind, soft bright daylight.' },
+    { group: 'routes', who: 'Seraphine', c: 'seraphine', name: 'Palace throne hall', file: 'palace_hall', indoor: true,
+      use: 'Court politics, audiences, her father.',
+      loc: 'a grand palace throne hall, white marble pillars along both sides, blue and gold banners with no symbols, a long blue carpet leading to a gold throne on a raised platform at the far end, tall arched windows filling the hall with daylight.' },
+    { group: 'routes', who: 'Amara', c: 'amara', name: 'Spice bazaar', file: 'bazaar', indoor: false,
+      use: "Amara's family trade and her home ground.",
+      loc: 'a spice bazaar street with no people, colorful silk awnings on both sides, stalls piled with sacks of bright spices, hanging brass lanterns, rugs and pottery, domed rooftops in the distance, warm golden daylight.' },
+    { group: 'routes', who: 'Mei-Lin', c: 'meilin', name: 'Academy library', file: 'academy_library', indoor: true,
+      use: 'Where Mei-Lin studies, and hides.',
+      loc: 'a towering magic academy library, tall wooden bookshelves with rolling ladders along both sides, a long reading table, a few softly glowing floating runes, a large arched stained-glass window at the far end, calm daylight.' },
+    { group: 'routes', who: 'Wren', c: 'wren', name: 'Farm', file: 'farm', indoor: false,
+      use: "Wren's home and work.",
+      loc: 'a small farm, golden wheat fields, a red barn on one side, a wooden fence along a dirt path, a farmhouse with a stone chimney on the other side, gentle hills, a bright blue sky.' },
+    { group: 'routes', who: 'Wren', c: 'wren', name: 'Village green', file: 'village_green', indoor: false,
+      use: 'Village life and the harvest festival.',
+      loc: 'a village green with soft grass, a big old oak tree on one side, cottages with thatched roofs around the edges, a small stone well, wildflowers, bunting strung between the cottages, sunny afternoon.' },
+    { group: 'routes', who: 'Kesh', c: 'kesh', name: 'Slum alley', file: 'slum_alley', indoor: false,
+      use: "Kesh's territory.",
+      loc: 'a narrow alley in a city slum, crooked leaning wooden buildings, laundry lines strung overhead, broken cobblestones with puddles, crates and barrels along the walls, a single hanging lantern, hazy grey daylight.' },
+    { group: 'routes', who: 'Kesh', c: 'kesh', name: 'City rooftops', file: 'rooftops', indoor: false,
+      use: 'Where Kesh goes to be alone. Amara uses rooftops too.',
+      loc: 'the rooftops of a fantasy city, slanted tiled roofs and chimneys in the foreground, a flat walkable stretch of roof in the middle, a wide view over the city with a white palace in the distance, clear daytime sky.' }
+  ];
+
+  function promptFor(p) { return HEAD + '\n\nLocation: ' + p.loc + '\n\n' + FOOT; }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  var count = { shared: 0, routes: 0 };
+  places.forEach(function (p, i) {
+    var card = el('div', 'loc c-' + p.c);
+    var head = el('div', 'loc-head');
+    head.appendChild(el('span', 'num', String(i + 1)));
+    head.appendChild(el('h4', null, p.name));
+    head.appendChild(el('span', 'tag', p.who));
+    head.appendChild(el('span', 'file', 'bg/' + p.file + '_day · _evening · _night' + (p.indoor ? ' · indoor' : '')));
+    card.appendChild(head);
+    card.appendChild(el('p', null, p.use));
+    var box = el('div', 'prompt-box');
+    box.appendChild(el('pre', 'prompt', promptFor(p)));
+    card.appendChild(box);
+    document.getElementById(p.group === 'shared' ? 'shared-cards' : 'route-cards').appendChild(card);
+  });
+
+  // Copy buttons on every prompt
+  document.querySelectorAll('pre.prompt').forEach(function (pre) {
+    var box = pre.parentElement;
+    var label = el('span', 'prompt-label', 'Prompt');
+    var btn = el('button', 'copy', 'Copy');
+    btn.type = 'button';
+    btn.addEventListener('click', function () {
+      var text = pre.textContent;
+      function done() {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+      }
+      function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+    });
+    box.appendChild(label);
+    box.appendChild(btn);
+  });
+
+  // Checklist, remembered in this browser
+  var KEY = 'bg-sop-checklist';
+  var cols = ['day', 'evening', 'night', 'game'];
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var body = document.getElementById('checklist-body');
+  var progress = document.getElementById('progress');
+  function updateProgress() {
+    var done = 0;
+    body.querySelectorAll('input').forEach(function (b) { if (b.checked) done++; });
+    progress.textContent = done + ' of ' + (places.length * cols.length) + ' done';
+  }
+  places.forEach(function (p) {
+    var tr = document.createElement('tr');
+    var name = el('td');
+    var dot = el('span', 'dot');
+    name.className = 'c-' + p.c;
+    name.appendChild(dot);
+    name.appendChild(document.createTextNode(p.name));
+    tr.appendChild(name);
+    cols.forEach(function (c) {
+      var td = document.createElement('td');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.setAttribute('aria-label', p.name + ': ' + c);
+      var id = p.file + ':' + c;
+      cb.checked = !!state[id];
+      cb.addEventListener('change', function () { state[id] = cb.checked; save(); updateProgress(); });
+      td.appendChild(cb);
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  updateProgress();
+  document.getElementById('reset-checklist').addEventListener('click', function () {
+    state = {}; save();
+    body.querySelectorAll('input').forEach(function (b) { b.checked = false; });
+    updateProgress();
+  });
+</script>
+</body>
+</html>

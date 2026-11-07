@@ -3,6 +3,7 @@
 
 [game]
 title = "Example Visual Novel"
+kit = "romance"
 version = "0.1.0"
 # A release saves the players' games and persistent data in their own folder, named
 # after this id: without it a release runs but can't save. Lowercase letters, digits,
@@ -167,3 +168,6 @@ frame_image = "gui/button.png"
 
 [theme.flowchart.scene]
 frame_image = "gui/title_bg.png"
+
+[theme]
+preset = "rose_garden"
