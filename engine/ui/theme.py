@@ -94,7 +94,9 @@ class Words:
     """Words by key (``[words]`` key = menu id, F10 ``07`` "registry"). ``override(key)`` (F32's
     ``UiOverrides``) wins when it returns a string; else the configured word; a blank configured
     word was already replaced by its default (W65). F65: ``kit`` (``kits.kit_words``) gives the
-    kit's word for a key the author left at its default ("Messages" for ``inbox``)."""
+    device's or kit's word for a key the author didn't write ("Messages" for ``inbox``). v1:
+    a word the author writes wins even when it equals the default (``WordsConfig.set_keys``;
+    a value other than the default counts as written too)."""
 
     def __init__(self, config: WordsConfig | None = None, *,
                  override: Callable[[str], str | None] | None = None,
@@ -102,11 +104,15 @@ class Words:
         config = config if config is not None else WordsConfig()
         fields = word_fields()
         self._words: dict[str, str] = {}
+        written = getattr(config, "set_keys", frozenset())
         for key, f in fields.items():
             value = getattr(config, f.name)
-            self._words[key] = value if value.strip() else f.default
-            if kit and key in kit and self._words[key] == f.default:
+            if (key in written or value != f.default) and value.strip():
+                self._words[key] = value
+            elif kit and kit.get(key):
                 self._words[key] = kit[key]
+            else:
+                self._words[key] = f.default
         self.override = override
 
     def get(self, key: str) -> str:
@@ -124,9 +130,10 @@ class Words:
 def resolve_words(config: WordsConfig, *, log=_log,
                   kit: Mapping[str, str] | None = None) -> Words:
     """``Words`` from ``[words]``; each empty or blank word is W65 and keeps its default (or
-    the kit's, F65)."""
+    the kit's, F65). A word whose default is empty (``money``: the money item's own title)
+    may be left empty."""
     for key, f in word_fields().items():
-        if not getattr(config, f.name).strip():
+        if f.default.strip() and not getattr(config, f.name).strip():
             log.warning("%s", w65_text(key, f.default), extra={"code": "W65"})
     return Words(config, kit=kit)
 

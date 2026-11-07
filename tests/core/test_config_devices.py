@@ -79,9 +79,10 @@ def test_arrive_text_fills_only_the_name():
 
 
 def test_the_game_device_name_names_the_inbox_over_the_kit_title():
-    assert kit_words(config("fantasy")) == {"inbox": "Pigeon post"}
+    bag = {"codex_items": "Satchel", "money": "Gold", "hotbar": "Belt"}     # v1: in [words]
+    assert kit_words(config("fantasy")) == {"inbox": "Pigeon post", **bag}
     named = config("fantasy", pigeon=DeviceTable(name="Rookery"))
     assert device_look(named) == "pigeon"
-    assert kit_words(named) == {"inbox": "Rookery"}
+    assert kit_words(named) == {"inbox": "Rookery", **bag}
     assert kit_words(config(None, phone=DeviceTable(name="Pocket"))) == {"inbox": "Pocket"}
     assert kit_words(config(None, pigeon=DeviceTable(name="Rookery"))) == {}

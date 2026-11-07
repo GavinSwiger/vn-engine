@@ -46,8 +46,8 @@ through a ``CodexPort`` (``app/codex.py``'s ``AppCodexPort``, F23's ``LedgerCode
   to the picture box), or None (nothing).
 
 F64 (specs/F64-items/SPEC.md): a counted item's row title ends with "×n" (the port's
-``count``); the items' default tab is named by the port's ``bag_word`` (the kit's, or
-``[codex] bag_word``) when it has one; and with ``purse`` (the game menu's page, not the
+``count``); the items' default tab is named by the port's ``bag_word`` (``[words]
+codex_items`` or the kit's) when it has one; and with ``purse`` (the game menu's page, not the
 title's or a picker's) the money item's word and count ("Coins ×30", the port's ``purse``)
 are drawn at the right of the top row, also when the bag is empty. Ports without these
 methods (F23's) show the page as before.

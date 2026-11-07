@@ -108,3 +108,18 @@ def test_codex_count_and_items_warn_once_each_at_their_first_read(tmp_path):
             "write items.count(...) instead."),
         (6, "codex.items is a spelling from before version 1. It still works for now, but "
             "write items.held instead.")]
+
+
+def test_the_bag_money_and_hotbar_words_move_into_words():
+    config, _ = _config('[codex]\nbag_word = "Satchel"\nmoney_word = ""\n\n'
+                        '[hotbar]\nword = "Belt"\n\n[words]\nhotbar = "Pouch"\n')
+    assert (config.words.codex_items, config.words.money, config.words.hotbar) == (
+        "Satchel", "", "Pouch")
+    assert config.words.set_keys == {"codex_items", "hotbar"}         # a blank old word: unset
+    assert [old for _line, old, _new in config.renamed] == [
+        "[codex] bag_word", "[codex] money_word", "[hotbar] word"]
+    text = '[codex]\nnotify = true\nbag_word = "Satchel"\n\n[words]\nyes = "Aye"'
+    assert settingsmodel.values(text)["words.codex_items"] == "Satchel"
+    plan = tomlpatch.plan_set(text, "words", "codex_items", "Pack")
+    assert tomllib.loads("\n".join(apply_lines(text.split("\n"), plan.edits))) == {
+        "codex": {"notify": True}, "words": {"yes": "Aye", "codex_items": "Pack"}}

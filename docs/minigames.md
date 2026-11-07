@@ -700,7 +700,7 @@ When the chat closes, it stays readable:
 
 A chat the player skips (Skip Game) is kept with the replies a skip picks, so the player can
 still read it there. The page's name is `[words] inbox` ("Inbox"); with a genre kit and that
-word left as is, the kit names it: Messages (Romance, Cozy), Whispers (Horror), Dispatches
+word not written, the kit names it: Messages (Romance, Cozy), Whispers (Horror), Dispatches
 (Mystery), Pigeon post (Fantasy), Comms (Sci-fi), Letters (Letters). A minigame of your own
 that replaces `phone_chat` adds nothing to History or the Inbox.
 

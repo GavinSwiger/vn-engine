@@ -133,8 +133,8 @@ class SchemeName(Choice):
 
 
 class KitName(Choice):
-    """F60: ``[game] kit`` (``[theme] kit`` before version 1), a built-in genre kit id (``engine.core.kits``); its ``labels``
-    are the kits' names. As with ``SchemeName``, an unknown id is a warning: config drops it
+    """F60: ``[game] kit`` (``[theme] kit`` before version 1), a built-in genre kit id
+    (``engine.core.kits``); its ``labels`` are the kits' names. As with ``SchemeName``, an unknown id is a warning: config drops it
     first (``config._with_kit``)."""
 
     def __init__(self) -> None:
@@ -1512,7 +1512,11 @@ def _word(default: str, *, key: str | None = None, doc: str = "") -> Any:
 class WordsConfig:
     """``[words]``: one field per word key, default the English word. An empty or blank
     word is W65 at install time, and the default is kept (F10 §7.10). Look a key up with
-    ``config_fields(WordsConfig)`` (``return`` is the field ``return_``)."""
+    ``config_fields(WordsConfig)`` (``return`` is the field ``return_``).
+
+    v1 (one rule for every renameable word): a word the author writes wins, even one equal
+    to its default; else the game's device or genre kit names it (``kits.kit_words``); else
+    the default. ``set_keys`` holds the keys config.toml writes (not a key itself)."""
     new_game: str = _word("New Game")
     load: str = _word("Load")
     settings: str = _word("Settings")
@@ -1630,7 +1634,8 @@ class WordsConfig:
     # the F21 designer, for vn-narrative-designer.
     codex: str = _word("Codex")
     codex_tips: str = _word("Tips")
-    codex_items: str = _word("Items")
+    codex_items: str = _word("Items", doc="the bag: the codex's items tab; the genre can "
+                                          "rename it")
     codex_new_tip: str = _word("New tip")
     codex_new_item: str = _word("New item")
     codex_locked: str = _word("???")
@@ -1639,18 +1644,24 @@ class WordsConfig:
     # the "…"), and the picker's pick button.
     present_choice: str = _word("Show an item…")
     present_pick: str = _word("Show")
-    # F64 round 2: the bag's Use button, what a refused use says, and the hotbar's name when
-    # neither [hotbar] word nor the kit gives one.
+    # F64: the money's word at the top of the bag ("": the genre's, else the money item's
+    # own title; [codex] money_word before version 1).
+    money: str = _word("", doc="what the money is called at the top of the bag, such as "
+                               "Gold or Credits; when not set, the genre's word, else the "
+                               "money item's own title")
+    # F64 round 2: the bag's Use button, what a refused use says, and the hotbar's name
+    # ([hotbar] word before version 1).
     codex_use: str = _word("Use", doc="the bag's button that uses the chosen item")
     use_not_now: str = _word("Not now", doc="the notice when an item can't be used at this "
                                             "moment, such as during a menu")
-    hotbar: str = _word("Hotbar", doc="the quick slots' name in the bag beside Use, when "
-                                      "neither the hotbar settings nor the genre name them")
+    hotbar: str = _word("Hotbar", doc="the quick slots' name in the bag beside Use; the "
+                                      "genre can rename it")
     # F65 round 1: the game-menu button and heading of the Inbox page (finished phone chats
     # to reread; a genre kit names it, e.g. "Letters", when this is left as is), and what the
     # player's own messages are called there.
     inbox: str = _word("Inbox", doc="the menu button and heading of the page of finished "
-                                    "chats to reread; the genre can rename it")
+                                    "chats to reread; the game's device or the genre can "
+                                    "rename it")
     inbox_me: str = _word("You", doc="who the player's own messages are from, on the Inbox "
                                      "page")
     # F20 (01 §6, 03-ui "Words", 04 §13): the game-menu and title entry (also the page
@@ -1762,6 +1773,8 @@ class WordsConfig:
         default_factory=_no_plugin_tables, metadata=spec(
             RawPluginTables(), "a minigame's own words, named as that minigame says; its "
                                "title word renames the minigame"))
+    # v1: the word keys config.toml writes (``core/config``), for the rule above.
+    set_keys: frozenset[str] = field(default=frozenset(), compare=False, repr=False)
 
 
 @dataclass(frozen=True)
@@ -1949,7 +1962,6 @@ class RollbackConfig:
         "show the rewind marker while the player has gone back"))
 
 
-BAG_WORD_MAX = 24                        # F64: code points of the bag's and money's words
 
 
 @dataclass(frozen=True)
@@ -1961,16 +1973,7 @@ class CodexConfig:
         "show a notice for each new tip or item"))
     show_locked: bool = field(default=False, metadata=spec(Bool(),
         "show locked tips as ??? rows instead of hiding them"))
-    # F64: the bag's name and the money word; empty: the kit's, else "Items" and the money
-    # item's own title (kits.bag_words)
-    bag_word: str = field(default="", metadata=spec(
-        OneLine(BAG_WORD_MAX, why="the name of the items tab"),
-        "what the items tab is called, such as Satchel or Evidence; when empty, the "
-        "genre's word, else Items"))
-    money_word: str = field(default="", metadata=spec(
-        OneLine(BAG_WORD_MAX, why="the money's name at the top of the bag"),
-        "what the money is called at the top of the bag, such as Gold or Credits; when "
-        "empty, the genre's word, else the money item's own title"))
+    # (F64's bag_word and money_word are [words] codex_items and money since version 1.)
 
 
 # --- [hotbar] (F64 round 2: the hotbar's quick slots) -----------------------------------------
@@ -2002,7 +2005,7 @@ class HotbarConfig:
     """``[hotbar]`` (F64 round 2): the quick slots ``show hotbar`` puts in a corner. ``slots``
     how many (number keys 1 to ``slots``); ``items`` which item each slot holds, in order
     (empty: the held items that have a Use scene, in bag order); ``place`` the corner (None:
-    bottom left); ``word`` its name (empty: the kit's, else "Hotbar").
+    bottom left). Its name is ``[words] hotbar`` (``[hotbar] word`` before version 1).
     Presentation only: the runtime never reads it."""
     slots: int = field(default=4, metadata=spec(IntRange(HOTBAR_SLOTS_MIN, HOTBAR_SLOTS_MAX),
         "how many quick slots the hotbar has, from 4 to 8; players press 1, 2, 3 and so on "
@@ -2014,10 +2017,6 @@ class HotbarConfig:
         Choice(*CORNER_PLACES, labels={p: p.replace("_", " ").capitalize()
                                        for p in CORNER_PLACES}),
         "which corner of the screen the hotbar sits in; when not set, the bottom left"))
-    word: str = field(default="", metadata=spec(
-        OneLine(BAG_WORD_MAX, why="the hotbar's name"),
-        "what the hotbar is called in the bag, such as Belt or Pockets; when empty, the "
-        "genre's word, else Hotbar"))
 
 
 @dataclass(frozen=True)

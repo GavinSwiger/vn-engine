@@ -18,9 +18,13 @@ its own: it only fills in what the author left unset.
   with the precedence ``[meter.<name>]`` > kit > ``skins`` defaults.
 - F64: each kit's ``items`` holds ``ITEMS_BAG`` (the bag's name: Satchel, Evidence, Cargo)
   and ``ITEMS_MONEY`` (the money word: Gold, Credits; "" for none), from ``ITEM_WORDS``.
-  ``bag_words(config)`` gives ``(bag, money)``: ``[codex] bag_word`` / ``money_word`` when
-  set, else the kit's, else "" (the page's own "Items", the money item's own title).
+  ``bag_words(config)`` gives ``(bag, money)``: ``[words] codex_items`` / ``money`` when
+  written, else the kit's, else "" (the page's own "Items", the money item's own title).
   Round 2: ``ITEMS_HOTBAR``, the hotbar's name (Belt, Pockets; ``hotbar_word``).
+- v1, one rule for every renameable word: a ``[words]`` value the author writes wins (even
+  one equal to the default: ``own_word``), else the game's device or the kit
+  (``kit_words``), else the engine's default. ``[device.<look>] name`` stays the device's
+  own name; it names the Inbox only where ``[words] inbox`` isn't written.
 - F65: each kit's ``messages`` holds ``MESSAGES_TITLE`` (the Inbox page's name: Messages,
   Letters, Comms) and ``MESSAGES_DEVICE`` (the default device look: one of
   ``DEVICE_LOOKS``), from ``MESSAGE_WORDS``. ``kit_words(config)`` gives the ``[words]``
@@ -40,7 +44,7 @@ Pure data, read-only; imports only ``core``.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, is_dataclass, replace
 from types import MappingProxyType
 from typing import Any, Final
 
@@ -326,36 +330,47 @@ def meter_look(config: Any, meter: str) -> tuple[str, str, str]:
     return look, place, label
 
 
+# The [words] keys a kit's ``items`` section names (F64; v1 moved them into [words]).
+ITEM_WORD_KEYS: Final[Mapping[str, str]] = MappingProxyType({
+    "codex_items": ITEMS_BAG, "money": ITEMS_MONEY, "hotbar": ITEMS_HOTBAR})
+
+
+def own_word(config: Any, key: str) -> str:
+    """``[words] <key>`` when ``config.toml`` writes it (``WordsConfig.set_keys``; a value
+    other than the default counts too, for a config built in code), stripped; else ""."""
+    words = getattr(config, "words", None)
+    value = getattr(words, key, None)
+    if not isinstance(value, str) or not value.strip():
+        return ""
+    default = next((f.default for f in fields(words) if f.name == key), None) \
+        if is_dataclass(words) else None
+    if key in getattr(words, "set_keys", ()) or value != default:
+        return value.strip()
+    return ""
+
+
+def _word(config: Any, key: str) -> str:
+    """The word ``key`` resolves to by the v1 rule, or "" for the engine's default."""
+    return own_word(config, key) or kit_words(config).get(key, "")
+
+
 def bag_words(config: Any) -> tuple[str, str]:
     """F64: ``(bag, money)`` for the bag page (module docstring)."""
-    found = kit_of(config)
-    own = getattr(config, "codex", None)
-    out = []
-    for key, attr in ((ITEMS_BAG, "bag_word"), (ITEMS_MONEY, "money_word")):
-        mine = getattr(own, attr, "")
-        if isinstance(mine, str) and mine.strip():
-            out.append(mine.strip())
-        else:
-            word = found.items.get(key, "") if found is not None else ""
-            out.append(word if isinstance(word, str) else "")
-    return out[0], out[1]
+    return _word(config, "codex_items"), _word(config, "money")
 
 
 def hotbar_word(config: Any) -> str:
-    """F64 round 2: the hotbar's name: ``[hotbar] word``, else the kit's, else ""."""
-    own = getattr(getattr(config, "hotbar", None), "word", "")
-    if isinstance(own, str) and own.strip():
-        return own.strip()
-    found = kit_of(config)
-    word = found.items.get(ITEMS_HOTBAR, "") if found is not None else ""
-    return word if isinstance(word, str) else ""
+    """F64 round 2: the hotbar's name: ``[words] hotbar`` when written, else the kit's, else
+    "" (the caller's ``Words`` default)."""
+    return _word(config, "hotbar")
 
 
 def kit_words(config: Any) -> dict[str, str]:
-    """F65: the ``[words]`` the kit fills in, by key: each codex kind's page with a
-    ``kit_title`` (``("messages", "title")`` names the ``inbox`` page). ``{}`` with no kit.
-    ``ui/theme.Words`` uses one only where the author left that word at its default.
-    Round 3: the game's device's ``[device.<look>] name`` wins over the kit's title."""
+    """F65: the ``[words]`` the game's device and kit fill in, by key: each codex kind's page
+    with a ``kit_title`` (``("messages", "title")`` names the ``inbox`` page) and (v1) the
+    bag's, the money's and the hotbar's words. ``{}`` with no kit and no device name.
+    ``ui/theme.Words`` uses one only where the author didn't write that word. Round 3: the
+    game's device's ``[device.<look>] name`` wins over the kit's title."""
     found = kit_of(config)
     if found is None:
         return device_name_words(config)
@@ -367,6 +382,10 @@ def kit_words(config: Any) -> dict[str, str]:
         word = getattr(found, section, _EMPTY).get(key, "")
         if isinstance(word, str) and word.strip():
             out.setdefault(kind.page, word.strip())
+    for key, item_key in ITEM_WORD_KEYS.items():
+        word = found.items.get(item_key, "")
+        if isinstance(word, str) and word.strip():
+            out[key] = word.strip()
     return {**out, **device_name_words(config)}
 
 
@@ -389,6 +408,6 @@ __all__ = ["DEVICE_LOOKS", "DEVICE_WORDS", "DeviceWords", "LOOK_ALIASES", "arriv
            "canonical_look", "device_name_words",
            "device_words", "HOTBAR_WORDS", "ITEMS_BAG", "ITEMS_HOTBAR", "ITEMS_MONEY",
            "ITEM_WORDS", "MESSAGES_DEVICE", "MESSAGES_TITLE", "MESSAGE_WORDS",
-           "bag_words", "device_look", "hotbar_word", "kit_words",
+           "ITEM_WORD_KEYS", "bag_words", "device_look", "hotbar_word", "kit_words", "own_word",
            "ClockDress", "KITS", "Kit", "MeterDress", "MeterSuggestion", "kit", "kit_ids", "kit_of",
            "meter_label", "meter_look"]

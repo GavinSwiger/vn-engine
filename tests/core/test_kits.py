@@ -163,7 +163,8 @@ def test_f65_messages_words_and_device_looks():
     looks = {k.messages[kits.MESSAGES_DEVICE] for k in KITS.values()}
     assert looks == set(kits.DEVICE_LOOKS)
     letters = SimpleNamespace(game=SimpleNamespace(kit="letters"))
-    assert kits.kit_words(letters) == {"inbox": "Letters"}
+    assert kits.kit_words(letters) == {"inbox": "Letters", "codex_items": "Keepsakes",
+                                       "money": "Stamps", "hotbar": "Desk"}
     assert kits.device_look(letters) == "letter"
     plain = SimpleNamespace(game=SimpleNamespace(kit=None))
     assert kits.kit_words(plain) == {} and kits.device_look(plain) == "phone"

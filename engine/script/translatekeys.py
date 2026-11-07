@@ -291,7 +291,7 @@ def _words(config: "Config") -> Iterator[SourceText]:
 
     for key, field in fields.items():
         text = getattr(config.words, field.name, None)
-        if type(text) is str:
+        if type(text) is str and text:                  # v1: money is empty until set
             yield SourceText(word_key(key), TextKind.WORD, text, "word", "", CONFIG_REF,
                              limit(key))
     for style, table in config.style.items():

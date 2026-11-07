@@ -872,8 +872,15 @@ as "Coins ×30".
 
 **The bag's words.** A genre kit names the items tab and the money: Fantasy's bag is the
 "Satchel" and its money "Gold"; Mystery's is "Evidence"; Sci-fi's "Cargo" and "Credits".
-`[codex] bag_word` and `money_word` in config.toml change them for your game. Without a kit
-or a word, the tab is "Items" and the money shows its own title.
+`[words] codex_items` and `[words] money` in config.toml change them for your game. Without
+a kit or a word, the tab is "Items" and the money shows its own title. (Before version 1
+these were `[codex] bag_word` and `money_word`; they still work, and the check warns, W323.)
+
+**One rule for words a kit can change.** The bag (`codex_items`), the money (`money`), the
+hotbar (`hotbar`) and the Inbox (`inbox`) are `[words]` keys like every other word. A word
+you write under `[words]` always wins, even when it is the same as the default; else the
+game's device names the Inbox (its `[device.<look>] name`) and the kit names the rest; else
+the engine's word is used.
 
 **Using items.**
 
@@ -922,8 +929,8 @@ the fortune slip, which stays tied to the rail on bad luck.
 |---|---|---|
 | `[codex] notify` | true | A notice for each new tip or item; false: none |
 | `[codex] show_locked` | false | true: tips the player doesn't have yet are listed as `???` |
-| `[codex] bag_word` | "" | The items tab's name, such as "Satchel"; empty: the kit's, else "Items" |
-| `[codex] money_word` | "" | The money's name at the top of the bag, such as "Gold"; empty: the kit's, else the item's title |
+| `[words] codex_items` | "Items" | The items tab's name, such as "Satchel"; not written: the kit's, else "Items" |
+| `[words] money` | "" | The money's name at the top of the bag, such as "Gold"; not written: the kit's, else the item's title |
 
 **Looks** (`[theme.codex]`, `[theme.codex.new]`, `[theme.codex.locked]`) and **words**
 
@@ -996,7 +1003,8 @@ word = "Belt"                   # its name in the bag; empty: the kit's, else Ho
   menus and during minigames, and fades in and out (cuts with Reduce motion).
 - The corner is `[hotbar] place` (`top_left`, `top_right`, `bottom_left` or
   `bottom_right`), else the bottom left, above the text box. A genre kit names it in the bag
-  ("Belt" in Fantasy, "Pockets" in Horror and Mystery); `[hotbar] word` changes the name.
+  ("Belt" in Fantasy, "Pockets" in Horror and Mystery); `[words] hotbar` changes the name
+  (`[hotbar] word` before version 1).
 - `show hotbar` and `hide hotbar` mean the hotbar only with nothing else on the line.
   `show hotbar at center` or `hide hotbar with dissolve` still show and hide a picture
   called hotbar; a game with such a picture gets a warning at each bare line.

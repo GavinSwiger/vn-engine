@@ -27,7 +27,9 @@ editing `config.toml` by hand. Pick a page on the left; its fields are on the ri
 - **Content warning**: when it shows, its text and how long players wait.
 - **Fourth wall**: showing the player's computer user name, and the fake crash screen.
 - **Button words**: every word the game shows, grouped by where it appears, to rename or
-  translate them.
+  translate them. The bag's name, the money's and the hotbar's (also under Chapters &
+  codex) and the Inbox's are here too: a genre kit or the game's device names them until
+  you write your own, and a word you write always wins, even one equal to the default.
 - **All settings**: every setting the engine has, by section. Type in the search box to
   find one.
 
@@ -155,7 +157,8 @@ message as the Inbox draws it (chat bubbles, a letter on paper, a sealed note, a
 transcript with static, a green terminal, a thought's glow). It changes as you type.
 
 - **Name**: the device's name. When it is the game's device, the Inbox button and page use
-  it (unless you renamed the Inbox under Button words).
+  it, unless you wrote your own word for the Inbox under Button words (a word you write
+  there always wins, even "Inbox").
 - **Arrival notice**: what the notice says when a message arrives. `{name}` is who sent it.
 - **Arrival sound**: a sound that plays once when a message arrives (▶ plays it here).
 - **Line above each message**: shown in the Inbox before the message's day ("Arrived by

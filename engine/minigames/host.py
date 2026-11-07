@@ -195,7 +195,7 @@ class HostPorts:
     settings: Callable[[], PlayerSettings] | None = None
     focused: Callable[[], bool] = lambda: True
     viewport: Callable[[], tuple[int, int] | None] = lambda: None
-    money_word: Callable[[], str] = lambda: ""     # F64 round 2: [codex] money_word > kit
+    money_word: Callable[[], str] = lambda: ""     # F64 round 2: [words] money > kit
     tables: PluginTables | None = None
     text: TextServices | None = None               # F52: None → the shell's ``text``
     main_thread: int = field(default_factory=threading.get_ident)

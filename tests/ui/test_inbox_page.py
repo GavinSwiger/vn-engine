@@ -216,3 +216,10 @@ def test_open_holds_the_story_until_the_menu_closes():
     got.app.stage_screen = None
     open_inbox(OpenInbox(9, SID, None, False, False))
     assert got.posted == [WaitDone(9)]
+
+
+def test_v1_a_written_word_wins_even_when_it_is_the_default():
+    """v1: one rule for every renameable word: written > the device's or kit's > default."""
+    written = WordsConfig(set_keys=frozenset({"inbox"}))          # inbox = "Inbox" written
+    assert Words(written, kit={"inbox": "Letters"}).get("inbox") == "Inbox"
+    assert Words(WordsConfig(), kit={"inbox": "Letters"}).get("inbox") == "Letters"

@@ -37,7 +37,7 @@ none), ``ctx.codex.most(name)`` (the most a player can hold; 1 for an item decla
 ``count``), ``ctx.codex.give(name, n)`` / ``ctx.codex.take(name, n)`` and the outcome helpers
 ``give(name, n)`` / ``take(name, n)``, with ``n`` an exact ``int`` from 1 to 999,999 (default
 1, so every older call is unchanged), and ``ctx.codex.money_word()`` (the bag's money word:
-``[codex] money_word``, else the genre kit's, else the money item's title; "" with no money
+``[words] money``, else the genre kit's, else the money item's title; "" with no money
 item). ``ctx.story.money`` names the item marked ``money`` and ``ctx.story.prices`` lists each
 item's ``price``. The same rules as every other change (SR-F23): exact ``str`` names that the
 story declares as items (E253), an exact ``int`` amount in range (else E275 with E436's text),

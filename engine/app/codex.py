@@ -15,7 +15,7 @@ imports ``engine.app`` and the runtime never reads config. So, once per windowed
   driver each call, so F39's reload is followed) and the launch's ``ImageIndex``.
   ``mark_read`` is the one presentation write to the store (§7.7, I-13), made while a menu
   holds the story. F64: ``count``, ``bag_word`` and ``purse`` for the bag page, the words
-  from ``kits.bag_words`` (``[codex]`` > the kit > the page's own).
+  from ``kits.bag_words`` (``[words]`` > the kit > the page's own).
 - Two menu entries (§7.8): ``game`` ``codex`` (shown when the story declares any entry) and
   ``title`` ``codex`` (shown when a tip is unlocked; ``ui/menus.OPT_IN`` keeps it off the
   title unless ``[title] entries`` lists it). Their callables run no author code.

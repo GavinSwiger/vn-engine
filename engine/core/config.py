@@ -243,6 +243,9 @@ def _validate(doc: dict, locator: "KeyLocator") -> tuple[Config, list[str], list
     for section, content in doc.items():
         if section in SECTIONS and isinstance(content, dict):
             sections[section] = walk.table(SECTIONS[section], content, (section,))
+            if section == "words":                                        # v1: set_keys
+                sections[section] = dataclasses.replace(
+                    sections[section], set_keys=frozenset(content) & frozenset(word_fields()))
         elif section in LOOK_SECTIONS and isinstance(content, dict):          # F32
             sections[section] = walk.looks(section, content)
         elif section == METER_SECTION and isinstance(content, dict):          # F62 round 2
@@ -283,6 +286,10 @@ RENAMED: tuple[tuple[tuple[str, str], tuple[str, str], str, str, bool], ...] = (
     ((DEVICE_SECTION, "letters"), (DEVICE_SECTION, "letter"), "[device.letters]",
      "[device.letter]", False),
     (("theme", "kit"), ("game", "kit"), "[theme] kit", "[game] kit", False),
+    (("codex", "bag_word"), ("words", "codex_items"), "[codex] bag_word",
+     "[words] codex_items", True),
+    (("codex", "money_word"), ("words", "money"), "[codex] money_word", "[words] money", True),
+    (("hotbar", "word"), ("words", "hotbar"), "[hotbar] word", "[words] hotbar", True),
 )
 
 

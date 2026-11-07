@@ -94,7 +94,7 @@ def test_ac_f43_05_keys_for_every_must_kind(example):
     assert "name:hana" not in keys and "name:thought" not in keys
     # Every [words] key, then the playthrough layer's own keys.
     from engine.core.config_schema import word_fields
-    assert {word_key(k) for k in word_fields()} <= set(keys)
+    assert {word_key(k) for k, f in word_fields().items() if f.default} <= set(keys)  # money: ""
     for number, look in config.playthrough.items():
         for key in look.words:
             assert word_key(key, playthrough=number) in keys

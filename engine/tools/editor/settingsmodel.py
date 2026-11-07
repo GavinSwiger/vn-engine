@@ -361,7 +361,8 @@ PAGES: Final[tuple[PageDef, ...]] = (
         Row("theme.codex.new", "New entry mark"),
         Row("theme.codex.locked", "Locked entries"),
         Row("hotbar", "Hotbar: quick slots for usable items"),          # F64 round 2
-        Row("words", "Using items", ("codex_use", "use_not_now", "hotbar")),
+        Row("words", "Using items", ("codex_items", "money", "codex_use", "use_not_now",
+                                     "hotbar")),
         Row("words", "Inbox: finished chats to reread", ("inbox", "inbox_me")))),   # F65
     PageDef(CALENDAR, "Calendar", ()),                              # F63: generated
     PageDef(DEVICES, "Devices", ()),                                # F65 round 3: generated
@@ -427,7 +428,7 @@ PAGES: Final[tuple[PageDef, ...]] = (
             "audio_minimized", "mono", "settings_username", "settings_crash_label",
             "reset_settings", "delete_progress")),
         Row("words", "Switches and empty pages", ("on", "off", "loading", "list_empty")),
-        Row("words", "Codex", ("codex_tips", "codex_items", "codex_new_tip",
+        Row("words", "Codex", ("codex_tips", "codex_items", "money", "codex_new_tip",
                                "codex_new_item", "codex_locked", "codex_empty",
                                "present_choice", "present_pick")),
         Row("words", "Flowchart", (
