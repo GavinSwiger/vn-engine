@@ -87,7 +87,8 @@ from engine.runtime.minigame import (MinigameLedger, RequestError, clean_text,
                                      codex_error_text, e276_result,
                                      e277_text, plugin_failure, plugin_file, plugin_line, thaw)
 from engine.runtime.values import Unsaveable, freeze, kind_words
-from engine.ui.builtin.codex_page import KINDS, CodexFilter, CodexView, PickAction
+from engine.core.minigame_types import CodexFilter, PickAction
+from engine.ui.builtin.codex_page import KINDS, CodexView
 from engine.ui.focus import Box, FocusScope
 from engine.ui.layouts import MG_CUE_DEFAULT, Frame, minigame_frame
 from engine.ui.menu_screen import keyboard_services

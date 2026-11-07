@@ -62,9 +62,11 @@ from engine.core.minigame_types import (
     ArgSpec,
     Change,
     CodexChange,
+    CodexFilter,                      # F25 A6: codex_view's types (v1: core, not ui)
     MeterChange,
     MinigameSig,
     Outcome,
+    PickAction,
     StoryNames,
 )
 from engine.minigames import messages
@@ -73,7 +75,6 @@ from engine.minigames.context import Context, MinigameThreadError, PlayerSetting
 from engine.minigames.registry import DeclarationError, PluginClass, Registry
 from engine.runtime.errors import suggest
 from engine.runtime.values import BIG_INT, INF, KEY, KIND, NAN, Unsaveable, freeze, kind_words
-from engine.ui.builtin.codex_page import CodexFilter, PickAction   # F25 A6: codex_view's types
 from engine.ui.notice import clean_text
 from engine.ui.textfield import TextField                         # API 1.4 (F52)
 

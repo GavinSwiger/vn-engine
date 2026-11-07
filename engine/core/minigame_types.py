@@ -11,6 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Literal
 
+from engine.core.codexkinds import page_kinds
+
 API_VERSION: Final = (1, 5)          # 1.1: check_story, outcome_for (F24 A1; F23 I-19)
 #                                      1.2: register_achievement_hook (F37 §5.3)
 #                                      1.3: PlayerSettings.timing_assist, timed (F50)
@@ -108,5 +110,30 @@ class MinigameSig:
     outcome: Callable[[str, dict, StoryNames], Outcome | None] | None = None
 
 
-__all__ = ["API_VERSION", "ARGS_MAX", "PLUGIN_NAME_RE", "REQUIRED", "ArgSpec", "Change",
-           "CodexChange", "MeterChange", "MinigameSig", "Outcome", "StoryNames"]
+# --- ctx.codex_view's two types (F25 A6; v1 S14) ----------------------------------------------
+# Here, not in ``ui/builtin/codex_page`` (which re-exports them), so the minigame API names no
+# screen module. API 1.5 is unchanged: same names, fields and defaults.
+
+CODEX_PAGE_KINDS: Final = frozenset(k.name for k in page_kinds("codex"))   # tips and items
+
+
+@dataclass(frozen=True)
+class CodexFilter:
+    """Which entries a view lists. ``categories``: author texts, or ``"codex_tips"`` /
+    ``"codex_items"`` for a kind's default category; None: all."""
+
+    kinds: frozenset[str] = CODEX_PAGE_KINDS
+    categories: frozenset[str] | None = None
+
+
+@dataclass(frozen=True)
+class PickAction:
+    """The pick button: its text (from the host's words) and what a pick calls."""
+
+    word: str
+    on_pick: Callable[[str], None]
+
+
+__all__ = ["API_VERSION", "ARGS_MAX", "CODEX_PAGE_KINDS", "PLUGIN_NAME_RE", "REQUIRED",
+           "ArgSpec", "Change", "CodexChange", "CodexFilter", "MeterChange", "MinigameSig",
+           "Outcome", "PickAction", "StoryNames"]

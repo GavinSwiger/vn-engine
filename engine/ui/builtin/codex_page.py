@@ -78,7 +78,8 @@ from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
-from engine.core.codexkinds import ORDER_DECLARED, codex_kind, codex_kinds, page_kinds
+from engine.core.codexkinds import ORDER_DECLARED, codex_kind, codex_kinds
+from engine.core.minigame_types import CODEX_PAGE_KINDS, CodexFilter, PickAction  # v1: moved
 from engine.render.text import FontSpec
 from engine.render.textlayout import LayoutContext, LineLayout, Page
 from engine.runtime.codex import CodexCategory, CodexEntry
@@ -125,7 +126,7 @@ if TYPE_CHECKING:
 
 RGB = tuple[int, int, int]
 HEADING: Final = "codex"              # the [words] key of the heading and both entries
-KINDS: Final = frozenset(k.name for k in page_kinds(HEADING))      # F65: tips and items
+KINDS: Final = CODEX_PAGE_KINDS       # F65: tips and items, page_kinds(HEADING)
 SOLID_ASPECT: Final = (16, 9)         # a SolidColor picture is a 16:9 box
 BODY_LAYOUT_CACHE: Final = 8          # entries whose body layouts are kept
 LAZY_ESTIMATE: Final = 1.1            # an unlaid paragraph's lines: 1.1 × its width / the body's
@@ -203,23 +204,6 @@ class CodexUi(Protocol):
     theme: "UiTheme"
     words: "Words"
     assets: Any
-
-
-@dataclass(frozen=True)
-class CodexFilter:
-    """Which entries a view lists. ``categories``: author texts, or ``"codex_tips"`` /
-    ``"codex_items"`` for a kind's default category; None: all."""
-
-    kinds: frozenset[str] = KINDS
-    categories: frozenset[str] | None = None
-
-
-@dataclass(frozen=True)
-class PickAction:
-    """The pick button: its text (from the host's words) and what a pick calls."""
-
-    word: str
-    on_pick: Callable[[str], None]
 
 
 @dataclass(frozen=True)
