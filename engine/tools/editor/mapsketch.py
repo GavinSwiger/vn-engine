@@ -37,6 +37,7 @@ from __future__ import annotations
 import bisect
 import time
 import tkinter as tk
+from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
@@ -56,6 +57,13 @@ PLACEHOLDER: Final = blend("#000000", THEME["map.box"], 0.35)
 FIGURE_FALLBACK: Final = THEME["muted"]
 CHUNK_CACHE: Final = 5_000                  # scenes' lines kept, by digest
 STAGE_W: Final = CANVAS_SIZE[0]
+# v1 review finding 5: a background is decoded once per file (and stamp), kept shrunk to
+# cover SOURCE_AHEAD × the size first asked for, and each zoom level's thumbnail is cut
+# from that; both caches drop their oldest entries, never everything at once.
+SOURCE_AHEAD: Final = 2                     # zooming in up to 2× needs no new decode
+SOURCES_MAX: Final = 64                     # decoded backgrounds kept
+THUMBS_MAX: Final = 256                     # thumbnails kept (picture × size)
+STAMP_TTL_S: Final = 1.0                    # a file's stamp is read again after this
 LINES: Final = "{n} lines"
 ONE_LINE: Final = "1 line"
 SEP: Final = " · "
@@ -144,6 +152,7 @@ class SketchSource:
         self._chunks: dict[tuple[str, bytes], list[str]] = {}
         self._starts: dict[str, tuple[int, list[int], dict[int, Any]]] = {}
         self._closed: dict[str, tuple[object, dict[int, tuple[bytes, list[str]]]]] = {}
+        self._stamps: dict[str, tuple[float, object]] = {}
         self._sketches: dict[str, tuple[tuple, Sketch | None]] = {}
         self._places: tuple[int, dict[str, tuple[str, int]]] | None = None
         self._ins: tuple[int, dict[str, list[Any]]] | None = None
@@ -204,9 +213,7 @@ class SketchSource:
 
     def _closed_scene(self, ref: str, line: int) -> tuple[bytes, list[str]] | None:
         from engine.tools.editor import scenes
-        from engine.tools.editor.helperhub import file_stamp
-        root = self.win.paths.root
-        stamp = file_stamp(root, ref)
+        stamp = fresh_stamp(self._stamps, self.win.paths.root, ref)
         cached = self._closed.get(ref)
         if cached is None or cached[0] != stamp:
             from engine.tools.editor.document import ScriptDocument, open_document
@@ -335,6 +342,19 @@ class SketchSource:
         return (found[1], place[1]) if found is not None else None
 
 
+def fresh_stamp(known: dict[str, tuple[float, object]], root: Any, ref: str) -> object:
+    """``ref``'s file stamp, read at most once per ``STAMP_TTL_S`` into ``known`` (a paint
+    asks for every box in view; finding 5 counted 903 stats in 30 pan steps)."""
+    now = time.monotonic()
+    found = known.get(ref)
+    if found is not None and now - found[0] < STAMP_TTL_S:
+        return found[1]
+    from engine.tools.editor.helperhub import file_stamp
+    stamp = file_stamp(root, ref)
+    known[ref] = (now, stamp)
+    return stamp
+
+
 # --- Tk: background thumbnails ---------------------------------------------------------------------
 
 class SketchImages:
@@ -347,17 +367,30 @@ class SketchImages:
 
     def __init__(self, win: Any, master: tk.Misc, on_ready: Callable[[str], object]) -> None:
         self.win, self.master, self.on_ready = win, master, on_ready
-        self.cache: dict[tuple, tk.PhotoImage | None] = {}
+        self.cache: OrderedDict[tuple, tk.PhotoImage | None] = OrderedDict()
+        # (ref, stamp) → (the decoded picture shrunk, the size it still covers) or None
+        self._sources: OrderedDict[tuple, tuple[tk.PhotoImage, tuple[int, int]] | None] =             OrderedDict()
+        self._stamps: dict[str, tuple[float, object]] = {}
         self._todo: dict[tuple, None] = {}
         self._queued = False
         self._listening = False
 
+    def _stamp(self, ref: str) -> object:
+        return fresh_stamp(self._stamps, self.win.paths.root, ref)
+
     def get(self, ref: str, w: int, h: int) -> tk.PhotoImage | None:
-        from engine.tools.editor.helperhub import file_stamp
-        key = (ref, file_stamp(self.win.paths.root, ref), max(1, int(w)), max(1, int(h)))
+        key = (ref, self._stamp(ref), max(1, int(w)), max(1, int(h)))
         if key in self.cache:
+            self.cache.move_to_end(key)
             return self.cache[key]
         if ref.lower().endswith((".png", ".gif")):
+            source = self._sources.get(key[:2], False)
+            if source is None or (source and key[2] <= source[1][0]
+                                  and key[3] <= source[1][1]):
+                self._sources.move_to_end(key[:2])
+                image = None if source is None else self._cover(source[0], key[2], key[3])
+                self._keep(key, image)
+                return image
             self._todo[key] = None
             if not self._queued:
                 self._queued = True
@@ -384,9 +417,10 @@ class SketchImages:
         return image
 
     def _keep(self, key: tuple, image: tk.PhotoImage | None) -> None:
-        if len(self.cache) > 256:
-            self.cache.clear()
         self.cache[key] = image
+        self.cache.move_to_end(key)
+        while len(self.cache) > THUMBS_MAX:
+            self.cache.popitem(last=False)
 
     def _decode_one(self) -> None:
         """One queued PNG or GIF: decoded, made to cover its sketch, then drawn."""
@@ -400,19 +434,35 @@ class SketchImages:
         if key not in self.cache:
             import base64
             from engine.tools.editor.views import read_asset
+            source = None
             try:
                 info = read_asset(self.win.paths, ref)
                 if info.data is not None and info.width and info.height:
                     full = tk.PhotoImage(master=self.master,
                                          data=base64.b64encode(info.data).decode("ascii"))
-                    image = self._cover(full, w, h)
+                    source = self._shrink(full, SOURCE_AHEAD * w, SOURCE_AHEAD * h)
+                    image = self._cover(source[0], w, h)
             except (tk.TclError, OSError, ValueError):
-                image = None
+                image = source = None
+            self._sources[key[:2]] = source
+            self._sources.move_to_end(key[:2])
+            while len(self._sources) > SOURCES_MAX:
+                self._sources.popitem(last=False)
             self._keep(key, image)
             self.on_ready(ref)
         if self._todo and not self._queued:
             self._queued = True
             self.master.after_idle(self._decode_one)
+
+    @staticmethod
+    def _shrink(full: tk.PhotoImage, w: int, h: int) -> tuple[tk.PhotoImage, tuple[int, int]]:
+        """``full`` shrunk by the largest whole step that still covers ``w`` × ``h``, and
+        the size it covers (any size when it wasn't shrunk: nothing finer exists)."""
+        fw, fh = full.width(), full.height()
+        step = max(1, min(fw // max(1, w), fh // max(1, h)))
+        if step == 1:
+            return full, (1 << 30, 1 << 30)
+        return full.subsample(step), (w, h)
 
     def _cover(self, full: tk.PhotoImage, w: int, h: int) -> tk.PhotoImage:
         """``full`` shrunk by a whole step so it still covers ``w`` × ``h``, cropped to

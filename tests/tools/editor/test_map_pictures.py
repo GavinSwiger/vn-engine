@@ -283,3 +283,44 @@ def test_at_rest_the_boxes_in_view_swap_their_sketch_for_the_games_still(studio,
     # Compact wants no stills.
     view.set_pictures(False)
     assert STILL_OWNER not in stills._owners
+
+
+def test_a_background_is_decoded_once_for_every_zoom(root, tmp_path, monkeypatch):
+    """v1 finding 5: a background is decoded once; each size up to SOURCE_AHEAD × the
+    first comes from that decode; the thumbnail cache drops its oldest entries only; a
+    file's stamp is read once per STAMP_TTL_S."""
+    from types import SimpleNamespace
+
+    from engine.core.paths import GamePaths
+    from engine.tools.editor import helperhub
+
+    game = tmp_path / "game"
+    (game / "images" / "bg").mkdir(parents=True)
+    picture = tk.PhotoImage(master=root, width=640, height=360)
+    picture.put("#336699", to=(0, 0, 640, 360))
+    picture.write(str(game / "images" / "bg" / "room.png"), format="png")
+    stats: list[str] = []
+    stamp = helperhub.file_stamp
+    monkeypatch.setattr(helperhub, "file_stamp", lambda r, ref: (stats.append(ref),
+                                                                 stamp(r, ref))[1])
+    decodes: list[int] = []
+    decode = mapsketch.SketchImages._decode_one
+    monkeypatch.setattr(mapsketch.SketchImages, "_decode_one",
+                        lambda self: (decodes.append(1), decode(self))[1])
+    ready: list[str] = []
+    images = mapsketch.SketchImages(SimpleNamespace(paths=GamePaths.for_game(game)), root,
+                                    ready.append)
+    ref = "images/bg/room.png"
+    assert images.get(ref, 100, 40) is None
+    root.update()
+    assert ready == [ref] and len(decodes) == 1
+    first = images.get(ref, 100, 40)
+    assert first is not None and (first.width(), first.height()) == (100, 40)
+    for w, h in ((150, 60), (200, 80), (75, 30)):           # zooms: no new decode
+        image = images.get(ref, w, h)
+        assert image is not None and image.width() <= w and image.height() <= h
+    root.update()
+    assert len(decodes) == 1 and stats == [ref]             # one stat within the TTL
+    monkeypatch.setattr(mapsketch, "THUMBS_MAX", 3)
+    images.get(ref, 90, 36)
+    assert len(images.cache) == 3 and (ref, images._stamp(ref), 90, 36) in images.cache
