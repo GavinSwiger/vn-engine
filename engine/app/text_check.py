@@ -116,9 +116,11 @@ if TYPE_CHECKING:
 
 RGB = tuple[int, int, int]
 # Defines or statements per step (§7.8): about 2 ms of lines (AC-F02-63: a slice ends at most
-# one step late, and a busy machine can make one step several times slower).
-TEXT_CHECK_CHUNK: Final = 50
-TEXT_CHECK_CHARS: Final = 10_000          # and at most about this much line text per step
+# one step late, and a busy machine can make one step several times slower). v1 perf review:
+# 10 and 2,000, not 50 and 10,000, since the check runs beside the title (App.dev_check) and
+# 50 long lines that need a full layout took up to 40 ms.
+TEXT_CHECK_CHUNK: Final = 10
+TEXT_CHECK_CHARS: Final = 2_000           # and at most about this much line text per step
 W40_MAX_LINES: Final = 20                 # W40 records, then one W40b (SR-F05-28)
 W47_MAX_CHOICES: Final = 20               # W47 records, then one summary line (as W40)
 W101_MAX_LINES: Final = 20                # F17: W101 records, then one W101s (as W40)
@@ -370,8 +372,8 @@ _UNSET = object()
 class TextLaunchCheck:
     """W41, W40, and W40b of one launch (§7.8), with F17's W100 character form and W101. ``step()`` does at most
     ``TEXT_CHECK_CHUNK`` defines or statements, ending early once it has measured
-    ``TEXT_CHECK_CHARS`` characters of line text (one 10,000-character line takes 10 to
-    25 ms), then ``wall``'s F30 steps (when set), and returns True when done; ``warnings``
+    ``TEXT_CHECK_CHARS`` characters of line text (a 2,000-character line takes about 2 to
+    5 ms), then ``wall``'s F30 steps (when set), and returns True when done; ``warnings``
     (the log texts, places included) and ``fourthwall`` are then final. Results don't depend
     on the slicing.
 

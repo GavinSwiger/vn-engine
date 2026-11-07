@@ -252,13 +252,15 @@ def test_ac27_readable_over_any_backdrop(tmp_path):
 
 def launch_warnings(root: Path, caplog, *, dev: bool = True) -> list[str]:
     """Every WARNING (or worse) record of an App A launch of ``root``, up to the frame after
-    the load screen hands over."""
+    the load screen hands over and the dev text check (``App.dev_check``, run after the
+    title) is done."""
     caplog.clear()
     with caplog.at_level(logging.WARNING):
         s = Session(root, dev=dev)
 
         def script(s):
-            yield from s.until(lambda: s.app.story is not None and not s.app.loading)
+            yield from s.until(lambda: s.app.story is not None and not s.app.loading
+                               and s.app.dev_check is None)
             yield
 
         assert s.play(script) == 0

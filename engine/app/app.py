@@ -91,6 +91,14 @@ class ConsoleSlot(Protocol):
 
     def studio(self, request: object) -> None: ...
 
+
+class DevCheck(Protocol):
+    """F05's ``TextLaunchCheck`` as ``App.dev_check`` steps it (``_update_dev_check``)."""
+
+    def step(self) -> bool: ...
+
+    def log(self) -> None: ...
+
 MINIMIZED_WAIT_MS = 100                 # ≤ 10 wake-ups per second while minimized
 MSG_EMPTY_FRAMEBUFFER = "Framebuffer is empty; frame skipped"
 MSG_ENGINE_ERROR = "The game stopped because of an error inside the engine"
@@ -104,6 +112,10 @@ LOG_NOT_AVAILABLE_YET = "not available yet"
 # thresholds when it ends. Generations 0 and 1 are unchanged, so cyclic garbage is still
 # collected young.
 GC_FULL_AFTER = 100
+# F05's dev text check after the title shows (v1 perf review): its slice per frame. A step
+# starts only while this much is left (one step at least), so a dev frame stays under the
+# 60 fps budget while the check finishes in the background.
+DEV_CHECK_SLICE_S = 0.006
 
 # Window events that end a minimized period (§7.8 step 2).
 _UNMINIMIZE_EVENTS = (pygame.WINDOWRESTORED, pygame.WINDOWMAXIMIZED, pygame.WINDOWSHOWN,
@@ -211,6 +223,10 @@ class App:
         self.watchdog: AuthorCodeGuard | None = None
         self.program: "Program | None" = None   # F02: the loaded story (StoryLoadScreen)
         self.loading = False                    # F02: True while the story loads
+        # F05 (dev runs): the text launch check (``TextLaunchCheck``: ``step() -> bool``,
+        # ``log()``) the story load screen handed over with the title; ``_update_dev_check``
+        # steps it each frame and logs it when done. None otherwise.
+        self.dev_check: "DevCheck | None" = None
         # F23: the minigames the plugin phase registered (``StoryLoadScreen``, before F02's
         # load); None before it ends and in Apps wired by hand.
         self.minigames: "Registry | None" = None
@@ -305,7 +321,8 @@ class App:
                     continue
                 start = self._limiter.wait()                             # frame start
                 # The bench measures from the first frame after the story load (TR-F02-12).
-                if self.bench is None and self.bench_seconds and not self.loading:
+                if (self.bench is None and self.bench_seconds and not self.loading
+                        and self.dev_check is None):
                     self.bench = BenchRecorder(fps=self.config.engine.fps,
                                                seconds=self.bench_seconds, start=start)
                 interval = None if (last_start is None or skip_interval) else start - last_start
@@ -342,6 +359,8 @@ class App:
                     if self.rollback_release is not None:    # F14 (07 I-11)
                         self.rollback_release()
                     self.screens.update(self.time.dt)
+                    if self.dev_check is not None and not self.error_mode:
+                        self._update_dev_check()             # F05 (dev): after the title
                     # F11 C9: the notice layer after the screens (never in error mode).
                     if self.shell is not None and not self.error_mode:
                         self.shell.update_layer(self.time.dt, focused=self.focused)
@@ -629,6 +648,24 @@ class App:
     def _console_holds(self) -> bool:
         """F40 PR-F40-06: the open console holds the story (dev runs only)."""
         return self.dev and self.console is not None and self.console.holds_story
+
+    def _update_dev_check(self) -> None:
+        """One slice of F05's dev text check (``DEV_CHECK_SLICE_S``; at least one step);
+        logs its warnings and drops it when done. It used to run on the story load screen,
+        before the title: 6-9 s on a 43,000-line story (v1 perf review)."""
+        check = self.dev_check
+        assert check is not None
+        deadline = self._clock() + DEV_CHECK_SLICE_S
+        last = 0.0                                  # a step starts only if one more fits
+        first = True
+        while first or self._clock() + last < deadline:
+            first = False
+            began = self._clock()
+            if check.step():
+                self.dev_check = None
+                check.log()
+                return
+            last = self._clock() - began
 
     def _update_editor(self) -> None:
         """F39's slot (``SPEC.md`` §5.1 step 3, §5.2): with ``--report-to-editor``, Studio's

@@ -545,3 +545,23 @@ def test_ac66_script_package_uses_only_core_and_no_file_api():
                 if node.attr == "walk" and ast.unparse(node.value) != "os":
                     continue
                 assert False, (path.name, node.lineno, node.attr)
+
+
+# --- v1 perf review: F05's dev text check runs after the title ---------------------------------
+
+def test_the_dev_text_check_runs_after_the_title(tmp_path, user_roots, session, corpus_50k):
+    game = make_game(tmp_path, corpus_50k / "script")
+    checked: list[tuple[int, bool]] = []
+    real_check = TextLaunchCheck.step
+
+    def check_step(self):
+        app = session.apps[-1]
+        checked.append((frame_of(session), app.loading))
+        return real_check(self)
+
+    session.quit_frame = 10_000
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(TextLaunchCheck, "step", check_step)
+        assert launch(game, bench=1.0) == 0
+    # Every step runs once the load screen has handed over (loading over).
+    assert checked and all(loading is False for _, loading in checked)

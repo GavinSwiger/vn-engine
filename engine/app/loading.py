@@ -43,8 +43,10 @@ and quitting as usual. When the load is done, the result is logged once
   and the first when it has less left than ``INSTALL_S_PER_STATEMENT`` per statement
   (AC-F02-63); a small story does both in the frame that finished the launch;
 - in dev runs, F05's ``TextLaunchCheck`` (W40, W40b, W41, then F30's W189 and W190 scan;
-  ``app/text_check.py``) then runs in the same slices, still with ``app.loading`` True, and
-  logs its warnings when done;
+  ``app/text_check.py``) is handed to the App with the title (``App.dev_check``): it runs
+  in small slices after the title shows (``App._update_dev_check``) and logs its warnings
+  when done. It used to run here first, which kept a 43,000-line story's dev launch on
+  this screen 6-9 s longer than a release one (v1 perf review);
 - then the stack is replaced by ``on_ready(app)``, which bootstrap passes as
   ``build_initial_screens``: the one "what shows at launch" seam stays in bootstrap (I-2).
 
@@ -380,8 +382,8 @@ class StoryLoadScreen(Screen):
     def _after_launch(self, started: float, *, at_least_one: bool = True) -> None:
         """The story's installs (``_install_slice``), F12's encoder warm-up
         (``PersistentSync.warm``: a big store would otherwise take thousands of frames
-        before its first write), then F05's text check, then the hand-over, in this frame's
-        slice. A frame of its own does at least one unit."""
+        before its first write), then the hand-over with F05's text check given to the App,
+        in this frame's slice. A frame of its own does at least one unit."""
         if self.launched is not None:
             if not self._install_slice(started + SCRIPT_LOAD_SLICE_S,
                                        at_least_one=at_least_one):
@@ -398,29 +400,7 @@ class StoryLoadScreen(Screen):
                     return
             self.warming = False
             at_least_one = False
-        if self.text_check is not None:
-            self._text_slice(started, at_least_one=at_least_one)
-            return
-        self._hand_over()
-
-    def _text_slice(self, started: float, *, at_least_one: bool = True) -> None:
-        """One slice of the text check; hands over when it is done. A frame of its own does
-        at least one step; the frame that finished the launch only what fits its slice. A
-        step starts only when the slice has as much left as the last step took (a line step
-        of a 1,000,000-word story takes up to about 40 ms; AC-F02-63)."""
-        check = self.text_check
-        assert check is not None
-        deadline = started + SCRIPT_LOAD_SLICE_S
-        last = 0.0                                 # a step starts only if one more fits
-        while at_least_one or self._clock() + last < deadline:
-            at_least_one = False
-            began = self._clock()
-            if check.step():
-                break
-            last = self._clock() - began
-        else:
-            return
-        check.log()
+        self.app.dev_check = self.text_check       # F05 (dev): runs after the title
         self.text_check = None
         self._hand_over()
 
